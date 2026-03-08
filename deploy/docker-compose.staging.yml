@@ -1,0 +1,101 @@
+# Production-grade staging deployment with nginx reverse proxy.
+# Usage: docker compose -f deploy/docker-compose.staging.yml up -d
+#
+# Prerequisites:
+#   - deploy/.env.staging on the server (not committed)
+#   - Docker images pushed to registry
+#   - TLS certs at configured paths (optional — falls back to HTTP)
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: playconnect-staging-mongo
+    restart: unless-stopped
+    volumes:
+      - staging_mongo_data:/data/db
+    environment:
+      TZ: Asia/Kolkata
+    command: ['--replSet', 'rs0']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--eval',
+          "try { rs.status() } catch(e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - playconnect-net
+
+  api:
+    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/api:${IMAGE_TAG:-staging-latest}
+    container_name: playconnect-staging-api
+    restart: unless-stopped
+    expose:
+      - '3001'
+    env_file:
+      - .env.staging
+    environment:
+      APP_ENV: staging
+      NODE_ENV: production
+      PORT: '3001'
+      TZ: Asia/Kolkata
+      MONGODB_URI: mongodb://mongo:27017/playconnect_staging?replicaSet=rs0
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3001/api/v1/health/liveness']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - playconnect-net
+
+  admin-web:
+    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/admin-web:${IMAGE_TAG:-staging-latest}
+    container_name: playconnect-staging-admin
+    restart: unless-stopped
+    expose:
+      - '3002'
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_ENV: staging
+      TZ: Asia/Kolkata
+      API_BASE_URL: http://api:3001
+    depends_on:
+      - api
+    networks:
+      - playconnect-net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: playconnect-staging-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
+      - ${SSL_CERT_PATH:-/dev/null}:/etc/nginx/ssl/cert.pem:ro
+      - ${SSL_KEY_PATH:-/dev/null}:/etc/nginx/ssl/key.pem:ro
+    depends_on:
+      - api
+      - admin-web
+    networks:
+      - playconnect-net
+
+volumes:
+  staging_mongo_data:
+
+networks:
+  playconnect-net:
+    driver: bridge

@@ -1,0 +1,124 @@
+import React, { useState, useCallback } from 'react';
+import { ScrollView, View, StyleSheet } from 'react-native';
+import type { RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { BatchesStackParamList } from '../../navigation/BatchesStack';
+import { Input } from '../../components/ui/Input';
+import { TextArea } from '../../components/ui/TextArea';
+import { Button } from '../../components/ui/Button';
+import { InlineError } from '../../components/ui/InlineError';
+import { DaysPicker } from '../../components/batches/DaysPicker';
+import {
+  validateBatchForm,
+  saveBatchUseCase,
+} from '../../../application/batch/use-cases/save-batch.usecase';
+import { createBatch, updateBatch } from '../../../infra/batch/batch-api';
+import type { Weekday, CreateBatchRequest } from '../../../domain/batch/batch.types';
+import { colors, spacing } from '../../theme';
+
+type FormRoute = RouteProp<BatchesStackParamList, 'BatchForm'>;
+
+const saveApi = { createBatch, updateBatch };
+
+export function BatchFormScreen() {
+  const navigation = useNavigation();
+  const route = useRoute<FormRoute>();
+  const { mode, batch } = route.params;
+
+  const [batchName, setBatchName] = useState(batch?.batchName ?? '');
+  const [days, setDays] = useState<Weekday[]>(batch?.days ?? []);
+  const [notes, setNotes] = useState(batch?.notes ?? '');
+
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = useCallback(async () => {
+    const fields: Record<string, string> = {
+      batchName,
+      days: days.join(','),
+      notes,
+    };
+
+    const errors = validateBatchForm(fields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+
+    const data: CreateBatchRequest = {
+      batchName: batchName.trim(),
+      days: days.length > 0 ? days : undefined,
+      notes: notes.trim() || null,
+    };
+
+    setSubmitting(true);
+    setServerError(null);
+
+    const result = await saveBatchUseCase({ saveApi }, mode, batch?.id, data);
+
+    setSubmitting(false);
+
+    if (result.ok) {
+      navigation.goBack();
+    } else {
+      setServerError(result.error.message);
+    }
+  }, [batchName, days, notes, mode, batch?.id, navigation]);
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      {serverError && <InlineError message={serverError} />}
+
+      <Input
+        label="Batch Name"
+        value={batchName}
+        onChangeText={setBatchName}
+        error={fieldErrors['batchName']}
+        testID="input-batchName"
+      />
+
+      <DaysPicker
+        selected={days}
+        onChange={setDays}
+        error={fieldErrors['days']}
+      />
+
+      <TextArea
+        label="Notes (optional)"
+        value={notes}
+        onChangeText={setNotes}
+        error={fieldErrors['notes']}
+        testID="input-notes"
+      />
+
+      <View style={styles.submitContainer}>
+        <Button
+          title={mode === 'create' ? 'Create Batch' : 'Save Changes'}
+          onPress={handleSubmit}
+          loading={submitting}
+          testID="submit-button"
+        />
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  content: {
+    padding: spacing.base,
+    paddingBottom: 40,
+  },
+  submitContainer: {
+    marginTop: spacing.sm,
+  },
+});

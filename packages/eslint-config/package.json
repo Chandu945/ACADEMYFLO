@@ -1,0 +1,20 @@
+{
+  "name": "@playconnect/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared ESLint configuration for PlayConnect",
+  "main": "index.js",
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0"
+  },
+  "peerDependencies": {
+    "eslint": "^8.57.0",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "lint": "echo 'No lint target for eslint-config'",
+    "typecheck": "echo 'No typecheck target for eslint-config'",
+    "test": "echo 'No test target for eslint-config'"
+  }
+}

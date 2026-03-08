@@ -1,0 +1,133 @@
+import type { Result } from '@shared/kernel';
+import { ok, err } from '@shared/kernel';
+import type { AppError } from '@shared/kernel';
+import { User } from '@domain/identity/entities/user.entity';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
+import { canManageStaff } from '@domain/identity/rules/staff.rules';
+import { AuthErrors, StaffErrors } from '../../common/errors';
+import type { UserRole } from '@playconnect/contracts';
+import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import { randomUUID } from 'crypto';
+
+export interface CreateStaffInput {
+  ownerUserId: string;
+  ownerRole: UserRole;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
+  startDate?: Date | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  whatsappNumber?: string | null;
+  mobileNumber?: string | null;
+  address?: string | null;
+  qualificationInfo?: StaffQualificationInfo | null;
+  salaryConfig?: StaffSalaryConfig | null;
+  profilePhotoUrl?: string | null;
+}
+
+export interface CreateStaffOutput {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  role: string;
+  status: string;
+  academyId: string;
+  startDate: Date | null;
+  gender: 'MALE' | 'FEMALE' | null;
+  whatsappNumber: string | null;
+  mobileNumber: string | null;
+  address: string | null;
+  qualificationInfo: StaffQualificationInfo | null;
+  salaryConfig: StaffSalaryConfig | null;
+  profilePhotoUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export class CreateStaffUseCase {
+  constructor(
+    private readonly userRepo: UserRepository,
+    private readonly passwordHasher: PasswordHasher,
+  ) {}
+
+  async execute(input: CreateStaffInput): Promise<Result<CreateStaffOutput, AppError>> {
+    const check = canManageStaff(input.ownerRole);
+    if (!check.allowed) {
+      return err(AuthErrors.notOwner());
+    }
+
+    const owner = await this.userRepo.findById(input.ownerUserId);
+    if (!owner || !owner.academyId) {
+      return err(StaffErrors.academyRequired());
+    }
+
+    const existingByEmail = await this.userRepo.findByEmail(input.email.trim().toLowerCase());
+    if (existingByEmail) {
+      return err(AuthErrors.duplicateEmail());
+    }
+
+    const existingByPhone = await this.userRepo.findByPhone(input.phoneNumber.trim());
+    if (existingByPhone) {
+      return err(AuthErrors.duplicatePhone());
+    }
+
+    const passwordHash = await this.passwordHasher.hash(input.password);
+    const staffId = randomUUID();
+
+    const staff = User.create({
+      id: staffId,
+      fullName: input.fullName,
+      email: input.email,
+      phoneNumber: input.phoneNumber,
+      role: 'STAFF',
+      passwordHash,
+    });
+
+    // Reconstitute with academyId and extended fields set
+    const staffWithAcademy = User.reconstitute(staffId, {
+      fullName: staff.fullName,
+      email: staff.email,
+      phone: staff.phone,
+      role: staff.role,
+      status: staff.status,
+      passwordHash: staff.passwordHash,
+      academyId: owner.academyId,
+      tokenVersion: staff.tokenVersion,
+      audit: staff.audit,
+      softDelete: staff.softDelete,
+      startDate: input.startDate ?? null,
+      gender: input.gender ?? null,
+      whatsappNumber: input.whatsappNumber ?? null,
+      mobileNumber: input.mobileNumber ?? null,
+      address: input.address ?? null,
+      qualificationInfo: input.qualificationInfo ?? null,
+      salaryConfig: input.salaryConfig ?? null,
+      profilePhotoUrl: input.profilePhotoUrl ?? null,
+    });
+
+    await this.userRepo.save(staffWithAcademy);
+
+    return ok({
+      id: staffWithAcademy.id.toString(),
+      fullName: staffWithAcademy.fullName,
+      email: staffWithAcademy.emailNormalized,
+      phoneNumber: staffWithAcademy.phoneE164,
+      role: staffWithAcademy.role,
+      status: staffWithAcademy.status,
+      academyId: owner.academyId,
+      startDate: staffWithAcademy.startDate,
+      gender: staffWithAcademy.gender,
+      whatsappNumber: staffWithAcademy.whatsappNumber,
+      mobileNumber: staffWithAcademy.mobileNumber,
+      address: staffWithAcademy.address,
+      qualificationInfo: staffWithAcademy.qualificationInfo,
+      salaryConfig: staffWithAcademy.salaryConfig,
+      profilePhotoUrl: staffWithAcademy.profilePhotoUrl,
+      createdAt: staffWithAcademy.audit.createdAt,
+      updatedAt: staffWithAcademy.audit.updatedAt,
+    });
+  }
+}

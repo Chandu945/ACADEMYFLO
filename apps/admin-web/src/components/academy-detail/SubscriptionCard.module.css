@@ -1,0 +1,25 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  align-items: baseline;
+}
+
+.row dt {
+  color: var(--color-text-secondary);
+  min-width: 100px;
+  font-weight: var(--font-medium);
+}
+
+.row dd {
+  color: var(--color-text);
+  margin: 0;
+  font-weight: var(--font-medium);
+}

@@ -1,0 +1,62 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: playconnect-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      TZ: Asia/Kolkata
+    command: ['--replSet', 'rs0']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--eval',
+          "try { rs.status() } catch(e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: playconnect-api
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      APP_ENV: development
+      NODE_ENV: production
+      PORT: '3001'
+      TZ: Asia/Kolkata
+      MONGODB_URI: mongodb://mongo:27017/playconnect?replicaSet=rs0
+      LOG_LEVEL: info
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3001/api/v1/health/liveness']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+
+volumes:
+  mongo_data:

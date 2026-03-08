@@ -1,0 +1,38 @@
+{
+  "name": "@playconnect/admin-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PlayConnect Admin Web — Next.js (Super Admin only)",
+  "scripts": {
+    "dev": "next dev --port 3002",
+    "build": "next build",
+    "start": "next start --port 3002",
+    "lint": "next lint --dir src",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@next/swc-darwin-arm64": "^15.5.12",
+    "@playconnect/contracts": "*",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.511.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playconnect/eslint-config": "*",
+    "@playconnect/tsconfig": "*",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.14",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.1.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,81 @@
+# Production deployment with nginx reverse proxy.
+# No MongoDB — expects external managed DB (e.g. Atlas).
+# Usage: docker compose -f deploy/docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   - deploy/.env.prod on the server (not committed)
+#   - Docker images pushed with version tag
+#   - External MongoDB connection string in .env.prod
+#   - TLS certs at configured paths (optional — falls back to HTTP)
+
+services:
+  api:
+    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/api:${IMAGE_TAG}
+    container_name: playconnect-prod-api
+    restart: unless-stopped
+    expose:
+      - '3001'
+    env_file:
+      - .env.prod
+    environment:
+      APP_ENV: production
+      NODE_ENV: production
+      PORT: '3001'
+      TZ: Asia/Kolkata
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3001/api/v1/health/liveness']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    networks:
+      - playconnect-net
+
+  admin-web:
+    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/admin-web:${IMAGE_TAG}
+    container_name: playconnect-prod-admin
+    restart: unless-stopped
+    expose:
+      - '3002'
+    env_file:
+      - .env.prod
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_ENV: production
+      TZ: Asia/Kolkata
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    depends_on:
+      - api
+    networks:
+      - playconnect-net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: playconnect-prod-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
+      - ${SSL_CERT_PATH:-/dev/null}:/etc/nginx/ssl/cert.pem:ro
+      - ${SSL_KEY_PATH:-/dev/null}:/etc/nginx/ssl/key.pem:ro
+    depends_on:
+      - api
+      - admin-web
+    networks:
+      - playconnect-net
+
+networks:
+  playconnect-net:
+    driver: bridge

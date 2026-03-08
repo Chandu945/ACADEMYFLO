@@ -1,0 +1,15 @@
+.git
+node_modules
+*.md
+.env*
+!.env.example
+coverage
+.nyc_output
+*.log
+.DS_Store
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+.husky
+.github
+docs

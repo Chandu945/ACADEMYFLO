@@ -1,0 +1,276 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache node_modules
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+  lint:
+    name: Lint
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run lint:all
+
+  typecheck:
+    name: Typecheck
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run typecheck:all
+
+  unit-tests:
+    name: Unit Tests
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run test:all -- --coverage
+      - name: Upload API coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage
+          path: apps/api/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload Admin Web coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-web-coverage
+          path: apps/admin-web/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload Mobile coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-coverage
+          path: apps/mobile/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  e2e-tests:
+    name: API E2E Tests
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run test:e2e:api
+
+  boundaries:
+    name: Boundary & Architecture Validation
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run validate:boundaries
+      - run: npm run validate:architecture
+
+  contracts:
+    name: Contract Checks
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Validate OpenAPI spec
+        run: npm run contract:check
+      - name: Check for breaking changes
+        run: npm run openapi:compare
+      - name: Upload OpenAPI spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: apps/api/artifacts/swagger.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  format:
+    name: Formatting
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run format
+
+  hardening:
+    name: Security Hardening
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Dependency audit
+        run: npm run hardening:audit
+      - name: License compliance
+        run: npm run hardening:licenses
+      - name: Secrets scan
+        run: npm run hardening:secrets
+      - name: Upload hardening artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardening-reports
+          path: |
+            artifacts/dependency-audit.json
+            artifacts/licenses.json
+            artifacts/secrets-scan.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  report:
+    name: Generate Test Report
+    needs: [lint, typecheck, unit-tests, e2e-tests, boundaries, contracts, format, hardening]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-coverage'
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Restore coverage directories
+        run: |
+          [ -d api-coverage ] && mkdir -p apps/api/coverage && cp -r api-coverage/* apps/api/coverage/ || true
+          [ -d admin-web-coverage ] && mkdir -p apps/admin-web/coverage && cp -r admin-web-coverage/* apps/admin-web/coverage/ || true
+          [ -d mobile-coverage ] && mkdir -p apps/mobile/coverage && cp -r mobile-coverage/* apps/mobile/coverage/ || true
+        continue-on-error: true
+
+      - name: Generate JSON test report
+        run: node scripts/generate-test-report.mjs
+        env:
+          CI_LINT: ${{ needs.lint.result }}
+          CI_TYPECHECK: ${{ needs.typecheck.result }}
+          CI_UNIT_TESTS: ${{ needs.unit-tests.result }}
+          CI_E2E_TESTS: ${{ needs.e2e-tests.result }}
+          CI_BOUNDARIES: ${{ needs.boundaries.result }}
+          CI_CONTRACTS: ${{ needs.contracts.result }}
+          CI_FORMAT: ${{ needs.format.result }}
+          CI_HARDENING: ${{ needs.hardening.result }}
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: artifacts/test-report.json
+          retention-days: 30
+
+      - name: Fail if any gate failed
+        if: contains(needs.*.result, 'failure')
+        run: exit 1

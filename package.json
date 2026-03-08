@@ -1,0 +1,56 @@
+{
+  "name": "playconnect",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PlayConnect — Academy Management Application",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "lint": "turbo run lint",
+    "lint:all": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "typecheck:all": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:all": "turbo run test",
+    "test:e2e": "npm run test:e2e --workspace=@playconnect/api",
+    "test:e2e:api": "npm run test:e2e --workspace=@playconnect/api",
+    "contract:check": "npm run contract:check --workspace=@playconnect/api",
+    "openapi:compare": "node scripts/openapi/compare-openapi.mjs",
+    "validate:boundaries": "node scripts/validate-boundaries.mjs",
+    "validate:architecture": "npm run validate:architecture --workspace=@playconnect/api",
+    "ci:verify": "node scripts/json-test-report.mjs",
+    "ci:e2e": "node scripts/ci/run-e2e.mjs",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "audit:check": "npm audit --omit=dev",
+    "hardening:audit": "node scripts/hardening/dependency-audit.mjs",
+    "hardening:licenses": "node scripts/hardening/license-report.mjs",
+    "hardening:secrets": "node scripts/hardening/secrets-scan.mjs",
+    "hardening:sweep": "node scripts/hardening/full-sweep.mjs",
+    "handoff:generate": "node scripts/handoff/generate-traceability.mjs && node scripts/handoff/generate-handoff-summary.mjs",
+    "docker:build:api": "docker build -f apps/api/Dockerfile -t playconnect-api .",
+    "docker:build:admin": "docker build -f apps/admin-web/Dockerfile -t playconnect-admin-web .",
+    "docker:build": "npm run docker:build:api && npm run docker:build:admin",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "dependency-cruiser": "^16.9.0",
+    "eslint": "^8.57.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "react-native": "0.76.9"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "npm@11.6.1"
+}

@@ -1,0 +1,70 @@
+import type { Result } from '@shared/kernel';
+import { ok, err } from '@shared/kernel';
+import type { AppError } from '@shared/kernel';
+import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import type { TokenService } from '../ports/token-service.port';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import { AuthErrors } from '../../common/errors';
+
+export interface RefreshInput {
+  refreshToken: string;
+  deviceId: string;
+}
+
+export interface RefreshOutput {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export class RefreshUseCase {
+  constructor(
+    private readonly sessionRepo: SessionRepository,
+    private readonly userRepo: UserRepository,
+    private readonly tokenService: TokenService,
+  ) {}
+
+  async execute(input: RefreshInput): Promise<Result<RefreshOutput, AppError>> {
+    const session = await this.sessionRepo.findActiveByDeviceId(input.deviceId);
+    if (!session || session.isRevoked() || session.isExpired()) {
+      return err(AuthErrors.invalidRefreshToken());
+    }
+
+    const isValid = this.tokenService.compareRefreshToken(
+      input.refreshToken,
+      session.refreshTokenHash,
+    );
+    if (!isValid) {
+      // Possible token reuse — revoke session for safety
+      await this.sessionRepo.revokeByUserAndDevice(session.userId, session.deviceId);
+      return err(AuthErrors.invalidRefreshToken());
+    }
+
+    // Rotate: issue new refresh token and update hash
+    const newRefreshToken = this.tokenService.generateRefreshToken();
+    const newHash = this.tokenService.hashRefreshToken(newRefreshToken);
+
+    const refreshTtlMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+    await this.sessionRepo.updateRefreshToken(
+      session.id.toString(),
+      newHash,
+      new Date(Date.now() + refreshTtlMs),
+    );
+
+    const user = await this.userRepo.findById(session.userId);
+    if (!user) {
+      return err(AuthErrors.invalidRefreshToken());
+    }
+
+    const accessToken = this.tokenService.generateAccessToken({
+      sub: user.id.toString(),
+      role: user.role,
+      email: user.emailNormalized,
+      tokenVersion: user.tokenVersion,
+    });
+
+    return ok({
+      accessToken,
+      refreshToken: newRefreshToken,
+    });
+  }
+}

@@ -1,0 +1,26 @@
+import type { TierKey } from '@playconnect/contracts';
+import type { SubscriptionPaymentStatus } from '@domain/subscription-payments/entities/subscription-payment.entity';
+import type { SubscriptionStatus } from '@playconnect/contracts';
+
+export interface InitiatePaymentOutput {
+  orderId: string;
+  paymentSessionId: string;
+  amountInr: number;
+  currency: string;
+  tierKey: TierKey;
+  expiresAt: string;
+}
+
+export interface PaymentStatusOutput {
+  orderId: string;
+  status: SubscriptionPaymentStatus;
+  tierKey: TierKey;
+  amountInr: number;
+  providerPaymentId: string | null;
+  paidAt: string | null;
+  subscription: {
+    status: SubscriptionStatus;
+    paidStartAt: string | null;
+    paidEndAt: string | null;
+  };
+}

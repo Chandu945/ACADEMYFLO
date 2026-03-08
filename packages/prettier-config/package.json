@@ -1,0 +1,12 @@
+{
+  "name": "@playconnect/prettier-config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared Prettier configuration for PlayConnect",
+  "main": "index.json",
+  "scripts": {
+    "lint": "echo 'No lint target for prettier-config'",
+    "typecheck": "echo 'No typecheck target for prettier-config'",
+    "test": "echo 'No test target for prettier-config'"
+  }
+}

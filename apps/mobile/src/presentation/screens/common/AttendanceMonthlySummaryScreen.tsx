@@ -1,0 +1,253 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import type { RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AttendanceStackParamList } from '../../navigation/AttendanceStack';
+import type { AppError } from '../../../domain/common/errors';
+import type { MonthlySummaryItem } from '../../../domain/attendance/attendance.types';
+import { getMonthlySummaryUseCase } from '../../../application/attendance/use-cases/get-monthly-summary.usecase';
+import { getMonthlySummary } from '../../../infra/attendance/attendance-api';
+import { SkeletonTile } from '../../components/ui/SkeletonTile';
+import { InlineError } from '../../components/ui/InlineError';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+
+type Route = RouteProp<AttendanceStackParamList, 'MonthlySummary'>;
+type Nav = NativeStackNavigationProp<AttendanceStackParamList, 'MonthlySummary'>;
+
+const summaryApi = { getMonthlySummary };
+const PAGE_SIZE = 50;
+
+export function AttendanceMonthlySummaryScreen() {
+  const route = useRoute<Route>();
+  const navigation = useNavigation<Nav>();
+  const { month } = route.params;
+
+  const [items, setItems] = useState<MonthlySummaryItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<AppError | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const mountedRef = useRef(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchText]);
+
+  const load = useCallback(
+    async (targetPage: number, append: boolean) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const result = await getMonthlySummaryUseCase(
+        { attendanceApi: summaryApi },
+        month,
+        targetPage,
+        PAGE_SIZE,
+        debouncedSearch || undefined,
+      );
+
+      if (!mountedRef.current) return;
+
+      if (result.ok) {
+        if (append) {
+          setItems((prev) => [...prev, ...result.value.items]);
+        } else {
+          setItems(result.value.items);
+        }
+        setPage(targetPage);
+        setHasMore(targetPage < result.value.meta.totalPages);
+      } else {
+        setError(result.error);
+      }
+
+      setLoading(false);
+      setLoadingMore(false);
+    },
+    [month, debouncedSearch],
+  );
+
+  const fetchMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      load(page + 1, true);
+    }
+  }, [loadingMore, hasMore, page, load]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    load(1, false);
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [load]);
+
+  const handleRowPress = useCallback(
+    (item: MonthlySummaryItem) => {
+      navigation.navigate('StudentMonthlyAttendance', {
+        studentId: item.studentId,
+        fullName: item.fullName,
+        month,
+      });
+    },
+    [navigation, month],
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: MonthlySummaryItem }) => (
+      <Pressable
+        style={styles.row}
+        onPress={() => handleRowPress(item)}
+        testID={`summary-row-${item.studentId}`}
+      >
+        <Text style={styles.name} numberOfLines={1}>
+          {item.fullName}
+        </Text>
+        <View style={styles.counts}>
+          <Text style={styles.presentCount}>{item.presentCount}P</Text>
+          <Text style={styles.absentCountText}>{item.absentCount}A</Text>
+          <Text style={styles.holidayCount}>{item.holidayCount}H</Text>
+        </View>
+      </Pressable>
+    ),
+    [handleRowPress],
+  );
+
+  const keyExtractor = useCallback((item: MonthlySummaryItem) => item.studentId, []);
+
+  const renderFooter = useCallback(() => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footer}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }, [loadingMore]);
+
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.monthLabel}>{month}</Text>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search students..."
+          placeholderTextColor={colors.textDisabled}
+          value={searchText}
+          onChangeText={setSearchText}
+          testID="monthly-summary-search-input"
+        />
+      </View>
+
+      {error && <InlineError message={error.message} onRetry={() => load(1, false)} />}
+
+      {loading ? (
+        <View style={styles.skeletons}>
+          <SkeletonTile />
+          <SkeletonTile />
+          <SkeletonTile />
+        </View>
+      ) : items.length === 0 ? (
+        <EmptyState message="No attendance data" />
+      ) : (
+        <FlatList
+          data={items}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          onEndReached={fetchMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={renderFooter}
+          contentContainerStyle={styles.listContent}
+          testID="monthly-summary-list"
+        />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  monthLabel: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+  searchContainer: {
+    paddingHorizontal: spacing.base,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    fontSize: fontSizes.md,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.md,
+  },
+  skeletons: {
+    padding: spacing.base,
+  },
+  listContent: {
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.xl,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: 14,
+    marginBottom: spacing.sm,
+  },
+  name: {
+    flex: 1,
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
+  counts: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  presentCount: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.bold,
+    color: colors.success,
+  },
+  absentCountText: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.bold,
+    color: colors.danger,
+  },
+  holidayCount: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.bold,
+    color: colors.warning,
+  },
+  footer: {
+    paddingVertical: spacing.base,
+    alignItems: 'center',
+  },
+});

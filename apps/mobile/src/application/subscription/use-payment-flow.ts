@@ -1,0 +1,124 @@
+import { useState, useCallback, useRef } from 'react';
+import type {
+  PaymentFlowStatus,
+  InitiatePaymentResponse,
+  PaymentStatusResponse,
+} from '../../domain/payments/cashfree.types';
+import type { AppError } from '../../domain/common/errors';
+import { initiateSubscriptionPaymentUseCase } from './use-cases/initiate-subscription-payment.usecase';
+import { pollSubscriptionPaymentStatusUseCase } from './use-cases/poll-subscription-payment-status.usecase';
+import { subscriptionApi } from '../../infra/subscription/subscription-api';
+import { accessTokenStore } from '../../infra/http/api-client';
+import { openCashfreeCheckout } from '../../infra/payments/cashfree-web-checkout';
+
+const POLL_INTERVAL_MS = 3000;
+const MAX_POLL_ATTEMPTS = 20;
+
+export type UsePaymentFlowReturn = {
+  status: PaymentFlowStatus;
+  error: string | null;
+  orderId: string | null;
+  paymentResult: PaymentStatusResponse | null;
+  startPayment: () => Promise<void>;
+  reset: () => void;
+};
+
+export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
+  const [status, setStatus] = useState<PaymentFlowStatus>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentResult, setPaymentResult] = useState<PaymentStatusResponse | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const deps = { subscriptionApi, accessToken: accessTokenStore };
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const pollStatus = useCallback(
+    async (oid: string, attempt = 0) => {
+      if (attempt >= MAX_POLL_ATTEMPTS) {
+        setStatus('failed');
+        setError('Payment verification timed out. Please check back later.');
+        return;
+      }
+
+      const result = await pollSubscriptionPaymentStatusUseCase(deps, oid);
+
+      if (!result.ok) {
+        // Network error — retry
+        pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+        return;
+      }
+
+      const data = result.value;
+      setPaymentResult(data);
+
+      if (data.status === 'SUCCESS') {
+        setStatus('success');
+        onSuccess();
+        return;
+      }
+
+      if (data.status === 'FAILED') {
+        setStatus('failed');
+        setError('Payment failed. Please try again.');
+        return;
+      }
+
+      // Still PENDING — continue polling
+      pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+    },
+    [deps, onSuccess],
+  );
+
+  const startPayment = useCallback(async () => {
+    setStatus('initiating');
+    setError(null);
+    setPaymentResult(null);
+
+    const result = await initiateSubscriptionPaymentUseCase(deps);
+
+    if (!result.ok) {
+      setStatus('failed');
+      setError(result.error.message);
+      return;
+    }
+
+    const data: InitiatePaymentResponse = result.value;
+    setOrderId(data.orderId);
+    setStatus('checkout');
+
+    // Open web checkout
+    try {
+      await openCashfreeCheckout(data.paymentSessionId, data.orderId);
+    } catch {
+      // If browser open fails, still start polling
+    }
+
+    // Start polling for payment status
+    setStatus('polling');
+    pollStatus(data.orderId);
+  }, [deps, pollStatus]);
+
+  const reset = useCallback(() => {
+    stopPolling();
+    setStatus('idle');
+    setError(null);
+    setOrderId(null);
+    setPaymentResult(null);
+  }, [stopPolling]);
+
+  return {
+    status,
+    error,
+    orderId,
+    paymentResult,
+    startPayment,
+    reset,
+  };
+}

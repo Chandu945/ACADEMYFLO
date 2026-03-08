@@ -1,0 +1,11 @@
+{
+  "tag": "rc-XXXXXXX",
+  "sha": "",
+  "createdAt": "",
+  "gates": {
+    "ciGates": "",
+    "hardening": "",
+    "smoke": ""
+  },
+  "_comment": "This template is filled by scripts/rc/signoff-bundle.mjs during the RC workflow. Each RC produces a rc-<shortsha>.json file alongside this template."
+}

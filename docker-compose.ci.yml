@@ -1,0 +1,27 @@
+# CI-only Docker Compose — lightweight MongoDB for e2e tests.
+# No persistence, no API service (API runs on the host via npm).
+# Usage: docker compose -f docker-compose.ci.yml up -d
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: playconnect-ci-mongo
+    ports:
+      - '27017:27017'
+    tmpfs:
+      - /data/db
+    environment:
+      TZ: Asia/Kolkata
+    command: ['--replSet', 'rs0']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--eval',
+          "try { rs.status() } catch(e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s

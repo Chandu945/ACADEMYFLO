@@ -1,0 +1,83 @@
+import React, { useCallback } from 'react';
+import { View, FlatList, StyleSheet } from 'react-native';
+import type { FeeDueItem } from '../../../domain/fees/fees.types';
+import type { AppError } from '../../../domain/common/errors';
+import { SkeletonTile } from '../../components/ui/SkeletonTile';
+import { InlineError } from '../../components/ui/InlineError';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FeeDueRow } from '../../components/fees/FeeDueRow';
+import { spacing } from '../../theme';
+
+type PaidFeesScreenProps = {
+  items: FeeDueItem[];
+  loading: boolean;
+  error: AppError | null;
+  onRetry: () => void;
+  onRowPress: (studentId: string) => void;
+  studentNameMap: Record<string, string>;
+};
+
+export function PaidFeesScreen({
+  items,
+  loading,
+  error,
+  onRetry,
+  onRowPress,
+  studentNameMap,
+}: PaidFeesScreenProps) {
+  const renderItem = useCallback(
+    ({ item }: { item: FeeDueItem }) => (
+      <FeeDueRow
+        item={item}
+        onPress={() => onRowPress(item.studentId)}
+        showStudentName
+        studentName={studentNameMap[item.studentId]}
+      />
+    ),
+    [onRowPress, studentNameMap],
+  );
+
+  const keyExtractor = useCallback((item: FeeDueItem) => item.id, []);
+
+  if (loading) {
+    return (
+      <View style={styles.content}>
+        <SkeletonTile />
+        <SkeletonTile />
+        <SkeletonTile />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.content}>
+        <InlineError message={error.message} onRetry={onRetry} />
+      </View>
+    );
+  }
+
+  if (items.length === 0) {
+    return <EmptyState message="No paid fees for this month" />;
+  }
+
+  return (
+    <FlatList
+      data={items}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      contentContainerStyle={styles.listContent}
+      testID="paid-list"
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  content: {
+    padding: spacing.base,
+  },
+  listContent: {
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.xl,
+  },
+});

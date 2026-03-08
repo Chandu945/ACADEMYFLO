@@ -1,0 +1,290 @@
+name: Release Candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['release/*']
+
+concurrency:
+  group: rc-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY || 'ghcr.io/playconnect' }}
+  SHORT_SHA: ${{ github.sha && format('{0}', github.sha) }}
+
+jobs:
+  # ── 1. Install + CI gates ──
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+  ci-gates:
+    name: CI Quality Gates
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Lint
+        run: npm run lint:all
+
+      - name: Typecheck
+        run: npm run typecheck:all
+
+      - name: Format
+        run: npm run format
+
+      - name: Boundary & architecture validation
+        run: npm run validate:boundaries && npm run validate:architecture
+
+      - name: Unit tests with coverage
+        run: npm run test:all -- --coverage
+
+      - name: E2E tests
+        run: npm run test:e2e:api
+
+      - name: Contract checks
+        run: npm run contract:check && npm run openapi:compare
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-coverage
+          path: |
+            apps/api/coverage/
+            apps/admin-web/coverage/
+            apps/mobile/coverage/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  hardening:
+    name: Security Hardening
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Full hardening sweep
+        run: npm run hardening:sweep
+      - name: Upload hardening artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardening-reports
+          path: |
+            artifacts/dependency-audit.json
+            artifacts/licenses.json
+            artifacts/secrets-scan.json
+            artifacts/hardening-report.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ── 2. Build + push docker images ──
+  build-images:
+    name: Build & Push Docker Images
+    needs: [ci-gates, hardening]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      image_tag: ${{ steps.tags.outputs.tag }}
+      api_digest: ${{ steps.push-api.outputs.digest }}
+      admin_digest: ${{ steps.push-admin.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tags
+        run: echo "tag=rc-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        id: push-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/api:${{ steps.tags.outputs.tag }}
+            ${{ env.DOCKER_REGISTRY }}/api:staging-latest
+
+      - name: Build and push Admin Web image
+        id: push-admin
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/admin-web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/admin-web:${{ steps.tags.outputs.tag }}
+            ${{ env.DOCKER_REGISTRY }}/admin-web:staging-latest
+
+      - name: Write docker digests
+        run: |
+          mkdir -p artifacts
+          cat > artifacts/docker-digests.json << EOF
+          {
+            "tag": "${{ steps.tags.outputs.tag }}",
+            "sha": "${{ github.sha }}",
+            "api": {
+              "image": "${{ env.DOCKER_REGISTRY }}/api:${{ steps.tags.outputs.tag }}",
+              "digest": "${{ steps.push-api.outputs.digest }}"
+            },
+            "adminWeb": {
+              "image": "${{ env.DOCKER_REGISTRY }}/admin-web:${{ steps.tags.outputs.tag }}",
+              "digest": "${{ steps.push-admin.outputs.digest }}"
+            },
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-digests
+          path: artifacts/docker-digests.json
+          retention-days: 90
+
+  # ── 3. Deploy to staging ──
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ${{ secrets.STAGING_DEPLOY_DIR || '/opt/playconnect' }}
+            export IMAGE_TAG=${{ needs.build-images.outputs.image_tag }}
+            export DOCKER_REGISTRY=${{ env.DOCKER_REGISTRY }}
+            docker compose -f deploy/docker-compose.staging.yml pull
+            docker compose -f deploy/docker-compose.staging.yml up -d --remove-orphans
+            echo "Deployed IMAGE_TAG=${IMAGE_TAG}"
+
+      - name: Wait for services to be healthy
+        run: sleep 30
+
+  # ── 4. Smoke suite ──
+  smoke-suite:
+    name: Staging Smoke Suite
+    needs: [deploy-staging, build-images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Run smoke suite
+        run: node scripts/rc/smoke-suite.mjs
+        env:
+          STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
+          STAGING_ADMIN_URL: ${{ secrets.STAGING_ADMIN_URL }}
+          SMOKE_ADMIN_EMAIL: ${{ secrets.SMOKE_ADMIN_EMAIL }}
+          SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD }}
+          SMOKE_OWNER_EMAIL: ${{ secrets.SMOKE_OWNER_EMAIL }}
+          SMOKE_OWNER_PASSWORD: ${{ secrets.SMOKE_OWNER_PASSWORD }}
+
+      - name: Upload smoke results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-results
+          path: artifacts/smoke-results.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ── 5. Sign-off bundle ──
+  signoff:
+    name: Generate Sign-off Bundle
+    needs: [ci-gates, hardening, build-images, smoke-suite]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: nm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: rc-artifacts
+
+      - name: Generate sign-off bundle
+        run: node scripts/rc/signoff-bundle.mjs
+        env:
+          RC_TAG: ${{ needs.build-images.outputs.image_tag || 'rc-unknown' }}
+          RC_SHA: ${{ github.sha }}
+          CI_GATES_RESULT: ${{ needs.ci-gates.result }}
+          HARDENING_RESULT: ${{ needs.hardening.result }}
+          SMOKE_RESULT: ${{ needs.smoke-suite.result }}
+
+      - name: Upload sign-off bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: signoff-bundle
+          path: artifacts/signoff-bundle/
+          retention-days: 90
+
+      - name: Fail if critical jobs failed
+        if: |
+          needs.ci-gates.result == 'failure' ||
+          needs.hardening.result == 'failure' ||
+          needs.smoke-suite.result == 'failure'
+        run: |
+          echo "::error::Release candidate verification failed"
+          exit 1

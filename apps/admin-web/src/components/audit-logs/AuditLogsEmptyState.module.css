@@ -1,0 +1,16 @@
+.container {
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+}
+
+.text {
+  font-size: var(--text-md);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}

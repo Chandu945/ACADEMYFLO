@@ -1,0 +1,18 @@
+.headerBlock {
+  margin-bottom: var(--space-4);
+}
+
+.backLink {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.heading {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  margin-top: var(--space-1);
+}
+
+.alertWrapper {
+  margin-bottom: var(--space-4);
+}

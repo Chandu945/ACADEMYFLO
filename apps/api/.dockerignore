@@ -1,0 +1,43 @@
+# Dependencies (installed in Docker)
+node_modules
+
+# Build output (built in Docker)
+dist
+
+# Environment files (NEVER bake secrets into images)
+.env
+.env.*
+!.env.example
+
+# Secret / key files
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage / artifacts
+coverage
+artifacts
+test-results
+
+# Turbo cache
+.turbo
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml

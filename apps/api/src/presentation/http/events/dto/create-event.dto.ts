@@ -1,0 +1,67 @@
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsIn,
+  IsDateString,
+  IsArray,
+  MaxLength,
+  MinLength,
+  Matches,
+} from 'class-validator';
+
+const EVENT_TYPES = ['TOURNAMENT', 'MEETING', 'DEMO_CLASS', 'HOLIDAY', 'ANNUAL_DAY', 'TRAINING_CAMP', 'OTHER'] as const;
+const TARGET_AUDIENCES = ['ALL', 'STUDENTS', 'STAFF', 'PARENTS'] as const;
+
+export class CreateEventDto {
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  title!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
+
+  @IsOptional()
+  @IsIn(EVENT_TYPES)
+  eventType?: string;
+
+  @IsNotEmpty()
+  @IsDateString()
+  startDate!: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'startTime must be in HH:mm format' })
+  startTime?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'endTime must be in HH:mm format' })
+  endTime?: string;
+
+  @IsBoolean()
+  isAllDay!: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  location?: string;
+
+  @IsOptional()
+  @IsIn(TARGET_AUDIENCES)
+  targetAudience?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  batchIds?: string[];
+}

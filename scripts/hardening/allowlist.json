@@ -1,0 +1,32 @@
+{
+  "$schema": "./allowlist-schema.json",
+  "description": "Shared allowlist for hardening scripts. Every entry MUST have a reason and an expiry date. Expired entries re-trigger CI failure.",
+  "audit": {
+    "_comment": "Advisory IDs that may be temporarily allowlisted (high-severity only; critical is NEVER allowlistable)",
+    "entries": []
+  },
+  "secrets": {
+    "_comment": "Paths or patterns that are false positives for secrets detection",
+    "entries": [
+      {
+        "pattern": ".env.example",
+        "reason": "Example env file contains placeholder values, not real secrets",
+        "expiry": "2027-01-01"
+      },
+      {
+        "pattern": ".env.production.example",
+        "reason": "Example env file contains placeholder values, not real secrets",
+        "expiry": "2027-01-01"
+      },
+      {
+        "pattern": ".env.staging.example",
+        "reason": "Example env file contains placeholder values, not real secrets",
+        "expiry": "2027-01-01"
+      }
+    ]
+  },
+  "licenses": {
+    "_comment": "Package names that are exceptions to the disallowed license list",
+    "entries": []
+  }
+}

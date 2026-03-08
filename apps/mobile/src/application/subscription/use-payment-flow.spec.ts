@@ -1,0 +1,120 @@
+import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { usePaymentFlow } from './use-payment-flow';
+
+// Mock the infra modules
+jest.mock('../../infra/subscription/subscription-api', () => ({
+  subscriptionApi: {
+    initiatePayment: jest.fn(),
+    getPaymentStatus: jest.fn(),
+    getMySubscription: jest.fn(),
+  },
+}));
+
+jest.mock('../../infra/http/api-client', () => ({
+  accessTokenStore: {
+    get: jest.fn().mockReturnValue('mock-token'),
+    set: jest.fn(),
+  },
+}));
+
+jest.mock('../../infra/payments/cashfree-web-checkout', () => ({
+  openCashfreeCheckout: jest.fn().mockResolvedValue(undefined),
+}));
+
+const { subscriptionApi } = require('../../infra/subscription/subscription-api');
+const { openCashfreeCheckout } = require('../../infra/payments/cashfree-web-checkout');
+
+describe('usePaymentFlow', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('starts in idle state', () => {
+    const onSuccess = jest.fn();
+    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+    expect(result.current.status).toBe('idle');
+    expect(result.current.error).toBeNull();
+    expect(result.current.orderId).toBeNull();
+  });
+
+  it('initiates payment and opens checkout', async () => {
+    subscriptionApi.initiatePayment.mockResolvedValue({
+      ok: true,
+      value: {
+        orderId: 'pc_sub_test',
+        paymentSessionId: 'session_123',
+        amountInr: 299,
+        currency: 'INR',
+        tierKey: 'TIER_0_50',
+        expiresAt: '2026-03-15T13:00:00Z',
+      },
+    });
+
+    subscriptionApi.getPaymentStatus.mockResolvedValue({
+      ok: true,
+      value: {
+        orderId: 'pc_sub_test',
+        status: 'SUCCESS',
+        tierKey: 'TIER_0_50',
+        amountInr: 299,
+        providerPaymentId: 'cf_123',
+        paidAt: '2026-03-15T12:00:00Z',
+        subscription: { status: 'ACTIVE_PAID', paidStartAt: '2026-04-01', paidEndAt: '2026-04-30' },
+      },
+    });
+
+    const onSuccess = jest.fn();
+    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+
+    await act(async () => {
+      await result.current.startPayment();
+    });
+
+    expect(openCashfreeCheckout).toHaveBeenCalledWith('session_123', 'pc_sub_test');
+  });
+
+  it('shows error on initiation failure', async () => {
+    subscriptionApi.initiatePayment.mockResolvedValue({
+      ok: false,
+      error: { code: 'CONFLICT', message: 'Payment already in progress' },
+    });
+
+    const onSuccess = jest.fn();
+    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+
+    await act(async () => {
+      await result.current.startPayment();
+    });
+
+    expect(result.current.status).toBe('failed');
+    expect(result.current.error).toBe('Payment already in progress');
+  });
+
+  it('reset returns to idle state', async () => {
+    subscriptionApi.initiatePayment.mockResolvedValue({
+      ok: false,
+      error: { code: 'UNKNOWN', message: 'Error' },
+    });
+
+    const onSuccess = jest.fn();
+    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+
+    await act(async () => {
+      await result.current.startPayment();
+    });
+
+    expect(result.current.status).toBe('failed');
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.status).toBe('idle');
+    expect(result.current.error).toBeNull();
+  });
+});

@@ -1,0 +1,11 @@
+.heading {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-5);
+  letter-spacing: -0.3px;
+}
+
+.alertWrapper {
+  margin-bottom: var(--space-5);
+}

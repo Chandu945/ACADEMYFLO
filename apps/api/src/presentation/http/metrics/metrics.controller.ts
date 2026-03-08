@@ -1,0 +1,39 @@
+import { Controller, Get, Inject, HttpCode, HttpStatus, Req, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
+import type { MetricsPort } from '@application/common/ports/metrics.port';
+import { METRICS_PORT } from '@application/common/ports/metrics.port';
+import { AppConfigService } from '@shared/config/config.service';
+
+@ApiTags('Metrics')
+@Controller('metrics')
+@SkipThrottle()
+export class MetricsController {
+  constructor(
+    @Inject(METRICS_PORT) private readonly metrics: MetricsPort,
+    private readonly config: AppConfigService,
+  ) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Prometheus-compatible metrics endpoint' })
+  @HttpCode(HttpStatus.OK)
+  getMetrics(@Req() req: Request, @Res() res: Response): void {
+    if (!this.config.metricsEnabled) {
+      res.status(HttpStatus.NOT_FOUND).json({ message: 'Metrics not enabled' });
+      return;
+    }
+
+    const metricsToken = this.config.metricsToken;
+    if (metricsToken) {
+      const provided = req.headers['x-metrics-token'] as string | undefined;
+      if (provided !== metricsToken) {
+        res.status(HttpStatus.FORBIDDEN).json({ message: 'Invalid metrics token' });
+        return;
+      }
+    }
+
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.send(this.metrics.render());
+  }
+}
