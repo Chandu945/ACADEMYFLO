@@ -21,7 +21,7 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     const isNew = feeDue.audit.version === 1;
     const filter: Record<string, unknown> = { _id: feeDue.id.toString() };
     if (!isNew) {
-      filter.version = feeDue.audit.version - 1;
+      filter['version'] = feeDue.audit.version - 1;
     }
 
     const result = await this.model.findOneAndUpdate(

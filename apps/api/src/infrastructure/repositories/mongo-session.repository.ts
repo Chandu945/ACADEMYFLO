@@ -62,7 +62,7 @@ export class MongoSessionRepository implements SessionRepository {
   async updateRefreshToken(sessionId: string, newHash: string, expiresAt: Date, expectedCurrentHash?: string): Promise<boolean> {
     const filter: Record<string, unknown> = { _id: sessionId };
     if (expectedCurrentHash) {
-      filter.refreshTokenHash = expectedCurrentHash;
+      filter['refreshTokenHash'] = expectedCurrentHash;
     }
     const result = await this.model.updateOne(
       filter,

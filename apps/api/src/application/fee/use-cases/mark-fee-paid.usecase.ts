@@ -43,13 +43,14 @@ export class MarkFeePaidUseCase {
 
     const user = await this.userRepo.findById(input.actorUserId);
     if (!user || !user.academyId) return err(FeeErrors.academyRequired());
+    const academyId = user.academyId;
 
     const student = await this.studentRepo.findById(input.studentId);
     if (!student) return err(FeeErrors.studentNotFound(input.studentId));
-    if (student.academyId !== user.academyId) return err(FeeErrors.studentNotInAcademy());
+    if (student.academyId !== academyId) return err(FeeErrors.studentNotInAcademy());
 
     const due = await this.feeDueRepo.findByAcademyStudentMonth(
-      user.academyId,
+      academyId,
       input.studentId,
       input.monthKey,
     );
@@ -60,18 +61,18 @@ export class MarkFeePaidUseCase {
     const now = this.clock.now();
 
     // Generate receipt number
-    const academy = await this.academyRepo.findById(user.academyId);
+    const academy = await this.academyRepo.findById(academyId);
     const prefix = academy?.receiptPrefix ?? DEFAULT_RECEIPT_PREFIX;
 
     const paid = due.markPaid(input.actorUserId, now, input.paymentLabel);
 
     await this.transaction.run(async () => {
-      const count = await this.transactionLogRepo.countByAcademyAndPrefix(user.academyId, prefix);
+      const count = await this.transactionLogRepo.countByAcademyAndPrefix(academyId, prefix);
       const receiptNumber = generateReceiptNumber(prefix, count + 1);
 
       const txLog = TransactionLog.create({
         id: randomUUID(),
-        academyId: user.academyId,
+        academyId,
         feeDueId: due.id.toString(),
         paymentRequestId: null,
         studentId: input.studentId,

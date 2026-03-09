@@ -105,3 +105,11 @@ export type StudentCredentials = {
   academyName: string;
   shareText: string;
 };
+
+export type InviteParentResponse = {
+  parentId: string;
+  tempPassword: string;
+  studentId: string;
+  parentEmail: string;
+  isExistingUser: boolean;
+};

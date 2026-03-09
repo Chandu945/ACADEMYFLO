@@ -6,9 +6,13 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { useAuth } from '../../context/AuthContext';
 import { Screen } from '../../components/ui/Screen';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'MoreHome'>;
+
+function getInitials(name: string): string {
+  return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+}
 
 type MenuItem = {
   key: string;
@@ -57,6 +61,31 @@ export function MoreScreen() {
           More
         </Text>
 
+        {/* Profile Card — Owner & Staff */}
+        {user && !isParent && (
+          <View style={styles.profileCard} testID="profile-card">
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileAvatarText}>{getInitials(user.fullName)}</Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName} numberOfLines={1}>{user.fullName}</Text>
+              <View style={styles.profileRoleBadge}>
+                <Text style={styles.profileRoleBadgeText}>{user.role}</Text>
+              </View>
+              <View style={styles.profileContactRow}>
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="email-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.profileContactText} numberOfLines={1}>{user.email}</Text>
+              </View>
+              <View style={styles.profileContactRow}>
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="phone-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.profileContactText}>{user.phoneNumber}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {menuItems.map((item) => (
           <TouchableOpacity
             key={item.key}
@@ -96,6 +125,62 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: colors.text,
     marginBottom: spacing.xl,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.lg,
+    ...shadows.sm,
+  },
+  profileAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.base,
+  },
+  profileAvatarText: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.white,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  profileRoleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  profileRoleBadgeText: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.semibold,
+    color: colors.primary,
+  },
+  profileContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 2,
+  },
+  profileContactText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    flex: 1,
   },
   menuItem: {
     flexDirection: 'row',

@@ -18,7 +18,7 @@ export class MongoSubscriptionRepository implements SubscriptionRepository {
     const isNew = subscription.audit.version === 1;
     const filter: Record<string, unknown> = { _id: subscription.id.toString() };
     if (!isNew) {
-      filter.version = subscription.audit.version - 1;
+      filter['version'] = subscription.audit.version - 1;
     }
 
     const result = await this.model.findOneAndUpdate(

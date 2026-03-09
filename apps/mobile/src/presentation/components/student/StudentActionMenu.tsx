@@ -86,6 +86,54 @@ export function StudentActionMenu({
     }
   };
 
+  const handleInviteParent = () => {
+    onClose();
+    Alert.alert(
+      'Invite Parent',
+      `This will create a parent login for ${student.fullName}'s guardian. The guardian must have an email and mobile number set.\n\nContinue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Invite',
+          onPress: async () => {
+            const result = await studentApi.inviteParent(student.id);
+            if (result.ok) {
+              const { parentEmail, tempPassword, isExistingUser } = result.value;
+              if (isExistingUser) {
+                Alert.alert(
+                  'Parent Linked',
+                  `${parentEmail} already has an account and has been linked to ${student.fullName}. They can log in with their existing password.`,
+                );
+              } else {
+                Alert.alert(
+                  'Parent Invited',
+                  `A parent account has been created.\n\nLogin ID: ${parentEmail}\nTemporary Password: ${tempPassword}\n\nPlease share these credentials with the guardian.`,
+                  [
+                    { text: 'OK' },
+                    {
+                      text: 'Share',
+                      onPress: async () => {
+                        try {
+                          await Share.share({
+                            message: `Login ID: ${parentEmail}\nPassword: ${tempPassword}`,
+                          });
+                        } catch {
+                          // User cancelled share
+                        }
+                      },
+                    },
+                  ],
+                );
+              }
+            } else {
+              Alert.alert('Error', result.error.message);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const handleGenerateDocument = async (docType: 'report' | 'registration-form' | 'id-card', label: string) => {
     onClose();
     setGenerating(label);
@@ -144,6 +192,15 @@ export function StudentActionMenu({
       iconName: 'swap-horizontal-circle-outline',
       ownerOnly: true,
       onPress: () => { onClose(); setShowStatusModal(true); },
+    },
+    {
+      key: 'invite-parent',
+      title: 'Invite Parent',
+      subtitle: 'Create guardian login for this student',
+      iconColor: colors.success,
+      iconName: 'account-plus-outline',
+      ownerOnly: true,
+      onPress: handleInviteParent,
     },
     {
       key: 'share',

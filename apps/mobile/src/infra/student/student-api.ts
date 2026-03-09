@@ -5,6 +5,7 @@ import type {
   UpdateStudentRequest,
   ChangeStudentStatusRequest,
   StudentCredentials,
+  InviteParentResponse,
 } from '../../domain/student/student.types';
 import type { StudentListApiResponse } from '../../domain/student/student.schemas';
 import type { AppError } from '../../domain/common/errors';
@@ -77,6 +78,12 @@ export function getStudentDocumentUrl(
   return path;
 }
 
+export function inviteParent(
+  studentId: string,
+): Promise<Result<InviteParentResponse, AppError>> {
+  return apiPost<InviteParentResponse>(`/api/v1/students/${encodeURIComponent(studentId)}/invite-parent`, {});
+}
+
 export function getStudentPhotoUploadPath(id: string): string {
   return `/api/v1/students/${id}/photo`;
 }
@@ -84,5 +91,5 @@ export function getStudentPhotoUploadPath(id: string): string {
 export const studentApi = {
   listStudents, getStudent, createStudent, updateStudent, deleteStudent,
   changeStudentStatus, getStudentCredentials, getStudentDocumentUrl,
-  getStudentPhotoUploadPath,
+  getStudentPhotoUploadPath, inviteParent,
 };
