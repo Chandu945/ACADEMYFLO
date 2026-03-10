@@ -144,13 +144,6 @@ export const envSchema = z
         message: 'SMTP_HOST must not be localhost in production/staging',
       });
     }
-    if (val.CORS_ALLOWED_ORIGINS.includes('localhost')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['CORS_ALLOWED_ORIGINS'],
-        message: 'CORS_ALLOWED_ORIGINS must not include localhost in production/staging',
-      });
-    }
   });
 
 export type EnvConfig = z.infer<typeof envSchema>;

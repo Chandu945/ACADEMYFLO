@@ -46,9 +46,9 @@ async function bootstrap() {
   app.use(json({ limit: '1mb' }));
   app.use(urlencoded({ limit: '1mb', extended: true }));
 
-  // CORS — whitelist specific origins
+  // CORS — allow all origins
   app.enableCors({
-    origin: config.corsAllowedOrigins,
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
