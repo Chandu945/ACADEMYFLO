@@ -1,9 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { StudentListItem } from '../../../domain/student/student.types';
 import { AppCard } from '../ui/AppCard';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type StudentRowProps = {
   student: StudentListItem;
@@ -11,11 +13,13 @@ type StudentRowProps = {
   onLongPress?: () => void;
 };
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  ACTIVE: { bg: '#ecfdf5', text: colors.success },
-  INACTIVE: { bg: '#fef9c3', text: '#a16207' },
-  LEFT: { bg: '#fef2f2', text: colors.danger },
-};
+function getStatusColors(colors: Colors): Record<string, { bg: string; text: string }> {
+  return {
+    ACTIVE: { bg: '#ecfdf5', text: colors.success },
+    INACTIVE: { bg: '#fef9c3', text: '#a16207' },
+    LEFT: { bg: '#fef2f2', text: colors.danger },
+  };
+}
 
 function getInitials(name: string): string {
   return name
@@ -26,6 +30,9 @@ function getInitials(name: string): string {
 }
 
 function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const STATUS_COLORS = useMemo(() => getStatusColors(colors), [colors]);
   const statusStyle = STATUS_COLORS[student.status] ?? { bg: colors.bgSubtle, text: colors.textDisabled };
 
   return (
@@ -64,7 +71,7 @@ function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps)
 
 export const StudentRow = memo(StudentRowComponent);
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -72,22 +79,22 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     marginRight: spacing.md,
   },
   avatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
   avatarText: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.primary,
   },

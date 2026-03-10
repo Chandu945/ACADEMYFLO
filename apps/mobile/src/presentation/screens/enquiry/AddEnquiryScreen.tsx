@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,9 @@ import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EnquirySource } from '../../../domain/enquiry/enquiry.types';
 import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { Screen } from '../../components/ui/Screen';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'AddEnquiry'>;
 
@@ -28,6 +30,8 @@ const SOURCES: { value: EnquirySource; label: string }[] = [
 ];
 
 export function AddEnquiryScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const [prospectName, setProspectName] = useState('');
   const [guardianName, setGuardianName] = useState('');
@@ -208,7 +212,7 @@ export function AddEnquiryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   content: {
     padding: spacing.base,
     paddingBottom: spacing['3xl'],

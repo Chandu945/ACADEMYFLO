@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,9 +15,13 @@ import { AuditLogRow } from '../../components/audit/AuditLogRow';
 import { AuditFiltersPanel } from '../../components/audit/AuditFilters';
 import { EmptyState } from '../../components/ui/EmptyState';
 import type { AuditLogItem } from '../../../domain/audit/audit.types';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export function AuditLogsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user } = useAuth();
   const isOwner = user?.role === 'OWNER';
 
@@ -33,6 +37,8 @@ export function AuditLogsScreen() {
 }
 
 function AuditLogsContent() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const {
     items,
     loading,
@@ -133,7 +139,7 @@ function AuditLogsContent() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -193,13 +199,13 @@ const styles = StyleSheet.create({
   loadMoreBtn: {
     padding: spacing.md,
     alignItems: 'center',
-    backgroundColor: colors.border,
-    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.lg,
     marginTop: spacing.sm,
   },
   loadMoreText: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
-    color: colors.textMedium,
+    color: colors.primary,
   },
 });

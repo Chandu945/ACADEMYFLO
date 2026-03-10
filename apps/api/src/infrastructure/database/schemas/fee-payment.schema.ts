@@ -37,7 +37,13 @@ export class FeePaymentModel {
   paymentSessionId!: string;
 
   @Prop({ required: true })
-  amount!: number;
+  baseAmount!: number;
+
+  @Prop({ required: true, default: 0 })
+  convenienceFee!: number;
+
+  @Prop({ required: true })
+  totalAmount!: number;
 
   @Prop({ required: true, default: 'INR' })
   currency!: string;

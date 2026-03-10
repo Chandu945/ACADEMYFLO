@@ -73,7 +73,7 @@ describe('RootNavigator', () => {
   it('shows Login screen when unauthenticated', () => {
     renderWithAuth(makeAuthValue({ phase: 'unauthenticated' }));
     expect(screen.getByText('PlayConnect')).toBeTruthy();
-    expect(screen.getByText('Sign in to your account')).toBeTruthy();
+    expect(screen.getByText('Sign in to continue')).toBeTruthy();
   });
 
   it('shows blocked screen when subscription is blocked', () => {
@@ -167,8 +167,8 @@ describe('RootNavigator', () => {
         },
       }),
     );
-    // Staff tabs don't have Dashboard
-    expect(screen.queryByText('Dashboard')).toBeNull();
+    // Staff tabs now have a Dashboard tab
+    expect(screen.getByText('Dashboard')).toBeTruthy();
     expect(screen.getByText('Attendance')).toBeTruthy();
   });
 

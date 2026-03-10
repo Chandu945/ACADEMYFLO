@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { Weekday } from '../../../domain/batch/batch.types';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const ALL_DAYS: { label: string; value: Weekday }[] = [
   { label: 'Mon', value: 'MON' },
@@ -20,6 +22,8 @@ type DaysPickerProps = {
 };
 
 export function DaysPicker({ selected, onChange, error }: DaysPickerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const toggle = (day: Weekday) => {
     if (selected.includes(day)) {
       onChange(selected.filter((d) => d !== day));
@@ -53,7 +57,7 @@ export function DaysPicker({ selected, onChange, error }: DaysPickerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   label: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.medium,

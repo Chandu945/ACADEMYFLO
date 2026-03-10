@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,7 +15,9 @@ import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { Fab } from '../../components/ui/Fab';
 import { Button } from '../../components/ui/Button';
 import { StaffRow } from '../../components/staff/StaffRow';
-import { colors, spacing } from '../../theme';
+import { spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<StaffStackParamList, 'StaffList'>;
 
@@ -23,6 +25,8 @@ const staffApiRef = { listStaff };
 const statusApiRef = { setStaffStatus };
 
 export function StaffListScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { items, loading, loadingMore, error, refetch, fetchMore } = useStaff(staffApiRef);
   const [refreshing, setRefreshing] = useState(false);
@@ -166,7 +170,7 @@ export function StaffListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

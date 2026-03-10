@@ -1,13 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import type { AddNewOption } from './AddNewModal';
 import { AddNewModal } from './AddNewModal';
 import { useFAB } from '../../context/FABContext';
-import { colors, radius } from '../../theme';
+import { radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export function GlobalFAB() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { isFABVisible } = useFAB();
   const [modalVisible, setModalVisible] = useState(false);
   const navigation = useNavigation<any>();
@@ -70,7 +74,7 @@ export function GlobalFAB() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 80,

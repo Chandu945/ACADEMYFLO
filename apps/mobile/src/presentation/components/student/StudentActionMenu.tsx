@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,9 @@ import * as studentApi from '../../../infra/student/student-api';
 import { getAccessToken } from '../../../infra/http/api-client';
 import { env } from '../../../infra/env';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
   visible: boolean;
@@ -44,6 +46,8 @@ interface ActionItem {
 export function StudentActionMenu({
   visible, student, onClose, onEdit, onAssignBatch, onDeleted, onStatusChanged,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user } = useAuth();
   const isOwner = user?.role === 'OWNER';
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -395,7 +399,7 @@ function StatusChangeModal({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '80%' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.base, borderBottomWidth: 1, borderBottomColor: colors.border },

@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Screen } from '../../components/ui/Screen';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getAcademyInfoUseCase } from '../../../application/parent/use-cases/get-academy-info.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import type { AcademyInfo } from '../../../domain/parent/parent.types';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const rowStyles = useMemo(() => makeRowStyles(colors), [colors]);
   return (
     <View style={rowStyles.row}>
       <View style={rowStyles.iconContainer}>
@@ -22,7 +27,7 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   );
 }
 
-const rowStyles = StyleSheet.create({
+const makeRowStyles = (colors: Colors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     paddingVertical: spacing.md,
@@ -56,6 +61,9 @@ const rowStyles = StyleSheet.create({
 });
 
 export function AcademyInfoScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const rowStyles = useMemo(() => makeRowStyles(colors), [colors]);
   const [info, setInfo] = useState<AcademyInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +151,7 @@ export function AcademyInfoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   center: {
     flex: 1,
     justifyContent: 'center',

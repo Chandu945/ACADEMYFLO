@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import {
   Pressable,
   Animated,
@@ -9,7 +9,9 @@ import {
   type TextStyle,
 } from 'react-native';
 
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
@@ -22,17 +24,21 @@ type ButtonProps = {
   testID?: string;
 };
 
-const BG_COLORS: Record<ButtonVariant, string> = {
-  primary: colors.primary,
-  secondary: colors.border,
-  danger: colors.danger,
-};
+function getBgColors(colors: Colors): Record<ButtonVariant, string> {
+  return {
+    primary: colors.primary,
+    secondary: colors.border,
+    danger: colors.danger,
+  };
+}
 
-const TEXT_COLORS: Record<ButtonVariant, string> = {
-  primary: colors.white,
-  secondary: colors.textMedium,
-  danger: colors.white,
-};
+function getTextColors(colors: Colors): Record<ButtonVariant, string> {
+  return {
+    primary: colors.white,
+    secondary: colors.textMedium,
+    danger: colors.white,
+  };
+}
 
 export function Button({
   title,
@@ -42,6 +48,10 @@ export function Button({
   disabled = false,
   testID,
 }: ButtonProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const BG_COLORS = useMemo(() => getBgColors(colors), [colors]);
+  const TEXT_COLORS = useMemo(() => getTextColors(colors), [colors]);
   const isDisabled = disabled || loading;
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -81,20 +91,21 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   base: {
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 2,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 50,
   },
   disabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
   text: {
     fontSize: fontSizes.lg,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.3,
   },
 });

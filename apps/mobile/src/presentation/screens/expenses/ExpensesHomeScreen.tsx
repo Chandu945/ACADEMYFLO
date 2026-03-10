@@ -20,8 +20,10 @@ import * as expenseApi from '../../../infra/expense/expense-api';
 import { expenseCategoryListSchema } from '../../../domain/expense/expense.schemas';
 import { Screen } from '../../components/ui/Screen';
 import { InlineError } from '../../components/ui/InlineError';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
 import type { ExpenseSummary } from '../../../domain/expense/expense.types';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ExpensesHome'>;
 
@@ -62,6 +64,8 @@ function formatCurrency(amount: number): string {
 }
 
 export function ExpensesHomeScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const [month, setMonth] = useState(currentMonth());
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
@@ -249,7 +253,7 @@ export function ExpensesHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   monthPicker: {
     flexDirection: 'row',
     alignItems: 'center',

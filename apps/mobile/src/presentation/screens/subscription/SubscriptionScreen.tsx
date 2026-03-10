@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
@@ -12,7 +12,9 @@ import type {
   PendingTierChange,
   TierKey,
 } from '../../../domain/subscription/subscription.types';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type StatusVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
 
@@ -71,6 +73,8 @@ function formatDate(iso: string): string {
 }
 
 function TierRow({ tier, isCurrent }: { tier: TierPricing; isCurrent: boolean }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View
       style={[styles.tierRow, isCurrent && styles.tierRowActive]}
@@ -96,6 +100,8 @@ function UpgradeBanner({
   requiredTierKey: TierKey;
   currentTierKey: TierKey | null;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   if (requiredTierKey === currentTierKey) return null;
 
   return (
@@ -115,6 +121,8 @@ function UpgradeBanner({
 }
 
 export function SubscriptionScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { subscription, logout, refreshSubscription, user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -227,42 +235,39 @@ export function SubscriptionScreen() {
 
   return (
     <Screen scroll={false}>
-      <FlatList
-        data={subscription.tiers}
-        keyExtractor={(item) => item.tierKey}
-        ListHeaderComponent={header}
-        renderItem={({ item }) => (
-          <TierRow tier={item} isCurrent={item.tierKey === subscription.currentTierKey} />
-        )}
-        ListFooterComponent={
-          <View style={styles.footer}>
-            <Button
-              title="Refresh Status"
-              onPress={handleRefresh}
-              loading={refreshing}
-              testID="subscription-refresh"
-            />
-            {isBlocked ? (
-              <>
-                <View style={styles.spacer} />
-                <Button
-                  title="Sign Out"
-                  variant="secondary"
-                  onPress={logout}
-                  testID="subscription-logout"
-                />
-              </>
-            ) : null}
-          </View>
-        }
+      <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         contentContainerStyle={styles.listContent}
-      />
+      >
+        {header}
+        {subscription.tiers.map((tier) => (
+          <TierRow key={tier.tierKey} tier={tier} isCurrent={tier.tierKey === subscription.currentTierKey} />
+        ))}
+        <View style={styles.footer}>
+          <Button
+            title="Refresh Status"
+            onPress={handleRefresh}
+            loading={refreshing}
+            testID="subscription-refresh"
+          />
+          {isBlocked ? (
+            <>
+              <View style={styles.spacer} />
+              <Button
+                title="Sign Out"
+                variant="secondary"
+                onPress={logout}
+                testID="subscription-logout"
+              />
+            </>
+          ) : null}
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   center: {
     flex: 1,
     justifyContent: 'center',

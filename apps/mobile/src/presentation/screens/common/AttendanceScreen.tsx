@@ -27,7 +27,9 @@ import { HolidayBanner } from '../../components/attendance/HolidayBanner';
 import { AttendanceHeader } from '../../components/attendance/AttendanceHeader';
 import { AttendanceRow } from '../../components/attendance/AttendanceRow';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<AttendanceStackParamList, 'AttendanceMain'>;
 
@@ -53,6 +55,8 @@ function formatDateLabel(dateStr: string): string {
 }
 
 export function AttendanceScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
   const isOwner = user?.role === 'OWNER';
@@ -313,7 +317,7 @@ export function AttendanceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

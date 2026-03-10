@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -16,8 +16,10 @@ import type { ChildSummary } from '../../../domain/parent/parent.types';
 import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-my-children.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
 import { getGreeting, getInitials, formatCurrency } from '../../utils/format';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<ParentHomeStackParamList, 'ChildrenList'>;
 
@@ -28,33 +30,36 @@ function getAvatarColor(index: number): string {
 }
 
 function AttendanceRing({ percent }: { percent: number | null }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const rStyles = useMemo(() => makeRingStyles(colors), [colors]);
   const value = percent ?? 0;
   const color =
     value >= 75 ? colors.success : value >= 50 ? colors.warning : colors.danger;
   const label = percent != null ? `${percent}%` : '--';
 
   return (
-    <View style={ringStyles.container}>
-      <View style={[ringStyles.ring, { borderColor: colors.border }]}>
+    <View style={rStyles.container}>
+      <View style={[rStyles.ring, { borderColor: colors.border }]}>
         <View
           style={[
-            ringStyles.fill,
+            rStyles.fill,
             {
               borderColor: color,
               transform: [{ rotate: `${(value / 100) * 360}deg` }],
             },
           ]}
         />
-        <View style={ringStyles.inner}>
-          <Text style={[ringStyles.value, { color }]}>{label}</Text>
+        <View style={rStyles.inner}>
+          <Text style={[rStyles.value, { color }]}>{label}</Text>
         </View>
       </View>
-      <Text style={ringStyles.label}>Attendance</Text>
+      <Text style={rStyles.label}>Attendance</Text>
     </View>
   );
 }
 
-const ringStyles = StyleSheet.create({
+const makeRingStyles = (colors: Colors) => StyleSheet.create({
   container: { alignItems: 'center' },
   ring: {
     width: 52,
@@ -79,6 +84,8 @@ const ringStyles = StyleSheet.create({
 });
 
 export function ChildrenListScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -225,7 +232,7 @@ export function ChildrenListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   list: { padding: spacing.base, paddingBottom: spacing['2xl'] },
   header: {
     flexDirection: 'row',

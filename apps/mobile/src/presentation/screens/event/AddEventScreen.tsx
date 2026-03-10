@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, View, Text, Switch, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Input } from '../../components/ui/Input';
@@ -6,8 +6,10 @@ import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import type { EventType, TargetAudience } from '../../../domain/event/event.types';
 import * as eventApi from '../../../infra/event/event-api';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
 import { Pressable } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 const EVENT_TYPES: { label: string; value: EventType }[] = [
   { label: 'Tournament', value: 'TOURNAMENT' },
@@ -27,6 +29,8 @@ const AUDIENCES: { label: string; value: TargetAudience }[] = [
 ];
 
 export function AddEventScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -201,7 +205,7 @@ export function AddEventScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,

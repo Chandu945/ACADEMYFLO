@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Button } from '../ui/Button';
 import type { PaymentFlowStatus } from '../../../domain/payments/cashfree.types';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   status: PaymentFlowStatus;
@@ -19,6 +21,8 @@ export function PayWithCashfreeButton({
   onPress,
   onRetry,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isLoading = status === 'initiating' || status === 'checkout' || status === 'polling';
   const isFailed = status === 'failed';
   const isSuccess = status === 'success';
@@ -51,7 +55,7 @@ export function PayWithCashfreeButton({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

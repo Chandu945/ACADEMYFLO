@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type SegmentedControlProps = {
   segments: string[];
@@ -15,6 +17,8 @@ export function SegmentedControl({
   onSelect,
   testID,
 }: SegmentedControlProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container} testID={testID}>
       {segments.map((label, index) => (
@@ -33,27 +37,27 @@ export function SegmentedControl({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: colors.bgSubtle,
-    borderRadius: radius.lg,
-    padding: 3,
-    marginBottom: spacing.sm,
+    borderRadius: radius.xl,
+    padding: 4,
+    marginBottom: spacing.md,
   },
   segment: {
     flex: 1,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm + 3,
     alignItems: 'center',
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
   },
   segmentSelected: {
     backgroundColor: colors.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   label: {
     fontSize: fontSizes.sm,

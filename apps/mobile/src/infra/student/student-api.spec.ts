@@ -6,11 +6,12 @@ jest.mock('../http/api-client', () => ({
   apiGet: jest.fn(),
   apiPost: jest.fn(),
   apiPut: jest.fn(),
+  apiPatch: jest.fn(),
 }));
 
 const mockApiGet = apiClient.apiGet as jest.Mock;
 const mockApiPost = apiClient.apiPost as jest.Mock;
-const mockApiPut = apiClient.apiPut as jest.Mock;
+const mockApiPatch = (apiClient as Record<string, unknown>).apiPatch as jest.Mock;
 
 describe('student-api', () => {
   beforeEach(() => {
@@ -96,13 +97,13 @@ describe('student-api', () => {
   });
 
   describe('updateStudent', () => {
-    it('sends PUT to /api/v1/students/:id', async () => {
-      mockApiPut.mockResolvedValue(ok({}));
+    it('sends PATCH to /api/v1/students/:id', async () => {
+      mockApiPatch.mockResolvedValue(ok({}));
       const req = { fullName: 'Updated' } as never;
 
       await updateStudent('s1', req);
 
-      expect(mockApiPut).toHaveBeenCalledWith('/api/v1/students/s1', req);
+      expect(mockApiPatch).toHaveBeenCalledWith('/api/v1/students/s1', req);
     });
   });
 });

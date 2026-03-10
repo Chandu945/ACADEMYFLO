@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getDailyReport } from '../../../infra/attendance/attendance-api';
 import { getStaffDailyReport } from '../../../infra/staff-attendance/staff-attendance-api';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 function getTodayStr(): string {
   const d = new Date();
@@ -24,6 +26,8 @@ function MarkingCard({
   icon: string;
   data: CardData | null;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const present = data?.present ?? 0;
   const total = data?.total ?? 0;
   const pct = total > 0 ? Math.round((present / total) * 100) : 0;
@@ -57,6 +61,8 @@ function MarkingCard({
 }
 
 export function AttendanceMarkingCards() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [studentData, setStudentData] = useState<CardData | null>(null);
   const [staffData, setStaffData] = useState<CardData | null>(null);
   const mountedRef = useRef(true);
@@ -95,7 +101,7 @@ export function AttendanceMarkingCards() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     gap: spacing.sm,

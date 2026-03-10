@@ -1,10 +1,12 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { PaymentRequestItem } from '../../../domain/fees/payment-requests.types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { AppCard } from '../ui/AppCard';
-import { colors, spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type RequestRowProps = {
   item: PaymentRequestItem;
@@ -22,6 +24,8 @@ const STATUS_VARIANT: Record<string, 'warning' | 'success' | 'danger' | 'neutral
 };
 
 function RequestRowComponent({ item, onApprove, onReject, onCancel, onEdit }: RequestRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPending = item.status === 'PENDING';
 
   return (
@@ -94,7 +98,7 @@ function RequestRowComponent({ item, onApprove, onReject, onCancel, onEdit }: Re
 
 export const RequestRow = memo(RequestRowComponent);
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     marginBottom: spacing.sm,
   },

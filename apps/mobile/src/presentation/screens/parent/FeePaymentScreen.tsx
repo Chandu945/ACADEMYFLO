@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,8 +10,11 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useFeePaymentFlow } from '../../../application/parent/use-fee-payment-flow';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
 import { formatMonthKey, formatCurrency } from '../../utils/format';
+import { CONVENIENCE_FEE_RATE } from '@playconnect/contracts';
+import { useTheme } from '../../context/ThemeContext';
 
 type FeePaymentRouteParams = {
   FeePayment: { feeDueId: string; monthKey: string; amount: number };
@@ -26,15 +29,18 @@ function StepIndicator({
   currentStep: number;
   label: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const sStyles = useMemo(() => makeStepStyles(colors), [colors]);
   const isActive = step <= currentStep;
   const isCurrent = step === currentStep;
   return (
-    <View style={stepStyles.container}>
+    <View style={sStyles.container}>
       <View
         style={[
-          stepStyles.dot,
+          sStyles.dot,
           isActive && { backgroundColor: colors.primary },
-          isCurrent && stepStyles.dotCurrent,
+          isCurrent && sStyles.dotCurrent,
         ]}
       >
         {isActive && (
@@ -42,12 +48,12 @@ function StepIndicator({
           <Icon name="check" size={12} color={colors.white} />
         )}
       </View>
-      <Text style={[stepStyles.label, isActive && { color: colors.primary }]}>{label}</Text>
+      <Text style={[sStyles.label, isActive && { color: colors.primary }]}>{label}</Text>
     </View>
   );
 }
 
-const stepStyles = StyleSheet.create({
+const makeStepStyles = (colors: Colors) => StyleSheet.create({
   container: { alignItems: 'center', flex: 1 },
   dot: {
     width: 24,
@@ -70,9 +76,13 @@ const stepStyles = StyleSheet.create({
 });
 
 export function FeePaymentScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<RouteProp<FeePaymentRouteParams, 'FeePayment'>>();
   const navigation = useNavigation();
   const { feeDueId, monthKey, amount } = route.params;
+  const convenienceFee = Math.round(amount * CONVENIENCE_FEE_RATE);
+  const totalAmount = amount + convenienceFee;
 
   const { status, error, startPayment, reset } = useFeePaymentFlow(() => {
     navigation.goBack();
@@ -95,8 +105,25 @@ export function FeePaymentScreen() {
           <Text style={styles.summaryMonth}>{formatMonthKey(monthKey)}</Text>
         </View>
         <View style={styles.summaryAmountContainer}>
-          <Text style={styles.summaryAmountLabel}>Amount</Text>
-          <Text style={styles.summaryAmount}>{formatCurrency(amount)}</Text>
+          <Text style={styles.summaryAmountLabel}>Total Payable</Text>
+          <Text style={styles.summaryAmount}>{formatCurrency(totalAmount)}</Text>
+        </View>
+      </View>
+
+      {/* Fee Breakdown */}
+      <View style={styles.breakdownCard}>
+        <View style={styles.breakdownRow}>
+          <Text style={styles.breakdownLabel}>Fee Amount</Text>
+          <Text style={styles.breakdownValue}>{formatCurrency(amount)}</Text>
+        </View>
+        <View style={styles.breakdownRow}>
+          <Text style={styles.breakdownLabel}>Convenience Fee ({(CONVENIENCE_FEE_RATE * 100).toFixed(1)}%)</Text>
+          <Text style={styles.breakdownValue}>{formatCurrency(convenienceFee)}</Text>
+        </View>
+        <View style={styles.breakdownDivider} />
+        <View style={styles.breakdownRow}>
+          <Text style={styles.breakdownTotalLabel}>Total Payable</Text>
+          <Text style={styles.breakdownTotalValue}>{formatCurrency(totalAmount)}</Text>
         </View>
       </View>
 
@@ -184,7 +211,7 @@ export function FeePaymentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, padding: spacing.base, backgroundColor: colors.bg },
   summaryCard: {
     flexDirection: 'row',
@@ -227,6 +254,42 @@ const styles = StyleSheet.create({
     fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.bold,
     color: colors.text,
+  },
+  breakdownCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    ...shadows.sm,
+    marginBottom: spacing.lg,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  breakdownLabel: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+  },
+  breakdownValue: {
+    fontSize: fontSizes.sm,
+    color: colors.text,
+  },
+  breakdownDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
+  },
+  breakdownTotalLabel: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
+  breakdownTotalValue: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
   },
   stepsContainer: {
     backgroundColor: colors.surface,

@@ -41,6 +41,8 @@ export {
   FEE_DUE_STATUSES,
   DEFAULT_DUE_DATE_DAY,
   DEFAULT_RECEIPT_PREFIX,
+  CONVENIENCE_FEE_RATE,
+  computeConvenienceFee,
 } from './constants/fee-due';
 
 // Fee filter constants

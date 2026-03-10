@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ScrollView, View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -9,16 +9,20 @@ import * as eventApi from '../../../infra/event/event-api';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type DetailRoute = RouteProp<MoreStackParamList, 'EventDetail'>;
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  UPCOMING: { bg: colors.infoBg, text: colors.infoText },
-  ONGOING: { bg: colors.successBg, text: colors.successText },
-  COMPLETED: { bg: '#f1f5f9', text: colors.textSecondary },
-  CANCELLED: { bg: colors.dangerBg, text: colors.dangerText },
-};
+function getStatusColors(colors: Colors): Record<string, { bg: string; text: string }> {
+  return {
+    UPCOMING: { bg: colors.infoBg, text: colors.infoText },
+    ONGOING: { bg: colors.successBg, text: colors.successText },
+    COMPLETED: { bg: '#f1f5f9', text: colors.textSecondary },
+    CANCELLED: { bg: colors.dangerBg, text: colors.dangerText },
+  };
+}
 
 function formatFullDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -42,6 +46,9 @@ function formatTime12(time: string | null): string {
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EventDetail'>;
 
 export function EventDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const STATUS_COLORS = useMemo(() => getStatusColors(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const { eventId } = route.params;
@@ -251,6 +258,8 @@ export function EventDetailScreen() {
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -259,7 +268,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -290,7 +299,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: 12,
+    borderRadius: radius.full,
   },
   statusText: {
     fontSize: fontSizes.sm,
@@ -303,9 +312,10 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.base,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   infoRow: {
     flexDirection: 'row',
@@ -326,9 +336,10 @@ const styles = StyleSheet.create({
   },
   descSection: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.base,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   descTitle: {
     fontSize: fontSizes.md,

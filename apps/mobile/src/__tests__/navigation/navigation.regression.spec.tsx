@@ -124,7 +124,7 @@ describe('Navigation Regression', () => {
 
     it('unauthenticated → AuthStack (Login)', () => {
       renderWithAuth(makeAuthValue({ phase: 'unauthenticated' }));
-      expect(screen.getByText('Sign in to your account')).toBeTruthy();
+      expect(screen.getByText('Sign in to continue')).toBeTruthy();
     });
 
     it('needsAcademySetup → AcademySetupScreen', () => {
@@ -174,7 +174,8 @@ describe('Navigation Regression', () => {
           },
         }),
       );
-      expect(screen.queryByText('Dashboard')).toBeNull();
+      // Staff now has a Dashboard tab
+      expect(screen.getByText('Dashboard')).toBeTruthy();
       expect(screen.getByText('Attendance')).toBeTruthy();
     });
   });
@@ -192,14 +193,14 @@ describe('Navigation Regression', () => {
         </AuthContext.Provider>,
       );
 
-      expect(screen.getByText('Sign in to your account')).toBeTruthy();
+      expect(screen.getByText('Sign in to continue')).toBeTruthy();
     });
 
     it('re-renders correctly when phase changes from unauthenticated to ready', () => {
       const auth = makeAuthValue({ phase: 'unauthenticated' });
       const { rerender } = renderWithAuth(auth);
 
-      expect(screen.getByText('Sign in to your account')).toBeTruthy();
+      expect(screen.getByText('Sign in to continue')).toBeTruthy();
 
       rerender(
         <AuthContext.Provider
@@ -247,7 +248,7 @@ describe('Navigation Regression', () => {
   describe('Unknown/default phase', () => {
     it('falls back to AuthStack for unknown phase', () => {
       renderWithAuth(makeAuthValue({ phase: 'anything-unknown' as AuthPhase }));
-      expect(screen.getByText('Sign in to your account')).toBeTruthy();
+      expect(screen.getByText('Sign in to continue')).toBeTruthy();
     });
   });
 });

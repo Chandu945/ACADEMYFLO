@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,9 @@ import { saveExpenseUseCase } from '../../../application/expense/use-cases/save-
 import { deleteExpenseUseCase } from '../../../application/expense/use-cases/delete-expense.usecase';
 import * as expenseApi from '../../../infra/expense/expense-api';
 import { Screen } from '../../components/ui/Screen';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ExpenseForm'>;
 type Route = RouteProp<MoreStackParamList, 'ExpenseForm'>;
@@ -33,6 +35,8 @@ function todayString(): string {
 }
 
 export function ExpenseFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { mode } = route.params;
@@ -292,7 +296,7 @@ export function ExpenseFormScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   content: {
     padding: spacing.base,
   },

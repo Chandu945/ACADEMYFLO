@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export type AddNewOption =
   | 'Student'
@@ -75,6 +77,8 @@ type AddNewModalProps = {
 };
 
 function AddNewModalComponent({ visible, onClose, onSelect }: AddNewModalProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user } = useAuth();
   const isOwner = user?.role === 'OWNER';
 
@@ -136,7 +140,7 @@ function AddNewModalComponent({ visible, onClose, onSelect }: AddNewModalProps) 
 
 export const AddNewModal = memo(AddNewModalComponent);
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

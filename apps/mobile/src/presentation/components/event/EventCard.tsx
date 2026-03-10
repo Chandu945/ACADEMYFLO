@@ -1,7 +1,9 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { EventListItem } from '../../../domain/event/event.types';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   event: EventListItem;
@@ -18,12 +20,14 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   OTHER: '#64748b',
 };
 
-const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  UPCOMING: { bg: colors.infoBg, text: colors.infoText },
-  ONGOING: { bg: colors.successBg, text: colors.successText },
-  COMPLETED: { bg: '#f1f5f9', text: colors.textSecondary },
-  CANCELLED: { bg: colors.dangerBg, text: colors.dangerText },
-};
+function getStatusStyles(colors: Colors): Record<string, { bg: string; text: string }> {
+  return {
+    UPCOMING: { bg: colors.infoBg, text: colors.infoText },
+    ONGOING: { bg: colors.successBg, text: colors.successText },
+    COMPLETED: { bg: '#f1f5f9', text: colors.textSecondary },
+    CANCELLED: { bg: colors.dangerBg, text: colors.dangerText },
+  };
+}
 
 function formatTime(time: string | null): string {
   if (!time) return '';
@@ -40,6 +44,9 @@ function formatDateShort(dateStr: string): string {
 }
 
 function EventCardComponent({ event, onPress }: Props) {
+  const { colors } = useTheme();
+  const STATUS_STYLES = useMemo(() => getStatusStyles(colors), [colors]);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const accentColor = EVENT_TYPE_COLORS[event.eventType ?? 'OTHER'] ?? colors.textSecondary;
   const statusStyle = STATUS_STYLES[event.status] ?? STATUS_STYLES['UPCOMING']!;
 
@@ -97,7 +104,7 @@ function EventCardComponent({ event, onPress }: Props) {
 
 export const EventCard = memo(EventCardComponent);
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     backgroundColor: colors.surface,

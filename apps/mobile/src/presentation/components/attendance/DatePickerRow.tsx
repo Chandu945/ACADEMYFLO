@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, fontSizes, fontWeights, spacing, radius } from '../../theme';
+import { fontSizes, fontWeights, spacing, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type DatePickerRowProps = {
   date: string;
@@ -21,6 +23,8 @@ function formatDate(dateStr: string): string {
 }
 
 export function DatePickerRow({ date, onPrevious, onNext, onToday, isToday }: DatePickerRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       <Pressable onPress={onPrevious} style={styles.arrow} testID="date-prev">
@@ -52,7 +56,7 @@ export function DatePickerRow({ date, onPrevious, onNext, onToday, isToday }: Da
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

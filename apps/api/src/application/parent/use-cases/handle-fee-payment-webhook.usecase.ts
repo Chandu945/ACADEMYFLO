@@ -100,7 +100,7 @@ export class HandleFeePaymentWebhookUseCase {
         paymentRequestId: null,
         studentId: payment.studentId,
         monthKey: payment.monthKey,
-        amount: payment.amount,
+        amount: payment.baseAmount,
         source: 'PARENT_ONLINE',
         collectedByUserId: payment.parentUserId,
         approvedByUserId: payment.parentUserId,

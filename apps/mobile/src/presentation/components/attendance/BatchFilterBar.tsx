@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { listBatches } from '../../../infra/batch/batch-api';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type BatchFilterBarProps = {
   selectedBatchId: string | null;
@@ -10,6 +12,8 @@ type BatchFilterBarProps = {
 };
 
 export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [batches, setBatches] = useState<BatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +88,7 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     paddingVertical: spacing.sm,
   },

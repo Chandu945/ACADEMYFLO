@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,13 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useInstituteInfo } from '../../../application/settings/use-institute-info';
 import { instituteInfoApi, uploadInstituteImage, deleteInstituteImage } from '../../../infra/settings/institute-info-api';
 import { Screen } from '../../components/ui/Screen';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export function InstituteInfoScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { info, loading, saving, error, update, refetch } = useInstituteInfo(instituteInfoApi);
 
   const [accountHolderName, setAccountHolderName] = useState('');
@@ -306,7 +310,7 @@ function ImageUploadCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   content: {
     padding: spacing.base,
     paddingBottom: spacing['3xl'],

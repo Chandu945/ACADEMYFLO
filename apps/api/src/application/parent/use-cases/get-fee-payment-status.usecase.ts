@@ -24,7 +24,9 @@ export class GetFeePaymentStatusUseCase {
     return ok({
       orderId: payment.orderId,
       status: payment.status,
-      amount: payment.amount,
+      baseAmount: payment.baseAmount,
+      convenienceFee: payment.convenienceFee,
+      totalAmount: payment.totalAmount,
       providerPaymentId: payment.providerPaymentId,
       paidAt: payment.paidAt ? payment.paidAt.toISOString() : null,
     });

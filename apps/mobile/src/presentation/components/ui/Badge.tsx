@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, type ViewStyle } from 'react-native';
 
-import { colors, spacing, fontSizes, fontWeights, radius as radii } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius as radii } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
 
@@ -11,23 +13,31 @@ type BadgeProps = {
   testID?: string;
 };
 
-const TINTED_BG: Record<BadgeVariant, string> = {
-  success: colors.successBg,
-  danger: colors.dangerBg,
-  warning: colors.warningBg,
-  info: colors.infoBg,
-  neutral: colors.bgSubtle,
-};
+function getTintedBg(colors: Colors): Record<BadgeVariant, string> {
+  return {
+    success: colors.successBg,
+    danger: colors.dangerBg,
+    warning: colors.warningBg,
+    info: colors.infoBg,
+    neutral: colors.bgSubtle,
+  };
+}
 
-const TINTED_TEXT: Record<BadgeVariant, string> = {
-  success: colors.success,
-  danger: colors.danger,
-  warning: colors.warningText,
-  info: colors.infoText,
-  neutral: colors.textSecondary,
-};
+function getTintedText(colors: Colors): Record<BadgeVariant, string> {
+  return {
+    success: colors.success,
+    danger: colors.danger,
+    warning: colors.warningText,
+    info: colors.infoText,
+    neutral: colors.textSecondary,
+  };
+}
 
 export function Badge({ label, variant = 'neutral', testID }: BadgeProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const TINTED_BG = useMemo(() => getTintedBg(colors), [colors]);
+  const TINTED_TEXT = useMemo(() => getTintedText(colors), [colors]);
   return (
     <View
       style={[styles.badge, { backgroundColor: TINTED_BG[variant] } as ViewStyle]}
@@ -38,14 +48,15 @@ export function Badge({ label, variant = 'neutral', testID }: BadgeProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radii.base,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 3,
+    borderRadius: radii.full,
   },
   label: {
     fontSize: fontSizes.xs,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.3,
   },
 });

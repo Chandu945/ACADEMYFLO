@@ -19,7 +19,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { InlineError } from '../../components/ui/InlineError';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { Button } from '../../components/ui/Button';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EventList'>;
 
@@ -37,6 +39,8 @@ const STATUS_FILTERS: { label: string; value: EventStatus | undefined }[] = [
 ];
 
 export function EventListScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const [items, setItems] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,7 +168,7 @@ export function EventListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

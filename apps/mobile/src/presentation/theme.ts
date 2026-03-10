@@ -1,7 +1,7 @@
 import type { TextStyle } from 'react-native';
 
-// ── Colors ──────────────────────────────────────────────────────────────────
-export const colors = {
+// ── Light Colors ─────────────────────────────────────────────────────────────
+export const lightColors = {
   // Primary — cyan palette anchored on #b3f1fc
   primary: '#0891b2',
   primaryHover: '#0e7490',
@@ -57,6 +57,69 @@ export const colors = {
   white: '#ffffff',
   transparent: 'transparent',
 } as const;
+
+// ── Dark Colors (base: #011627) ──────────────────────────────────────────────
+export const darkColors: Colors = {
+  // Primary — brighter cyan for dark backgrounds
+  primary: '#22d3ee',
+  primaryHover: '#06b6d4',
+  primaryLight: '#155e75',
+  primarySoft: '#0c3547',
+
+  // Surfaces & Backgrounds
+  bg: '#011627',
+  bgSubtle: '#012038',
+  surface: '#01253f',
+
+  // Text — light for readability on dark
+  text: '#e2e8f0',
+  textDark: '#f1f5f9',
+  textMedium: '#cbd5e1',
+  textLight: '#94a3b8',
+  textSecondary: '#7c93b0',
+  textDisabled: '#4a6380',
+
+  // Borders
+  border: '#1e3a5f',
+  borderStrong: '#2d5085',
+
+  // Semantic — Success
+  success: '#4ade80',
+  successBg: '#052e16',
+  successBorder: '#166534',
+  successText: '#86efac',
+
+  // Semantic — Warning
+  warning: '#fbbf24',
+  warningBg: '#451a03',
+  warningText: '#fde68a',
+  warningBorder: '#92400e',
+  warningLightBg: '#2d1600',
+  warningAccent: '#f59e0b',
+
+  // Semantic — Danger / Error
+  danger: '#f87171',
+  dangerBg: '#450a0a',
+  dangerBorder: '#991b1b',
+  dangerText: '#fca5a5',
+
+  // Semantic — Info
+  info: '#22d3ee',
+  infoBg: '#0c3547',
+  infoText: '#67e8f9',
+
+  // Overlays
+  overlay: 'rgba(0,0,0,0.7)',
+
+  // Constant
+  white: '#ffffff',
+  transparent: 'transparent',
+};
+
+export type Colors = typeof lightColors;
+
+/** @deprecated Use `useTheme()` hook instead. Kept for backward compatibility during migration. */
+export const colors = lightColors;
 
 // ── Spacing (4px grid) ─────────────────────────────────────────────────────
 export const spacing = {
@@ -114,7 +177,7 @@ export const radius = {
 // ── Shadows ────────────────────────────────────────────────────────────────
 export const shadows = {
   none: {
-    shadowColor: colors.transparent,
+    shadowColor: lightColors.transparent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0,
     shadowRadius: 0,

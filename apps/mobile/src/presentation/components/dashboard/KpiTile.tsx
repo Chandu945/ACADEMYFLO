@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type KpiTileProps = {
   label: string;
@@ -23,6 +25,8 @@ export const KpiTile = React.memo(function KpiTile({
   format = 'count',
   icon,
 }: KpiTileProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const displayValue = formatValue(value, format);
 
   return (
@@ -46,7 +50,7 @@ export const KpiTile = React.memo(function KpiTile({
   );
 });
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   tile: {
     flex: 1,
     backgroundColor: colors.surface,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,12 +9,16 @@ import { Input } from '../../components/ui/Input';
 import { getParentProfileUseCase } from '../../../application/parent/use-cases/get-parent-profile.usecase';
 import { updateParentProfileUseCase } from '../../../application/parent/use-cases/update-parent-profile.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
 import { getInitials } from '../../utils/format';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ParentProfile'>;
 
 export function ParentProfileScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -155,7 +159,7 @@ export function ParentProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: {
     marginTop: spacing.md,

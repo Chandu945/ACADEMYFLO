@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 
-import { colors, spacing, fontSizes } from '../../theme';
+import { spacing, fontSizes } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type LoadingOverlayProps = {
   message?: string;
 };
 
 export function LoadingOverlay({ message = 'Loading...' }: LoadingOverlayProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color={colors.primary} />
@@ -16,7 +20,7 @@ export function LoadingOverlay({ message = 'Loading...' }: LoadingOverlayProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -26,7 +26,9 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ExportButton } from '../../components/reports/ExportButton';
 import type { StudentWiseDueItem } from '../../../domain/reports/reports.types';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const reportsApiRef = { getMonthlyRevenue, getStudentWiseDues };
 
@@ -41,6 +43,8 @@ function addMonths(monthStr: string, delta: number): string {
 const SEGMENTS = ['Revenue', 'Pending Dues'];
 
 export function ReportsHomeScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { month, setMonth, revenue, pendingDues, loading, error, refetch } =
     useReports(reportsApiRef);
   const [selectedSegment, setSelectedSegment] = useState(0);
@@ -180,7 +184,7 @@ export function ReportsHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

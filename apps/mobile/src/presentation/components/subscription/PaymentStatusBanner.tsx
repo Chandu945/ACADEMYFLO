@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import type { PaymentFlowStatus } from '../../../domain/payments/cashfree.types';
 import { Badge } from '../ui/Badge';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   status: PaymentFlowStatus;
@@ -10,6 +12,8 @@ type Props = {
 };
 
 export function PaymentStatusBanner({ status, error }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   if (status === 'idle') return null;
 
   return (
@@ -54,7 +58,7 @@ export function PaymentStatusBanner({ status, error }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   banner: {
     backgroundColor: colors.infoBg,
     borderRadius: radius.lg,

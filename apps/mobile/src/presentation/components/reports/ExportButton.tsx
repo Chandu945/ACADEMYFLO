@@ -1,11 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import Share from 'react-native-share';
 import { Linking } from 'react-native';
 import type { AppError } from '../../../domain/common/errors';
 import type { Result } from '../../../domain/common/result';
 import type { PdfExportResult } from '../../../infra/reports/pdf-download';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type ExportState = 'idle' | 'downloading' | 'success' | 'error';
 
@@ -15,6 +17,8 @@ type ExportButtonProps = {
 };
 
 export function ExportButton({ onExport, testID }: ExportButtonProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [state, setState] = useState<ExportState>('idle');
   const [result, setResult] = useState<PdfExportResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -142,7 +146,7 @@ export function ExportButton({ onExport, testID }: ExportButtonProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     paddingVertical: spacing.sm,
   },

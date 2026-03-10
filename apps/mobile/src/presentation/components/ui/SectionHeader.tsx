@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, StyleSheet } from 'react-native';
 
-import { colors, spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type SectionHeaderProps = {
   title: string;
 };
 
 export function SectionHeader({ title }: SectionHeaderProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Text style={styles.header} accessibilityRole="header">
       {title}
@@ -15,7 +19,7 @@ export function SectionHeader({ title }: SectionHeaderProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   header: {
     fontSize: fontSizes.xl,
     fontWeight: fontWeights.bold,

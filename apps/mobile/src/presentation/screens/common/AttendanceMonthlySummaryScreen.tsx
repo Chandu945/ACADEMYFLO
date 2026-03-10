@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -11,7 +11,9 @@ import { getMonthlySummary } from '../../../infra/attendance/attendance-api';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Route = RouteProp<AttendanceStackParamList, 'MonthlySummary'>;
 type Nav = NativeStackNavigationProp<AttendanceStackParamList, 'MonthlySummary'>;
@@ -20,6 +22,8 @@ const summaryApi = { getMonthlySummary };
 const PAGE_SIZE = 50;
 
 export function AttendanceMonthlySummaryScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
   const { month } = route.params;
@@ -178,7 +182,7 @@ export function AttendanceMonthlySummaryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -195,10 +199,10 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
     fontSize: fontSizes.md,
     color: colors.text,
     backgroundColor: colors.surface,
@@ -215,11 +219,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 14,
+    borderRadius: radius.lg,
+    padding: spacing.base,
     marginBottom: spacing.sm,
+    ...shadows.sm,
   },
   name: {
     flex: 1,

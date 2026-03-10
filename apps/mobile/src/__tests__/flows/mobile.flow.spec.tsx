@@ -163,7 +163,7 @@ describe('Mobile Flow', () => {
     it('should show login screen when unauthenticated', () => {
       renderWithAuth(makeAuthValue({ phase: 'unauthenticated' }));
       expect(screen.getByText('PlayConnect')).toBeTruthy();
-      expect(screen.getByText('Sign in to your account')).toBeTruthy();
+      expect(screen.getByText('Sign in to continue')).toBeTruthy();
     });
   });
 
@@ -179,6 +179,8 @@ describe('Mobile Flow', () => {
       mockGetOwnerDashboard.mockResolvedValue(
         ok({
           totalStudents: 45,
+          newAdmissions: 5,
+          inactiveStudents: 2,
           pendingPaymentRequests: 3,
           totalCollected: 12000,
           totalPendingAmount: 5000,
@@ -196,8 +198,6 @@ describe('Mobile Flow', () => {
           subscription: trialSubscription,
         }),
       );
-
-      expect(screen.getByText('Dashboard')).toBeTruthy();
 
       await waitFor(() => {
         expect(screen.getByTestId('kpi-container')).toBeTruthy();

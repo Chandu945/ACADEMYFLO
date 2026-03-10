@@ -28,7 +28,9 @@ export class MongoFeePaymentRepository implements FeePaymentRepository {
         orderId: payment.orderId,
         cfOrderId: payment.cfOrderId,
         paymentSessionId: payment.paymentSessionId,
-        amount: payment.amount,
+        baseAmount: payment.baseAmount,
+        convenienceFee: payment.convenienceFee,
+        totalAmount: payment.totalAmount,
         currency: payment.currency,
         status: payment.status,
         failureReason: payment.failureReason,
@@ -55,7 +57,9 @@ export class MongoFeePaymentRepository implements FeePaymentRepository {
         orderId: payment.orderId,
         cfOrderId: payment.cfOrderId,
         paymentSessionId: payment.paymentSessionId,
-        amount: payment.amount,
+        baseAmount: payment.baseAmount,
+        convenienceFee: payment.convenienceFee,
+        totalAmount: payment.totalAmount,
         currency: payment.currency,
         status: payment.status,
         failureReason: payment.failureReason,
@@ -63,6 +67,7 @@ export class MongoFeePaymentRepository implements FeePaymentRepository {
         providerPaymentId: payment.providerPaymentId,
         version: payment.audit.version,
       },
+      { session: getTransactionSession() },
     );
     return result !== null;
   }
@@ -103,7 +108,9 @@ export class MongoFeePaymentRepository implements FeePaymentRepository {
       orderId: string;
       cfOrderId: string | null;
       paymentSessionId: string;
-      amount: number;
+      baseAmount: number;
+      convenienceFee: number;
+      totalAmount: number;
       currency: string;
       status: string;
       failureReason: string | null;
@@ -123,7 +130,9 @@ export class MongoFeePaymentRepository implements FeePaymentRepository {
       orderId: d.orderId,
       cfOrderId: d.cfOrderId,
       paymentSessionId: d.paymentSessionId,
-      amount: d.amount,
+      baseAmount: d.baseAmount,
+      convenienceFee: d.convenienceFee ?? 0,
+      totalAmount: d.totalAmount ?? d.baseAmount,
       currency: d.currency,
       status: d.status as FeePaymentStatus,
       failureReason: d.failureReason,

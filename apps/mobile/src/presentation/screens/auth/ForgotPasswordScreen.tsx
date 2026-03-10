@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,9 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import { usePasswordReset } from '../../hooks/usePasswordReset';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type ForgotNav = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 
@@ -27,59 +29,7 @@ const STEPS = [
   { key: 'newPassword', label: 'Reset' },
 ] as const;
 
-function StepIndicator({ current }: { current: string }) {
-  const currentIdx = STEPS.findIndex((s) => s.key === current);
-  return (
-    <View style={stepStyles.row}>
-      {STEPS.map((s, i) => {
-        const isDone = i < currentIdx;
-        const isActive = i === currentIdx;
-        return (
-          <React.Fragment key={s.key}>
-            {i > 0 && (
-              <View
-                style={[stepStyles.line, (isDone || isActive) && stepStyles.lineDone]}
-              />
-            )}
-            <View style={stepStyles.item}>
-              <View
-                style={[
-                  stepStyles.dot,
-                  isDone && stepStyles.dotDone,
-                  isActive && stepStyles.dotActive,
-                ]}
-              >
-                {isDone ? (
-                  // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-                  <Icon name="check" size={12} color={colors.white} />
-                ) : (
-                  <Text
-                    style={[
-                      stepStyles.dotText,
-                      isActive && stepStyles.dotTextActive,
-                    ]}
-                  >
-                    {i + 1}
-                  </Text>
-                )}
-              </View>
-              <Text
-                style={[
-                  stepStyles.label,
-                  (isDone || isActive) && stepStyles.labelActive,
-                ]}
-              >
-                {s.label}
-              </Text>
-            </View>
-          </React.Fragment>
-        );
-      })}
-    </View>
-  );
-}
-
-const stepStyles = StyleSheet.create({
+const makeStepStyles = (colors: Colors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -136,7 +86,64 @@ const stepStyles = StyleSheet.create({
   },
 });
 
+function StepIndicator({ current }: { current: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const stepStyles = useMemo(() => makeStepStyles(colors), [colors]);
+  const currentIdx = STEPS.findIndex((s) => s.key === current);
+  return (
+    <View style={stepStyles.row}>
+      {STEPS.map((s, i) => {
+        const isDone = i < currentIdx;
+        const isActive = i === currentIdx;
+        return (
+          <React.Fragment key={s.key}>
+            {i > 0 && (
+              <View
+                style={[stepStyles.line, (isDone || isActive) && stepStyles.lineDone]}
+              />
+            )}
+            <View style={stepStyles.item}>
+              <View
+                style={[
+                  stepStyles.dot,
+                  isDone && stepStyles.dotDone,
+                  isActive && stepStyles.dotActive,
+                ]}
+              >
+                {isDone ? (
+                  // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+                  <Icon name="check" size={12} color={colors.white} />
+                ) : (
+                  <Text
+                    style={[
+                      stepStyles.dotText,
+                      isActive && stepStyles.dotTextActive,
+                    ]}
+                  >
+                    {i + 1}
+                  </Text>
+                )}
+              </View>
+              <Text
+                style={[
+                  stepStyles.label,
+                  (isDone || isActive) && stepStyles.labelActive,
+                ]}
+              >
+                {s.label}
+              </Text>
+            </View>
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
+
 export function ForgotPasswordScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<ForgotNav>();
   const {
     step,
@@ -367,7 +374,7 @@ export function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.bg,
   },

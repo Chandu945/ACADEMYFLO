@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -12,13 +12,17 @@ import { createPaymentRequest, editPaymentRequest } from '../../../infra/fees/pa
 import { TextArea } from '../../components/ui/TextArea';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Route = RouteProp<FeesStackParamList, 'PaymentRequestForm'>;
 
 const requestsApi = { createPaymentRequest, editPaymentRequest };
 
 export function PaymentRequestFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
   const navigation = useNavigation();
   const { studentId, monthKey, amount, requestId, existingNotes } = route.params;
@@ -98,7 +102,7 @@ export function PaymentRequestFormScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -112,11 +116,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 14,
+    borderRadius: radius.lg,
+    padding: spacing.base,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   label: {
     fontSize: fontSizes.base,

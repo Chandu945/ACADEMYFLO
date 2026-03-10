@@ -34,16 +34,19 @@ describe('request-policy', () => {
       mockFetch.mockImplementation((_url: string, init: RequestInit) =>
         new Promise((_resolve, reject) => {
           init.signal?.addEventListener('abort', () => {
-            reject(new DOMException('The operation was aborted.', 'AbortError'));
+            const abortErr = new Error('The operation was aborted.');
+            abortErr.name = 'AbortError';
+            reject(abortErr);
           });
         }),
       );
 
       const promise = fetchWithTimeout('http://localhost/api', { method: 'GET' }, { timeoutMs: 100 });
 
-      jest.advanceTimersByTime(101);
-
-      await expect(promise).rejects.toThrow(RequestTimeoutError);
+      // Set up assertion before advancing timers to avoid unhandled rejection
+      const assertion = expect(promise).rejects.toThrow(RequestTimeoutError);
+      await jest.advanceTimersByTimeAsync(101);
+      await assertion;
     });
   });
 

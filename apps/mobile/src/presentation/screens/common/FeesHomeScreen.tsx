@@ -20,7 +20,9 @@ import { UnpaidDuesScreen } from './UnpaidDuesScreen';
 import { PaidFeesScreen } from './PaidFeesScreen';
 import { PendingApprovalsScreen } from '../owner/PendingApprovalsScreen';
 import { MyPaymentRequestsScreen } from '../staff/MyPaymentRequestsScreen';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<FeesStackParamList, 'FeesHome'>;
 
@@ -41,6 +43,8 @@ function formatMonthLabel(monthStr: string): string {
 }
 
 export function FeesHomeScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
   const isOwner = user?.role === 'OWNER';
@@ -241,7 +245,7 @@ export function FeesHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

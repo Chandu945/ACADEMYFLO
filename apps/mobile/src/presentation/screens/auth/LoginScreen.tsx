@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,15 @@ import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 export function LoginScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<LoginNav>();
   const { login } = useAuth();
 
@@ -124,7 +128,7 @@ export function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.bg,
   },
@@ -141,9 +145,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing['2xl'],
   },
   logoContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 76,
+    height: 76,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -151,7 +155,7 @@ const styles = StyleSheet.create({
     ...shadows.lg,
   },
   brandName: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: fontWeights.bold,
     color: colors.text,
     letterSpacing: -0.5,
@@ -165,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.xl,
-    ...shadows.md,
+    ...shadows.lg,
   },
   cardTitle: {
     fontSize: fontSizes['2xl'],

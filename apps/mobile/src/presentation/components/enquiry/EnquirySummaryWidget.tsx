@@ -1,15 +1,19 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { EnquirySummary } from '../../../domain/enquiry/enquiry.types';
 import { getEnquirySummaryUseCase } from '../../../application/enquiry/use-cases/get-enquiry-summary.usecase';
 import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   onNavigate: (filter: string) => void;
 };
 
 export function EnquirySummaryWidget({ onNavigate }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [summary, setSummary] = useState<EnquirySummary | null>(null);
   const mountedRef = useRef(true);
 
@@ -58,7 +62,7 @@ export function EnquirySummaryWidget({ onNavigate }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     borderWidth: 1,

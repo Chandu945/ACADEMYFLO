@@ -1,11 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export function SubscriptionBlockedScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { subscription, logout, refreshSubscription } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -49,7 +53,7 @@ export function SubscriptionBlockedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -57,7 +61,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing['2xl'],
   },
   icon: {
-    fontSize: 48,
+    fontSize: fontSizes['4xl'],
     fontWeight: fontWeights.bold,
     color: colors.danger,
     marginBottom: spacing.base,
@@ -65,12 +69,12 @@ const styles = StyleSheet.create({
     height: 72,
     lineHeight: 72,
     textAlign: 'center',
-    borderRadius: 36,
+    borderRadius: radius.full,
     backgroundColor: colors.dangerBg,
     overflow: 'hidden',
   },
   title: {
-    fontSize: 22,
+    fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.bold,
     color: colors.text,
     marginBottom: spacing.md,
@@ -81,7 +85,7 @@ const styles = StyleSheet.create({
     color: colors.dangerText,
     backgroundColor: colors.dangerBg,
     padding: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     marginBottom: spacing.md,
     textAlign: 'center',
     width: '100%',

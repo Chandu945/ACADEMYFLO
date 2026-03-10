@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type ChipProps = {
   label: string;
@@ -11,6 +13,8 @@ type ChipProps = {
 };
 
 export function Chip({ label, selected, onPress, testID }: ChipProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Pressable
       style={[styles.chip, selected && styles.chipSelected]}
@@ -24,7 +28,7 @@ export function Chip({ label, selected, onPress, testID }: ChipProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   chip: {
     paddingVertical: 6,
     paddingHorizontal: spacing.base,

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet, type TextInputProps } from 'react-native';
 
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type InputProps = {
   label: string;
@@ -26,6 +28,8 @@ export function Input({
   autoCapitalize = 'none',
   testID,
 }: InputProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
@@ -46,28 +50,31 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     marginBottom: spacing.base,
   },
   label: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
-    color: colors.textMedium,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
     marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingVertical: 12,
     paddingHorizontal: spacing.base,
-    fontSize: fontSizes.lg,
+    fontSize: fontSizes.base,
     color: colors.text,
     backgroundColor: colors.surface,
   },
   inputError: {
     borderColor: colors.danger,
+    backgroundColor: colors.dangerBg,
   },
   error: {
     fontSize: fontSizes.sm,

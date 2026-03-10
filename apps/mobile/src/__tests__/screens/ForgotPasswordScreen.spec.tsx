@@ -33,7 +33,7 @@ afterEach(() => {
 describe('ForgotPasswordScreen', () => {
   it('renders email step initially', () => {
     render(<ForgotPasswordScreen />);
-    expect(screen.getByText('Forgot Password')).toBeTruthy();
+    expect(screen.getByText('Forgot Password?')).toBeTruthy();
     expect(screen.getByTestId('forgot-email')).toBeTruthy();
     expect(screen.getByTestId('forgot-send')).toBeTruthy();
     expect(screen.getByTestId('forgot-back')).toBeTruthy();
@@ -59,7 +59,7 @@ describe('ForgotPasswordScreen', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Enter Code')).toBeTruthy();
+      expect(screen.getAllByText('Verify Code').length).toBeGreaterThan(0);
     });
 
     expect(screen.getByTestId('forgot-otp')).toBeTruthy();

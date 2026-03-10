@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -10,7 +10,9 @@ import { FeesStack } from './FeesStack';
 import { MoreStack } from './MoreStack';
 import { GlobalFAB } from '../components/global/GlobalFAB';
 import { FABProvider } from '../context/FABContext';
-import { colors, fontSizes, fontWeights } from '../theme';
+import { fontSizes, fontWeights } from '../theme';
+import type { Colors } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 const TAB_ICONS: Record<string, string> = {
   Dashboard: 'view-dashboard-outline',
@@ -31,6 +33,8 @@ export type OwnerTabParamList = {
 const Tab = createBottomTabNavigator<OwnerTabParamList>();
 
 function OwnerTabsInner() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       {/* @ts-expect-error React Navigation 6 types incompatible with @types/react@19 hoisted in monorepo */}
@@ -40,8 +44,9 @@ function OwnerTabsInner() {
           headerTitleStyle: { fontWeight: fontWeights.semibold, fontSize: fontSizes.lg },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textDisabled,
-          tabBarShowLabel: false,
-          tabBarStyle: { backgroundColor: colors.surface, borderTopWidth: 0, elevation: 8, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -2 } },
+          tabBarShowLabel: true,
+          tabBarLabelStyle: { fontSize: 11, fontWeight: fontWeights.medium, marginTop: -2, marginBottom: 2 },
+          tabBarStyle: { backgroundColor: colors.surface, borderTopWidth: 0, elevation: 8, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, height: 60, paddingTop: 4 },
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
             <Icon name={TAB_ICONS[route.name] ?? 'circle'} size={size} color={color} />
@@ -68,6 +73,8 @@ function OwnerTabsInner() {
 }
 
 export function OwnerTabs() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <FABProvider>
       <OwnerTabsInner />
@@ -75,7 +82,7 @@ export function OwnerTabs() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
   },

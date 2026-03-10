@@ -5,7 +5,7 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { OwnerTabParamList } from '../../navigation/OwnerTabs';
+import type { StaffTabParamList } from '../../navigation/StaffTabs';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { useAuth } from '../../context/AuthContext';
 import { ProfileModal } from './ProfileModal';
@@ -14,7 +14,7 @@ import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
 type Nav = CompositeNavigationProp<
-  BottomTabNavigationProp<OwnerTabParamList, 'Dashboard'>,
+  BottomTabNavigationProp<StaffTabParamList, 'Dashboard'>,
   NativeStackNavigationProp<MoreStackParamList>
 >;
 
@@ -30,7 +30,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function DashboardHeaderLeft() {
+export function StaffDashboardHeaderLeft() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user, subscription, logout } = useAuth();
@@ -50,7 +50,7 @@ export function DashboardHeaderLeft() {
       <TouchableOpacity
         style={styles.leftContainer}
         onPress={() => setProfileVisible(true)}
-        testID="profile-header-avatar"
+        testID="staff-profile-header-avatar"
         accessibilityLabel="Open profile"
         accessibilityRole="button"
       >
@@ -62,7 +62,7 @@ export function DashboardHeaderLeft() {
             {user.fullName}
           </Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {user.role === 'OWNER' ? 'Academy Owner' : user.role}
+            Staff Member
           </Text>
         </View>
       </TouchableOpacity>
@@ -79,7 +79,7 @@ export function DashboardHeaderLeft() {
   );
 }
 
-export function DashboardHeaderRight() {
+export function StaffDashboardHeaderRight() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
@@ -88,7 +88,7 @@ export function DashboardHeaderRight() {
     <TouchableOpacity
       onPress={() => navigation.navigate('More', { screen: 'MoreHome' } as never)}
       style={styles.settingsBtn}
-      testID="profile-header-settings"
+      testID="staff-header-settings"
       accessibilityLabel="Settings"
       accessibilityRole="button"
     >

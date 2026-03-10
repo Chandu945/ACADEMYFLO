@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { ParentHomeStack } from './ParentHomeStack';
 import { ParentPaymentsStack } from './ParentPaymentsStack';
 import { MoreStack } from './MoreStack';
-import { colors, fontSizes, fontWeights } from '../theme';
+import { fontSizes, fontWeights } from '../theme';
+import type { Colors } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Children: { active: 'account-child', inactive: 'account-child-outline' },
@@ -21,6 +23,7 @@ export type ParentTabParamList = {
 const Tab = createBottomTabNavigator<ParentTabParamList>();
 
 export function ParentTabs() {
+  const { colors } = useTheme();
   return (
     // @ts-expect-error React Navigation 6 types incompatible with @types/react@19 hoisted in monorepo
     <Tab.Navigator
@@ -29,7 +32,9 @@ export function ParentTabs() {
         headerTitleStyle: { fontWeight: fontWeights.semibold, fontSize: fontSizes.lg },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textDisabled,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: fontWeights.medium, marginTop: -2, marginBottom: 2 },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopWidth: 0, elevation: 8, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, height: 60, paddingTop: 4 },
         tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
           const icons = TAB_ICONS[route.name];
           const iconName = focused ? icons?.active : icons?.inactive;

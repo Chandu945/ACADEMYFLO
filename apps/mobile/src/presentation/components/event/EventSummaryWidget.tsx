@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { EventSummary } from '../../../domain/event/event.types';
 import * as eventApi from '../../../infra/event/event-api';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   onNavigate: () => void;
 };
 
 export function EventSummaryWidget({ onNavigate }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [summary, setSummary] = useState<EventSummary | null>(null);
   const mountedRef = useRef(true);
 
@@ -58,7 +62,7 @@ export function EventSummaryWidget({ onNavigate }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     borderWidth: 1,

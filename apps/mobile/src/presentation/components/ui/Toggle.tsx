@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { Pressable, Animated, StyleSheet } from 'react-native';
 
-import { colors, radius } from '../../theme';
+import { radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type ToggleProps = {
   value: boolean;
@@ -18,6 +20,8 @@ export function Toggle({
   testID,
   accessibilityLabel,
 }: ToggleProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const translateX = useRef(new Animated.Value(value ? 20 : 0)).current;
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export function Toggle({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   track: {
     width: 44,
     height: 24,

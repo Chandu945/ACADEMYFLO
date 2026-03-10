@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type HolidayBannerProps = {
   isOwner: boolean;
@@ -10,6 +12,8 @@ type HolidayBannerProps = {
 };
 
 export function HolidayBanner({ isOwner, onRemoveHoliday, removing }: HolidayBannerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container} testID="holiday-banner">
       <View style={styles.content}>
@@ -41,7 +45,7 @@ export function HolidayBanner({ isOwner, onRemoveHoliday, removing }: HolidayBan
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

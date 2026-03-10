@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -12,8 +12,10 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getPaymentHistoryUseCase } from '../../../application/parent/use-cases/get-payment-history.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import type { PaymentHistoryItem } from '../../../domain/parent/parent.types';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
 import { formatMonthShort, formatCurrency, formatDate } from '../../utils/format';
+import { useTheme } from '../../context/ThemeContext';
 
 function getSourceConfig(source: string) {
   switch (source) {
@@ -29,6 +31,8 @@ function getSourceConfig(source: string) {
 }
 
 export function PaymentHistoryScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [items, setItems] = useState<PaymentHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,7 +163,7 @@ export function PaymentHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   list: { padding: spacing.base, paddingBottom: spacing['2xl'] },
   summaryCard: {
     flexDirection: 'row',

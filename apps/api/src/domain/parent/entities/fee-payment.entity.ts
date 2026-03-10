@@ -12,7 +12,9 @@ export interface FeePaymentProps {
   orderId: string;
   cfOrderId: string | null;
   paymentSessionId: string;
-  amount: number;
+  baseAmount: number;
+  convenienceFee: number;
+  totalAmount: number;
   currency: string;
   status: FeePaymentStatus;
   failureReason: string | null;
@@ -35,7 +37,9 @@ export class FeePayment extends Entity<FeePaymentProps> {
     monthKey: string;
     orderId: string;
     paymentSessionId: string;
-    amount: number;
+    baseAmount: number;
+    convenienceFee: number;
+    totalAmount: number;
   }): FeePayment {
     return new FeePayment(new UniqueId(params.id), {
       academyId: params.academyId,
@@ -46,7 +50,9 @@ export class FeePayment extends Entity<FeePaymentProps> {
       orderId: params.orderId,
       cfOrderId: null,
       paymentSessionId: params.paymentSessionId,
-      amount: params.amount,
+      baseAmount: params.baseAmount,
+      convenienceFee: params.convenienceFee,
+      totalAmount: params.totalAmount,
       currency: 'INR',
       status: 'PENDING',
       failureReason: null,
@@ -117,8 +123,14 @@ export class FeePayment extends Entity<FeePaymentProps> {
   get paymentSessionId(): string {
     return this.props.paymentSessionId;
   }
-  get amount(): number {
-    return this.props.amount;
+  get baseAmount(): number {
+    return this.props.baseAmount;
+  }
+  get convenienceFee(): number {
+    return this.props.convenienceFee;
+  }
+  get totalAmount(): number {
+    return this.props.totalAmount;
   }
   get currency(): string {
     return this.props.currency;

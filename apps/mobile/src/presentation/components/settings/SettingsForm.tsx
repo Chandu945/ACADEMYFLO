@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
 import type { AcademySettings, UpdateAcademySettingsRequest } from '../../../domain/settings/academy-settings.types';
 import type { AppError } from '../../../domain/common/errors';
 import { Button } from '../ui/Button';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type SettingsFormProps = {
   settings: AcademySettings;
@@ -14,6 +16,8 @@ type SettingsFormProps = {
 };
 
 export function SettingsForm({ settings, editable, saving, error, onSave }: SettingsFormProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [receiptPrefix, setReceiptPrefix] = useState(settings.receiptPrefix);
   const [dueDateDay, setDueDateDay] = useState(String(settings.defaultDueDateDay));
 
@@ -103,7 +107,7 @@ export function SettingsForm({ settings, editable, saving, error, onSave }: Sett
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   label: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,

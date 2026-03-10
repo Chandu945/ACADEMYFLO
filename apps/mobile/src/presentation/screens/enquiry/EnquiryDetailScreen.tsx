@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,12 +19,16 @@ import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { enquiryDetailSchema } from '../../../domain/enquiry/enquiry.schemas';
 import { useAuth } from '../../context/AuthContext';
 import { Screen } from '../../components/ui/Screen';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EnquiryDetail'>;
 type Route = RouteProp<MoreStackParamList, 'EnquiryDetail'>;
 
 export function EnquiryDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { user } = useAuth();
@@ -214,6 +218,8 @@ export function EnquiryDetailScreen() {
 }
 
 function InfoRow({ label, value, valueStyle }: { label: string; value: string; valueStyle?: object }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -463,7 +469,7 @@ function ConvertToStudentModal({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   content: { padding: spacing.base, paddingBottom: spacing['3xl'] },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.base },

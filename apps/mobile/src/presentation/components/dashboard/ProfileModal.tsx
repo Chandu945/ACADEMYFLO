@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { AuthUser } from '../../../domain/auth/auth.types';
 import type { SubscriptionInfo, TierKey } from '../../../domain/subscription/subscription.types';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   visible: boolean;
@@ -70,6 +72,8 @@ function getInitials(name: string): string {
 }
 
 function InfoRow({ icon, value }: { icon: string; value: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.infoRow}>
       {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
@@ -82,6 +86,8 @@ function InfoRow({ icon, value }: { icon: string; value: string }) {
 export function ProfileModal({
   visible, user, subscription, onClose, onViewSubscription, onLogout,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const initials = getInitials(user.fullName);
   const tierKey = subscription?.currentTierKey;
   const tierLabel = tierKey ? TIER_LABELS[tierKey] : null;
@@ -193,7 +199,7 @@ export function ProfileModal({
 
 const AVATAR_SIZE = 76;
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',

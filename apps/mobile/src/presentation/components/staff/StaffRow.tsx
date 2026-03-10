@@ -1,9 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Pressable, View, Text, Image, StyleSheet } from 'react-native';
 import type { StaffListItem } from '../../../domain/staff/staff.types';
 import { StaffStatusBadge } from './StaffStatusBadge';
 import { AppCard } from '../ui/AppCard';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type StaffRowProps = {
   staff: StaffListItem;
@@ -20,6 +22,8 @@ function getInitials(name: string): string {
 }
 
 function StaffRowComponent({ staff, onPress, onToggleStatus }: StaffRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <AppCard style={styles.card} onPress={onPress} testID={`staff-row-${staff.id}`}>
       {staff.profilePhotoUrl ? (
@@ -59,7 +63,7 @@ function StaffRowComponent({ staff, onPress, onToggleStatus }: StaffRowProps) {
 
 export const StaffRow = memo(StaffRowComponent);
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',

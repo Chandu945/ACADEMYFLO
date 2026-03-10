@@ -40,14 +40,18 @@ export type FeePaymentFlowStatus =
 export type InitiateFeePaymentResponse = {
   orderId: string;
   paymentSessionId: string;
-  amount: number;
+  baseAmount: number;
+  convenienceFee: number;
+  totalAmount: number;
   currency: string;
 };
 
 export type FeePaymentStatusResponse = {
   orderId: string;
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
-  amount: number;
+  baseAmount: number;
+  convenienceFee: number;
+  totalAmount: number;
   providerPaymentId: string | null;
   paidAt: string | null;
 };
@@ -60,7 +64,7 @@ export type ReceiptInfo = {
   amount: number;
   paidAt: string;
   paymentMethod: string;
-  source: string;
+  source: PaidSource;
 };
 
 export type ParentProfile = {
@@ -96,6 +100,6 @@ export type PaymentHistoryItem = {
   studentName: string;
   monthKey: string;
   amount: number;
-  source: string;
+  source: PaidSource;
   paidAt: string;
 };

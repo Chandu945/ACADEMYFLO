@@ -18,7 +18,9 @@ import { DatePickerRow } from '../../components/attendance/DatePickerRow';
 import { Button } from '../../components/ui/Button';
 import { Toggle } from '../../components/ui/Toggle';
 import { AppCard } from '../../components/ui/AppCard';
-import { colors, spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<StaffStackParamList, 'StaffAttendance'>;
 
@@ -43,6 +45,8 @@ type StaffAttendanceRowProps = {
 };
 
 function StaffAttendanceRowComponent({ item, onToggle }: StaffAttendanceRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPresent = item.status === 'PRESENT';
 
   return (
@@ -69,6 +73,8 @@ function StaffAttendanceRowComponent({ item, onToggle }: StaffAttendanceRowProps
 const StaffAttendanceRow = memo(StaffAttendanceRowComponent);
 
 export function StaffAttendanceScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
 
   const [selectedDate, setSelectedDate] = useState(getTodayIST);
@@ -192,7 +198,7 @@ export function StaffAttendanceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

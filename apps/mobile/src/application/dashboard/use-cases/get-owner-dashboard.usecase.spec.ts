@@ -6,6 +6,8 @@ import type { OwnerDashboardRange } from '../../../domain/dashboard/dashboard.ty
 function makeValidPayload() {
   return {
     totalStudents: 45,
+    newAdmissions: 5,
+    inactiveStudents: 2,
     pendingPaymentRequests: 3,
     totalCollected: 12000,
     totalPendingAmount: 5000,

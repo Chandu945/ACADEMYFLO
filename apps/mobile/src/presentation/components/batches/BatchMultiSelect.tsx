@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { listBatches } from '../../../infra/batch/batch-api';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type BatchMultiSelectProps = {
   selectedIds: string[];
@@ -10,6 +12,8 @@ type BatchMultiSelectProps = {
 };
 
 export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [batches, setBatches] = useState<BatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +84,7 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   label: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.medium,

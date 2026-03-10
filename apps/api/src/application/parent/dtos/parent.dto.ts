@@ -59,14 +59,18 @@ export interface ChildFeeDueDto {
 export interface InitiateFeePaymentOutput {
   orderId: string;
   paymentSessionId: string;
-  amount: number;
+  baseAmount: number;
+  convenienceFee: number;
+  totalAmount: number;
   currency: string;
 }
 
 export interface FeePaymentStatusOutput {
   orderId: string;
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
-  amount: number;
+  baseAmount: number;
+  convenienceFee: number;
+  totalAmount: number;
   providerPaymentId: string | null;
   paidAt: string | null;
 }

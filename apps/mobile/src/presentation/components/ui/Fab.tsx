@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type FabProps = {
   label: string;
@@ -10,6 +12,8 @@ type FabProps = {
 };
 
 export function Fab({ label, onPress, testID }: FabProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <TouchableOpacity
       style={styles.fab}
@@ -22,7 +26,7 @@ export function Fab({ label, onPress, testID }: FabProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: spacing.xl,

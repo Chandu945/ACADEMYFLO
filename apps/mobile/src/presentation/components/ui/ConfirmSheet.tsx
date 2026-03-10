@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Modal, StyleSheet } from 'react-native';
 
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
 import { Button } from './Button';
+import { useTheme } from '../../context/ThemeContext';
 
 type ConfirmSheetProps = {
   visible: boolean;
@@ -27,6 +29,8 @@ export function ConfirmSheet({
   loading,
   testID,
 }: ConfirmSheetProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Modal visible={visible} transparent animationType="fade" testID={testID}>
       <View style={styles.overlay}>
@@ -58,7 +62,7 @@ export function ConfirmSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: colors.overlay,

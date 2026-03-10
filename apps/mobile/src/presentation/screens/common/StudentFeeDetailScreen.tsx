@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, FlatList, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -16,7 +16,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { FeeDueRow } from '../../components/fees/FeeDueRow';
 import { getCurrentMonthIST } from '../../../application/fees/use-fees';
-import { colors, spacing } from '../../theme';
+import { spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Route = RouteProp<FeesStackParamList, 'StudentFeeDetail'>;
 type Nav = NativeStackNavigationProp<FeesStackParamList, 'StudentFeeDetail'>;
@@ -33,6 +35,8 @@ function getDefaultRange(): { from: string; to: string } {
 }
 
 export function StudentFeeDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
@@ -172,7 +176,7 @@ export function StudentFeeDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

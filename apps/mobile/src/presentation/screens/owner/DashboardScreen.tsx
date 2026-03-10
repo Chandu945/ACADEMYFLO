@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,12 +12,16 @@ import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { BirthdayWidget } from '../../components/dashboard/BirthdayWidget';
 import { MonthlyChartWidget } from '../../components/dashboard/MonthlyChartWidget';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const DEFAULT_RANGE = { mode: 'preset' as const, preset: 'THIS_MONTH' as const };
 const dashboardApi = { getOwnerDashboard };
 
 export function DashboardScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { data, loading, error, refetch } = useOwnerDashboard(DEFAULT_RANGE, dashboardApi);
   const { showFAB, hideFAB } = useFAB();
 
@@ -117,7 +121,7 @@ export function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,

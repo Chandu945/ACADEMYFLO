@@ -39,6 +39,7 @@ function makeLogsResponse(count = 2) {
     id: `log-${i}`,
     academyId: 'academy-1',
     actorUserId: 'user-1',
+    actorName: null,
     action: 'STUDENT_CREATED',
     entityType: 'STUDENT',
     entityId: `student-${i}`,
@@ -47,7 +48,7 @@ function makeLogsResponse(count = 2) {
   }));
 
   return {
-    data: items,
+    items,
     meta: { page: 1, pageSize: 50, totalItems: count, totalPages: 1 },
   };
 }

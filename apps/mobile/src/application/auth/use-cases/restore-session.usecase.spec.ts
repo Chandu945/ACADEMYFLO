@@ -103,6 +103,6 @@ describe('restoreSessionUseCase', () => {
 
     await restoreSessionUseCase(deps);
 
-    expect(deps.authApi.refresh).toHaveBeenCalledWith('my-refresh', 'device-123');
+    expect(deps.authApi.refresh).toHaveBeenCalledWith('my-refresh', 'device-123', 'u1');
   });
 });

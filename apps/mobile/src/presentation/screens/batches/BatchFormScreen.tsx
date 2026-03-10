@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, View, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -14,13 +14,17 @@ import {
 } from '../../../application/batch/use-cases/save-batch.usecase';
 import { createBatch, updateBatch } from '../../../infra/batch/batch-api';
 import type { Weekday, CreateBatchRequest } from '../../../domain/batch/batch.types';
-import { colors, spacing } from '../../theme';
+import { spacing, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type FormRoute = RouteProp<BatchesStackParamList, 'BatchForm'>;
 
 const saveApi = { createBatch, updateBatch };
 
 export function BatchFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation();
   const route = useRoute<FormRoute>();
   const { mode, batch } = route.params;
@@ -75,27 +79,29 @@ export function BatchFormScreen() {
     >
       {serverError && <InlineError message={serverError} />}
 
-      <Input
-        label="Batch Name"
-        value={batchName}
-        onChangeText={setBatchName}
-        error={fieldErrors['batchName']}
-        testID="input-batchName"
-      />
+      <View style={styles.formCard}>
+        <Input
+          label="Batch Name"
+          value={batchName}
+          onChangeText={setBatchName}
+          error={fieldErrors['batchName']}
+          testID="input-batchName"
+        />
 
-      <DaysPicker
-        selected={days}
-        onChange={setDays}
-        error={fieldErrors['days']}
-      />
+        <DaysPicker
+          selected={days}
+          onChange={setDays}
+          error={fieldErrors['days']}
+        />
 
-      <TextArea
-        label="Notes (optional)"
-        value={notes}
-        onChangeText={setNotes}
-        error={fieldErrors['notes']}
-        testID="input-notes"
-      />
+        <TextArea
+          label="Notes (optional)"
+          value={notes}
+          onChangeText={setNotes}
+          error={fieldErrors['notes']}
+          testID="input-notes"
+        />
+      </View>
 
       <View style={styles.submitContainer}>
         <Button
@@ -109,7 +115,7 @@ export function BatchFormScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -118,7 +124,13 @@ const styles = StyleSheet.create({
     padding: spacing.base,
     paddingBottom: 40,
   },
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    ...shadows.sm,
+  },
   submitContainer: {
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
   },
 });

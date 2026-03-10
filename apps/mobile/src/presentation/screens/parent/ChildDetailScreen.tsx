@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -17,8 +17,10 @@ import type { ChildAttendanceSummary, ChildFeeDue } from '../../../domain/parent
 import { getChildAttendanceUseCase } from '../../../application/parent/use-cases/get-child-attendance.usecase';
 import { getChildFeesUseCase } from '../../../application/parent/use-cases/get-child-fees.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
 import { formatMonthKey, formatMonthShort, formatCurrency } from '../../utils/format';
+import { useTheme } from '../../context/ThemeContext';
 
 type Route = RouteProp<ParentHomeStackParamList, 'ChildDetail'>;
 type Nav = NativeStackNavigationProp<ParentHomeStackParamList, 'ChildDetail'>;
@@ -57,23 +59,26 @@ function AttendanceBar({
   color: string;
   icon: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const bStyles = useMemo(() => makeBarStyles(colors), [colors]);
   const pct = total > 0 ? (count / total) * 100 : 0;
   return (
-    <View style={barStyles.row}>
-      <View style={barStyles.labelRow}>
+    <View style={bStyles.row}>
+      <View style={bStyles.labelRow}>
         {/* @ts-expect-error react-native-vector-icons types */}
         <Icon name={icon} size={16} color={color} />
-        <Text style={barStyles.label}>{label}</Text>
+        <Text style={bStyles.label}>{label}</Text>
       </View>
-      <View style={barStyles.barOuter}>
-        <View style={[barStyles.barInner, { width: `${pct}%`, backgroundColor: color }]} />
+      <View style={bStyles.barOuter}>
+        <View style={[bStyles.barInner, { width: `${pct}%`, backgroundColor: color }]} />
       </View>
-      <Text style={[barStyles.count, { color }]}>{count}</Text>
+      <Text style={[bStyles.count, { color }]}>{count}</Text>
     </View>
   );
 }
 
-const barStyles = StyleSheet.create({
+const makeBarStyles = (colors: Colors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -111,6 +116,8 @@ const barStyles = StyleSheet.create({
 });
 
 function FeeStatusIcon({ status }: { status: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   if (status === 'PAID') {
     // @ts-expect-error react-native-vector-icons types
     return <Icon name="check-circle" size={20} color={colors.success} />;
@@ -124,6 +131,8 @@ function FeeStatusIcon({ status }: { status: string }) {
 }
 
 export function ChildDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
   const { studentId } = route.params;
@@ -347,7 +356,7 @@ export function ChildDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.base, paddingBottom: spacing['2xl'] },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

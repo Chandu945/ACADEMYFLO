@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type MonthPickerRowProps = {
   month: string;
@@ -16,6 +18,8 @@ function formatMonth(monthStr: string): string {
 }
 
 export function MonthPickerRow({ month, onPrevious, onNext }: MonthPickerRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       <Pressable onPress={onPrevious} style={styles.arrow} testID="month-prev">
@@ -37,7 +41,7 @@ export function MonthPickerRow({ month, onPrevious, onNext }: MonthPickerRowProp
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

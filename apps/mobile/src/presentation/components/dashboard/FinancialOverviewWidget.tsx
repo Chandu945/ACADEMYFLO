@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getOwnerDashboard } from '../../../infra/dashboard/dashboard-api';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 function getMonthLabel(year: number, month: number): string {
   const d = new Date(year, month - 1);
@@ -37,6 +39,8 @@ function MetricTile({
   amount: number;
   maxAmount: number;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const pct = maxAmount > 0 ? Math.round((amount / maxAmount) * 100) : 0;
 
   return (
@@ -60,6 +64,8 @@ function MetricTile({
 }
 
 export function FinancialOverviewWidget() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -217,7 +223,7 @@ export function FinancialOverviewWidget() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,

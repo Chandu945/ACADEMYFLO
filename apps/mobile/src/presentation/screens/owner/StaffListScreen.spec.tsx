@@ -14,6 +14,7 @@ jest.mock('../../../infra/staff/staff-api', () => ({
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn() }),
+  useFocusEffect: jest.fn(),
 }));
 
 const mockListStaff = staffApi.listStaff as jest.Mock;

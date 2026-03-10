@@ -409,7 +409,9 @@ describe('Fee Payments — Parent Flow (e2e)', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.paymentSessionId).toBe('fee_session_abc');
     expect(res.body.data.orderId).toBeDefined();
-    expect(res.body.data.amount).toBe(500);
+    expect(res.body.data.baseAmount).toBe(500);
+    expect(res.body.data.convenienceFee).toBe(13);
+    expect(res.body.data.totalAmount).toBe(513);
     expect(res.body.data.currency).toBe('INR');
     expect(mockGateway.createOrder).toHaveBeenCalledTimes(1);
   });
@@ -480,7 +482,9 @@ describe('Fee Payments — Parent Flow (e2e)', () => {
       monthKey: '2025-06',
       orderId: 'FEE_existing',
       paymentSessionId: 'session_old',
-      amount: 500,
+      baseAmount: 500,
+      convenienceFee: 13,
+      totalAmount: 513,
     });
     await feePaymentRepo.save(existingPayment);
 
@@ -515,13 +519,15 @@ describe('Fee Payments — Parent Flow (e2e)', () => {
       monthKey: '2025-06',
       orderId: 'FEE_success_order',
       paymentSessionId: 'session_success',
-      amount: 500,
+      baseAmount: 500,
+      convenienceFee: 13,
+      totalAmount: 513,
     });
     await feePaymentRepo.save(payment);
 
     const body = JSON.stringify({
       data: {
-        order: { order_id: 'FEE_success_order', order_amount: 500 },
+        order: { order_id: 'FEE_success_order', order_amount: 513 },
         payment: { payment_status: 'SUCCESS', cf_payment_id: 'cf_fee_pay_123' },
       },
     });
@@ -572,7 +578,9 @@ describe('Fee Payments — Parent Flow (e2e)', () => {
       monthKey: '2025-06',
       orderId: 'FEE_fail_order',
       paymentSessionId: 'session_fail',
-      amount: 500,
+      baseAmount: 500,
+      convenienceFee: 13,
+      totalAmount: 513,
     });
     await feePaymentRepo.save(payment);
 
@@ -623,13 +631,15 @@ describe('Fee Payments — Parent Flow (e2e)', () => {
       monthKey: '2025-06',
       orderId: 'FEE_race_order',
       paymentSessionId: 'session_race',
-      amount: 500,
+      baseAmount: 500,
+      convenienceFee: 13,
+      totalAmount: 513,
     });
     await feePaymentRepo.save(payment);
 
     const body = JSON.stringify({
       data: {
-        order: { order_id: 'FEE_race_order', order_amount: 500 },
+        order: { order_id: 'FEE_race_order', order_amount: 513 },
         payment: { payment_status: 'SUCCESS', cf_payment_id: 'cf_race_pay' },
       },
     });

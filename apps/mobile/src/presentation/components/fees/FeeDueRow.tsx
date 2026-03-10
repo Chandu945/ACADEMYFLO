@@ -1,9 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import { Badge } from '../ui/Badge';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type FeeDueRowProps = {
   item: FeeDueItem;
@@ -18,11 +20,13 @@ const STATUS_VARIANT: Record<string, 'warning' | 'danger' | 'success'> = {
   PAID: 'success',
 };
 
-const STATUS_ICON: Record<string, { name: string; color: string; bg: string }> = {
-  UPCOMING: { name: 'clock-outline', color: colors.warning, bg: colors.warningBg },
-  DUE: { name: 'alert-circle-outline', color: colors.danger, bg: colors.dangerBg },
-  PAID: { name: 'check-circle-outline', color: colors.success, bg: colors.successBg },
-};
+function getStatusIcon(colors: Colors): Record<string, { name: string; color: string; bg: string }> {
+  return {
+    UPCOMING: { name: 'clock-outline', color: colors.warning, bg: colors.warningBg },
+    DUE: { name: 'alert-circle-outline', color: colors.danger, bg: colors.dangerBg },
+    PAID: { name: 'check-circle-outline', color: colors.success, bg: colors.successBg },
+  };
+}
 
 function formatMonthKey(monthKey: string): string {
   const [y, m] = monthKey.split('-').map(Number) as [number, number];
@@ -40,6 +44,9 @@ function FeeDueRowComponent({
   showStudentName = true,
   studentName,
 }: FeeDueRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const STATUS_ICON = useMemo(() => getStatusIcon(colors), [colors]);
   const statusInfo = STATUS_ICON[item.status] ?? STATUS_ICON['DUE'];
 
   return (
@@ -79,7 +86,7 @@ function FeeDueRowComponent({
 
 export const FeeDueRow = memo(FeeDueRowComponent);
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',

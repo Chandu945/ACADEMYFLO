@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Button } from '../ui/Button';
-import { colors, spacing, fontSizes, fontWeights } from '../../theme';
+import { lightColors, spacing, fontSizes, fontWeights } from '../../theme';
 
 type Props = {
   children: React.ReactNode;
@@ -11,6 +11,7 @@ type State = {
   hasError: boolean;
 };
 
+// Error boundary is a class component — uses lightColors as a safe fallback
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -21,13 +22,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.bold,
-    color: colors.text,
+    color: lightColors.text,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
   body: {
     fontSize: fontSizes.md,
-    color: colors.textLight,
+    color: lightColors.textLight,
     textAlign: 'center',
     marginBottom: spacing.xl,
     lineHeight: 22,

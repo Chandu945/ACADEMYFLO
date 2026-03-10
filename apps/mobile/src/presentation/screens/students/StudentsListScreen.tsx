@@ -26,7 +26,9 @@ import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { StudentRow } from '../../components/students/StudentRow';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<StudentsStackParamList, 'StudentsList'>;
 
@@ -53,6 +55,8 @@ const FEE_OPTIONS: { label: string; value: FeeFilter | undefined }[] = [
 ];
 
 export function StudentsListScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -349,7 +353,7 @@ export function StudentsListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

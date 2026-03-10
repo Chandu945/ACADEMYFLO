@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Image,
@@ -9,10 +9,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import { colors, spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights } from '../../theme';
+import type { Colors } from '../../theme';
 import { getAccessToken } from '../../../infra/http/api-client';
 import { env } from '../../../infra/env';
 import { generateRequestId } from '../../../infra/http/request-id';
+import { useTheme } from '../../context/ThemeContext';
 
 const GENERAL_UPLOAD_PATH = '/api/v1/uploads/image';
 
@@ -31,6 +33,8 @@ export function ProfilePhotoUploader({
   size = 100,
   testID = 'profile-photo-uploader',
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [uploading, setUploading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(currentPhotoUrl);
 
@@ -142,7 +146,7 @@ export function ProfilePhotoUploader({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     alignSelf: 'center',
     marginBottom: spacing.base,

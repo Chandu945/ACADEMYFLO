@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Linking,
   TouchableOpacity,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -16,7 +17,9 @@ import type { StudentListItem } from '../../../domain/student/student.types';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { getStudentPhotoUploadPath, getStudent } from '../../../infra/student/student-api';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<StudentsStackParamList, 'StudentDetail'>;
 type Route = RouteProp<StudentsStackParamList, 'StudentDetail'>;
@@ -37,6 +40,8 @@ function maskAadhaar(aadhaar: string | null): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const bgColor =
     status === 'ACTIVE' ? colors.successBg : status === 'INACTIVE' ? colors.warningBg : colors.dangerBg;
   const textColor =
@@ -50,6 +55,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -59,10 +66,14 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
 }
 
 function SectionTitle({ title }: { title: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
 export function StudentDetailScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const [student, setStudent] = useState<StudentListItem>(route.params.student);
@@ -139,14 +150,18 @@ export function StudentDetailScreen() {
             onPress={() => navigation.navigate('StudentForm', { mode: 'edit', student })}
             testID="edit-student-button"
           >
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="pencil-outline" size={18} color={colors.white} />
             <Text style={styles.actionButtonText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.actionButtonSecondary]}
             onPress={() => setActionMenuVisible(true)}
             testID="more-actions-button"
           >
-            <Text style={styles.actionButtonText}>More Actions</Text>
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="dots-horizontal" size={18} color={colors.primary} />
+            <Text style={styles.actionButtonSecondaryText}>More</Text>
           </TouchableOpacity>
         </View>
 
@@ -175,6 +190,8 @@ export function StudentDetailScreen() {
                 onPress={() => handleCall(student.guardian.mobile)}
                 testID="call-guardian"
               >
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="phone-outline" size={16} color={colors.primary} />
                 <Text style={styles.contactActionText}>Call</Text>
               </TouchableOpacity>
             </View>
@@ -186,11 +203,13 @@ export function StudentDetailScreen() {
                 <Text style={styles.infoValue}>{student.whatsappNumber}</Text>
               </View>
               <TouchableOpacity
-                style={styles.contactAction}
+                style={[styles.contactAction, styles.contactActionWhatsApp]}
                 onPress={() => handleWhatsApp(student.whatsappNumber!)}
                 testID="whatsapp-student"
               >
-                <Text style={styles.contactActionText}>Chat</Text>
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="whatsapp" size={16} color="#25D366" />
+                <Text style={[styles.contactActionText, { color: '#25D366' }]}>Chat</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -229,7 +248,7 @@ export function StudentDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -240,11 +259,11 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.xl,
     alignItems: 'center',
     marginBottom: spacing.base,
-    ...shadows.sm,
+    ...shadows.md,
   },
   studentName: {
     fontSize: fontSizes['2xl'],
@@ -264,7 +283,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.base,
     ...shadows.sm,
@@ -294,13 +313,24 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: colors.primary,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  actionButtonSecondary: {
+    backgroundColor: colors.primarySoft,
   },
   actionButtonText: {
     color: colors.white,
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+  },
+  actionButtonSecondaryText: {
+    color: colors.primary,
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
   },
@@ -340,10 +370,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contactAction: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  contactActionWhatsApp: {
+    backgroundColor: '#E8FFF0',
   },
   contactActionText: {
     color: colors.primary,

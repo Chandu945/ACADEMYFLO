@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react-native';
 import { AuthContext } from '../../context/AuthContext';
 import type { AuthContextValue, AuthPhase } from '../../context/AuthContext';
 import type { SubscriptionInfo } from '../../../domain/subscription/subscription.types';
@@ -165,8 +165,9 @@ describe('SubscriptionScreen — Payment Flow', () => {
 
   it('shows correct tier and amount on pay button label', () => {
     renderScreen(makeAuth());
-    expect(screen.getByText(/0–50 students/)).toBeTruthy();
-    expect(screen.getByText(/₹299\/month/)).toBeTruthy();
+    const section = within(screen.getByTestId('pay-cashfree-section'));
+    expect(section.getByText(/0–50 students/)).toBeTruthy();
+    expect(section.getByText(/₹299\/month/)).toBeTruthy();
   });
 
   // ── Pay button interaction ──

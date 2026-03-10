@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
@@ -10,13 +10,17 @@ import { getDailyReport } from '../../../infra/attendance/attendance-api';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { Badge } from '../../components/ui/Badge';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Route = RouteProp<AttendanceStackParamList, 'DailyReport'>;
 
 const reportApi = { getDailyReport };
 
 export function AttendanceDailyReportScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
   const { date } = route.params;
 
@@ -123,7 +127,7 @@ export function AttendanceDailyReportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -150,11 +154,10 @@ const styles = StyleSheet.create({
   countBox: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.base,
     alignItems: 'center',
+    ...shadows.sm,
   },
   countNumber: {
     fontSize: fontSizes['4xl'],
@@ -180,11 +183,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 14,
+    borderRadius: radius.lg,
+    padding: spacing.base,
     marginBottom: spacing.sm,
+    ...shadows.sm,
   },
   absentName: {
     fontSize: fontSizes.md,

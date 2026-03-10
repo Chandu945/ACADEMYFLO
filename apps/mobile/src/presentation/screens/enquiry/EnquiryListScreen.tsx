@@ -18,7 +18,9 @@ import { useEnquiries } from '../../../application/enquiry/use-enquiries';
 import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { Screen } from '../../components/ui/Screen';
 import { InlineError } from '../../components/ui/InlineError';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EnquiryList'>;
 type Route = RouteProp<MoreStackParamList, 'EnquiryList'>;
@@ -31,6 +33,8 @@ const FILTER_TABS: { key: string; label: string }[] = [
 ];
 
 export function EnquiryListScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
 
@@ -169,7 +173,7 @@ export function EnquiryListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   searchContainer: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.sm,

@@ -40,14 +40,18 @@ export const childFeesListSchema = z.array(childFeeDueSchema);
 export const initiateFeePaymentResponseSchema = z.object({
   orderId: z.string(),
   paymentSessionId: z.string(),
-  amount: z.number(),
+  baseAmount: z.number(),
+  convenienceFee: z.number(),
+  totalAmount: z.number(),
   currency: z.string(),
 });
 
 export const feePaymentStatusResponseSchema = z.object({
   orderId: z.string(),
   status: z.enum(['PENDING', 'SUCCESS', 'FAILED']),
-  amount: z.number(),
+  baseAmount: z.number(),
+  convenienceFee: z.number(),
+  totalAmount: z.number(),
   providerPaymentId: z.string().nullable(),
   paidAt: z.string().nullable(),
 });
@@ -60,7 +64,7 @@ export const receiptSchema = z.object({
   amount: z.number(),
   paidAt: z.string(),
   paymentMethod: z.string(),
-  source: z.string(),
+  source: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE']),
 });
 
 export const parentProfileSchema = z.object({
@@ -86,7 +90,7 @@ export const paymentHistoryItemSchema = z.object({
   studentName: z.string(),
   monthKey: z.string(),
   amount: z.number(),
-  source: z.string(),
+  source: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE']),
   paidAt: z.string(),
 });
 

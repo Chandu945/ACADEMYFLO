@@ -9,7 +9,32 @@ import { ok, err } from '../../../domain/common/result';
 jest.mock('../../../infra/student/student-api', () => ({
   createStudent: jest.fn(),
   updateStudent: jest.fn(),
+  deleteStudent: jest.fn(),
+  getStudentPhotoUploadPath: jest.fn((id: string) => `/api/v1/students/${id}/photo`),
 }));
+
+jest.mock('../../../infra/batch/batch-api', () => ({
+  getStudentBatches: jest.fn().mockResolvedValue({ ok: true, value: [] }),
+  setStudentBatches: jest.fn().mockResolvedValue({ ok: true, value: null }),
+  listBatches: jest.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } }),
+}));
+
+jest.mock('../../components/common/ProfilePhotoUploader', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    ProfilePhotoUploader: (props: Record<string, unknown>) =>
+      React.createElement(View, { testID: props.testID }),
+  };
+});
+
+jest.mock('../../components/batches/BatchMultiSelect', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    BatchMultiSelect: () => React.createElement(View, { testID: 'batch-multi-select' }),
+  };
+});
 
 const mockGoBack = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -122,10 +147,6 @@ describe('StudentFormScreen', () => {
     fireEvent.changeText(screen.getByTestId('input-fullName'), 'Test');
     fireEvent.changeText(screen.getByTestId('input-dateOfBirth'), '2010-01-01');
     fireEvent.press(screen.getByTestId('gender-male'));
-    fireEvent.changeText(screen.getByTestId('input-addressLine1'), '123 St');
-    fireEvent.changeText(screen.getByTestId('input-city'), 'Mumbai');
-    fireEvent.changeText(screen.getByTestId('input-state'), 'MH');
-    fireEvent.changeText(screen.getByTestId('input-pincode'), '400001');
     fireEvent.changeText(screen.getByTestId('input-guardianName'), 'Parent');
     fireEvent.changeText(screen.getByTestId('input-guardianMobile'), '+919876543210');
     fireEvent.changeText(screen.getByTestId('input-guardianEmail'), 'p@test.com');
@@ -148,10 +169,6 @@ describe('StudentFormScreen', () => {
     fireEvent.changeText(screen.getByTestId('input-fullName'), 'New Student');
     fireEvent.changeText(screen.getByTestId('input-dateOfBirth'), '2010-01-01');
     fireEvent.press(screen.getByTestId('gender-male'));
-    fireEvent.changeText(screen.getByTestId('input-addressLine1'), '123 St');
-    fireEvent.changeText(screen.getByTestId('input-city'), 'Mumbai');
-    fireEvent.changeText(screen.getByTestId('input-state'), 'MH');
-    fireEvent.changeText(screen.getByTestId('input-pincode'), '400001');
     fireEvent.changeText(screen.getByTestId('input-guardianName'), 'Parent');
     fireEvent.changeText(screen.getByTestId('input-guardianMobile'), '+919876543210');
     fireEvent.changeText(screen.getByTestId('input-guardianEmail'), 'p@test.com');

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { ScrollView, View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -16,7 +16,9 @@ import { createStudent, updateStudent, deleteStudent, getStudentPhotoUploadPath 
 import { getStudentBatches, setStudentBatches } from '../../../infra/batch/batch-api';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import type { Gender, CreateStudentRequest } from '../../../domain/student/student.types';
-import { colors, spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type FormRoute = RouteProp<StudentsStackParamList, 'StudentForm'>;
 
@@ -29,6 +31,8 @@ const GENDER_OPTIONS: { label: string; value: Gender }[] = [
 const saveApi = { createStudent, updateStudent };
 
 export function StudentFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation();
   const route = useRoute<FormRoute>();
   const { mode, student } = route.params;
@@ -452,7 +456,7 @@ export function StudentFormScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -481,15 +485,17 @@ const styles = StyleSheet.create({
   },
   genderRow: {
     flexDirection: 'row',
+    gap: spacing.sm,
     marginBottom: spacing.base,
   },
   genderOption: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
+    borderRadius: radius.lg,
   },
   genderSelected: {
     backgroundColor: colors.primary,

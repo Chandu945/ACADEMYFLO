@@ -12,7 +12,7 @@ import { generateFeeOrderId } from '@domain/parent/rules/parent.rules';
 import { FeePayment } from '@domain/parent/entities/fee-payment.entity';
 import { ParentErrors } from '../../common/errors';
 import type { InitiateFeePaymentOutput } from '../dtos/parent.dto';
-import type { UserRole } from '@playconnect/contracts';
+import { type UserRole, computeConvenienceFee } from '@playconnect/contracts';
 import { randomUUID } from 'node:crypto';
 
 export interface InitiateFeePaymentInput {
@@ -58,6 +58,11 @@ export class InitiateFeePaymentUseCase {
     const existingPending = await this.feePaymentRepo.findPendingByFeeDueId(input.feeDueId);
     if (existingPending) return err(ParentErrors.paymentAlreadyPending());
 
+    // Compute convenience fee
+    const baseAmount = foundDue.amount;
+    const convenienceFee = computeConvenienceFee(baseAmount);
+    const totalAmount = baseAmount + convenienceFee;
+
     // Create order id and persist PENDING payment record BEFORE calling Cashfree
     const orderId = generateFeeOrderId();
     const idempotencyKey = randomUUID();
@@ -71,16 +76,18 @@ export class InitiateFeePaymentUseCase {
       monthKey: foundDue.monthKey,
       orderId,
       paymentSessionId: '',
-      amount: foundDue.amount,
+      baseAmount,
+      convenienceFee,
+      totalAmount,
     });
     await this.feePaymentRepo.save(payment);
 
-    // Call Cashfree API
+    // Call Cashfree API — charge the totalAmount (base + convenience fee)
     let cfResult;
     try {
       cfResult = await this.cashfreeGateway.createOrder({
         orderId,
-        orderAmount: foundDue.amount,
+        orderAmount: totalAmount,
         orderCurrency: 'INR',
         customerId: input.parentUserId,
         customerPhone: user.phoneE164,
@@ -108,7 +115,9 @@ export class InitiateFeePaymentUseCase {
       orderId: withCfId.orderId,
       cfOrderId: withCfId.cfOrderId,
       paymentSessionId: cfResult.paymentSessionId,
-      amount: withCfId.amount,
+      baseAmount: withCfId.baseAmount,
+      convenienceFee: withCfId.convenienceFee,
+      totalAmount: withCfId.totalAmount,
       currency: withCfId.currency,
       status: withCfId.status,
       failureReason: withCfId.failureReason,
@@ -121,13 +130,17 @@ export class InitiateFeePaymentUseCase {
     this.logger.info('Fee payment initiated', {
       feeDueId: input.feeDueId,
       orderId,
-      amount: foundDue.amount,
+      baseAmount,
+      convenienceFee,
+      totalAmount,
     });
 
     return ok({
       orderId,
       paymentSessionId: cfResult.paymentSessionId,
-      amount: foundDue.amount,
+      baseAmount,
+      convenienceFee,
+      totalAmount,
       currency: 'INR',
     });
   }

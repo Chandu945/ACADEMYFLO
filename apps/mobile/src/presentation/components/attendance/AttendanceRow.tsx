@@ -1,8 +1,10 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Toggle } from '../ui/Toggle';
-import { colors, fontSizes, fontWeights, spacing, radius } from '../../theme';
+import { fontSizes, fontWeights, spacing, radius } from '../../theme';
+import type { Colors } from '../../theme';
 import type { DailyAttendanceItem } from '../../../domain/attendance/attendance.types';
+import { useTheme } from '../../context/ThemeContext';
 
 type AttendanceRowProps = {
   item: DailyAttendanceItem;
@@ -21,6 +23,8 @@ function getInitials(name: string): string {
 }
 
 function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPresent = item.status === 'PRESENT';
   const isHoliday = item.status === 'HOLIDAY';
 
@@ -55,7 +59,7 @@ function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps
 
 export const AttendanceRow = memo(AttendanceRowComponent);
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, View, Text, Switch, StyleSheet, Alert, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -8,7 +8,9 @@ import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import type { EventType, TargetAudience } from '../../../domain/event/event.types';
 import * as eventApi from '../../../infra/event/event-api';
-import { colors, spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type EditRoute = RouteProp<MoreStackParamList, 'EditEvent'>;
 
@@ -30,6 +32,8 @@ const AUDIENCES: { label: string; value: TargetAudience }[] = [
 ];
 
 export function EditEventScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation();
   const route = useRoute<EditRoute>();
   const { event } = route.params;
@@ -167,7 +171,7 @@ export function EditEventScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.base, paddingBottom: 40 },
   sectionTitle: {

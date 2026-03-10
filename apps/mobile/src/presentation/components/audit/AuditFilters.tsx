@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { AUDIT_ACTION_TYPES } from '@playconnect/contracts';
 import type { AuditFilters as AuditFiltersType } from '../../../application/audit/use-audit-logs';
 import { Button } from '../ui/Button';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, shadows, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const ACTION_OPTIONS: { label: string; value: string }[] = [
   { label: 'All Actions', value: '' },
@@ -21,6 +23,8 @@ type AuditFiltersProps = {
 };
 
 export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: AuditFiltersProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const fromValid = !filters.from || /^\d{4}-\d{2}-\d{2}$/.test(filters.from);
   const toValid = !filters.to || /^\d{4}-\d{2}-\d{2}$/.test(filters.to);
   const rangeValid =
@@ -87,14 +91,13 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    borderRadius: radius.lg,
+    padding: spacing.base,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
   row: {
     flexDirection: 'row',

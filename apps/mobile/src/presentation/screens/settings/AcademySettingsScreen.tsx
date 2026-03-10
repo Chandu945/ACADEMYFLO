@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademySettings } from '../../../application/settings/use-academy-settings';
 import { settingsApi } from '../../../infra/settings/settings-api';
 import { SettingsForm } from '../../components/settings/SettingsForm';
 import { Screen } from '../../components/ui/Screen';
-import { colors, fontSizes, fontWeights, spacing } from '../../theme';
+import { fontSizes, fontWeights, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 export function AcademySettingsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user } = useAuth();
   const isOwner = user?.role === 'OWNER';
   const { settings, loading, saving, error, update, refetch } = useAcademySettings(settingsApi);
@@ -53,7 +57,7 @@ export function AcademySettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   center: {
     flex: 1,
     alignItems: 'center',

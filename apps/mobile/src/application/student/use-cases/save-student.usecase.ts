@@ -37,24 +37,6 @@ export function validateStudentForm(
     errors['gender'] = 'Gender is required';
   }
 
-  if (!fields['addressLine1']?.trim()) {
-    errors['addressLine1'] = 'Address line 1 is required';
-  }
-
-  if (!fields['city']?.trim()) {
-    errors['city'] = 'City is required';
-  }
-
-  if (!fields['state']?.trim()) {
-    errors['state'] = 'State is required';
-  }
-
-  if (!fields['pincode']?.trim()) {
-    errors['pincode'] = 'Pincode is required';
-  } else if (!PINCODE_RE.test(fields['pincode'])) {
-    errors['pincode'] = 'Pincode must be exactly 6 digits';
-  }
-
   if (!fields['guardianName']?.trim()) {
     errors['guardianName'] = 'Guardian name is required';
   }

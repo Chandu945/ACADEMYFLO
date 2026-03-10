@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -6,8 +6,10 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { ReceiptInfo } from '../../../domain/parent/parent.types';
 import { getReceiptUseCase } from '../../../application/parent/use-cases/get-receipt.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
-import { colors, spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
 import { formatMonthKey, formatCurrency, formatDateLong } from '../../utils/format';
+import { useTheme } from '../../context/ThemeContext';
 
 type ReceiptRouteParams = {
   Receipt: { feeDueId: string };
@@ -26,6 +28,9 @@ function ReceiptRow({
   valueColor?: string;
   valueBold?: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const rowStyles = useMemo(() => makeRowStyles(colors), [colors]);
   return (
     <View style={rowStyles.row}>
       <View style={rowStyles.labelRow}>
@@ -46,7 +51,7 @@ function ReceiptRow({
   );
 }
 
-const rowStyles = StyleSheet.create({
+const makeRowStyles = (colors: Colors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -74,6 +79,9 @@ const rowStyles = StyleSheet.create({
 });
 
 export function ReceiptScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const rowStyles = useMemo(() => makeRowStyles(colors), [colors]);
   const route = useRoute<RouteProp<ReceiptRouteParams, 'Receipt'>>();
   const { feeDueId } = route.params;
 
@@ -167,7 +175,7 @@ export function ReceiptScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: { flex: 1, padding: spacing.base, backgroundColor: colors.bg },
   center: {
     flex: 1,

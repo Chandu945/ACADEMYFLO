@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { OwnerDashboardRange } from '../../../domain/dashboard/dashboard.types';
 import { dateRangeSchema } from '../../../domain/dashboard/dashboard.schemas';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type DashboardFiltersProps = {
   range: OwnerDashboardRange;
@@ -13,6 +15,8 @@ type DashboardFiltersProps = {
 const LOCAL_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function DashboardFilters({ range, onRangeChange }: DashboardFiltersProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showCustom, setShowCustom] = useState(range.mode === 'custom');
   const [fromText, setFromText] = useState(range.mode === 'custom' ? range.from : '');
   const [toText, setToText] = useState(range.mode === 'custom' ? range.to : '');
@@ -141,7 +145,7 @@ export function DashboardFilters({ range, onRangeChange }: DashboardFiltersProps
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     marginBottom: spacing.base,
   },

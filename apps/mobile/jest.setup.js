@@ -19,6 +19,39 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
+// Mock react-native-vector-icons
+jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
+
+// Mock react-native-image-picker
+jest.mock('react-native-image-picker', () => ({
+  launchImageLibrary: jest.fn(),
+}));
+
+// Mock ThemeContext — provide lightColors by default in tests
+jest.mock('./src/presentation/context/ThemeContext', () => {
+  const { lightColors } = require('./src/presentation/theme');
+  return {
+    useTheme: () => ({
+      colors: lightColors,
+      isDark: false,
+      mode: 'light',
+      setMode: jest.fn(),
+    }),
+    ThemeProvider: ({ children }) => children,
+  };
+});
+
+// Mock @react-native-async-storage/async-storage
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  setItem: jest.fn(() => Promise.resolve()),
+  getItem: jest.fn(() => Promise.resolve(null)),
+  removeItem: jest.fn(() => Promise.resolve()),
+  clear: jest.fn(() => Promise.resolve()),
+  getAllKeys: jest.fn(() => Promise.resolve([])),
+  multiGet: jest.fn(() => Promise.resolve([])),
+  multiSet: jest.fn(() => Promise.resolve()),
+}));
+
 // Mock react-native-screens
 jest.mock('react-native-screens', () => ({
   enableScreens: jest.fn(),

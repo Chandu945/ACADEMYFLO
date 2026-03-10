@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, FlatList, TextInput, Text, StyleSheet } from 'react-native';
 import type { AppError } from '../../../domain/common/errors';
 import type { PaymentRequestItem } from '../../../domain/fees/payment-requests.types';
@@ -15,7 +15,9 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { RequestRow } from '../../components/fees/RequestRow';
-import { spacing } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type PendingApprovalsScreenProps = {
   onActionComplete: () => void;
@@ -24,6 +26,8 @@ type PendingApprovalsScreenProps = {
 const requestsApi = { listPaymentRequests, approvePaymentRequest, rejectPaymentRequest };
 
 export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScreenProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [items, setItems] = useState<PaymentRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
@@ -177,7 +181,7 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -193,16 +197,20 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   reasonLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
     marginBottom: spacing.xs,
   },
   reasonInput: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: spacing.sm,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
     minHeight: 80,
     textAlignVertical: 'top' as const,
+    fontSize: fontSizes.base,
+    color: colors.text,
+    backgroundColor: colors.surface,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -16,7 +16,10 @@ import { createStaff, updateStaff, getStaffPhotoUploadPath } from '../../../infr
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import type { CreateStaffInput, UpdateStaffInput } from '../../../domain/staff/staff.types';
 import type { SalaryFrequency } from '../../../domain/staff/staff.types';
-import { colors, spacing, fontSizes, fontWeights } from '../../theme';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 type FormRoute = RouteProp<StaffStackParamList, 'StaffForm'>;
 
@@ -24,6 +27,8 @@ const createApi = { createStaff };
 const updateApi = { updateStaff };
 
 export function StaffFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation();
   const route = useRoute<FormRoute>();
   const { mode, staff } = route.params;
@@ -169,134 +174,159 @@ export function StaffFormScreen() {
       />
 
       {/* Basic Information */}
-      <Text style={styles.sectionTitle}>Basic Information</Text>
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="account-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Basic Information</Text>
+      </View>
+      <View style={styles.formCard}>
+        <Input
+          label="Full Name"
+          value={fullName}
+          onChangeText={setFullName}
+          placeholder="e.g. Priya Sharma"
+          error={fieldErrors['fullName']}
+          autoCapitalize="words"
+          testID="input-fullName"
+        />
 
-      <Input
-        label="Full Name"
-        value={fullName}
-        onChangeText={setFullName}
-        placeholder="e.g. Priya Sharma"
-        error={fieldErrors['fullName']}
-        autoCapitalize="words"
-        testID="input-fullName"
-      />
+        <Input
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="e.g. priya@example.com"
+          error={fieldErrors['email']}
+          keyboardType="email-address"
+          testID="input-email"
+        />
 
-      <Input
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        placeholder="e.g. priya@example.com"
-        error={fieldErrors['email']}
-        keyboardType="email-address"
-        testID="input-email"
-      />
+        <Input
+          label="Phone Number"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          placeholder="e.g. +919876543210"
+          error={fieldErrors['phoneNumber']}
+          keyboardType="phone-pad"
+          testID="input-phoneNumber"
+        />
 
-      <Input
-        label="Phone Number"
-        value={phoneNumber}
-        onChangeText={setPhoneNumber}
-        placeholder="e.g. +919876543210"
-        error={fieldErrors['phoneNumber']}
-        keyboardType="phone-pad"
-        testID="input-phoneNumber"
-      />
-
-      <Input
-        label={mode === 'create' ? 'Password' : 'New Password (optional)'}
-        value={password}
-        onChangeText={setPassword}
-        placeholder={mode === 'create' ? 'Min 8 characters' : 'Leave blank to keep current'}
-        error={fieldErrors['password']}
-        secureTextEntry
-        testID="input-password"
-      />
+        <Input
+          label={mode === 'create' ? 'Password' : 'New Password (optional)'}
+          value={password}
+          onChangeText={setPassword}
+          placeholder={mode === 'create' ? 'Min 8 characters' : 'Leave blank to keep current'}
+          error={fieldErrors['password']}
+          secureTextEntry
+          testID="input-password"
+        />
+      </View>
 
       {/* Personal Details */}
-      <Text style={styles.sectionTitle}>Personal Details</Text>
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="card-account-details-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Personal Details</Text>
+      </View>
+      <View style={styles.formCard}>
+        <Input
+          label="Gender"
+          value={gender}
+          onChangeText={setGender}
+          placeholder="MALE or FEMALE"
+          testID="input-gender"
+        />
 
-      <Input
-        label="Gender"
-        value={gender}
-        onChangeText={setGender}
-        placeholder="MALE or FEMALE"
-        testID="input-gender"
-      />
-
-      <Input
-        label="Start Date"
-        value={startDate}
-        onChangeText={setStartDate}
-        placeholder="YYYY-MM-DD"
-        testID="input-startDate"
-      />
+        <Input
+          label="Start Date"
+          value={startDate}
+          onChangeText={setStartDate}
+          placeholder="YYYY-MM-DD"
+          testID="input-startDate"
+        />
+      </View>
 
       {/* Contact Information */}
-      <Text style={styles.sectionTitle}>Contact Information</Text>
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="phone-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Contact Information</Text>
+      </View>
+      <View style={styles.formCard}>
+        <Input
+          label="WhatsApp Number"
+          value={whatsappNumber}
+          onChangeText={setWhatsappNumber}
+          placeholder="e.g. +919876543210"
+          keyboardType="phone-pad"
+          testID="input-whatsappNumber"
+        />
 
-      <Input
-        label="WhatsApp Number"
-        value={whatsappNumber}
-        onChangeText={setWhatsappNumber}
-        placeholder="e.g. +919876543210"
-        keyboardType="phone-pad"
-        testID="input-whatsappNumber"
-      />
+        <Input
+          label="Mobile Number"
+          value={mobileNumber}
+          onChangeText={setMobileNumber}
+          placeholder="e.g. +919876543210"
+          keyboardType="phone-pad"
+          testID="input-mobileNumber"
+        />
 
-      <Input
-        label="Mobile Number"
-        value={mobileNumber}
-        onChangeText={setMobileNumber}
-        placeholder="e.g. +919876543210"
-        keyboardType="phone-pad"
-        testID="input-mobileNumber"
-      />
-
-      <Input
-        label="Address"
-        value={address}
-        onChangeText={setAddress}
-        placeholder="Full address"
-        testID="input-address"
-      />
+        <Input
+          label="Address"
+          value={address}
+          onChangeText={setAddress}
+          placeholder="Full address"
+          testID="input-address"
+        />
+      </View>
 
       {/* Qualification & Position */}
-      <Text style={styles.sectionTitle}>Qualification & Position</Text>
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="school-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Qualification & Position</Text>
+      </View>
+      <View style={styles.formCard}>
+        <Input
+          label="Qualification"
+          value={qualification}
+          onChangeText={setQualification}
+          placeholder="e.g. B.Ed, M.A."
+          testID="input-qualification"
+        />
 
-      <Input
-        label="Qualification"
-        value={qualification}
-        onChangeText={setQualification}
-        placeholder="e.g. B.Ed, M.A."
-        testID="input-qualification"
-      />
-
-      <Input
-        label="Position"
-        value={position}
-        onChangeText={setPosition}
-        placeholder="e.g. Head Coach, Assistant"
-        testID="input-position"
-      />
+        <Input
+          label="Position"
+          value={position}
+          onChangeText={setPosition}
+          placeholder="e.g. Head Coach, Assistant"
+          testID="input-position"
+        />
+      </View>
 
       {/* Salary Configuration */}
-      <Text style={styles.sectionTitle}>Salary Configuration</Text>
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="currency-inr" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Salary Configuration</Text>
+      </View>
+      <View style={styles.formCard}>
+        <Input
+          label="Salary Amount"
+          value={salaryAmount}
+          onChangeText={setSalaryAmount}
+          placeholder="e.g. 25000"
+          keyboardType="numeric"
+          testID="input-salaryAmount"
+        />
 
-      <Input
-        label="Salary Amount"
-        value={salaryAmount}
-        onChangeText={setSalaryAmount}
-        placeholder="e.g. 25000"
-        keyboardType="numeric"
-        testID="input-salaryAmount"
-      />
-
-      <Input
-        label="Salary Frequency"
-        value={salaryFrequency}
-        onChangeText={setSalaryFrequency}
-        placeholder="MONTHLY, WEEKLY, or DAILY"
-        testID="input-salaryFrequency"
-      />
+        <Input
+          label="Salary Frequency"
+          value={salaryFrequency}
+          onChangeText={setSalaryFrequency}
+          placeholder="MONTHLY, WEEKLY, or DAILY"
+          testID="input-salaryFrequency"
+        />
+      </View>
 
       <View style={styles.submitContainer}>
         <Button
@@ -310,7 +340,7 @@ export function StaffFormScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -319,14 +349,26 @@ const styles = StyleSheet.create({
     padding: spacing.base,
     paddingBottom: 40,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
   sectionTitle: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginTop: spacing.md,
+  },
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
     marginBottom: spacing.sm,
+    ...shadows.sm,
   },
   submitContainer: {
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
 });

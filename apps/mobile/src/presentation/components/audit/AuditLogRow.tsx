@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { AppCard } from '../ui/AppCard';
-import { colors, fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import type { Colors } from '../../theme';
 import type { AuditLogItem } from '../../../domain/audit/audit.types';
+import { useTheme } from '../../context/ThemeContext';
 
 const ACTION_LABELS: Record<string, string> = {
   STUDENT_CREATED: 'Student Created',
@@ -42,6 +44,8 @@ type AuditLogRowProps = {
 };
 
 export function AuditLogRow({ item, testID }: AuditLogRowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const contextEntries = item.context
     ? Object.entries(item.context).slice(0, MAX_CONTEXT_KEYS)
     : [];
@@ -77,7 +81,7 @@ export function AuditLogRow({ item, testID }: AuditLogRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Colors) => StyleSheet.create({
   row: {
     marginBottom: spacing.sm,
   },
@@ -85,7 +89,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   actionLabel: {
     fontSize: fontSizes.base,
@@ -114,13 +118,13 @@ const styles = StyleSheet.create({
   contextRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 6,
+    marginTop: spacing.xs,
     gap: spacing.xs,
   },
   chip: {
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.sm,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
   },
   chipText: {
