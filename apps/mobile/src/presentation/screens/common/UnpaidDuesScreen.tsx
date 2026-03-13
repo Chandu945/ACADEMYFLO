@@ -9,7 +9,8 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { FeeDueRow } from '../../components/fees/FeeDueRow';
-import { spacing } from '../../theme';
+import { spacing, listDefaults } from '../../theme';
+import { useToast } from '../../context/ToastContext';
 
 type UnpaidDuesScreenProps = {
   items: FeeDueItem[];
@@ -36,6 +37,7 @@ export function UnpaidDuesScreen({
   onMarkPaidSuccess,
   studentNameMap,
 }: UnpaidDuesScreenProps) {
+  const { showToast } = useToast();
   const [confirmItem, setConfirmItem] = useState<FeeDueItem | null>(null);
   const [marking, setMarking] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
@@ -56,10 +58,11 @@ export function UnpaidDuesScreen({
     if (result.ok) {
       setConfirmItem(null);
       onMarkPaidSuccess();
+      showToast('Fee marked as paid');
     } else {
       setMarkError(result.error.message);
     }
-  }, [confirmItem, onMarkPaidSuccess]);
+  }, [confirmItem, onMarkPaidSuccess, showToast]);
 
   const renderItem = useCallback(
     ({ item }: { item: FeeDueItem }) => {
@@ -136,6 +139,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
 });

@@ -18,7 +18,7 @@ import { AppCard } from '../../components/ui/AppCard';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -269,6 +269,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     padding: spacing.base,
-    paddingBottom: 80,
+    paddingBottom: listDefaults.contentPaddingBottom,
   },
 });

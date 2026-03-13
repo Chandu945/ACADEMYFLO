@@ -21,7 +21,7 @@ export class HandleCashfreeWebhookUseCase {
     private readonly clock: ClockPort,
     private readonly logger: LoggerPort,
     private readonly auditRecorder: AuditRecorderPort,
-    private readonly transaction?: TransactionPort,
+    private readonly transaction: TransactionPort,
   ) {}
 
   async execute(
@@ -92,11 +92,7 @@ export class HandleCashfreeWebhookUseCase {
         await this.activateSubscription(payment.academyId, payment.tierKey, orderId, cfPaymentId, now);
       };
 
-      if (this.transaction) {
-        await this.transaction.run(saveAndActivate);
-      } else {
-        await saveAndActivate();
-      }
+      await this.transaction.run(saveAndActivate);
 
       this.logger.info('Payment SUCCESS — subscription activated', {
         orderId,

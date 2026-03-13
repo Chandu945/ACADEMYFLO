@@ -128,6 +128,19 @@ export class InitiateFeePaymentUseCase {
       return err(ParentErrors.paymentProviderUnavailable());
     }
 
+    // Validate Cashfree response
+    if (!cfResult.paymentSessionId || !cfResult.cfOrderId) {
+      this.logger.error('Cashfree createOrder returned incomplete response for fee payment', {
+        feeDueId: input.feeDueId,
+        orderId,
+        hasCfOrderId: !!cfResult.cfOrderId,
+        hasPaymentSessionId: !!cfResult.paymentSessionId,
+      });
+      const failed = payment.markFailed('CASHFREE_INVALID_RESPONSE');
+      await this.feePaymentRepo.save(failed);
+      return err(ParentErrors.paymentProviderUnavailable());
+    }
+
     // Update payment with Cashfree details
     const withCfId = payment.setCfOrderId(cfResult.cfOrderId);
     const withCfDetails = FeePayment.reconstitute(withCfId.id.toString(), {

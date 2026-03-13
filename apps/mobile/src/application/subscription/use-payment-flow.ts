@@ -1,10 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type {
   PaymentFlowStatus,
   InitiatePaymentResponse,
   PaymentStatusResponse,
 } from '../../domain/payments/cashfree.types';
-import type { AppError } from '../../domain/common/errors';
 import { initiateSubscriptionPaymentUseCase } from './use-cases/initiate-subscription-payment.usecase';
 import { pollSubscriptionPaymentStatusUseCase } from './use-cases/poll-subscription-payment-status.usecase';
 import { subscriptionApi } from '../../infra/subscription/subscription-api';
@@ -29,8 +28,21 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<PaymentStatusResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
-  const deps = { subscriptionApi, accessToken: accessTokenStore };
+  const deps = useMemo(() => ({ subscriptionApi, accessToken: accessTokenStore }), []);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (pollRef.current) {
+        clearTimeout(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -41,6 +53,8 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
 
   const pollStatus = useCallback(
     async (oid: string, attempt = 0) => {
+      if (!mountedRef.current) return;
+
       if (attempt >= MAX_POLL_ATTEMPTS) {
         setStatus('failed');
         setError('Payment verification timed out. Please check back later.');
@@ -48,6 +62,8 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
       }
 
       const result = await pollSubscriptionPaymentStatusUseCase(deps, oid);
+
+      if (!mountedRef.current) return;
 
       if (!result.ok) {
         // Network error — retry
@@ -77,11 +93,16 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
   );
 
   const startPayment = useCallback(async () => {
+    // Prevent double-tap: ignore if already in progress
+    if (status !== 'idle' && status !== 'failed') return;
+
     setStatus('initiating');
     setError(null);
     setPaymentResult(null);
 
     const result = await initiateSubscriptionPaymentUseCase(deps);
+
+    if (!mountedRef.current) return;
 
     if (!result.ok) {
       setStatus('failed');
@@ -100,10 +121,12 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
       // If browser open fails, still start polling
     }
 
+    if (!mountedRef.current) return;
+
     // Start polling for payment status
     setStatus('polling');
     pollStatus(data.orderId);
-  }, [deps, pollStatus]);
+  }, [deps, pollStatus, status]);
 
   const reset = useCallback(() => {
     stopPolling();

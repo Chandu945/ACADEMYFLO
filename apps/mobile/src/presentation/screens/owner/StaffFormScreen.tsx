@@ -21,6 +21,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 type FormRoute = RouteProp<StaffStackParamList, 'StaffForm'>;
 
@@ -41,6 +42,7 @@ const updateApi = { updateStaff };
 export function StaffFormScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const navigation = useNavigation();
   const route = useRoute<FormRoute>();
   const { mode, staff } = route.params;
@@ -164,6 +166,7 @@ export function StaffFormScreen() {
     setSubmitting(false);
 
     if (result.ok) {
+      showToast(mode === 'create' ? 'Staff created' : 'Staff updated');
       navigation.goBack();
     } else {
       setServerError(result.error.message);
@@ -171,7 +174,7 @@ export function StaffFormScreen() {
   }, [
     fullName, email, phoneNumber, password, startDate, gender,
     whatsappNumber, mobileNumber, address, qualification, position,
-    salaryAmount, salaryFrequency, mode, staff, navigation,
+    salaryAmount, salaryFrequency, mode, staff, navigation, showToast,
   ]);
 
   return (

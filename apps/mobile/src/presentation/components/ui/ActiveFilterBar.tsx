@@ -24,7 +24,7 @@ export function ActiveFilterBar({ filters, onClearAll }: Props) {
   if (filters.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="toolbar">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -42,6 +42,8 @@ export function ActiveFilterBar({ filters, onClearAll }: Props) {
               onPress={f.onRemove}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
               style={styles.pillClose}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${f.label}: ${f.value} filter`}
             >
               {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
               <Icon name="close-circle" size={15} color={colors.textSecondary} />
@@ -49,7 +51,7 @@ export function ActiveFilterBar({ filters, onClearAll }: Props) {
           </View>
         ))}
         {filters.length > 1 && (
-          <TouchableOpacity style={styles.clearAllBtn} onPress={onClearAll}>
+          <TouchableOpacity style={styles.clearAllBtn} onPress={onClearAll} accessibilityRole="button" accessibilityLabel="Clear all filters">
             {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
             <Icon name="filter-remove-outline" size={14} color={colors.danger} />
             <Text style={styles.clearAllText}>Clear all</Text>

@@ -127,7 +127,7 @@ function AuditLogsContent() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           ListEmptyComponent={<EmptyState message="No audit logs found" />}
           ListFooterComponent={renderFooter}
           onEndReached={fetchMore}

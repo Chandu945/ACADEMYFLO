@@ -15,7 +15,7 @@ import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { Fab } from '../../components/ui/Fab';
 import { Button } from '../../components/ui/Button';
 import { StaffRow } from '../../components/staff/StaffRow';
-import { spacing } from '../../theme';
+import { spacing, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -138,7 +138,7 @@ export function StaffListScreen() {
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           contentContainerStyle={styles.listContent}
           testID="staff-list"
         />
@@ -187,7 +187,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: 80,
+    paddingBottom: listDefaults.contentPaddingBottom,
   },
   footer: {
     paddingVertical: spacing.base,

@@ -27,7 +27,7 @@ import { HolidayBanner } from '../../components/attendance/HolidayBanner';
 import { AttendanceHeader } from '../../components/attendance/AttendanceHeader';
 import { AttendanceRow } from '../../components/attendance/AttendanceRow';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -199,7 +199,7 @@ export function AttendanceScreen() {
               <Text style={styles.navSubtitle}>{formatDateLabel(selectedDate)}</Text>
             </View>
             <View style={styles.navActions}>
-              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button">
+              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
@@ -207,6 +207,8 @@ export function AttendanceScreen() {
                 onPress={() => setShowFilters((v) => !v)}
                 style={styles.navBtn}
                 testID="filter-button"
+                accessibilityLabel="Toggle filters"
+                accessibilityRole="button"
               >
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon name="filter-variant" size={22} color={colors.text} />
@@ -307,6 +309,7 @@ export function AttendanceScreen() {
               refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
           contentContainerStyle={styles.listContent}
@@ -431,7 +434,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
   footer: {
     paddingVertical: spacing.base,

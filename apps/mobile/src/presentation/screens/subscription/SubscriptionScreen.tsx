@@ -236,7 +236,7 @@ export function SubscriptionScreen() {
   return (
     <Screen scroll={false}>
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         contentContainerStyle={styles.listContent}
       >
         {header}

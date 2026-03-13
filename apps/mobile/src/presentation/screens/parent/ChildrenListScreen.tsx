@@ -16,17 +16,17 @@ import type { ChildSummary } from '../../../domain/parent/parent.types';
 import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-my-children.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import { useAuth } from '../../context/AuthContext';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, avatarColors } from '../../theme';
 import type { Colors } from '../../theme';
 import { getGreeting, getInitials, formatCurrency } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 type Nav = NativeStackNavigationProp<ParentHomeStackParamList, 'ChildrenList'>;
 
-const AVATAR_COLORS = ['#0891b2', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#2563eb'];
-
-function getAvatarColor(index: number): string {
-  return AVATAR_COLORS[index % AVATAR_COLORS.length]!;
+function getAvatarColor(index: number, isDark: boolean): string {
+  const palette = isDark ? avatarColors.dark : avatarColors.light;
+  return palette[index % palette.length]!;
 }
 
 function AttendanceRing({ percent }: { percent: number | null }) {
@@ -84,7 +84,7 @@ const makeRingStyles = (colors: Colors) => StyleSheet.create({
 });
 
 export function ChildrenListScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
@@ -142,7 +142,7 @@ export function ChildrenListScreen() {
         </View>
       </View>
     ),
-    [user],
+    [user, styles, colors],
   );
 
   const renderChild = useCallback(
@@ -158,7 +158,7 @@ export function ChildrenListScreen() {
         }
       >
         <View style={styles.cardBody}>
-          <View style={[styles.avatar, { backgroundColor: getAvatarColor(index) }]}>
+          <View style={[styles.avatar, { backgroundColor: getAvatarColor(index, isDark) }]}>
             <Text style={styles.avatarText}>{getInitials(item.fullName)}</Text>
           </View>
           <View style={styles.cardInfo}>
@@ -194,7 +194,7 @@ export function ChildrenListScreen() {
         </View>
       </TouchableOpacity>
     ),
-    [navigation],
+    [navigation, styles, colors, isDark],
   );
 
   if (loading) {
@@ -227,17 +227,14 @@ export function ChildrenListScreen() {
       ListHeaderComponent={renderHeader}
       contentContainerStyle={styles.list}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
       }
       ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="account-child-outline" size={64} color={colors.textDisabled} />
-          <Text style={styles.emptyTitle}>No Children Linked</Text>
-          <Text style={styles.emptySubtitle}>
-            Ask your academy to link your child to this account
-          </Text>
-        </View>
+        <EmptyState
+          icon="account-child-outline"
+          message="No Children Linked"
+          subtitle="Ask your academy to link your child to this account"
+        />
       }
     />
   );
@@ -373,22 +370,5 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.primary,
     fontWeight: fontWeights.semibold,
     fontSize: fontSizes.base,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: spacing['3xl'],
-  },
-  emptyTitle: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.semibold,
-    color: colors.text,
-    marginTop: spacing.base,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.base,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-    maxWidth: 260,
   },
 });

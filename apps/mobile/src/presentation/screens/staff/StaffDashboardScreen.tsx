@@ -114,7 +114,7 @@ export function StaffDashboardScreen() {
       style={styles.scroll}
       contentContainerStyle={styles.content}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
       }
       showsVerticalScrollIndicator={false}
       testID="staff-dashboard-scroll"

@@ -126,7 +126,7 @@ export function ReportsHomeScreen() {
       ) : selectedSegment === 0 ? (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           testID="revenue-scroll"
         >
           {revenue ? (
@@ -166,7 +166,7 @@ export function ReportsHomeScreen() {
             keyExtractor={(item) => `${item.studentId}-${item.monthKey}`}
             renderItem={renderDueItem}
             contentContainerStyle={styles.listContent}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
             ListEmptyComponent={<EmptyState message="No pending dues for this month" />}
             testID="dues-list"
           />

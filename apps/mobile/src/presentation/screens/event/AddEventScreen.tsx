@@ -11,6 +11,7 @@ import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { Pressable } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 const EVENT_TYPES: { label: string; value: EventType }[] = [
   { label: 'Tournament', value: 'TOURNAMENT' },
@@ -32,6 +33,7 @@ const AUDIENCES: { label: string; value: TargetAudience }[] = [
 export function AddEventScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const navigation = useNavigation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -84,11 +86,12 @@ export function AddEventScreen() {
     setSubmitting(false);
 
     if (result.ok) {
+      showToast('Event created');
       navigation.goBack();
     } else {
       setServerError(result.error.message);
     }
-  }, [title, description, eventType, startDate, endDate, startTime, endTime, isAllDay, location, targetAudience, navigation]);
+  }, [title, description, eventType, startDate, endDate, startTime, endTime, isAllDay, location, targetAudience, navigation, showToast]);
 
   return (
     <ScrollView

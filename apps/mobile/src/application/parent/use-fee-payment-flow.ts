@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type {
   FeePaymentFlowStatus,
   InitiateFeePaymentResponse,
@@ -27,8 +27,21 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<FeePaymentStatusResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
-  const deps = { parentApi };
+  const deps = useMemo(() => ({ parentApi }), []);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (pollRef.current) {
+        clearTimeout(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -39,6 +52,8 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
 
   const pollStatus = useCallback(
     async (oid: string, attempt = 0) => {
+      if (!mountedRef.current) return;
+
       if (attempt >= MAX_POLL_ATTEMPTS) {
         setStatus('failed');
         setError('Payment verification timed out. Please check back later.');
@@ -47,21 +62,24 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
 
       const result = await pollFeePaymentStatusUseCase(deps, oid);
 
+      if (!mountedRef.current) return;
+
+      const data = result.ok ? result.value : null;
+
       if (!result.ok) {
         pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
         return;
       }
 
-      const data = result.value;
       setPaymentResult(data);
 
-      if (data.status === 'SUCCESS') {
+      if (data!.status === 'SUCCESS') {
         setStatus('success');
         onSuccess();
         return;
       }
 
-      if (data.status === 'FAILED') {
+      if (data!.status === 'FAILED') {
         setStatus('failed');
         setError('Payment failed. Please try again.');
         return;
@@ -74,11 +92,16 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
 
   const startPayment = useCallback(
     async (feeDueId: string) => {
+      // Prevent double-tap: ignore if already in progress
+      if (status !== 'idle' && status !== 'failed') return;
+
       setStatus('initiating');
       setError(null);
       setPaymentResult(null);
 
       const result = await initiateFeePaymentUseCase(deps, feeDueId);
+
+      if (!mountedRef.current) return;
 
       if (!result.ok) {
         setStatus('failed');
@@ -96,10 +119,12 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
         // If browser open fails, still start polling
       }
 
+      if (!mountedRef.current) return;
+
       setStatus('polling');
       pollStatus(data.orderId);
     },
-    [deps, pollStatus],
+    [deps, pollStatus, status],
   );
 
   const reset = useCallback(() => {

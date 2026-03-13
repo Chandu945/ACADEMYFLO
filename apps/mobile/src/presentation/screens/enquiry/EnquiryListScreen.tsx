@@ -18,7 +18,7 @@ import { useEnquiries } from '../../../application/enquiry/use-enquiries';
 import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { Screen } from '../../components/ui/Screen';
 import { InlineError } from '../../components/ui/InlineError';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -166,7 +166,7 @@ export function EnquiryListScreen() {
         ListFooterComponent={
           loadingMore ? <ActivityIndicator style={styles.loader} /> : null
         }
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         onEndReached={hasMore ? fetchMore : undefined}
         onEndReachedThreshold={0.3}
         testID="enquiry-list"
@@ -225,7 +225,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: 80,
+    paddingBottom: listDefaults.contentPaddingBottom,
   },
   card: {
     backgroundColor: colors.surface,

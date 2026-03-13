@@ -9,9 +9,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Animated,
-  LayoutAnimation,
-  Platform,
-  UIManager,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,6 +24,7 @@ import { useStudents } from '../../../application/student/use-students';
 import { listStudents } from '../../../infra/student/student-api';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { StudentRow } from '../../components/students/StudentRow';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
@@ -35,10 +33,7 @@ import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
-
-if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true);
-}
+import { animateLayout } from '../../utils/layout-animation';
 
 type Nav = NativeStackNavigationProp<StudentsStackParamList, 'StudentsList'>;
 
@@ -172,7 +167,7 @@ export function StudentsListScreen() {
   }, []);
 
   const toggleFilters = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    animateLayout();
     setShowFilters((v) => !v);
   }, []);
 
@@ -274,7 +269,7 @@ export function StudentsListScreen() {
               </Text>
             </View>
             <View style={styles.navActions}>
-              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button">
+              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
@@ -282,6 +277,8 @@ export function StudentsListScreen() {
                 onPress={toggleFilters}
                 style={[styles.navBtn, showFilters && styles.navBtnActive]}
                 testID="filter-button"
+                accessibilityLabel="Toggle filters"
+                accessibilityRole="button"
               >
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon
@@ -397,16 +394,12 @@ export function StudentsListScreen() {
           <SkeletonTile />
         </View>
       ) : !loading && items.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="account-search-outline" size={48} color={colors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>No students enrolled yet.</Text>
-          <Text style={styles.emptySubtitle}>
-            There are currently no students in the system. Add new students to see them listed here.
-          </Text>
-        </View>
+        <EmptyState
+          variant={activeFilterCount > 0 || debouncedSearch ? 'noResults' : 'empty'}
+          icon={activeFilterCount > 0 || debouncedSearch ? undefined : 'account-search-outline'}
+          message={activeFilterCount > 0 || debouncedSearch ? 'No matching students' : 'No students enrolled yet.'}
+          subtitle={activeFilterCount > 0 || debouncedSearch ? undefined : 'There are currently no students in the system. Add new students to see them listed here.'}
+        />
       ) : (
         <FlatList
           data={items}
@@ -420,6 +413,7 @@ export function StudentsListScreen() {
               refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
           contentContainerStyle={styles.listContent}
@@ -622,36 +616,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   footer: {
     paddingVertical: spacing.base,
     alignItems: 'center',
-  },
-
-  /* ── Empty State ────────────────────────────────── */
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing['3xl'],
-  },
-  emptyIconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
   },
 
   /* ── FAB ────────────────────────────────────────── */

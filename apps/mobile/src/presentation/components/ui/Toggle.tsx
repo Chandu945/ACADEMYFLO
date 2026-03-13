@@ -4,6 +4,7 @@ import { Pressable, Animated, StyleSheet } from 'react-native';
 import { radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { lightHaptic } from '../../utils/haptics';
 
 type ToggleProps = {
   value: boolean;
@@ -35,9 +36,14 @@ export function Toggle({
   return (
     <Pressable
       style={[styles.track, value && styles.trackOn, disabled && styles.disabled]}
-      onPress={() => !disabled && onValueChange(!value)}
+      onPress={() => {
+        if (disabled) return;
+        lightHaptic();
+        onValueChange(!value);
+      }}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
+      disabled={disabled}
       accessibilityLabel={accessibilityLabel}
       testID={testID}
     >

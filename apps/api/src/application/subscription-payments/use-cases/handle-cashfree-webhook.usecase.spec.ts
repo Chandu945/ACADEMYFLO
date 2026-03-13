@@ -60,6 +60,9 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     auditRecorder: {
       record: jest.fn().mockResolvedValue(undefined),
     },
+    transaction: {
+      run: jest.fn().mockImplementation((fn: () => Promise<void>) => fn()),
+    },
     ...overrides,
   };
 }
@@ -76,6 +79,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.clock,
       deps.logger as never,
       deps.auditRecorder as never,
+      deps.transaction as never,
     );
 
     const result = await uc.execute(
@@ -96,6 +100,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.clock,
       deps.logger as never,
       deps.auditRecorder as never,
+      deps.transaction as never,
     );
 
     const result = await uc.execute(
@@ -133,6 +138,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.clock,
       deps.logger as never,
       deps.auditRecorder as never,
+      deps.transaction as never,
     );
 
     const result = await uc.execute(
@@ -155,6 +161,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.clock,
       deps.logger as never,
       deps.auditRecorder as never,
+      deps.transaction as never,
     );
 
     const result = await uc.execute(
@@ -179,6 +186,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.clock,
       deps.logger as never,
       deps.auditRecorder as never,
+      deps.transaction as never,
     );
 
     const result = await uc.execute(
@@ -205,6 +213,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.clock,
       deps.logger as never,
       deps.auditRecorder as never,
+      deps.transaction as never,
     );
 
     const result = await uc.execute(
@@ -231,6 +240,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.clock,
       deps.logger as never,
       deps.auditRecorder as never,
+      deps.transaction as never,
     );
 
     const result = await uc.execute(

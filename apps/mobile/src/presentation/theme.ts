@@ -175,6 +175,19 @@ export const radius = {
 } as const;
 
 // ── Shadows ────────────────────────────────────────────────────────────────
+// ── Avatar Colors ─────────────────────────────────────────────────────────
+export const avatarColors = {
+  light: ['#0891b2', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#2563eb'],
+  dark: ['#22d3ee', '#a78bfa', '#f472b6', '#fb923c', '#4ade80', '#60a5fa'],
+} as const;
+
+// ── List Defaults ─────────────────────────────────────────────────────────
+export const listDefaults = {
+  contentPaddingBottom: 100,
+  contentPaddingBottomNoFab: 32,
+} as const;
+
+// ── Shadows ────────────────────────────────────────────────────────────────
 export const shadows = {
   none: {
     shadowColor: lightColors.transparent,

@@ -167,7 +167,7 @@ export function PaymentHistoryScreen() {
       renderItem={renderItem}
       contentContainerStyle={styles.list}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
       }
       ListHeaderComponent={
         items.length > 0 ? (

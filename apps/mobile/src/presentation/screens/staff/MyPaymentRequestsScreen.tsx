@@ -16,13 +16,17 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { RequestRow } from '../../components/fees/RequestRow';
-import { spacing } from '../../theme';
+import { spacing, listDefaults } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 const requestsApi = { listPaymentRequests, cancelPaymentRequest };
 
 type NavProp = NativeStackNavigationProp<FeesStackParamList, 'FeesHome'>;
 
 export function MyPaymentRequestsScreen() {
+  const { colors } = useTheme();
+  const { showToast } = useToast();
   const navigation = useNavigation<NavProp>();
   const [items, setItems] = useState<PaymentRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,10 +77,11 @@ export function MyPaymentRequestsScreen() {
     if (result.ok) {
       setCancelTarget(null);
       load();
+      showToast('Request cancelled');
     } else {
       setCancelError(result.error.message);
     }
-  }, [cancelTarget, load]);
+  }, [cancelTarget, load, showToast]);
 
   const handleEdit = useCallback(
     (item: PaymentRequestItem) => {
@@ -136,7 +141,7 @@ export function MyPaymentRequestsScreen() {
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           testID="my-requests-list"
         />
       )}
@@ -170,6 +175,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
 });

@@ -14,10 +14,13 @@ import { InstituteInfoScreen } from '../screens/settings/InstituteInfoScreen';
 import { EnquiryListScreen } from '../screens/enquiry/EnquiryListScreen';
 import { AddEnquiryScreen } from '../screens/enquiry/AddEnquiryScreen';
 import { EnquiryDetailScreen } from '../screens/enquiry/EnquiryDetailScreen';
+import { EditEnquiryScreen } from '../screens/enquiry/EditEnquiryScreen';
 import { EventListScreen } from '../screens/event/EventListScreen';
 import { AddEventScreen } from '../screens/event/AddEventScreen';
 import { EditEventScreen } from '../screens/event/EditEventScreen';
 import { EventDetailScreen } from '../screens/event/EventDetailScreen';
+import { EventGalleryScreen } from '../screens/event/EventGalleryScreen';
+import { PhotoViewerScreen } from '../screens/event/PhotoViewerScreen';
 import { BatchesListScreen } from '../screens/batches/BatchesListScreen';
 import { BatchFormScreen } from '../screens/batches/BatchFormScreen';
 import { BatchDetailScreen } from '../screens/batches/BatchDetailScreen';
@@ -30,8 +33,10 @@ import { StaffAttendanceMonthlySummaryScreen } from '../screens/owner/StaffAtten
 import { ReportsHomeScreen } from '../screens/owner/ReportsHomeScreen';
 import type { ExpenseItem } from '../../domain/expense/expense.types';
 import type { EventDetail } from '../../domain/event/event.types';
+import type { GalleryPhoto } from '../../domain/event/event-gallery.types';
 import type { BatchListItem } from '../../domain/batch/batch.types';
 import type { StaffListItem } from '../../domain/staff/staff.types';
+import type { EnquiryDetail } from '../../domain/enquiry/enquiry.types';
 
 export type MoreStackParamList = {
   MoreHome: undefined;
@@ -42,10 +47,13 @@ export type MoreStackParamList = {
   EnquiryList: { filter?: string } | undefined;
   AddEnquiry: undefined;
   EnquiryDetail: { enquiryId: string };
+  EditEnquiry: { enquiry: EnquiryDetail };
   EventList: undefined;
   AddEvent: undefined;
   EditEvent: { event: EventDetail };
   EventDetail: { eventId: string };
+  EventGallery: { eventId: string; eventTitle: string };
+  PhotoViewer: { eventId: string; photos: GalleryPhoto[]; initialIndex: number };
   AuditLogs: undefined;
   Subscription: undefined;
   ParentProfile: undefined;
@@ -113,6 +121,11 @@ export function MoreStack() {
         options={{ title: 'Enquiry Detail' }}
       />
       <Stack.Screen
+        name="EditEnquiry"
+        component={EditEnquiryScreen}
+        options={{ title: 'Edit Enquiry' }}
+      />
+      <Stack.Screen
         name="EventList"
         component={EventListScreen}
         options={{ title: 'Events' }}
@@ -131,6 +144,21 @@ export function MoreStack() {
         name="EventDetail"
         component={EventDetailScreen}
         options={{ title: 'Event Detail' }}
+      />
+      <Stack.Screen
+        name="EventGallery"
+        component={EventGalleryScreen}
+        options={{ title: 'Photo Gallery' }}
+      />
+      <Stack.Screen
+        name="PhotoViewer"
+        component={PhotoViewerScreen}
+        options={{
+          title: '',
+          headerTransparent: true,
+          headerTintColor: '#fff',
+          headerStyle: { backgroundColor: 'transparent' },
+        }}
       />
       <Stack.Screen
         name="AuditLogs"

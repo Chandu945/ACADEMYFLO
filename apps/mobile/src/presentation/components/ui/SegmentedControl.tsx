@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -20,12 +20,14 @@ export function SegmentedControl({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={styles.container} testID={testID}>
+    <View style={styles.container} testID={testID} accessibilityRole="tablist">
       {segments.map((label, index) => (
         <Pressable
           key={label}
           style={[styles.segment, selectedIndex === index && styles.segmentSelected]}
           onPress={() => onSelect(index)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: selectedIndex === index }}
           testID={`segment-${index}`}
         >
           <Text style={[styles.label, selectedIndex === index && styles.labelSelected]}>
@@ -53,10 +55,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   segmentSelected: {
     backgroundColor: colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    ...shadows.sm,
     elevation: 3,
   },
   label: {

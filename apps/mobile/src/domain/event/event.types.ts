@@ -22,6 +22,7 @@ export type EventListItem = {
 
 export type EventDetail = EventListItem & {
   updatedAt: string;
+  photoCount?: number;
 };
 
 export type CreateEventRequest = {

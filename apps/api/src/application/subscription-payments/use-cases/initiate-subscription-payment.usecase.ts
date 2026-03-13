@@ -65,9 +65,13 @@ export class InitiateSubscriptionPaymentUseCase {
       const now = this.clock.now();
       const createdAt = existingPending.audit.createdAt;
       if (now.getTime() - createdAt.getTime() > STALE_PAYMENT_TTL_MS) {
-        // Stale PENDING payment — mark as FAILED so a new one can proceed
+        // Stale PENDING payment — atomically transition to FAILED so a new one can proceed
         const expired = existingPending.markFailed('EXPIRED_STALE');
-        await this.paymentRepo.save(expired);
+        const transitioned = await this.paymentRepo.saveWithStatusPrecondition(expired, 'PENDING');
+        if (!transitioned) {
+          // Another request already transitioned this payment — re-check
+          return err(AppError.conflict('A payment is already in progress for this academy'));
+        }
         this.logger.info('Expired stale PENDING payment', {
           academyId,
           orderId: existingPending.orderId,
@@ -125,6 +129,19 @@ export class InitiateSubscriptionPaymentUseCase {
       const failed = payment.markFailed('CASHFREE_CREATE_ORDER_FAILED');
       await this.paymentRepo.save(failed);
       return err(new AppError('PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is temporarily unavailable. Please try again.'));
+    }
+
+    // Validate Cashfree response
+    if (!cfResult.paymentSessionId || !cfResult.cfOrderId) {
+      this.logger.error('Cashfree createOrder returned incomplete response', {
+        academyId,
+        orderId,
+        hasCfOrderId: !!cfResult.cfOrderId,
+        hasPaymentSessionId: !!cfResult.paymentSessionId,
+      });
+      const failed = payment.markFailed('CASHFREE_INVALID_RESPONSE');
+      await this.paymentRepo.save(failed);
+      return err(new AppError('PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider returned an invalid response. Please try again.'));
     }
 
     // Update payment with Cashfree details

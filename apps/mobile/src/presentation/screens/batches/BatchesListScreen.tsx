@@ -19,7 +19,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { BatchRow } from '../../components/batches/BatchRow';
-import { spacing, fontSizes, radius } from '../../theme';
+import { spacing, fontSizes, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -129,7 +129,7 @@ export function BatchesListScreen() {
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           contentContainerStyle={styles.listContent}
           testID="batches-list"
         />
@@ -167,7 +167,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: 80,
+    paddingBottom: listDefaults.contentPaddingBottom,
   },
   footer: {
     paddingVertical: spacing.base,

@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo, memo } from 'react';
-import { View, Text, FlatList, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import type { DailyStaffAttendanceItem } from '../../../domain/staff-attendance/staff-attendance.types';
 import { useStaffAttendance } from '../../../application/staff-attendance/use-staff-attendance';
@@ -10,15 +11,12 @@ import {
   markStaffAttendance,
 } from '../../../infra/staff-attendance/staff-attendance-api';
 import { getTodayIST } from '../../../application/attendance/use-attendance';
-import { SectionHeader } from '../../components/ui/SectionHeader';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { DatePickerRow } from '../../components/attendance/DatePickerRow';
-import { Button } from '../../components/ui/Button';
 import { Toggle } from '../../components/ui/Toggle';
-import { AppCard } from '../../components/ui/AppCard';
-import { spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -39,6 +37,16 @@ function getMonthFromDate(dateStr: string): string {
   return dateStr.substring(0, 7);
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    const first = parts[0] ?? '';
+    const last = parts[parts.length - 1] ?? '';
+    return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
+
 type StaffAttendanceRowProps = {
   item: DailyStaffAttendanceItem;
   onToggle: () => void;
@@ -50,27 +58,77 @@ function StaffAttendanceRowComponent({ item, onToggle }: StaffAttendanceRowProps
   const isPresent = item.status === 'PRESENT';
 
   return (
-    <AppCard style={styles.rowContainer} testID={`staff-attendance-row-${item.staffUserId}`}>
-      <Text style={styles.rowName} numberOfLines={1}>
-        {item.fullName}
-      </Text>
-      <View style={styles.rowRight}>
-        <Text style={[styles.rowStatus, isPresent ? styles.present : styles.absent]}>
-          {isPresent ? 'P' : 'A'}
+    <View style={styles.rowCard} testID={`staff-attendance-row-${item.staffUserId}`}>
+      <View style={[styles.avatar, isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
+        <Text style={[styles.avatarText, isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
+          {getInitials(item.fullName)}
         </Text>
-        <Toggle
-          value={isPresent}
-          onValueChange={onToggle}
-          disabled={false}
-          accessibilityLabel={`${item.fullName} attendance toggle`}
-          testID={`toggle-staff-${item.staffUserId}`}
-        />
       </View>
-    </AppCard>
+
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowName} numberOfLines={1}>
+          {item.fullName}
+        </Text>
+        <View style={styles.statusRow}>
+          <View style={[styles.statusDot, isPresent ? styles.dotPresent : styles.dotAbsent]} />
+          <Text style={[styles.statusLabel, isPresent ? styles.labelPresent : styles.labelAbsent]}>
+            {isPresent ? 'Present' : 'Absent'}
+          </Text>
+        </View>
+      </View>
+
+      <Toggle
+        value={isPresent}
+        onValueChange={onToggle}
+        disabled={false}
+        accessibilityLabel={`${item.fullName} attendance toggle`}
+        testID={`toggle-staff-${item.staffUserId}`}
+      />
+    </View>
   );
 }
 
 const StaffAttendanceRow = memo(StaffAttendanceRowComponent);
+
+type SummaryBarProps = {
+  items: DailyStaffAttendanceItem[];
+};
+
+function SummaryBar({ items }: SummaryBarProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const presentCount = items.filter((i) => i.status === 'PRESENT').length;
+  const totalCount = items.length;
+  const percentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+
+  if (totalCount === 0) return null;
+
+  return (
+    <View style={styles.summaryBar}>
+      <View style={styles.summaryLeft}>
+        <View style={styles.summaryIconCircle}>
+          {/* @ts-expect-error react-native-vector-icons types */}
+          <Icon name="account-group" size={18} color={colors.primary} />
+        </View>
+        <View>
+          <Text style={styles.summaryTitle}>
+            {presentCount}/{totalCount} Present
+          </Text>
+          <Text style={styles.summarySubtitle}>{percentage}% attendance</Text>
+        </View>
+      </View>
+      <View style={styles.summaryCountsRow}>
+        <View style={[styles.summaryChip, { backgroundColor: colors.successBg }]}>
+          <Text style={[styles.summaryChipText, { color: colors.success }]}>{presentCount}P</Text>
+        </View>
+        <View style={[styles.summaryChip, { backgroundColor: colors.dangerBg }]}>
+          <Text style={[styles.summaryChipText, { color: colors.danger }]}>{totalCount - presentCount}A</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 export function StaffAttendanceScreen() {
   const { colors } = useTheme();
@@ -140,10 +198,52 @@ export function StaffAttendanceScreen() {
     );
   }, [loadingMore, colors, styles]);
 
+  const listHeader = useMemo(
+    () => (
+      <>
+        <SummaryBar items={items} />
+        {/* Action Cards */}
+        <View style={styles.actionCards}>
+          <Pressable
+            style={styles.actionCard}
+            onPress={handleDailyReport}
+            accessibilityRole="button"
+            accessibilityLabel="View daily report"
+            testID="staff-daily-report-button"
+          >
+            <View style={[styles.actionIconCircle, { backgroundColor: colors.infoBg }]}>
+              {/* @ts-expect-error react-native-vector-icons types */}
+              <Icon name="file-chart-outline" size={20} color={colors.info} />
+            </View>
+            <Text style={styles.actionCardLabel}>Daily Report</Text>
+            {/* @ts-expect-error react-native-vector-icons types */}
+            <Icon name="chevron-right" size={18} color={colors.textDisabled} />
+          </Pressable>
+
+          <Pressable
+            style={styles.actionCard}
+            onPress={handleMonthlySummary}
+            accessibilityRole="button"
+            accessibilityLabel="View monthly summary"
+            testID="staff-monthly-summary-button"
+          >
+            <View style={[styles.actionIconCircle, { backgroundColor: colors.primarySoft }]}>
+              {/* @ts-expect-error react-native-vector-icons types */}
+              <Icon name="calendar-month-outline" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.actionCardLabel}>Monthly Summary</Text>
+            {/* @ts-expect-error react-native-vector-icons types */}
+            <Icon name="chevron-right" size={18} color={colors.textDisabled} />
+          </Pressable>
+        </View>
+      </>
+    ),
+    [items, handleDailyReport, handleMonthlySummary, colors, styles],
+  );
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <SectionHeader title="Staff Attendance" />
         <DatePickerRow
           date={selectedDate}
           onPrevious={goToPrev}
@@ -151,24 +251,6 @@ export function StaffAttendanceScreen() {
           onToday={goToToday}
           isToday={isToday}
         />
-        <View style={styles.headerButtons}>
-          <View style={styles.headerButton}>
-            <Button
-              title="Daily Report"
-              variant="secondary"
-              onPress={handleDailyReport}
-              testID="staff-daily-report-button"
-            />
-          </View>
-          <View style={styles.headerButton}>
-            <Button
-              title="Monthly Summary"
-              variant="secondary"
-              onPress={handleMonthlySummary}
-              testID="staff-monthly-summary-button"
-            />
-          </View>
-        </View>
       </View>
 
       {error && <InlineError message={error.message} onRetry={refetch} />}
@@ -180,16 +262,17 @@ export function StaffAttendanceScreen() {
           <SkeletonTile />
         </View>
       ) : !loading && items.length === 0 ? (
-        <EmptyState message="No staff members found" />
+        <EmptyState icon="account-off-outline" message="No staff members found" subtitle="Staff will appear here once added" />
       ) : (
         <FlatList
           data={items}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          ListHeaderComponent={listHeader}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           contentContainerStyle={styles.listContent}
           testID="staff-attendance-list"
         />
@@ -204,55 +287,167 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.bg,
   },
   header: {
-    padding: spacing.base,
-    paddingBottom: 0,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.sm,
-  },
-  headerButton: {
-    flex: 1,
+    paddingTop: spacing.sm,
   },
   skeletons: {
     padding: spacing.base,
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
   footer: {
     paddingVertical: spacing.base,
     alignItems: 'center',
   },
-  rowContainer: {
+
+  // ── Summary Bar ──
+  summaryBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.md,
+    ...shadows.sm,
   },
-  rowName: {
-    flex: 1,
+  summaryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  summaryIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryTitle: {
     fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  summarySubtitle: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  summaryCountsRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  summaryChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  summaryChipText: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.bold,
+  },
+
+  // ── Action Cards ──
+  actionCards: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  actionCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  actionIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  actionCardLabel: {
+    flex: 1,
+    fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
     color: colors.text,
   },
-  rowRight: {
+
+  // ── Attendance Row ──
+  rowCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  rowStatus: {
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  avatarPresent: {
+    backgroundColor: colors.successBg,
+  },
+  avatarAbsent: {
+    backgroundColor: colors.dangerBg,
+  },
+  avatarText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
-    width: 20,
-    textAlign: 'center',
   },
-  present: {
+  avatarTextPresent: {
     color: colors.success,
   },
-  absent: {
+  avatarTextAbsent: {
+    color: colors.danger,
+  },
+  rowInfo: {
+    flex: 1,
+  },
+  rowName: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+    marginBottom: 2,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dotPresent: {
+    backgroundColor: colors.success,
+  },
+  dotAbsent: {
+    backgroundColor: colors.danger,
+  },
+  statusLabel: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.medium,
+  },
+  labelPresent: {
+    color: colors.success,
+  },
+  labelAbsent: {
     color: colors.danger,
   },
 });

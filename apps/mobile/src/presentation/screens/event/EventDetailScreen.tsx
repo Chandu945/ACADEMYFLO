@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { ScrollView, View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EventDetail as EventDetailType, EventStatus } from '../../../domain/event/event.types';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as eventApi from '../../../infra/event/event-api';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
@@ -196,6 +197,35 @@ export function EventDetailScreen() {
         </View>
       )}
 
+      {/* Photo Gallery */}
+      <Pressable
+        style={styles.galleryCard}
+        onPress={() =>
+          navigation.navigate('EventGallery', {
+            eventId,
+            eventTitle: event.title,
+          })
+        }
+        accessibilityRole="button"
+        accessibilityLabel="View photo gallery"
+        testID="gallery-link"
+      >
+        <View style={styles.galleryIconCircle}>
+          {/* @ts-expect-error react-native-vector-icons types */}
+          <Icon name="image-multiple-outline" size={24} color={colors.primary} />
+        </View>
+        <View style={styles.galleryInfo}>
+          <Text style={styles.galleryTitle}>Photo Gallery</Text>
+          <Text style={styles.gallerySubtitle}>
+            {event.photoCount != null && event.photoCount > 0
+              ? `${event.photoCount} photo${event.photoCount === 1 ? '' : 's'}`
+              : 'Tap to view or add photos'}
+          </Text>
+        </View>
+        {/* @ts-expect-error react-native-vector-icons types */}
+        <Icon name="chevron-right" size={22} color={colors.textSecondary} />
+      </Pressable>
+
       <Text style={styles.meta}>
         Created: {new Date(event.createdAt).toLocaleDateString('en-IN')}
       </Text>
@@ -351,6 +381,37 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.base,
     color: colors.textMedium,
     lineHeight: 22,
+  },
+  galleryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.base,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  galleryIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  galleryInfo: {
+    flex: 1,
+  },
+  galleryTitle: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
+  gallerySubtitle: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   meta: {
     fontSize: fontSizes.sm,

@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp, NavigationProp } from '@react-navigation/native';
@@ -90,10 +91,32 @@ export function FeePaymentScreen() {
   const totalAmount = baseAmount + convenienceFee;
 
   const { status, error, startPayment, reset } = useFeePaymentFlow(() => {
-    navigation.goBack();
+    // Don't navigate away — let user see success state and receipt button.
+    // User taps "Done" to dismiss.
   });
 
   const isProcessing = status === 'initiating' || status === 'checkout' || status === 'polling';
+
+  // Prevent accidental back navigation during payment processing
+  useEffect(() => {
+    if (!isProcessing) return;
+    const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: any } }) => {
+      e.preventDefault();
+      Alert.alert(
+        'Payment in Progress',
+        'A payment is being processed. Leaving now may result in missed confirmation. Are you sure?',
+        [
+          { text: 'Stay', style: 'cancel' },
+          {
+            text: 'Leave',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+    return unsubscribe;
+  }, [isProcessing, navigation]);
   const currentStep =
     status === 'initiating' ? 1 : status === 'checkout' ? 2 : status === 'polling' ? 3 : 0;
 
@@ -202,9 +225,10 @@ export function FeePaymentScreen() {
       <View style={styles.actions}>
         {!isProcessing && status !== 'success' && (
           <TouchableOpacity
-            style={styles.payButton}
+            style={[styles.payButton, isProcessing && { opacity: 0.5 }]}
             activeOpacity={0.8}
             onPress={() => startPayment(feeDueId)}
+            disabled={isProcessing}
           >
             {/* @ts-expect-error react-native-vector-icons types */}
             <Icon name="shield-check-outline" size={20} color={colors.white} />
@@ -225,7 +249,7 @@ export function FeePaymentScreen() {
               <Icon name="receipt" size={20} color={colors.primary} />
               <Text style={styles.receiptButtonText}>View Receipt</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.doneButton} onPress={reset}>
+            <TouchableOpacity style={styles.doneButton} onPress={() => { reset(); navigation.goBack(); }}>
               <Text style={styles.doneButtonText}>Done</Text>
             </TouchableOpacity>
           </>

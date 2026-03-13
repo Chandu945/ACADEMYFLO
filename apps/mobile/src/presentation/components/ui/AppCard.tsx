@@ -4,6 +4,7 @@ import { Animated, Pressable, StyleSheet, type ViewStyle } from 'react-native';
 import { radius, shadows, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { lightHaptic } from '../../utils/haptics';
 
 type AppCardProps = {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ export function AppCard({ children, onPress, onLongPress, style, testID }: AppCa
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
+    lightHaptic();
     Animated.spring(scale, {
       toValue: 0.985,
       useNativeDriver: true,
@@ -40,6 +42,7 @@ export function AppCard({ children, onPress, onLongPress, style, testID }: AppCa
         onLongPress={onLongPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        accessibilityRole="button"
         android_ripple={{ color: colors.border, borderless: false }}
         testID={testID}
       >

@@ -82,7 +82,8 @@ export class CashfreeHttpClient {
         status: res.status,
         response: errorBody.substring(0, 500),
       });
-      throw new Error(`Cashfree API error: ${res.status} ${res.statusText}`);
+      const detail = this.parseErrorDetail(errorBody);
+      throw new Error(`Cashfree API error ${res.status}: ${detail}`);
     }
 
     return (await res.json()) as T;
@@ -110,9 +111,22 @@ export class CashfreeHttpClient {
         status: res.status,
         response: errorBody.substring(0, 500),
       });
-      throw new Error(`Cashfree API error: ${res.status} ${res.statusText}`);
+      const detail = this.parseErrorDetail(errorBody);
+      throw new Error(`Cashfree API error ${res.status}: ${detail}`);
     }
 
     return (await res.json()) as T;
+  }
+
+  /** Extract a human-readable detail from Cashfree's JSON error body, or fall back to raw text. */
+  private parseErrorDetail(raw: string): string {
+    try {
+      const parsed = JSON.parse(raw) as { message?: string; code?: string; type?: string };
+      const parts = [parsed.code, parsed.type, parsed.message].filter(Boolean);
+      if (parts.length > 0) return parts.join(' — ');
+    } catch {
+      // Not JSON — use raw text
+    }
+    return raw.substring(0, 200) || 'Unknown error';
   }
 }

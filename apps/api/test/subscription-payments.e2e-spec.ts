@@ -37,6 +37,7 @@ import {
 import { createTestTokenService } from './helpers/test-services';
 import { AUDIT_RECORDER_PORT } from '../src/application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '../src/application/audit/ports/audit-recorder.port';
+import { TRANSACTION_PORT } from '../src/application/common/transaction.port';
 import { configureApiVersioning } from '../src/shared/config/api-versioning';
 
 const WEBHOOK_SECRET = 'test-webhook-secret-for-e2e';
@@ -233,6 +234,7 @@ describe('Subscription Payments — Full Flow (e2e)', () => {
         { provide: CLOCK_PORT, useValue: clock },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         { provide: AUDIT_RECORDER_PORT, useValue: mockAuditRecorder },
+        { provide: TRANSACTION_PORT, useValue: { run: (fn: () => Promise<void>) => fn() } },
         {
           provide: WEBHOOK_SIGNATURE_VERIFIER,
           useValue: new CashfreeSignatureVerifier(WEBHOOK_SECRET),
@@ -249,11 +251,11 @@ describe('Subscription Payments — Full Flow (e2e)', () => {
         },
         {
           provide: 'HANDLE_CASHFREE_WEBHOOK_USE_CASE',
-          useFactory: (pr: any, sr: any, sv: any, c: any, l: any, audit: any) =>
-            new HandleCashfreeWebhookUseCase(pr, sr, sv, c, l, audit),
+          useFactory: (pr: any, sr: any, sv: any, c: any, l: any, audit: any, tx: any) =>
+            new HandleCashfreeWebhookUseCase(pr, sr, sv, c, l, audit, tx),
           inject: [
             SUBSCRIPTION_PAYMENT_REPOSITORY, SUBSCRIPTION_REPOSITORY,
-            WEBHOOK_SIGNATURE_VERIFIER, CLOCK_PORT, LOGGER_PORT, AUDIT_RECORDER_PORT,
+            WEBHOOK_SIGNATURE_VERIFIER, CLOCK_PORT, LOGGER_PORT, AUDIT_RECORDER_PORT, TRANSACTION_PORT,
           ],
         },
         {

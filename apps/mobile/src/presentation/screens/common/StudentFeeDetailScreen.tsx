@@ -16,7 +16,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { FeeDueRow } from '../../components/fees/FeeDueRow';
 import { getCurrentMonthIST } from '../../../application/fees/use-fees';
-import { spacing } from '../../theme';
+import { spacing, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -192,6 +192,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
 });

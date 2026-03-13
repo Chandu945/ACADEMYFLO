@@ -17,6 +17,7 @@ import type { Weekday, CreateBatchRequest } from '../../../domain/batch/batch.ty
 import { spacing, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 type FormRoute = RouteProp<BatchesStackParamList, 'BatchForm'>;
 
@@ -25,6 +26,7 @@ const saveApi = { createBatch, updateBatch };
 export function BatchFormScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const navigation = useNavigation();
   const route = useRoute<FormRoute>();
   const { mode, batch } = route.params;
@@ -76,11 +78,12 @@ export function BatchFormScreen() {
     setSubmitting(false);
 
     if (result.ok) {
+      showToast(mode === 'create' ? 'Batch created' : 'Batch updated');
       navigation.goBack();
     } else {
       setServerError(result.error.message);
     }
-  }, [batchName, days, notes, startTime, endTime, maxStudents, mode, batch?.id, navigation]);
+  }, [batchName, days, notes, startTime, endTime, maxStudents, mode, batch?.id, navigation, showToast]);
 
   return (
     <ScrollView

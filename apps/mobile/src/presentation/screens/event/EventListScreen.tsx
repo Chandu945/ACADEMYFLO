@@ -14,12 +14,11 @@ import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EventListItem, EventListFilters, EventStatus } from '../../../domain/event/event.types';
 import * as eventApi from '../../../infra/event/event-api';
 import { EventCard } from '../../components/event/EventCard';
-import { SectionHeader } from '../../components/ui/SectionHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { InlineError } from '../../components/ui/InlineError';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { Button } from '../../components/ui/Button';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -155,7 +154,7 @@ export function EventListScreen() {
           onEndReached={onEndReached}
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           contentContainerStyle={styles.listContent}
           testID="event-list"
         />
@@ -205,7 +204,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: 80,
+    paddingBottom: listDefaults.contentPaddingBottom,
   },
   footer: {
     paddingVertical: spacing.base,

@@ -5,9 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  LayoutAnimation,
-  Platform,
-  UIManager,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,10 +27,7 @@ import { MyPaymentRequestsScreen } from '../staff/MyPaymentRequestsScreen';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
-
-if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true);
-}
+import { animateLayout } from '../../utils/layout-animation';
 
 type Nav = NativeStackNavigationProp<FeesStackParamList, 'FeesHome'>;
 
@@ -193,7 +187,7 @@ export function FeesHomeScreen() {
   }, []);
 
   const toggleFilters = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    animateLayout();
     setShowFilters((v) => !v);
   }, []);
 
@@ -260,7 +254,7 @@ export function FeesHomeScreen() {
               <Text style={styles.navSubtitle}>{formatMonthLabel(month)}</Text>
             </View>
             <View style={styles.navActions}>
-              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button">
+              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
@@ -268,6 +262,8 @@ export function FeesHomeScreen() {
                 onPress={toggleFilters}
                 style={[styles.navBtn, showFilters && styles.navBtnActive]}
                 testID="filter-button"
+                accessibilityLabel="Toggle filters"
+                accessibilityRole="button"
               >
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon

@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
@@ -60,6 +60,18 @@ export function EnquiryDetailScreen() {
     loadDetail();
     return () => { mountedRef.current = false; };
   }, [loadDetail]);
+
+  // Refresh when returning from EditEnquiry
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      loadDetail();
+    }, [loadDetail]),
+  );
 
   const isOverdue = (() => {
     if (!enquiry?.nextFollowUpDate) return false;
@@ -160,33 +172,42 @@ export function EnquiryDetailScreen() {
 
         {/* Actions */}
         {enquiry.status === 'ACTIVE' && (
-          <View style={styles.actionsRow}>
+          <>
             <TouchableOpacity
-              style={styles.followUpButton}
-              onPress={() => setShowFollowUpModal(true)}
-              testID="add-followup-action"
+              style={styles.editButton}
+              onPress={() => navigation.navigate('EditEnquiry', { enquiry })}
+              testID="edit-enquiry-btn"
             >
-              <Text style={styles.followUpButtonText}>Add Follow-Up</Text>
+              <Text style={styles.editButtonText}>Edit Enquiry</Text>
             </TouchableOpacity>
-            {isOwner && (
+            <View style={styles.actionsRow}>
               <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowCloseModal(true)}
-                testID="close-enquiry-btn"
+                style={styles.followUpButton}
+                onPress={() => setShowFollowUpModal(true)}
+                testID="add-followup-action"
               >
-                <Text style={styles.closeButtonText}>Close</Text>
+                <Text style={styles.followUpButtonText}>Add Follow-Up</Text>
               </TouchableOpacity>
-            )}
-            {isOwner && (
-              <TouchableOpacity
-                style={styles.convertButton}
-                onPress={() => setShowConvertModal(true)}
-                testID="convert-to-student-btn"
-              >
-                <Text style={styles.convertButtonText}>Convert</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              {isOwner && (
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowCloseModal(true)}
+                  testID="close-enquiry-btn"
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              )}
+              {isOwner && (
+                <TouchableOpacity
+                  style={styles.convertButton}
+                  onPress={() => setShowConvertModal(true)}
+                  testID="convert-to-student-btn"
+                >
+                  <Text style={styles.convertButtonText}>Convert</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
         )}
       </ScrollView>
 
@@ -500,7 +521,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   followUpDate: { fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.text },
   followUpNotes: { fontSize: fontSizes.base, color: colors.textLight, marginTop: spacing.xs },
   followUpNext: { fontSize: fontSizes.sm, color: colors.primary, marginTop: spacing.xs },
-  actionsRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.base },
+  editButton: { backgroundColor: colors.primarySoft, borderRadius: radius.md, padding: spacing.base, alignItems: 'center', marginTop: spacing.base, marginBottom: spacing.sm },
+  editButtonText: { fontSize: fontSizes.lg, fontWeight: fontWeights.semibold, color: colors.primary },
+  actionsRow: { flexDirection: 'row', gap: spacing.md },
   followUpButton: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.base, alignItems: 'center' },
   followUpButtonText: { fontSize: fontSizes.lg, fontWeight: fontWeights.semibold, color: colors.white },
   closeButton: { flex: 1, backgroundColor: colors.dangerBg, borderRadius: radius.md, padding: spacing.base, alignItems: 'center' },

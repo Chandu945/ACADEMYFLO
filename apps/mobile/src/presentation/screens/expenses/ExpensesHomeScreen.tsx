@@ -235,7 +235,7 @@ export function ExpensesHomeScreen() {
         ListFooterComponent={
           loadingMore ? <ActivityIndicator style={styles.loader} /> : null
         }
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         onEndReached={hasMore ? fetchMore : undefined}
         onEndReachedThreshold={0.3}
         testID="expenses-list"

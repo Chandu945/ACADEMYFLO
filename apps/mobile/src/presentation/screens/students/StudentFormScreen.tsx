@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
+import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
+import { useToast } from '../../context/ToastContext';
 import { BatchMultiSelect } from '../../components/batches/BatchMultiSelect';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import {
@@ -34,6 +36,7 @@ const saveApi = { createStudent, updateStudent };
 export function StudentFormScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const navigation = useNavigation();
   const route = useRoute<FormRoute>();
   const { mode, student } = route.params;
@@ -83,6 +86,7 @@ export function StudentFormScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const initialRef = useRef({ fullName, monthlyFee, joiningDate });
   const isDirty = fullName !== initialRef.current.fullName ||
@@ -104,26 +108,19 @@ export function StudentFormScreen() {
 
   const canDelete = mode === 'edit' && user?.role === 'OWNER' && student?.id;
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!student?.id) return;
-    Alert.alert('Delete Student', 'Are you sure you want to delete this student? This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setSubmitting(true);
-          const result = await deleteStudent(student.id);
-          setSubmitting(false);
-          if (result.ok) {
-            navigation.goBack();
-          } else {
-            setServerError(result.error.message);
-          }
-        },
-      },
-    ]);
-  }, [student?.id, navigation]);
+    setSubmitting(true);
+    const result = await deleteStudent(student.id);
+    setSubmitting(false);
+    if (result.ok) {
+      setShowDeleteConfirm(false);
+      showToast('Student deleted');
+      navigation.goBack();
+    } else {
+      setServerError(result.error.message);
+    }
+  }, [student?.id, navigation, showToast]);
 
   const showMonthlyFee = mode === 'create' || !isStaff;
 
@@ -207,6 +204,8 @@ export function StudentFormScreen() {
         await setStudentBatches(studentId, selectedBatchIds);
       }
 
+      showToast(mode === 'create' ? 'Student created' : 'Student updated');
+
       if (mode === 'create' && subscription) {
         const currentTier = subscription.tiers.find(
           (t) => t.tierKey === subscription.currentTierKey,
@@ -229,7 +228,7 @@ export function StudentFormScreen() {
     guardianName, guardianMobile, guardianEmail, joiningDate, monthlyFee,
     fatherName, motherName, aadhaarNumber, caste, whatsappNumber, mobileNumber,
     addressText, schoolName, rollNumber, standard, password,
-    mode, student?.id, selectedBatchIds, navigation, isStaff, subscription,
+    mode, student?.id, selectedBatchIds, navigation, isStaff, subscription, showToast,
   ]);
 
   return (
@@ -474,13 +473,27 @@ export function StudentFormScreen() {
             <Button
               title="Delete Student"
               variant="secondary"
-              onPress={handleDelete}
+              onPress={() => setShowDeleteConfirm(true)}
               loading={submitting}
               testID="delete-button"
             />
           </View>
         )}
       </View>
+      <ConfirmSheet
+        visible={showDeleteConfirm}
+        title="Delete Student"
+        message={serverError && showDeleteConfirm ? serverError : "Are you sure you want to delete this student? This cannot be undone."}
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setServerError(null);
+        }}
+        loading={submitting}
+        testID="delete-confirm"
+      />
     </ScrollView>
   );
 }

@@ -6,6 +6,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { AuthProvider } from './presentation/context/AuthContext';
 import { NotificationProvider } from './presentation/context/NotificationContext';
 import { ThemeProvider, useTheme } from './presentation/context/ThemeContext';
+import { ToastProvider } from './presentation/context/ToastContext';
 import { RootNavigator } from './presentation/navigation/RootNavigator';
 
 function AppInner() {
@@ -36,11 +37,13 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <AppInner />
-            </NotificationProvider>
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <NotificationProvider>
+                <AppInner />
+              </NotificationProvider>
+            </AuthProvider>
+          </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

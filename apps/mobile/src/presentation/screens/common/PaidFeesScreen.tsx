@@ -6,7 +6,7 @@ import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FeeDueRow } from '../../components/fees/FeeDueRow';
-import { spacing } from '../../theme';
+import { spacing, listDefaults } from '../../theme';
 
 type PaidFeesScreenProps = {
   items: FeeDueItem[];
@@ -78,6 +78,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
 });

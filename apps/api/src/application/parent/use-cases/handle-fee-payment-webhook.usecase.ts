@@ -79,11 +79,43 @@ export class HandleFeePaymentWebhookUseCase {
       // Load fee due and check if already paid (race condition)
       const feeDue = await this.loadFeeDueById(payment.feeDueId, payment.academyId, payment.studentId);
 
-      if (!feeDue || feeDue.status === 'PAID') {
-        // Fee was already marked paid by owner — mark payment as failed
-        const failedPayment = payment.markFailed('ALREADY_PAID');
+      if (!feeDue) {
+        // Fee due record missing — mark payment as failed
+        const failedPayment = payment.markFailed('FEE_DUE_NOT_FOUND');
         await this.feePaymentRepo.save(failedPayment);
-        this.logger.info('Fee already paid by owner, marking payment as failed', { orderId });
+        this.logger.error('Fee due not found during webhook processing', { orderId, feeDueId: payment.feeDueId });
+        return ok(undefined);
+      }
+
+      if (feeDue.status === 'PAID') {
+        // Fee was already marked paid (e.g. by owner manually) but Cashfree collected money.
+        // Mark payment as SUCCESS so we have a record that money was collected — needs manual reconciliation.
+        await this.transaction.run(async () => {
+          const transitioned = await this.feePaymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
+          if (!transitioned) {
+            this.logger.info('Fee payment already transitioned from PENDING — skipping', { orderId });
+            return;
+          }
+        });
+        this.logger.warn('Fee already paid by owner but online payment collected — needs reconciliation', {
+          orderId,
+          feeDueId: payment.feeDueId,
+          academyId: payment.academyId,
+        });
+        await this.auditRecorder.record({
+          academyId: payment.academyId,
+          actorUserId: payment.parentUserId,
+          action: 'FEE_PAYMENT_DUPLICATE_COLLECTED',
+          entityType: 'FEE_PAYMENT',
+          entityId: orderId,
+          context: {
+            feeDueId: payment.feeDueId,
+            studentId: payment.studentId,
+            monthKey: payment.monthKey,
+            baseAmount: String(payment.baseAmount),
+            note: 'Fee was already marked PAID when online payment webhook arrived. Money was collected — needs manual refund or reconciliation.',
+          },
+        });
         return ok(undefined);
       }
 

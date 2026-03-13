@@ -16,9 +16,10 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { RequestRow } from '../../components/fees/RequestRow';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 type PendingApprovalsScreenProps = {
   onActionComplete: () => void;
@@ -29,6 +30,7 @@ const requestsApi = { listPaymentRequests, approvePaymentRequest, rejectPaymentR
 export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const [items, setItems] = useState<PaymentRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
@@ -103,14 +105,16 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
     setActing(false);
 
     if (result.ok) {
+      const wasApprove = actionTarget.action === 'approve';
       setActionTarget(null);
       setRejectionReason('');
       load();
       onActionComplete();
+      showToast(wasApprove ? 'Request approved' : 'Request rejected');
     } else {
       setActionError(result.error.message);
     }
-  }, [actionTarget, load, onActionComplete]);
+  }, [actionTarget, rejectionReason, load, onActionComplete, showToast]);
 
   const renderItem = useCallback(
     ({ item }: { item: PaymentRequestItem }) => (
@@ -157,7 +161,7 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           testID="pending-approvals-list"
         />
       )}
@@ -212,7 +216,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xl,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
   reasonContainer: {
     paddingHorizontal: spacing.base,

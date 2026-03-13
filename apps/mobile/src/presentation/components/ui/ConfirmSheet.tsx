@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, Modal, StyleSheet } from 'react-native';
+import { View, Text, Modal, Keyboard, StyleSheet } from 'react-native';
 
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
@@ -32,7 +32,7 @@ export function ConfirmSheet({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <Modal visible={visible} transparent animationType="fade" testID={testID}>
+    <Modal visible={visible} transparent animationType="fade" onShow={Keyboard.dismiss} onRequestClose={onCancel} testID={testID}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <Text style={styles.title}>{title}</Text>

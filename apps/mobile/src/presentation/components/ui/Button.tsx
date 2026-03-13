@@ -12,6 +12,7 @@ import {
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { lightHaptic } from '../../utils/haptics';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
@@ -56,6 +57,7 @@ export function Button({
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
+    lightHaptic();
     Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
   };
 
