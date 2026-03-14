@@ -8,6 +8,7 @@ import { TextArea } from '../../components/ui/TextArea';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import { DaysPicker } from '../../components/batches/DaysPicker';
+import { TimePickerInput } from '../../components/ui/TimePickerInput';
 import {
   validateBatchForm,
   saveBatchUseCase,
@@ -109,21 +110,21 @@ export function BatchFormScreen() {
           error={fieldErrors['days']}
         />
 
-        <Input
+        <TimePickerInput
           label="Start Time (optional)"
           value={startTime}
-          onChangeText={setStartTime}
+          onChange={setStartTime}
           error={fieldErrors['startTime']}
-          placeholder="HH:MM, e.g. 06:00"
+          placeholder="Select start time"
           testID="input-startTime"
         />
 
-        <Input
+        <TimePickerInput
           label="End Time (optional)"
           value={endTime}
-          onChangeText={setEndTime}
+          onChange={setEndTime}
           error={fieldErrors['endTime']}
-          placeholder="HH:MM, e.g. 07:30"
+          placeholder="Select end time"
           testID="input-endTime"
         />
 

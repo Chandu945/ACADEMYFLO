@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Image,
@@ -11,16 +10,19 @@ import {
   StyleSheet,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useInstituteInfo } from '../../../application/settings/use-institute-info';
 import { instituteInfoApi, uploadInstituteImage, deleteInstituteImage } from '../../../infra/settings/institute-info-api';
-import { Screen } from '../../components/ui/Screen';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { Input } from '../../components/ui/Input';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 export function InstituteInfoScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const { info, loading, saving, error, update, refetch } = useInstituteInfo(instituteInfoApi);
 
   const [accountHolderName, setAccountHolderName] = useState('');
@@ -68,7 +70,7 @@ export function InstituteInfoScreen() {
     if (err) {
       Alert.alert('Error', err.message);
     } else {
-      Alert.alert('Success', 'Institute information saved successfully');
+      showToast('Institute information saved');
     }
   };
 
@@ -96,12 +98,13 @@ export function InstituteInfoScreen() {
       setUploading(null);
 
       if (uploadResult.ok) {
+        showToast('Image uploaded');
         refetch();
       } else {
         Alert.alert('Upload Error', uploadResult.error.message);
       }
     },
-    [refetch],
+    [refetch, showToast],
   );
 
   const handleDeleteImage = useCallback(
@@ -115,6 +118,7 @@ export function InstituteInfoScreen() {
           onPress: async () => {
             const result = await deleteInstituteImage(imageType);
             if (result.ok) {
+              showToast('Image removed');
               refetch();
             } else {
               Alert.alert('Error', result.error.message);
@@ -123,118 +127,141 @@ export function InstituteInfoScreen() {
         },
       ]);
     },
-    [refetch],
+    [refetch, showToast],
   );
 
   if (loading) {
     return (
-      <Screen>
+      <View style={styles.screen}>
         <View style={styles.center} testID="institute-loading">
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading institute info...</Text>
         </View>
-      </Screen>
+      </View>
     );
   }
 
   if (error && !info) {
     return (
-      <Screen>
+      <View style={styles.screen}>
         <View style={styles.center} testID="institute-error">
+          <View style={styles.errorIconCircle}>
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+          </View>
           <Text style={styles.errorText}>{error.message}</Text>
-          <Text style={styles.retryLink} onPress={refetch} testID="institute-retry">
-            Tap to retry
-          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={refetch} testID="institute-retry">
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="refresh" size={18} color={colors.white} />
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
-      </Screen>
+      </View>
     );
   }
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Signature/Stamp Upload */}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* ── Signature / Stamp ────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="signature-freehand" size={20} color={colors.primary} />
         <Text style={styles.sectionTitle}>Signature / Stamp</Text>
+      </View>
+      <View style={styles.card}>
         <ImageUploadCard
           imageUrl={info?.signatureStampUrl ?? null}
           label="Upload Signature / Stamp"
+          icon="signature-freehand"
           uploading={uploading === 'signature'}
           onPick={() => handlePickImage('signature')}
           onDelete={() => handleDeleteImage('signature')}
           testID="signature"
         />
+      </View>
 
-        {/* QR Code Upload */}
+      {/* ── Payment QR Code ──────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="qrcode" size={20} color={colors.primary} />
         <Text style={styles.sectionTitle}>Payment QR Code</Text>
+      </View>
+      <View style={styles.card}>
         <ImageUploadCard
           imageUrl={info?.qrCodeImageUrl ?? null}
           label="Upload QR Code"
+          icon="qrcode"
           uploading={uploading === 'qrcode'}
           onPick={() => handlePickImage('qrcode')}
           onDelete={() => handleDeleteImage('qrcode')}
           testID="qrcode"
         />
+      </View>
 
-        {/* Bank Details */}
+      {/* ── Bank Details ─────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="bank-outline" size={20} color={colors.primary} />
         <Text style={styles.sectionTitle}>Bank Details</Text>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Account Holder Name</Text>
-          <TextInput
-            style={styles.input}
-            value={accountHolderName}
-            onChangeText={setAccountHolderName}
-            placeholder="Account holder name"
-            maxLength={100}
-            testID="bank-holder-name"
-          />
+      </View>
+      <View style={styles.card}>
+        <Input
+          label="Account Holder Name"
+          value={accountHolderName}
+          onChangeText={setAccountHolderName}
+          placeholder="Account holder name"
+          maxLength={100}
+          testID="bank-holder-name"
+        />
+        <Input
+          label="Account Number"
+          value={accountNumber}
+          onChangeText={setAccountNumber}
+          placeholder="9-18 digit account number"
+          keyboardType="numeric"
+          maxLength={18}
+          testID="bank-account-number"
+        />
+        <Input
+          label="IFSC Code"
+          value={ifscCode}
+          onChangeText={setIfscCode}
+          placeholder="e.g. SBIN0001234"
+          autoCapitalize="characters"
+          maxLength={11}
+          testID="bank-ifsc"
+        />
+        <Input
+          label="Bank Name"
+          value={bankName}
+          onChangeText={setBankName}
+          placeholder="Bank name"
+          maxLength={100}
+          testID="bank-name"
+        />
+        <Input
+          label="Branch Name"
+          value={branchName}
+          onChangeText={setBranchName}
+          placeholder="Branch name"
+          maxLength={100}
+          testID="bank-branch"
+        />
+      </View>
 
-          <Text style={styles.label}>Account Number</Text>
-          <TextInput
-            style={styles.input}
-            value={accountNumber}
-            onChangeText={setAccountNumber}
-            placeholder="9-18 digit account number"
-            keyboardType="numeric"
-            maxLength={18}
-            testID="bank-account-number"
-          />
-
-          <Text style={styles.label}>IFSC Code</Text>
-          <TextInput
-            style={styles.input}
-            value={ifscCode}
-            onChangeText={setIfscCode}
-            placeholder="e.g. SBIN0001234"
-            autoCapitalize="characters"
-            maxLength={11}
-            testID="bank-ifsc"
-          />
-
-          <Text style={styles.label}>Bank Name</Text>
-          <TextInput
-            style={styles.input}
-            value={bankName}
-            onChangeText={setBankName}
-            placeholder="Bank name"
-            maxLength={100}
-            testID="bank-name"
-          />
-
-          <Text style={styles.label}>Branch Name</Text>
-          <TextInput
-            style={styles.input}
-            value={branchName}
-            onChangeText={setBranchName}
-            placeholder="Branch name"
-            maxLength={100}
-            testID="bank-branch"
-          />
-        </View>
-
-        {/* UPI ID */}
-        <Text style={styles.sectionTitle}>UPI ID</Text>
-        <TextInput
-          style={styles.input}
+      {/* ── UPI ──────────────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="cellphone-nfc" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>UPI</Text>
+      </View>
+      <View style={styles.card}>
+        <Input
+          label="UPI ID"
           value={upiId}
           onChangeText={setUpiId}
           placeholder="e.g. academy@upi"
@@ -242,26 +269,31 @@ export function InstituteInfoScreen() {
           maxLength={50}
           testID="upi-id"
         />
+      </View>
 
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSaveBankDetails}
-          disabled={saving}
-          testID="save-institute-info"
-        >
-          <Text style={styles.saveButtonText}>
-            {saving ? 'Saving...' : 'Save Details'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </Screen>
+      {/* ── Save Button ──────────────────────────────── */}
+      <TouchableOpacity
+        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+        onPress={handleSaveBankDetails}
+        disabled={saving}
+        testID="save-institute-info"
+      >
+        {!saving && (
+          // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+          <Icon name="content-save-outline" size={20} color={colors.white} />
+        )}
+        <Text style={styles.saveButtonText}>
+          {saving ? 'Saving...' : 'Save Details'}
+        </Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 function ImageUploadCard({
   imageUrl,
   label,
+  icon,
   uploading,
   onPick,
   onDelete,
@@ -269,6 +301,7 @@ function ImageUploadCard({
 }: {
   imageUrl: string | null;
   label: string;
+  icon: string;
   uploading: boolean;
   onPick: () => void;
   onDelete: () => void;
@@ -276,6 +309,7 @@ function ImageUploadCard({
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
   if (uploading) {
     return (
       <View style={styles.uploadCard} testID={`${testID}-uploading`}>
@@ -287,14 +321,18 @@ function ImageUploadCard({
 
   if (imageUrl) {
     return (
-      <View style={styles.imageContainer} testID={`${testID}-preview`}>
-        <Image source={{ uri: imageUrl }} style={styles.previewImage} resizeMode="contain" />
+      <View testID={`${testID}-preview`}>
+        <View style={styles.imageWrapper}>
+          <Image source={{ uri: imageUrl }} style={styles.previewImage} resizeMode="contain" />
+        </View>
         <View style={styles.imageActions}>
           <TouchableOpacity
             style={styles.changeButton}
             onPress={onPick}
             testID={`${testID}-change`}
           >
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="image-edit-outline" size={16} color={colors.primary} />
             <Text style={styles.changeButtonText}>Change</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -302,6 +340,8 @@ function ImageUploadCard({
             onPress={onDelete}
             testID={`${testID}-delete`}
           >
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="trash-can-outline" size={16} color={colors.danger} />
             <Text style={styles.removeButtonText}>Remove</Text>
           </TouchableOpacity>
         </View>
@@ -311,7 +351,10 @@ function ImageUploadCard({
 
   return (
     <TouchableOpacity style={styles.uploadCard} onPress={onPick} testID={`${testID}-upload`}>
-      <Text style={styles.uploadIcon}>+</Text>
+      <View style={styles.uploadIconCircle}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name={icon} size={28} color={colors.primary} />
+      </View>
       <Text style={styles.uploadLabel}>{label}</Text>
       <Text style={styles.uploadHint}>JPEG, PNG, or WebP (max 5MB)</Text>
     </TouchableOpacity>
@@ -319,6 +362,14 @@ function ImageUploadCard({
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
   content: {
     padding: spacing.base,
     paddingBottom: spacing['3xl'],
@@ -334,116 +385,152 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.base,
     color: colors.textSecondary,
   },
-  errorText: {
-    fontSize: fontSizes.lg,
-    color: colors.danger,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+  errorIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.dangerBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.base,
   },
-  retryLink: {
+  errorText: {
     fontSize: fontSizes.base,
-    color: colors.primary,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+  },
+  retryButtonText: {
+    fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
+    color: colors.white,
+  },
+
+  /* ── Section Header ─────────────────────────────── */
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   sectionTitle: {
-    fontSize: fontSizes.xl,
+    fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
   },
-  formGroup: {
-    gap: 0,
-  },
-  label: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
-    color: colors.text,
-    marginBottom: spacing.xs,
-    marginTop: spacing.md,
-  },
-  input: {
+
+  /* ── Card ────────────────────────────────────────── */
+  card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    fontSize: fontSizes.base,
-    color: colors.text,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    ...shadows.sm,
   },
+
+  /* ── Upload Card ─────────────────────────────────── */
   uploadCard: {
     borderWidth: 2,
     borderColor: colors.border,
     borderStyle: 'dashed',
     borderRadius: radius.lg,
-    padding: spacing.xl,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.base,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 140,
   },
-  uploadIcon: {
-    fontSize: fontSizes['3xl'],
-    color: colors.primary,
-    marginBottom: spacing.sm,
+  uploadIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
   },
   uploadLabel: {
     fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
+    fontWeight: fontWeights.semibold,
     color: colors.primary,
+    marginBottom: spacing.xs,
   },
   uploadHint: {
     fontSize: fontSizes.sm,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
   uploadingText: {
     marginTop: spacing.sm,
     fontSize: fontSizes.base,
     color: colors.primary,
   },
-  imageContainer: {
-    borderWidth: 1,
-    borderColor: colors.border,
+
+  /* ── Image Preview ───────────────────────────────── */
+  imageWrapper: {
     borderRadius: radius.lg,
     overflow: 'hidden',
+    backgroundColor: colors.bgSubtle,
   },
   previewImage: {
     width: '100%',
     height: 180,
-    backgroundColor: colors.bgSubtle,
   },
   imageActions: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   changeButton: {
     flex: 1,
-    padding: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.sm,
   },
   changeButtonText: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
     color: colors.primary,
   },
   removeButton: {
     flex: 1,
-    padding: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.sm,
   },
   removeButtonText: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
     color: colors.danger,
   },
+
+  /* ── Save Button ────────────────────────────────── */
   saveButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    padding: spacing.base,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    padding: spacing.base,
     marginTop: spacing.xl,
   },
   saveButtonDisabled: {

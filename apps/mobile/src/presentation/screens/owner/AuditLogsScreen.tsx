@@ -8,14 +8,18 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../context/AuthContext';
 import { useAuditLogs } from '../../../application/audit/use-audit-logs';
 import { auditApi } from '../../../infra/audit/audit-api';
 import { AuditLogRow } from '../../components/audit/AuditLogRow';
 import { AuditFiltersPanel } from '../../components/audit/AuditFilters';
+import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
+import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import type { AuditLogItem } from '../../../domain/audit/audit.types';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -28,6 +32,8 @@ export function AuditLogsScreen() {
   if (!isOwner) {
     return (
       <View style={styles.center} testID="audit-forbidden">
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="shield-lock-outline" size={48} color={colors.danger} />
         <Text style={styles.forbiddenText}>Only the owner can view audit logs.</Text>
       </View>
     );
@@ -46,6 +52,7 @@ function AuditLogsContent() {
     error,
     hasMore,
     filters,
+    appliedFilters,
     setFilters,
     applyFilters,
     clearFilters,
@@ -53,8 +60,61 @@ function AuditLogsContent() {
     refetch,
   } = useAuditLogs(auditApi);
 
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (appliedFilters.action) count++;
+    if (appliedFilters.entityType) count++;
+    return count;
+  }, [appliedFilters.action, appliedFilters.entityType]);
+
+  const activeFilterPills: ActiveFilter[] = useMemo(() => {
+    const pills: ActiveFilter[] = [];
+    if (appliedFilters.action) {
+      pills.push({
+        key: 'action',
+        label: 'Action',
+        value: appliedFilters.action.replace(/_/g, ' '),
+        onRemove: () => {
+          const next = { ...filters, action: '' as const };
+          setFilters(next);
+          // Apply immediately
+          clearFilters();
+          setFilters(next);
+        },
+      });
+    }
+    if (appliedFilters.entityType) {
+      pills.push({
+        key: 'entity',
+        label: 'Entity',
+        value: appliedFilters.entityType.replace(/_/g, ' '),
+        onRemove: () => {
+          const next = { ...filters, entityType: '' as const };
+          setFilters(next);
+          clearFilters();
+          setFilters(next);
+        },
+      });
+    }
+    return pills;
+  }, [appliedFilters, filters, setFilters, clearFilters]);
+
+  const toggleFilters = useCallback(() => {
+    setShowFilters((v) => !v);
+  }, []);
+
+  const handleApply = useCallback(() => {
+    applyFilters();
+    setShowFilters(false);
+  }, [applyFilters]);
+
+  const handleClear = useCallback(() => {
+    clearFilters();
+    setShowFilters(false);
+  }, [clearFilters]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -80,6 +140,8 @@ function AuditLogsContent() {
     if (hasMore && items.length > 0) {
       return (
         <TouchableOpacity style={styles.loadMoreBtn} onPress={fetchMore} testID="load-more-btn">
+          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+          <Icon name="chevron-down-circle-outline" size={18} color={colors.primary} />
           <Text style={styles.loadMoreText}>Load More</Text>
         </TouchableOpacity>
       );
@@ -89,37 +151,69 @@ function AuditLogsContent() {
 
   return (
     <View style={styles.screen} testID="audit-logs-screen">
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Audit Logs</Text>
+      {/* ── Navbar row with filter icon ───────────────── */}
+      <View style={styles.navRow}>
         <TouchableOpacity
-          onPress={() => setShowFilters((v) => !v)}
+          style={[styles.navBtn, showFilters && styles.navBtnActive]}
+          onPress={toggleFilters}
           testID="toggle-filters"
+          accessibilityRole="button"
+          accessibilityLabel="Toggle filters"
         >
-          <Text style={styles.filterToggle}>{showFilters ? 'Hide Filters' : 'Show Filters'}</Text>
+          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+          <Icon
+            name={showFilters ? 'filter-off-outline' : 'filter-variant'}
+            size={22}
+            color={showFilters ? colors.primary : colors.textSecondary}
+          />
+          {activeFilterCount > 0 && !showFilters && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {showFilters && (
-        <AuditFiltersPanel
-          filters={filters}
-          onChange={setFilters}
-          onApply={() => { applyFilters(); setShowFilters(false); }}
-          onClear={clearFilters}
-        />
+      {/* ── Active filter pills (when panel is closed) ── */}
+      {!showFilters && activeFilterPills.length > 0 && (
+        <ActiveFilterBar filters={activeFilterPills} onClearAll={handleClear} />
       )}
 
+      {/* ── Collapsible filter panel ─────────────────── */}
+      {showFilters && (
+        <View style={styles.filterPanel}>
+          <AuditFiltersPanel
+            filters={filters}
+            onChange={setFilters}
+            onApply={handleApply}
+            onClear={handleClear}
+          />
+        </View>
+      )}
+
+      {/* ── Error state ──────────────────────────────── */}
       {error && (
-        <View style={styles.errorRow} testID="audit-error">
+        <View style={styles.errorCard} testID="audit-error">
+          <View style={styles.errorIconCircle}>
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="alert-circle-outline" size={20} color={colors.danger} />
+          </View>
           <Text style={styles.errorText}>{error.message}</Text>
-          <TouchableOpacity onPress={refetch} testID="audit-retry">
+          <TouchableOpacity style={styles.retryBtn} onPress={refetch} testID="audit-retry">
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="refresh" size={16} color={colors.primary} />
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
 
+      {/* ── Loading skeleton ─────────────────────────── */}
       {loading && !refreshing ? (
-        <View style={styles.center} testID="audit-loading">
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonContainer} testID="audit-loading">
+          <SkeletonTile />
+          <SkeletonTile />
+          <SkeletonTile />
+          <SkeletonTile />
         </View>
       ) : (
         <FlatList
@@ -127,8 +221,27 @@ function AuditLogsContent() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-          ListEmptyComponent={<EmptyState message="No audit logs found" />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          ListHeaderComponent={
+            items.length > 0 ? (
+              <View style={styles.listSectionHeader}>
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="clipboard-text-clock-outline" size={18} color={colors.textSecondary} />
+                <Text style={styles.listSectionTitle}>Activity Log</Text>
+                <Text style={styles.listSectionCount}>{items.length}</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <EmptyState message="No audit logs found for the selected filters" />
+          }
           ListFooterComponent={renderFooter}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
@@ -144,63 +257,144 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  headerRow: {
+  navRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.base,
-    paddingBottom: spacing.sm,
-  },
-  title: {
-    fontSize: fontSizes['2xl'],
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-  },
-  filterToggle: {
-    fontSize: fontSizes.base,
-    color: colors.primary,
-    fontWeight: fontWeights.medium,
-  },
-  listContent: {
+    justifyContent: 'flex-end',
     paddingHorizontal: spacing.base,
-    paddingBottom: spacing.base,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
+  navBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    ...shadows.sm,
+  },
+  navBtnActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    color: colors.white,
+  },
+  filterPanel: {
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.xs,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
+    gap: spacing.md,
   },
   forbiddenText: {
     fontSize: fontSizes.lg,
     color: colors.danger,
     textAlign: 'center',
+    fontWeight: fontWeights.medium,
   },
-  errorRow: {
+  errorCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
+    backgroundColor: colors.dangerBg,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginHorizontal: spacing.base,
+    marginBottom: spacing.sm,
     gap: spacing.sm,
+    ...shadows.sm,
+  },
+  errorIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   errorText: {
-    fontSize: fontSizes.base,
+    flex: 1,
+    fontSize: fontSizes.sm,
     color: colors.danger,
+    fontWeight: fontWeights.medium,
+  },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
   },
   retryText: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.sm,
     color: colors.primary,
     fontWeight: fontWeights.semibold,
+  },
+  skeletonContainer: {
+    padding: spacing.base,
+    gap: spacing.sm,
+  },
+
+  /* ── List Section Header ─────────────────────────── */
+  listSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  listSectionTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+    flex: 1,
+  },
+  listSectionCount: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.primary,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+
+  /* ── List Content ────────────────────────────────── */
+  listContent: {
+    paddingHorizontal: spacing.base,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
   footer: {
     padding: spacing.base,
     alignItems: 'center',
   },
   loadMoreBtn: {
-    padding: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
     backgroundColor: colors.primarySoft,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     marginTop: spacing.sm,
   },
   loadMoreText: {

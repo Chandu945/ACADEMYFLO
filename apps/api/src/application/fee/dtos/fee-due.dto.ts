@@ -6,6 +6,7 @@ export interface FeeDueDto {
   id: string;
   academyId: string;
   studentId: string;
+  studentName: string | null;
   monthKey: string;
   dueDate: string;
   amount: number;
@@ -27,6 +28,7 @@ export function toFeeDueDto(
   feeDue: FeeDue,
   lateFeeConfig?: LateFeeConfig,
   today?: string,
+  studentName?: string | null,
 ): FeeDueDto {
   let lateFee = 0;
   if (feeDue.status === 'PAID') {
@@ -43,6 +45,7 @@ export function toFeeDueDto(
     id: feeDue.id.toString(),
     academyId: feeDue.academyId,
     studentId: feeDue.studentId,
+    studentName: studentName ?? null,
     monthKey: feeDue.monthKey,
     dueDate: feeDue.dueDate,
     amount: feeDue.amount,

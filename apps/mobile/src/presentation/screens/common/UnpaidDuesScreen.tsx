@@ -108,6 +108,7 @@ export function UnpaidDuesScreen({
           data={items}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          extraData={studentNameMap}
           contentContainerStyle={styles.listContent}
           testID="unpaid-list"
         />

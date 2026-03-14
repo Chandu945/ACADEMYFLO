@@ -29,6 +29,7 @@ type UseAuditLogsResult = {
   error: AppError | null;
   hasMore: boolean;
   filters: AuditFilters;
+  appliedFilters: AuditFilters;
   setFilters: (f: AuditFilters) => void;
   applyFilters: () => void;
   clearFilters: () => void;
@@ -135,6 +136,7 @@ export function useAuditLogs(auditApi: AuditApiPort): UseAuditLogsResult {
     error,
     hasMore,
     filters,
+    appliedFilters,
     setFilters,
     applyFilters,
     clearFilters,

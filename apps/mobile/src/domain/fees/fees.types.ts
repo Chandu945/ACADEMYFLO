@@ -8,6 +8,7 @@ export type FeeDueItem = {
   id: string;
   academyId: string;
   studentId: string;
+  studentName: string | null;
   monthKey: string;
   dueDate: string;
   amount: number;

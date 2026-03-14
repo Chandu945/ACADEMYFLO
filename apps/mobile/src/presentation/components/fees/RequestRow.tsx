@@ -60,6 +60,7 @@ function RequestRowComponent({ item, onApprove, onReject, onCancel, onEdit }: Re
               <Button
                 title="Edit"
                 variant="secondary"
+                size="sm"
                 onPress={onEdit}
                 testID={`edit-${item.id}`}
               />
@@ -67,7 +68,7 @@ function RequestRowComponent({ item, onApprove, onReject, onCancel, onEdit }: Re
           )}
           {onApprove && (
             <View style={styles.actionButton}>
-              <Button title="Approve" onPress={onApprove} testID={`approve-${item.id}`} />
+              <Button title="Approve" size="sm" onPress={onApprove} testID={`approve-${item.id}`} />
             </View>
           )}
           {onReject && (
@@ -75,6 +76,7 @@ function RequestRowComponent({ item, onApprove, onReject, onCancel, onEdit }: Re
               <Button
                 title="Reject"
                 variant="danger"
+                size="sm"
                 onPress={onReject}
                 testID={`reject-${item.id}`}
               />
@@ -85,6 +87,7 @@ function RequestRowComponent({ item, onApprove, onReject, onCancel, onEdit }: Re
               <Button
                 title="Cancel"
                 variant="secondary"
+                size="sm"
                 onPress={onCancel}
                 testID={`cancel-${item.id}`}
               />

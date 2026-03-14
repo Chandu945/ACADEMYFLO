@@ -19,6 +19,7 @@ function makeFeeDue(overrides: Partial<FeeDueItem> = {}): FeeDueItem {
     id: 'fd1',
     academyId: 'a1',
     studentId: 's1',
+    studentName: 'Test Student',
     monthKey: '2026-03',
     dueDate: '2026-03-10',
     amount: 500,

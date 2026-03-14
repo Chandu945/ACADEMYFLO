@@ -6,19 +6,20 @@ import {
   RefreshControl,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
+  Text,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { BatchesStackParamList } from '../../navigation/BatchesStack';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { useBatches } from '../../../application/batch/use-batches';
 import { listBatches } from '../../../infra/batch/batch-api';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { Button } from '../../components/ui/Button';
 import { BatchRow } from '../../components/batches/BatchRow';
-import { spacing, fontSizes, fontWeights, radius, listDefaults, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -31,9 +32,11 @@ export function BatchesListScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const [refreshing, setRefreshing] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -78,6 +81,17 @@ export function BatchesListScreen() {
     navigation.navigate('BatchForm', { mode: 'create' });
   }, [navigation]);
 
+  const openSearch = useCallback(() => {
+    setSearchActive(true);
+    setTimeout(() => searchInputRef.current?.focus(), 100);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setSearchActive(false);
+    setSearchText('');
+    setDebouncedSearch('');
+  }, []);
+
   const renderItem = useCallback(
     ({ item }: { item: BatchListItem }) => (
       <BatchRow batch={item} onPress={() => handleRowPress(item)} />
@@ -98,18 +112,48 @@ export function BatchesListScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBox}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search batches..."
-            placeholderTextColor={colors.textDisabled}
-            value={searchText}
-            onChangeText={setSearchText}
-            testID="batches-search-input"
-          />
-        </View>
+      {/* ── Navbar ─────────────────────────────────────── */}
+      <View style={styles.navbar}>
+        {searchActive ? (
+          <View style={styles.searchBar}>
+            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="arrow-left" size={22} color={colors.text} />
+            </TouchableOpacity>
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              placeholder="Search batches..."
+              placeholderTextColor={colors.textDisabled}
+              value={searchText}
+              onChangeText={setSearchText}
+              autoFocus
+              testID="batches-search-input"
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <View style={styles.titleBar}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="arrow-left" size={22} color={colors.text} />
+            </TouchableOpacity>
+            <View style={styles.titleWrap}>
+              <Text style={styles.navTitle}>Batches</Text>
+            </View>
+            <View style={styles.navActions}>
+              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="magnify" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
 
       {error && <InlineError message={error.message} onRetry={refetch} />}
@@ -121,7 +165,16 @@ export function BatchesListScreen() {
           <SkeletonTile />
         </View>
       ) : !loading && items.length === 0 ? (
-        <EmptyState message="No batches found" />
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconCircle}>
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="account-group-outline" size={48} color={colors.primary} />
+          </View>
+          <Text style={styles.emptyTitle}>No batches found</Text>
+          <Text style={styles.emptySubtitle}>
+            {debouncedSearch ? 'Try a different search term.' : 'Create your first batch to get started.'}
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={items}
@@ -137,9 +190,10 @@ export function BatchesListScreen() {
         />
       )}
 
-      <View style={styles.addButtonContainer}>
-        <Button title="+ Add Batch" onPress={handleAdd} testID="add-batch-button" />
-      </View>
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={handleAdd} testID="add-batch-button">
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -149,40 +203,120 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  searchContainer: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  searchBox: {
+
+  /* ── Navbar ─────────────────────────────────────── */
+  navbar: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    ...shadows.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  searchInput: {
-    paddingVertical: 10,
-    paddingHorizontal: spacing.base,
-    fontSize: fontSizes.base,
+  titleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  titleWrap: {
+    flex: 1,
+    marginLeft: spacing.xs,
+  },
+  navTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
     color: colors.text,
   },
+  navActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  navBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: fontSizes.base,
+    color: colors.text,
+    paddingVertical: 8,
+    marginLeft: spacing.xs,
+  },
+
+  /* ── Content ─────────────────────────────────────── */
   skeletons: {
     padding: spacing.base,
   },
   listContent: {
     paddingHorizontal: spacing.base,
+    paddingTop: spacing.sm,
     paddingBottom: listDefaults.contentPaddingBottom,
   },
   footer: {
     paddingVertical: spacing.base,
     alignItems: 'center',
   },
-  addButtonContainer: {
+
+  /* ── Empty State ─────────────────────────────────── */
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: spacing['3xl'],
+    paddingHorizontal: spacing['3xl'],
+  },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    fontSize: fontSizes.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  /* ── FAB ─────────────────────────────────────────── */
+  fab: {
     position: 'absolute',
-    bottom: spacing.base,
-    left: spacing.base,
-    right: spacing.base,
-    ...shadows.md,
+    bottom: spacing.xl,
+    right: spacing.xl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabText: {
+    fontSize: fontSizes['3xl'],
+    color: colors.white,
+    lineHeight: 28,
   },
 });

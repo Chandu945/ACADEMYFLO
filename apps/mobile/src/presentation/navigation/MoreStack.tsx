@@ -91,7 +91,7 @@ export function MoreStack() {
       <Stack.Screen
         name="ExpensesHome"
         component={ExpensesHomeScreen}
-        options={{ title: 'Expenses' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ExpenseForm"
@@ -108,7 +108,7 @@ export function MoreStack() {
       <Stack.Screen
         name="EnquiryList"
         component={EnquiryListScreen}
-        options={{ title: 'Enquiries' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AddEnquiry"
@@ -128,7 +128,7 @@ export function MoreStack() {
       <Stack.Screen
         name="EventList"
         component={EventListScreen}
-        options={{ title: 'Events' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AddEvent"
@@ -193,7 +193,7 @@ export function MoreStack() {
       <Stack.Screen
         name="BatchesList"
         component={BatchesListScreen}
-        options={{ title: 'Batches' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="BatchForm"

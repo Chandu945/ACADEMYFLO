@@ -15,11 +15,13 @@ import { useTheme } from '../../context/ThemeContext';
 import { lightHaptic } from '../../utils/haptics';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
+type ButtonSize = 'default' | 'sm';
 
 type ButtonProps = {
   title: string;
   onPress: () => void;
   variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   disabled?: boolean;
   testID?: string;
@@ -45,6 +47,7 @@ export function Button({
   title,
   onPress,
   variant = 'primary',
+  size = 'default',
   loading = false,
   disabled = false,
   testID,
@@ -78,6 +81,7 @@ export function Button({
       <Animated.View
         style={[
           styles.base,
+          size === 'sm' && styles.baseSm,
           { backgroundColor: BG_COLORS[variant] } as ViewStyle,
           isDisabled && styles.disabled,
           { transform: [{ scale }] },
@@ -86,7 +90,7 @@ export function Button({
         {loading ? (
           <ActivityIndicator color={TEXT_COLORS[variant]} size="small" />
         ) : (
-          <Text style={[styles.text, { color: TEXT_COLORS[variant] } as TextStyle]}>{title}</Text>
+          <Text style={[styles.text, size === 'sm' && styles.textSm, { color: TEXT_COLORS[variant] } as TextStyle]}>{title}</Text>
         )}
       </Animated.View>
     </Pressable>
@@ -102,6 +106,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
     minHeight: 50,
   },
+  baseSm: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 36,
+    borderRadius: radius.md,
+  },
   disabled: {
     opacity: 0.45,
   },
@@ -109,5 +119,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     letterSpacing: 0.3,
+  },
+  textSm: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    letterSpacing: 0,
   },
 });

@@ -62,8 +62,8 @@ function FeeDueRowComponent({
       </View>
 
       <View style={styles.info}>
-        {showStudentName && studentName && (
-          <Text style={styles.name} numberOfLines={1}>{studentName}</Text>
+        {showStudentName && (studentName || item.studentName) && (
+          <Text style={styles.name} numberOfLines={1}>{studentName || item.studentName}</Text>
         )}
         <Text style={styles.month}>{formatMonthKey(item.monthKey)}</Text>
         {item.paidAt && (

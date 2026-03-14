@@ -1,34 +1,43 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { ScrollView, View, Text, Switch, StyleSheet, Alert } from 'react-native';
+import {
+  ScrollView,
+  View,
+  Text,
+  Switch,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Input } from '../../components/ui/Input';
+import { TextArea } from '../../components/ui/TextArea';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
-import { Button } from '../../components/ui/Button';
+import { TimePickerInput } from '../../components/ui/TimePickerInput';
 import { InlineError } from '../../components/ui/InlineError';
 import type { EventType, TargetAudience } from '../../../domain/event/event.types';
 import { isValidDate } from '../../../domain/common/date-utils';
 import * as eventApi from '../../../infra/event/event-api';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
-import { Pressable } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 
-const EVENT_TYPES: { label: string; value: EventType }[] = [
-  { label: 'Tournament', value: 'TOURNAMENT' },
-  { label: 'Meeting', value: 'MEETING' },
-  { label: 'Demo Class', value: 'DEMO_CLASS' },
-  { label: 'Holiday', value: 'HOLIDAY' },
-  { label: 'Annual Day', value: 'ANNUAL_DAY' },
-  { label: 'Training Camp', value: 'TRAINING_CAMP' },
-  { label: 'Other', value: 'OTHER' },
+const EVENT_TYPES: { label: string; value: EventType; icon: string }[] = [
+  { label: 'Tournament', value: 'TOURNAMENT', icon: 'trophy-outline' },
+  { label: 'Meeting', value: 'MEETING', icon: 'account-group-outline' },
+  { label: 'Demo Class', value: 'DEMO_CLASS', icon: 'school-outline' },
+  { label: 'Holiday', value: 'HOLIDAY', icon: 'palm-tree' },
+  { label: 'Annual Day', value: 'ANNUAL_DAY', icon: 'party-popper' },
+  { label: 'Training Camp', value: 'TRAINING_CAMP', icon: 'whistle-outline' },
+  { label: 'Other', value: 'OTHER', icon: 'dots-horizontal' },
 ];
 
-const AUDIENCES: { label: string; value: TargetAudience }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Students', value: 'STUDENTS' },
-  { label: 'Staff', value: 'STAFF' },
-  { label: 'Parents', value: 'PARENTS' },
+const AUDIENCES: { label: string; value: TargetAudience; icon: string }[] = [
+  { label: 'All', value: 'ALL', icon: 'account-multiple-outline' },
+  { label: 'Students', value: 'STUDENTS', icon: 'school-outline' },
+  { label: 'Staff', value: 'STAFF', icon: 'badge-account-outline' },
+  { label: 'Parents', value: 'PARENTS', icon: 'account-child-outline' },
 ];
 
 export function AddEventScreen() {
@@ -102,119 +111,165 @@ export function AddEventScreen() {
     >
       {serverError && <InlineError message={serverError} />}
 
-      <Text style={styles.sectionTitle}>Event Details</Text>
-
-      <Input
-        label="Event Title"
-        value={title}
-        onChangeText={setTitle}
-        placeholder="e.g. Annual Sports Day"
-        maxLength={100}
-        testID="input-title"
-      />
-
-      <Text style={styles.label}>Event Type</Text>
-      <View style={styles.chipRow}>
-        {EVENT_TYPES.map((t) => (
-          <Pressable
-            key={t.value}
-            style={[styles.chip, eventType === t.value && styles.chipActive]}
-            onPress={() => setEventType(eventType === t.value ? '' : t.value)}
-          >
-            <Text style={[styles.chipText, eventType === t.value && styles.chipTextActive]}>
-              {t.label}
-            </Text>
-          </Pressable>
-        ))}
+      {/* ── Event Details ─────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="calendar-star" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Event Details</Text>
       </View>
+      <View style={styles.card}>
+        <Input
+          label="Event Title *"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="e.g. Annual Sports Day"
+          maxLength={100}
+          testID="input-title"
+        />
 
-      <Input
-        label="Description"
-        value={description}
-        onChangeText={setDescription}
-        placeholder="Event details..."
-        maxLength={500}
-        testID="input-description"
-      />
+        <Text style={styles.chipLabel}>EVENT TYPE</Text>
+        <View style={styles.chipRow}>
+          {EVENT_TYPES.map((t) => (
+            <TouchableOpacity
+              key={t.value}
+              style={[styles.chip, eventType === t.value && styles.chipActive]}
+              onPress={() => setEventType(eventType === t.value ? '' : t.value)}
+              testID={`event-type-${t.value}`}
+            >
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon
+                name={t.icon}
+                size={14}
+                color={eventType === t.value ? colors.white : colors.textSecondary}
+              />
+              <Text style={[styles.chipText, eventType === t.value && styles.chipTextActive]}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <Text style={styles.sectionTitle}>Date & Time</Text>
-
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>All Day</Text>
-        <Switch value={isAllDay} onValueChange={setIsAllDay} testID="switch-allDay" />
-      </View>
-
-      <DatePickerInput
-        label="Start Date"
-        value={startDate}
-        onChange={setStartDate}
-        placeholder="Select start date"
-        testID="input-startDate"
-      />
-
-      <DatePickerInput
-        label="End Date (optional)"
-        value={endDate}
-        onChange={setEndDate}
-        placeholder="Select end date"
-        testID="input-endDate"
-      />
-
-      {!isAllDay && (
-        <>
-          <Input
-            label="Start Time (HH:mm)"
-            value={startTime}
-            onChangeText={setStartTime}
-            placeholder="09:00"
-            maxLength={5}
-            testID="input-startTime"
-          />
-          <Input
-            label="End Time (HH:mm, optional)"
-            value={endTime}
-            onChangeText={setEndTime}
-            placeholder="17:00"
-            maxLength={5}
-            testID="input-endTime"
-          />
-        </>
-      )}
-
-      <Text style={styles.sectionTitle}>Location & Audience</Text>
-
-      <Input
-        label="Location"
-        value={location}
-        onChangeText={setLocation}
-        placeholder="Academy Ground, Hyderabad"
-        maxLength={200}
-        testID="input-location"
-      />
-
-      <Text style={styles.label}>Target Audience</Text>
-      <View style={styles.chipRow}>
-        {AUDIENCES.map((a) => (
-          <Pressable
-            key={a.value}
-            style={[styles.chip, targetAudience === a.value && styles.chipActive]}
-            onPress={() => setTargetAudience(targetAudience === a.value ? '' : a.value)}
-          >
-            <Text style={[styles.chipText, targetAudience === a.value && styles.chipTextActive]}>
-              {a.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={styles.submitContainer}>
-        <Button
-          title="Save Event"
-          onPress={handleSubmit}
-          loading={submitting}
-          testID="submit-button"
+        <TextArea
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Event details..."
+          testID="input-description"
         />
       </View>
+
+      {/* ── Date & Time ──────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="calendar-clock" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Date & Time</Text>
+      </View>
+      <View style={styles.card}>
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelRow}>
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="hours-24" size={18} color={colors.textSecondary} />
+            <Text style={styles.switchLabel}>All Day Event</Text>
+          </View>
+          <Switch
+            value={isAllDay}
+            onValueChange={setIsAllDay}
+            trackColor={{ false: colors.border, true: colors.primaryLight }}
+            thumbColor={isAllDay ? colors.primary : colors.textDisabled}
+            testID="switch-allDay"
+          />
+        </View>
+
+        <DatePickerInput
+          label="Start Date *"
+          value={startDate}
+          onChange={setStartDate}
+          placeholder="Select start date"
+          testID="input-startDate"
+        />
+
+        <DatePickerInput
+          label="End Date (optional)"
+          value={endDate}
+          onChange={setEndDate}
+          placeholder="Select end date"
+          testID="input-endDate"
+        />
+
+        {!isAllDay && (
+          <>
+            <TimePickerInput
+              label="Start Time *"
+              value={startTime}
+              onChange={setStartTime}
+              placeholder="Select start time"
+              testID="input-startTime"
+            />
+            <TimePickerInput
+              label="End Time (optional)"
+              value={endTime}
+              onChange={setEndTime}
+              placeholder="Select end time"
+              testID="input-endTime"
+            />
+          </>
+        )}
+      </View>
+
+      {/* ── Location & Audience ──────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="map-marker-outline" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Location & Audience</Text>
+      </View>
+      <View style={styles.card}>
+        <Input
+          label="Location"
+          value={location}
+          onChangeText={setLocation}
+          placeholder="Academy Ground, Hyderabad"
+          maxLength={200}
+          testID="input-location"
+        />
+
+        <Text style={styles.chipLabel}>TARGET AUDIENCE</Text>
+        <View style={styles.chipRow}>
+          {AUDIENCES.map((a) => (
+            <TouchableOpacity
+              key={a.value}
+              style={[styles.chip, targetAudience === a.value && styles.chipActive]}
+              onPress={() => setTargetAudience(targetAudience === a.value ? '' : a.value)}
+              testID={`audience-${a.value}`}
+            >
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon
+                name={a.icon}
+                size={14}
+                color={targetAudience === a.value ? colors.white : colors.textSecondary}
+              />
+              <Text style={[styles.chipText, targetAudience === a.value && styles.chipTextActive]}>
+                {a.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* ── Save Button ──────────────────────────────── */}
+      <TouchableOpacity
+        style={[styles.saveButton, submitting && styles.saveButtonDisabled]}
+        onPress={handleSubmit}
+        disabled={submitting}
+        testID="submit-button"
+      >
+        {!submitting && (
+          // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+          <Icon name="content-save-outline" size={20} color={colors.white} />
+        )}
+        <Text style={styles.saveButtonText}>
+          {submitting ? 'Saving...' : 'Save Event'}
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -226,31 +281,54 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   content: {
     padding: spacing.base,
-    paddingBottom: 40,
+    paddingBottom: spacing['3xl'],
+  },
+
+  /* ── Section Header ─────────────────────────────── */
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   sectionTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
   },
-  label: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
-    color: colors.textMedium,
+
+  /* ── Card ────────────────────────────────────────── */
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    ...shadows.sm,
+  },
+
+  /* ── Chips ───────────────────────────────────────── */
+  chipLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
     marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginBottom: spacing.base,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.xl,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -266,19 +344,44 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   chipTextActive: {
     color: colors.white,
   },
+
+  /* ── Switch ──────────────────────────────────────── */
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
-    paddingVertical: spacing.xs,
+    marginBottom: spacing.base,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  switchLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   switchLabel: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.medium,
-    color: colors.textMedium,
+    color: colors.text,
   },
-  submitContainer: {
-    marginTop: spacing.lg,
+
+  /* ── Save Button ────────────────────────────────── */
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginTop: spacing.xl,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.semibold,
+    color: colors.white,
   },
 });

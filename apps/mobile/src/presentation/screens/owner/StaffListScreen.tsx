@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
@@ -12,9 +12,8 @@ import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
-import { Fab } from '../../components/ui/Fab';
 import { StaffRow } from '../../components/staff/StaffRow';
-import { spacing, listDefaults } from '../../theme';
+import { spacing, fontSizes, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -131,7 +130,10 @@ export function StaffListScreen() {
         />
       )}
 
-      <Fab label="+ Add Staff" onPress={handleAdd} testID="add-staff-fab" />
+      {/* FAB */}
+      <TouchableOpacity style={styles.fab} onPress={handleAdd} testID="add-staff-fab">
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
 
       <ConfirmSheet
         visible={toggleTarget !== null}
@@ -176,5 +178,26 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   footer: {
     paddingVertical: spacing.base,
     alignItems: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    right: spacing.xl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabText: {
+    fontSize: fontSizes['3xl'],
+    color: colors.white,
+    lineHeight: 28,
   },
 });

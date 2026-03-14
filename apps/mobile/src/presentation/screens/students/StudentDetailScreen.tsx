@@ -192,44 +192,96 @@ export function StudentDetailScreen() {
 
         {/* Contact Information */}
         <View style={styles.card}>
-          <SectionTitle title="Contact Information" />
+          <View style={styles.contactSectionHeader}>
+            <View style={[styles.contactSectionIcon, { backgroundColor: colors.primarySoft }]}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="card-account-phone-outline" size={18} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Contact Information</Text>
+          </View>
+
+          {/* ── Phone & WhatsApp tiles ──────────────── */}
           {student.guardian?.mobile && (
-            <View style={styles.contactRow}>
-              <View style={styles.contactInfo}>
-                <Text style={styles.infoLabel}>Guardian Mobile</Text>
-                <Text style={styles.infoValue}>{student.guardian.mobile}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.contactAction}
-                onPress={() => handleCall(student.guardian.mobile)}
-                testID="call-guardian"
-              >
+            <View style={styles.contactTile}>
+              <View style={[styles.contactTileIcon, { backgroundColor: colors.primarySoft }]}>
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="phone-outline" size={16} color={colors.primary} />
-                <Text style={styles.contactActionText}>Call</Text>
-              </TouchableOpacity>
+                <Icon name="phone-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.contactTileInfo}>
+                <Text style={styles.contactTileLabel}>Guardian Mobile</Text>
+                <Text style={styles.contactTileValue}>{student.guardian.mobile}</Text>
+              </View>
+              <View style={styles.contactTileActions}>
+                <TouchableOpacity
+                  style={styles.callCircle}
+                  onPress={() => handleCall(student.guardian.mobile)}
+                  testID="call-guardian"
+                  accessibilityLabel="Call guardian"
+                >
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="phone" size={18} color={colors.white} />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
+
           {student.whatsappNumber && (
-            <View style={styles.contactRow}>
-              <View style={styles.contactInfo}>
-                <Text style={styles.infoLabel}>WhatsApp</Text>
-                <Text style={styles.infoValue}>{student.whatsappNumber}</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.contactAction, styles.contactActionWhatsApp]}
-                onPress={() => handleWhatsApp(student.whatsappNumber!)}
-                testID="whatsapp-student"
-              >
+            <View style={styles.contactTile}>
+              <View style={[styles.contactTileIcon, { backgroundColor: '#dcfce7' }]}>
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="whatsapp" size={16} color="#25D366" />
-                <Text style={[styles.contactActionText, { color: '#25D366' }]}>Chat</Text>
-              </TouchableOpacity>
+                <Icon name="whatsapp" size={20} color="#25D366" />
+              </View>
+              <View style={styles.contactTileInfo}>
+                <Text style={styles.contactTileLabel}>WhatsApp</Text>
+                <Text style={styles.contactTileValue}>{student.whatsappNumber}</Text>
+              </View>
+              <View style={styles.contactTileActions}>
+                <TouchableOpacity
+                  style={styles.whatsappCircle}
+                  onPress={() => handleWhatsApp(student.whatsappNumber!)}
+                  testID="whatsapp-student"
+                  accessibilityLabel="Open WhatsApp chat"
+                >
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="message-text-outline" size={18} color={colors.white} />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
-          <InfoRow label="Guardian Name" value={student.guardian?.name} />
-          <InfoRow label="Guardian Email" value={student.guardian?.email} />
-          <InfoRow label="Address" value={student.addressText} />
+
+          {/* ── Guardian details ────────────────────── */}
+          {student.guardian?.name ? (
+            <View style={styles.contactDetailRow}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="account-outline" size={18} color={colors.textSecondary} />
+              <View style={styles.contactDetailInfo}>
+                <Text style={styles.contactDetailLabel}>Guardian Name</Text>
+                <Text style={styles.contactDetailValue}>{student.guardian.name}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {student.guardian?.email ? (
+            <View style={styles.contactDetailRow}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="email-outline" size={18} color={colors.textSecondary} />
+              <View style={styles.contactDetailInfo}>
+                <Text style={styles.contactDetailLabel}>Guardian Email</Text>
+                <Text style={styles.contactDetailValue}>{student.guardian.email}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {student.addressText ? (
+            <View style={styles.contactDetailRow}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="map-marker-outline" size={18} color={colors.textSecondary} />
+              <View style={styles.contactDetailInfo}>
+                <Text style={styles.contactDetailLabel}>Address</Text>
+                <Text style={styles.contactDetailValue}>{student.addressText}</Text>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* Institute Information */}
@@ -373,31 +425,92 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  contactRow: {
+  contactSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  contactInfo: {
+  contactSectionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bg,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  contactTileIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactTileInfo: {
     flex: 1,
   },
-  contactAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  contactTileLabel: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.medium,
+    marginBottom: 2,
   },
-  contactActionWhatsApp: {
-    backgroundColor: '#E8FFF0',
-  },
-  contactActionText: {
-    color: colors.primary,
-    fontSize: fontSizes.sm,
+  contactTileValue: {
+    fontSize: fontSizes.md,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
+  },
+  contactTileActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  callCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  whatsappCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#25D366',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  contactDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  contactDetailInfo: {
+    flex: 1,
+  },
+  contactDetailLabel: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.medium,
+    marginBottom: 2,
+  },
+  contactDetailValue: {
+    fontSize: fontSizes.base,
+    color: colors.text,
+    fontWeight: fontWeights.medium,
   },
 });

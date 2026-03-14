@@ -66,6 +66,7 @@ export function PaidFeesScreen({
       data={items}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
+      extraData={studentNameMap}
       contentContainerStyle={styles.listContent}
       testID="paid-list"
     />

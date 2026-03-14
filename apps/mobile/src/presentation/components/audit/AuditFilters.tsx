@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@playconnect/contracts';
 import type { AuditFilters as AuditFiltersType } from '../../../application/audit/use-audit-logs';
 import { Button } from '../ui/Button';
@@ -42,7 +43,13 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
 
   return (
     <View style={styles.container} testID="audit-filters">
-      <View style={styles.row}>
+      {/* ── Date Range ──────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="calendar-range" size={16} color={colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Date Range</Text>
+      </View>
+      <View style={styles.dateRow}>
         <View style={styles.field}>
           <DatePickerInput
             label="From"
@@ -64,45 +71,84 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
       </View>
 
       {!rangeValid && (
-        <Text style={styles.errorHint} testID="filter-range-error">
-          From must be before To
-        </Text>
+        <View style={styles.errorRow}>
+          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+          <Icon name="alert-circle-outline" size={14} color={colors.danger} />
+          <Text style={styles.errorHint} testID="filter-range-error">
+            From must be before To
+          </Text>
+        </View>
       )}
 
-      <Text style={styles.label}>Action Type</Text>
-      <View style={styles.actionRow} testID="action-type-options">
-        {ACTION_OPTIONS.map((opt) => (
-          <Text
-            key={opt.value}
-            style={[
-              styles.actionChip,
-              filters.action === opt.value && styles.actionChipActive,
-            ]}
-            onPress={() => onChange({ ...filters, action: opt.value as AuditFiltersType['action'] })}
-            testID={`action-opt-${opt.value || 'ALL'}`}
-          >
-            {opt.label}
-          </Text>
-        ))}
+      {/* ── Action Type ─────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="lightning-bolt-outline" size={16} color={colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Action Type</Text>
       </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipScroll}
+        testID="action-type-options"
+      >
+        {ACTION_OPTIONS.map((opt) => {
+          const active = filters.action === opt.value;
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.chip, active && styles.chipActive]}
+              onPress={() => onChange({ ...filters, action: opt.value as AuditFiltersType['action'] })}
+              testID={`action-opt-${opt.value || 'ALL'}`}
+              activeOpacity={0.7}
+            >
+              {active && (
+                // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+                <Icon name="check-circle" size={14} color={colors.white} />
+              )}
+              <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
-      <Text style={styles.label}>Entity Type</Text>
-      <View style={styles.actionRow} testID="entity-type-options">
-        {ENTITY_OPTIONS.map((opt) => (
-          <Text
-            key={opt.value}
-            style={[
-              styles.actionChip,
-              filters.entityType === opt.value && styles.actionChipActive,
-            ]}
-            onPress={() => onChange({ ...filters, entityType: opt.value as AuditFiltersType['entityType'] })}
-            testID={`entity-opt-${opt.value || 'ALL'}`}
-          >
-            {opt.label}
-          </Text>
-        ))}
+      {/* ── Entity Type ─────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="shape-outline" size={16} color={colors.textSecondary} />
+        <Text style={styles.sectionTitle}>Entity Type</Text>
       </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipScroll}
+        testID="entity-type-options"
+      >
+        {ENTITY_OPTIONS.map((opt) => {
+          const active = filters.entityType === opt.value;
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.chip, active && styles.chipActive]}
+              onPress={() => onChange({ ...filters, entityType: opt.value as AuditFiltersType['entityType'] })}
+              testID={`entity-opt-${opt.value || 'ALL'}`}
+              activeOpacity={0.7}
+            >
+              {active && (
+                // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+                <Icon name="check-circle" size={14} color={colors.white} />
+              )}
+              <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
+      {/* ── Buttons ─────────────────────────────────── */}
       <View style={styles.buttonRow}>
         <View style={styles.btnWrap}>
           <Button title="Apply" onPress={onApply} disabled={!canApply} testID="filter-apply" />
@@ -118,48 +164,63 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
 const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.base,
-    marginBottom: spacing.md,
     ...shadows.sm,
   },
-  row: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+  dateRow: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
   field: {
     flex: 1,
   },
-  label: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.textMedium,
-    marginBottom: spacing.xs,
-    marginTop: spacing.sm,
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.xs,
   },
   errorHint: {
     fontSize: fontSizes.sm,
     color: colors.danger,
-    marginTop: spacing.xs,
   },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  actionChip: {
-    backgroundColor: colors.bgSubtle,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
+  chipScroll: {
     paddingVertical: spacing.xs,
+    gap: spacing.xs,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  chipActive: {
+    backgroundColor: colors.primary,
+  },
+  chipText: {
     fontSize: fontSizes.sm,
     color: colors.textLight,
-    overflow: 'hidden',
+    fontWeight: fontWeights.medium,
   },
-  actionChipActive: {
-    backgroundColor: colors.primary,
+  chipTextActive: {
     color: colors.white,
+    fontWeight: fontWeights.semibold,
   },
   buttonRow: {
     flexDirection: 'row',

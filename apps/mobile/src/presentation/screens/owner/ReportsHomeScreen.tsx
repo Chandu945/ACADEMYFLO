@@ -7,6 +7,7 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useReports } from '../../../application/reports/use-reports';
 import {
   getMonthlyRevenue,
@@ -17,16 +18,14 @@ import {
 import { pdfDownload } from '../../../infra/reports/pdf-download';
 import { exportRevenuePdfUseCase } from '../../../application/reports/use-cases/export-revenue-pdf.usecase';
 import { exportPendingDuesPdfUseCase } from '../../../application/reports/use-cases/export-pending-dues-pdf.usecase';
-import { SectionHeader } from '../../components/ui/SectionHeader';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
-import { KpiTile } from '../../components/dashboard/KpiTile';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ExportButton } from '../../components/reports/ExportButton';
 import type { StudentWiseDueItem } from '../../../domain/reports/reports.types';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, avatarColors } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -40,10 +39,43 @@ function addMonths(monthStr: string, delta: number): string {
   return `${ny}-${nm}`;
 }
 
+function formatCurrency(amount: number): string {
+  return `\u20B9${amount.toLocaleString('en-IN')}`;
+}
+
+function getSourceLabel(source: string): string {
+  switch (source) {
+    case 'STAFF_APPROVED': return 'Staff Collection';
+    case 'MANUAL': return 'Manual Entry';
+    default: return source.replace(/_/g, ' ');
+  }
+}
+
+function getSourceIcon(source: string): string {
+  switch (source) {
+    case 'STAFF_APPROVED': return 'account-check-outline';
+    case 'MANUAL': return 'pencil-outline';
+    default: return 'cash-outline';
+  }
+}
+
+function getInitial(name: string): string {
+  return name.charAt(0).toUpperCase();
+}
+
+function getAvatarColor(name: string, isDark: boolean): string {
+  const pool = isDark ? avatarColors.dark : avatarColors.light;
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return pool[Math.abs(hash) % pool.length]!;
+}
+
 const SEGMENTS = ['Revenue', 'Pending Dues'];
 
 export function ReportsHomeScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { month, setMonth, revenue, pendingDues, loading, error, refetch } =
     useReports(reportsApiRef);
@@ -79,29 +111,42 @@ export function ReportsHomeScreen() {
   }, [month]);
 
   const renderDueItem = useCallback(
-    ({ item }: { item: StudentWiseDueItem }) => (
-      <View style={styles.dueRow} testID={`due-row-${item.studentId}`}>
-        <View style={styles.dueInfo}>
-          <Text style={styles.dueName} numberOfLines={1}>
-            {item.studentName}
-          </Text>
-          <Text style={styles.dueStatus}>{item.status}</Text>
+    ({ item }: { item: StudentWiseDueItem }) => {
+      const avatarBg = getAvatarColor(item.studentName, isDark);
+      return (
+        <View style={styles.dueRow} testID={`due-row-${item.studentId}`}>
+          <View style={[styles.avatar, { backgroundColor: avatarBg + '20' }]}>
+            <Text style={[styles.avatarText, { color: avatarBg }]}>
+              {getInitial(item.studentName)}
+            </Text>
+          </View>
+          <View style={styles.dueInfo}>
+            <Text style={styles.dueName} numberOfLines={1}>
+              {item.studentName}
+            </Text>
+            <View style={styles.dueMetaRow}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="clock-alert-outline" size={12} color={colors.warning} />
+              <Text style={styles.duePending}>
+                {item.pendingMonthsCount} month{item.pendingMonthsCount !== 1 ? 's' : ''} pending
+              </Text>
+            </View>
+          </View>
+          <View style={styles.dueAmounts}>
+            <Text style={styles.dueAmount}>{formatCurrency(item.amount)}</Text>
+            <View style={styles.dueStatusBadge}>
+              <Text style={styles.dueStatusText}>{item.status}</Text>
+            </View>
+          </View>
         </View>
-        <View style={styles.dueAmounts}>
-          <Text style={styles.dueAmount}>{`\u20B9${item.amount}`}</Text>
-          <Text style={styles.duePending}>
-            {item.pendingMonthsCount} month{item.pendingMonthsCount !== 1 ? 's' : ''} pending
-          </Text>
-        </View>
-      </View>
-    ),
-    [],
+      );
+    },
+    [colors, isDark, styles],
   );
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <SectionHeader title="Reports" />
         <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
         <SegmentedControl
           segments={SEGMENTS}
@@ -115,11 +160,11 @@ export function ReportsHomeScreen() {
 
       {loading && !refreshing ? (
         <View style={styles.skeletonContainer} testID="skeleton-container">
-          <View style={styles.row}>
+          <View style={styles.kpiRow}>
             <SkeletonTile />
             <SkeletonTile />
           </View>
-          <View style={styles.row}>
+          <View style={styles.kpiRow}>
             <SkeletonTile />
           </View>
         </View>
@@ -131,21 +176,52 @@ export function ReportsHomeScreen() {
         >
           {revenue ? (
             <View testID="revenue-container">
-              <View style={styles.row}>
-                <KpiTile label="Total Revenue" value={revenue.totalAmount} format="currency" />
-                <KpiTile label="Transactions" value={revenue.transactionCount} />
+              {/* ── KPI Tiles ──────────────────────────── */}
+              <View style={styles.kpiRow}>
+                <View style={styles.kpiTile}>
+                  <View style={[styles.kpiIconCircle, { backgroundColor: colors.primarySoft }]}>
+                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                    <Icon name="cash-multiple" size={20} color={colors.primary} />
+                  </View>
+                  <Text style={styles.kpiValue}>{formatCurrency(revenue.totalAmount)}</Text>
+                  <Text style={styles.kpiLabel}>Total Revenue</Text>
+                </View>
+                <View style={styles.kpiTile}>
+                  <View style={[styles.kpiIconCircle, { backgroundColor: colors.infoBg }]}>
+                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                    <Icon name="receipt" size={20} color={colors.info} />
+                  </View>
+                  <Text style={styles.kpiValue}>{revenue.transactionCount}</Text>
+                  <Text style={styles.kpiLabel}>Transactions</Text>
+                </View>
               </View>
+
+              {/* ── Transactions Header ────────────────── */}
+              {revenue.transactions.length > 0 && (
+                <View style={styles.listSectionHeader}>
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="format-list-bulleted" size={18} color={colors.textSecondary} />
+                  <Text style={styles.listSectionTitle}>Transactions</Text>
+                  <Text style={styles.listSectionCount}>{revenue.transactions.length}</Text>
+                </View>
+              )}
 
               {revenue.transactions.length === 0 ? (
                 <EmptyState message="No transactions for this month" />
               ) : (
                 revenue.transactions.map((tx) => (
                   <View key={tx.id} style={styles.txRow} testID={`tx-row-${tx.id}`}>
+                    <View style={[styles.txIconCircle, { backgroundColor: colors.successBg }]}>
+                      {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                      <Icon name={getSourceIcon(tx.source)} size={18} color={colors.success} />
+                    </View>
                     <View style={styles.txInfo}>
                       <Text style={styles.txReceipt}>{tx.receiptNumber}</Text>
-                      <Text style={styles.txSource}>{tx.source}</Text>
+                      <View style={styles.txSourceRow}>
+                        <Text style={styles.txSource}>{getSourceLabel(tx.source)}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.txAmount}>{`\u20B9${tx.amount}`}</Text>
+                    <Text style={styles.txAmount}>{formatCurrency(tx.amount)}</Text>
                   </View>
                 ))
               )}
@@ -167,17 +243,29 @@ export function ReportsHomeScreen() {
             renderItem={renderDueItem}
             contentContainerStyle={styles.listContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+            ListHeaderComponent={
+              pendingDues.length > 0 ? (
+                <View style={styles.listSectionHeader}>
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="account-alert-outline" size={18} color={colors.textSecondary} />
+                  <Text style={styles.listSectionTitle}>Pending Dues</Text>
+                  <Text style={styles.listSectionCount}>{pendingDues.length}</Text>
+                </View>
+              ) : null
+            }
             ListEmptyComponent={<EmptyState message="No pending dues for this month" />}
+            ListFooterComponent={
+              pendingDues.length > 0 ? (
+                <View style={styles.exportRow}>
+                  <ExportButton
+                    onExport={handleExportDues}
+                    testID="export-dues-pdf"
+                  />
+                </View>
+              ) : null
+            }
             testID="dues-list"
           />
-          {pendingDues.length > 0 && (
-            <View style={styles.exportRow}>
-              <ExportButton
-                onExport={handleExportDues}
-                testID="export-dues-pdf"
-              />
-            </View>
-          )}
         </View>
       )}
     </View>
@@ -190,37 +278,116 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.bg,
   },
   header: {
-    padding: spacing.base,
-    paddingBottom: 0,
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    gap: spacing.xs,
   },
   skeletonContainer: {
     padding: spacing.base,
   },
-  row: {
+  kpiRow: {
     flexDirection: 'row',
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  scrollContent: {
+
+  /* ── KPI Tiles ───────────────────────────────────── */
+  kpiTile: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
     padding: spacing.base,
+    ...shadows.sm,
   },
+  kpiIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  kpiValue: {
+    fontSize: fontSizes['3xl'],
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    marginBottom: 2,
+  },
+  kpiLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.medium,
+    color: colors.textSecondary,
+  },
+
+  /* ── List Section Header ─────────────────────────── */
+  listSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  listSectionTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+    flex: 1,
+  },
+  listSectionCount: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.primary,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+
+  /* ── Scroll / List Content ───────────────────────── */
+  scrollContent: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.sm,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
+  },
+  listContent: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.sm,
+    paddingBottom: listDefaults.contentPaddingBottomNoFab,
+  },
+
+  /* ── Transaction Row ─────────────────────────────── */
   txRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 14,
+    borderRadius: radius.xl,
+    padding: spacing.base,
     marginBottom: spacing.sm,
+    gap: spacing.md,
+    ...shadows.sm,
+  },
+  txIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   txInfo: {
     flex: 1,
   },
   txReceipt: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
     marginBottom: 2,
+  },
+  txSourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   txSource: {
     fontSize: fontSizes.sm,
@@ -231,34 +398,50 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: colors.success,
   },
+
+  /* ── Due Row ─────────────────────────────────────── */
   duesContainer: {
     flex: 1,
-  },
-  listContent: {
-    padding: spacing.base,
   },
   dueRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 14,
+    borderRadius: radius.xl,
+    padding: spacing.base,
     marginBottom: spacing.sm,
+    gap: spacing.md,
+    ...shadows.sm,
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
   },
   dueInfo: {
     flex: 1,
   },
   dueName: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  dueStatus: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
+  dueMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  duePending: {
+    fontSize: fontSizes.xs,
+    color: colors.warning,
+    fontWeight: fontWeights.medium,
   },
   dueAmounts: {
     alignItems: 'flex-end',
@@ -267,14 +450,23 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.danger,
+    marginBottom: 4,
   },
-  duePending: {
+  dueStatusBadge: {
+    backgroundColor: colors.warningBg,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  dueStatusText: {
     fontSize: fontSizes.xs,
-    color: colors.textDisabled,
-    marginTop: 2,
+    fontWeight: fontWeights.semibold,
+    color: colors.warningText,
+    textTransform: 'uppercase',
   },
+
+  /* ── Export ───────────────────────────────────────── */
   exportRow: {
-    padding: spacing.base,
     paddingTop: spacing.sm,
   },
 });

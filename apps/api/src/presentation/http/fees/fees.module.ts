@@ -55,15 +55,15 @@ import type { TransactionPort } from '@application/common/transaction.port';
     { provide: CLOCK_PORT, useClass: SystemClock },
     {
       provide: 'LIST_UNPAID_DUES_USE_CASE',
-      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository, academyRepo: AcademyRepository, clock: ClockPort) =>
-        new ListUnpaidDuesUseCase(userRepo, feeDueRepo, academyRepo, clock),
-      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, CLOCK_PORT],
+      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository, academyRepo: AcademyRepository, clock: ClockPort, studentRepo: StudentRepository) =>
+        new ListUnpaidDuesUseCase(userRepo, feeDueRepo, academyRepo, clock, studentRepo),
+      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, CLOCK_PORT, STUDENT_REPOSITORY],
     },
     {
       provide: 'LIST_PAID_DUES_USE_CASE',
-      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository) =>
-        new ListPaidDuesUseCase(userRepo, feeDueRepo),
-      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY],
+      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository, studentRepo: StudentRepository) =>
+        new ListPaidDuesUseCase(userRepo, feeDueRepo, studentRepo),
+      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, STUDENT_REPOSITORY],
     },
     {
       provide: 'GET_STUDENT_FEES_USE_CASE',

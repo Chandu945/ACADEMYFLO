@@ -4,6 +4,7 @@ export const feeDueItemSchema = z.object({
   id: z.string(),
   academyId: z.string(),
   studentId: z.string(),
+  studentName: z.string().nullable().optional().default(null),
   monthKey: z.string(),
   dueDate: z.string(),
   amount: z.number().int(),

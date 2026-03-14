@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   Alert,
   Modal,
@@ -13,6 +14,7 @@ import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import type { ExpenseCategory } from '../../../domain/expense/expense.types';
@@ -20,11 +22,12 @@ import { expenseCategoryListSchema } from '../../../domain/expense/expense.schem
 import { saveExpenseUseCase } from '../../../application/expense/use-cases/save-expense.usecase';
 import { deleteExpenseUseCase } from '../../../application/expense/use-cases/delete-expense.usecase';
 import * as expenseApi from '../../../infra/expense/expense-api';
-import { Screen } from '../../components/ui/Screen';
+import { TextArea } from '../../components/ui/TextArea';
 import { isValidDate, getTodayIST } from '../../../domain/common/date-utils';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ExpenseForm'>;
 type Route = RouteProp<MoreStackParamList, 'ExpenseForm'>;
@@ -33,9 +36,33 @@ function todayString(): string {
   return getTodayIST();
 }
 
+/** Map common expense category names to MaterialCommunityIcons */
+function getCategoryIcon(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('salary') || lower.includes('salaries')) return 'account-cash-outline';
+  if (lower.includes('rent')) return 'home-outline';
+  if (lower.includes('transport')) return 'bus';
+  if (lower.includes('equipment') || lower.includes('supplies')) return 'hammer-wrench';
+  if (lower.includes('utilit')) return 'lightning-bolt-outline';
+  if (lower.includes('water')) return 'water-outline';
+  if (lower.includes('electric')) return 'flash-outline';
+  if (lower.includes('food') || lower.includes('meal')) return 'food-outline';
+  if (lower.includes('repair') || lower.includes('maintenance')) return 'wrench-outline';
+  if (lower.includes('marketing') || lower.includes('advertis')) return 'bullhorn-outline';
+  if (lower.includes('insurance')) return 'shield-check-outline';
+  if (lower.includes('internet') || lower.includes('wifi')) return 'wifi';
+  if (lower.includes('phone') || lower.includes('mobile')) return 'phone-outline';
+  if (lower.includes('office')) return 'office-building-outline';
+  if (lower.includes('travel')) return 'airplane-outline';
+  if (lower.includes('tax')) return 'file-document-outline';
+  if (lower.includes('miscellan')) return 'dots-horizontal-circle-outline';
+  return 'cash-outline';
+}
+
 export function ExpenseFormScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { mode } = route.params;
@@ -128,6 +155,7 @@ export function ExpenseFormScreen() {
     setSaving(false);
 
     if (result.ok) {
+      showToast(mode === 'create' ? 'Expense added' : 'Expense updated');
       navigation.goBack();
     } else {
       Alert.alert('Error', result.error.message);
@@ -144,6 +172,7 @@ export function ExpenseFormScreen() {
         onPress: async () => {
           const result = await deleteExpenseUseCase({ expenseApi }, existing.id);
           if (result.ok) {
+            showToast('Expense deleted');
             navigation.goBack();
           } else {
             Alert.alert('Error', result.error.message);
@@ -153,13 +182,19 @@ export function ExpenseFormScreen() {
     ]);
   };
 
-  const selectedCategory = categories.find((c) => c.id === categoryId);
-
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Category */}
-        <Text style={styles.label}>Category</Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* ── Category ─────────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="tag-outline" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Category</Text>
+      </View>
+      <View style={styles.card}>
         <View style={styles.categoryRow}>
           {categories.map((cat) => (
             <TouchableOpacity
@@ -168,6 +203,12 @@ export function ExpenseFormScreen() {
               onPress={() => setCategoryId(cat.id)}
               testID={`category-${cat.id}`}
             >
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon
+                name={getCategoryIcon(cat.name)}
+                size={14}
+                color={categoryId === cat.id ? colors.white : colors.textSecondary}
+              />
               <Text
                 style={[
                   styles.categoryChipText,
@@ -183,169 +224,217 @@ export function ExpenseFormScreen() {
             onPress={() => setShowAddCategory(true)}
             testID="add-category-button"
           >
-            <Text style={styles.addCategoryText}>+ Add</Text>
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="plus" size={14} color={colors.primary} />
+            <Text style={styles.addCategoryText}>Add</Text>
           </TouchableOpacity>
         </View>
-        {selectedCategory && (
-          <Text style={styles.selectedCategoryLabel}>Selected: {selectedCategory.name}</Text>
-        )}
+      </View>
 
-        {/* Date */}
-        <Text style={styles.label}>Date</Text>
+      {/* ── Date & Amount ────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="calendar-outline" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Date & Amount</Text>
+      </View>
+      <View style={styles.card}>
         <DatePickerInput
+          label="Date"
           value={date}
           onChange={setDate}
           placeholder="Select date"
           testID="expense-date-input"
         />
 
-        {/* Amount */}
-        <Text style={styles.label}>Amount</Text>
-        <View style={styles.amountRow}>
-          <Text style={styles.currencyPrefix}>{'\u20B9'}</Text>
+        <Text style={styles.fieldLabel}>AMOUNT *</Text>
+        <View style={[styles.amountRow, amount !== '' && parseFloat(amount) > 0 && styles.amountRowFilled]}>
+          <View style={styles.currencyCircle}>
+            <Text style={styles.currencySymbol}>{'\u20B9'}</Text>
+          </View>
           <TextInput
-            style={[styles.input, styles.amountInput]}
+            style={styles.amountInput}
             value={amount}
             onChangeText={setAmount}
             keyboardType="numeric"
-            placeholder="0"
+            placeholder="0.00"
+            placeholderTextColor={colors.textDisabled}
             maxLength={10}
             testID="expense-amount-input"
           />
         </View>
+      </View>
 
-        {/* Notes */}
-        <Text style={styles.label}>Notes (optional)</Text>
-        <TextInput
-          style={[styles.input, styles.notesInput]}
+      {/* ── Notes ────────────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+        <Icon name="note-text-outline" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Notes</Text>
+      </View>
+      <View style={styles.card}>
+        <TextArea
+          label="Notes (optional)"
           value={notes}
           onChangeText={setNotes}
-          placeholder="Add notes..."
-          multiline
-          numberOfLines={3}
-          maxLength={500}
+          placeholder="Add notes about this expense..."
           testID="expense-notes-input"
         />
+      </View>
 
-        {/* Buttons */}
-        {mode === 'edit' ? (
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={handleDelete}
-              testID="expense-delete-button"
-            >
-              <Text style={styles.deleteButtonText}>Delete</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-              onPress={handleSave}
-              disabled={saving}
-              testID="expense-save-button"
-            >
-              <Text style={styles.saveButtonText}>
-                {saving ? 'Saving...' : 'Save'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+      {/* ── Buttons ──────────────────────────────────── */}
+      {mode === 'edit' ? (
+        <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled, styles.fullWidth]}
+            style={styles.deleteButton}
+            onPress={handleDelete}
+            testID="expense-delete-button"
+          >
+            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+            <Icon name="trash-can-outline" size={20} color={colors.danger} />
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
             onPress={handleSave}
             disabled={saving}
             testID="expense-save-button"
           >
+            {!saving && (
+              // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+              <Icon name="content-save-outline" size={20} color={colors.white} />
+            )}
             <Text style={styles.saveButtonText}>
-              {saving ? 'Saving...' : 'Add Expense'}
+              {saving ? 'Saving...' : 'Save'}
             </Text>
           </TouchableOpacity>
-        )}
-      </ScrollView>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.saveButtonFull, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+          testID="expense-save-button"
+        >
+          {!saving && (
+            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+            <Icon name="content-save-outline" size={20} color={colors.white} />
+          )}
+          <Text style={styles.saveButtonText}>
+            {saving ? 'Saving...' : 'Add Expense'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
-      {/* Add Category Modal */}
+      {/* ── Add Category Modal ──────────────────────── */}
       <Modal
         visible={showAddCategory}
         transparent
         animationType="fade"
         onRequestClose={() => setShowAddCategory(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAddCategory(false)}>
+          <Pressable style={styles.modalContent} onPress={() => {}}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Category</Text>
-              <TouchableOpacity onPress={() => setShowAddCategory(false)} testID="close-add-category">
-                <Text style={styles.modalClose}>✕</Text>
+              <View style={styles.modalTitleRow}>
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="shape-outline" size={22} color={colors.primary} />
+                <Text style={styles.modalTitle}>New Category</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowAddCategory(false)}
+                style={styles.modalCloseBtn}
+                testID="close-add-category"
+              >
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <TextInput
-              style={styles.input}
-              value={newCategoryName}
-              onChangeText={setNewCategoryName}
-              placeholder="Category name"
-              autoFocus
-              maxLength={50}
-              testID="new-category-input"
-            />
-            <TouchableOpacity
-              style={[styles.saveButton, styles.fullWidth, addingCategory && styles.saveButtonDisabled]}
-              onPress={handleAddCategory}
-              disabled={addingCategory}
-              testID="save-category-button"
-            >
-              <Text style={styles.saveButtonText}>
-                {addingCategory ? 'Adding...' : 'Add Category'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
+            <Text style={styles.modalFieldLabel}>CATEGORY NAME</Text>
+            <View style={styles.modalInputWrap}>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="tag-outline" size={18} color={colors.textDisabled} />
+              <TextInput
+                style={styles.modalInput}
+                value={newCategoryName}
+                onChangeText={setNewCategoryName}
+                placeholder="e.g. Office Supplies"
+                placeholderTextColor={colors.textDisabled}
+                autoFocus
+                maxLength={50}
+                testID="new-category-input"
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowAddCategory(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, addingCategory && styles.saveButtonDisabled]}
+                onPress={handleAddCategory}
+                disabled={addingCategory}
+                testID="save-category-button"
+              >
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="plus" size={18} color={colors.white} />
+                <Text style={styles.modalSaveText}>
+                  {addingCategory ? 'Adding...' : 'Add'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
-    </Screen>
+    </ScrollView>
   );
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
   content: {
     padding: spacing.base,
+    paddingBottom: spacing['3xl'],
   },
-  label: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
-    color: colors.text,
-    marginBottom: spacing.xs,
-    marginTop: spacing.base,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    fontSize: fontSizes.base,
-    color: colors.text,
-  },
-  amountRow: {
+
+  /* ── Section Header ─────────────────────────────── */
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
-  currencyPrefix: {
-    fontSize: fontSizes.xl,
+  sectionTitle: {
+    fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginRight: spacing.sm,
   },
-  amountInput: {
-    flex: 1,
+
+  /* ── Card ────────────────────────────────────────── */
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    ...shadows.sm,
   },
-  notesInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
+
+  /* ── Category ────────────────────────────────────── */
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
   categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
@@ -365,23 +454,66 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.white,
   },
   addCategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.primary,
     borderStyle: 'dashed',
   },
   addCategoryText: {
     fontSize: fontSizes.sm,
     color: colors.primary,
-    fontWeight: fontWeights.medium,
+    fontWeight: fontWeights.semibold,
   },
-  selectedCategoryLabel: {
+
+  /* ── Amount ──────────────────────────────────────── */
+  fieldLabel: {
     fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  amountRowFilled: {
+    borderColor: colors.primary,
+  },
+  currencyCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currencySymbol: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+    paddingVertical: 14,
+  },
+
+  /* ── Buttons ─────────────────────────────────────── */
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -389,10 +521,23 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    padding: spacing.base,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+  },
+  saveButtonFull: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginTop: spacing.xl,
   },
   saveButtonDisabled: {
     opacity: 0.6,
@@ -404,44 +549,113 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   deleteButton: {
     flex: 1,
-    backgroundColor: colors.dangerBg,
-    borderRadius: radius.md,
-    padding: spacing.base,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    borderRadius: radius.xl,
+    padding: spacing.base,
   },
   deleteButtonText: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.semibold,
     color: colors.danger,
   },
-  fullWidth: {
-    marginTop: spacing.xl,
-  },
+
+  /* ── Modal ───────────────────────────────────────── */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
-    padding: spacing.xl,
+    alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: colors.bg,
-    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
     padding: spacing.xl,
+    width: 320,
+    maxWidth: '92%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.base,
+    marginBottom: spacing.lg,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   modalTitle: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
   },
-  modalClose: {
-    fontSize: fontSizes.xl,
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.bgSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFieldLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
     color: colors.textSecondary,
-    padding: spacing.sm,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  modalInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  modalInput: {
+    flex: 1,
+    fontSize: fontSizes.base,
+    color: colors.text,
+    paddingVertical: 12,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.medium,
+    color: colors.textSecondary,
+  },
+  modalSaveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md,
+  },
+  modalSaveText: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.white,
   },
 });

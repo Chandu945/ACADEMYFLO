@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { canViewFees } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
@@ -24,6 +25,7 @@ export class ListUnpaidDuesUseCase {
     private readonly feeDueRepo: FeeDueRepository,
     private readonly academyRepo: AcademyRepository,
     private readonly clock: ClockPort,
+    private readonly studentRepo?: StudentRepository,
   ) {}
 
   async execute(input: ListUnpaidDuesInput): Promise<Result<FeeDueDto[], AppError>> {
@@ -53,6 +55,16 @@ export class ListUnpaidDuesUseCase {
         }
       : undefined;
 
-    return ok(dues.map((d) => toFeeDueDto(d, config, today)));
+    // Build student name map
+    const nameMap: Record<string, string> = {};
+    if (this.studentRepo && dues.length > 0) {
+      const uniqueIds = [...new Set(dues.map((d) => d.studentId))];
+      const students = await this.studentRepo.findByIds(uniqueIds);
+      for (const s of students) {
+        nameMap[s.id.toString()] = s.fullName;
+      }
+    }
+
+    return ok(dues.map((d) => toFeeDueDto(d, config, today, nameMap[d.studentId])));
   }
 }

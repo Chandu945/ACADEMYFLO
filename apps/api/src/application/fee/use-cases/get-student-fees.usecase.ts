@@ -69,6 +69,6 @@ export class GetStudentFeesUseCase {
         }
       : undefined;
 
-    return ok(dues.map((d) => toFeeDueDto(d, config, today)));
+    return ok(dues.map((d) => toFeeDueDto(d, config, today, student.fullName)));
   }
 }
