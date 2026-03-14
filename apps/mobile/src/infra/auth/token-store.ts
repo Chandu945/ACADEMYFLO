@@ -20,13 +20,21 @@ export const tokenStore = {
   },
 
   async setSession(refreshToken: string, user: AuthUser): Promise<void> {
-    const payload: StoredSession = { refreshToken, user };
-    await Keychain.setGenericPassword('session', JSON.stringify(payload), {
-      service: SERVICE_KEY,
-    });
+    try {
+      const payload: StoredSession = { refreshToken, user };
+      await Keychain.setGenericPassword('session', JSON.stringify(payload), {
+        service: SERVICE_KEY,
+      });
+    } catch {
+      // Keychain write failed — session won't persist across restarts
+    }
   },
 
   async clearSession(): Promise<void> {
-    await Keychain.resetGenericPassword({ service: SERVICE_KEY });
+    try {
+      await Keychain.resetGenericPassword({ service: SERVICE_KEY });
+    } catch {
+      // Keychain clear failed — ignore
+    }
   },
 };

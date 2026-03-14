@@ -20,7 +20,11 @@ export const deviceIdStore = {
     }
 
     const id = generateUUID();
-    await Keychain.setGenericPassword('deviceId', id, { service: SERVICE_KEY });
+    try {
+      await Keychain.setGenericPassword('deviceId', id, { service: SERVICE_KEY });
+    } catch {
+      // Keychain write failed — use ephemeral ID for this session
+    }
     return id;
   },
 };

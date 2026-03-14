@@ -48,11 +48,15 @@ export function LoginScreen() {
     if (!validate()) return;
 
     setLoading(true);
-    const err = await login(identifier.trim(), password);
-    setLoading(false);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const err = await login(identifier.trim(), password);
+      if (err) {
+        setError(err.message);
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }, [identifier, password, login, validate]);
 

@@ -4,12 +4,12 @@ const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
 
 export function lightHaptic() {
   if (isNative) {
-    Vibration.vibrate(10);
+    try { Vibration.vibrate(10); } catch { /* permission missing */ }
   }
 }
 
 export function mediumHaptic() {
   if (isNative) {
-    Vibration.vibrate(25);
+    try { Vibration.vibrate(25); } catch { /* permission missing */ }
   }
 }
