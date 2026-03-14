@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getDailyReport } from '../../../infra/attendance/attendance-api';
 import { getStaffDailyReport } from '../../../infra/staff-attendance/staff-attendance-api';
@@ -21,10 +21,12 @@ function MarkingCard({
   title,
   icon,
   data,
+  onPress,
 }: {
   title: string;
   icon: string;
   data: CardData | null;
+  onPress?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -33,7 +35,7 @@ function MarkingCard({
   const pct = total > 0 ? Math.round((present / total) * 100) : 0;
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
       <View style={styles.cardIconCircle}>
         {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
         <Icon name={icon} size={20} color={colors.primary} />
@@ -56,11 +58,16 @@ function MarkingCard({
           ]}
         />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-export function AttendanceMarkingCards() {
+type AttendanceMarkingCardsProps = {
+  onStudentPress?: () => void;
+  onStaffPress?: () => void;
+};
+
+export function AttendanceMarkingCards({ onStudentPress, onStaffPress }: AttendanceMarkingCardsProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [studentData, setStudentData] = useState<CardData | null>(null);
@@ -95,8 +102,8 @@ export function AttendanceMarkingCards() {
 
   return (
     <View style={styles.container} testID="attendance-marking-cards">
-      <MarkingCard title="Student" icon="account-group-outline" data={studentData} />
-      <MarkingCard title="Staff" icon="account-tie-outline" data={staffData} />
+      <MarkingCard title="Student" icon="account-group-outline" data={studentData} onPress={onStudentPress} />
+      <MarkingCard title="Staff" icon="account-tie-outline" data={staffData} onPress={onStaffPress} />
     </View>
   );
 }

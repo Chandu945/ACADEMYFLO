@@ -3,8 +3,8 @@ const MAX_LENGTH = 128;
 export function generateRequestId(): string {
   // Use a simple random hex string (no external dependency needed)
   const bytes = new Uint8Array(16);
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = typeof globalThis.crypto !== 'undefined' ? globalThis.crypto : undefined;
+  const g = globalThis as unknown as { crypto?: { getRandomValues(arr: Uint8Array): void } };
+  const crypto = g.crypto;
   if (crypto?.getRandomValues) {
     crypto.getRandomValues(bytes);
   } else {

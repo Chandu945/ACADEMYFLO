@@ -8,6 +8,7 @@ export const academyDetailResponseSchema = z.object({
   ownerName: z.string(),
   ownerEmail: z.string(),
   ownerPhone: z.string(),
+  ownerProfilePhotoUrl: z.string().nullable().optional().default(null),
   subscription: z
     .object({
       id: z.string(),

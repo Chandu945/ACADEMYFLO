@@ -11,7 +11,7 @@ jest.mock('../http/api-client', () => ({
 
 const mockApiGet = apiClient.apiGet as jest.Mock;
 const mockApiPost = apiClient.apiPost as jest.Mock;
-const mockApiPatch = (apiClient as Record<string, unknown>).apiPatch as jest.Mock;
+const mockApiPatch = (apiClient as Record<string, unknown>)['apiPatch'] as jest.Mock;
 
 describe('student-api', () => {
   beforeEach(() => {

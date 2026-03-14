@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StaffAttendanceRepository } from '@domain/staff-attendance/ports/staff-attendance.repository';
+import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-attendance.rules';
 import { validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { StaffAttendanceErrors } from '../../common/errors';
@@ -20,6 +21,7 @@ export class GetDailyStaffAttendanceReportUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly staffAttendanceRepo: StaffAttendanceRepository,
+    private readonly holidayRepo: HolidayRepository,
   ) {}
 
   async execute(
@@ -38,6 +40,19 @@ export class GetDailyStaffAttendanceReportUseCase {
     const actor = await this.userRepo.findById(input.actorUserId);
     if (!actor || !actor.academyId) {
       return err(StaffAttendanceErrors.academyRequired());
+    }
+
+    const holiday = await this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date);
+    const isHoliday = holiday !== null;
+
+    if (isHoliday) {
+      return ok({
+        date: input.date,
+        isHoliday: true,
+        presentCount: 0,
+        absentCount: 0,
+        absentStaff: [],
+      });
     }
 
     // Get total ACTIVE staff count
@@ -68,6 +83,7 @@ export class GetDailyStaffAttendanceReportUseCase {
 
     return ok({
       date: input.date,
+      isHoliday: false,
       presentCount: totalActive - absentRecords.length,
       absentCount: absentRecords.length,
       absentStaff,

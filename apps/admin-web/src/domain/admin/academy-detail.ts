@@ -4,6 +4,7 @@ export type AcademyOwner = {
   fullName: string;
   email: string;
   phoneNumber: string;
+  profilePhotoUrl?: string | null;
 };
 
 export type AcademySubscription = {

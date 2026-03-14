@@ -81,11 +81,11 @@ export async function cleanupExports(): Promise<number> {
   // Sort by mtime descending (newest first)
   const sorted = files
     .filter((f) => !f.isDirectory())
-    .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
+    .sort((a, b) => new Date(b.mtime ?? 0).getTime() - new Date(a.mtime ?? 0).getTime());
 
   for (let i = 0; i < sorted.length; i++) {
-    const file = sorted[i];
-    const age = now - new Date(file.mtime).getTime();
+    const file = sorted[i]!;
+    const age = now - new Date(file.mtime ?? 0).getTime();
     const exceedsCount = i >= MAX_FILES;
     const exceedsAge = age > MAX_AGE_MS;
 
@@ -108,12 +108,12 @@ export async function listExports(): Promise<FileMetadata[]> {
   const files = await RNFS.readDir(EXPORTS_DIR);
   return files
     .filter((f) => !f.isDirectory())
-    .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime())
+    .sort((a, b) => new Date(b.mtime ?? 0).getTime() - new Date(a.mtime ?? 0).getTime())
     .map((f) => ({
       filePath: f.path,
       filename: f.name,
       sizeBytes: Number(f.size),
-      createdAt: new Date(f.mtime),
+      createdAt: new Date(f.mtime ?? 0),
     }));
 }
 

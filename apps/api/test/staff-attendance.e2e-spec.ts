@@ -11,6 +11,7 @@ import { LoggingModule } from '../src/shared/logging/logging.module';
 import { StaffAttendanceController } from '../src/presentation/http/staff-attendance/staff-attendance.controller';
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { STAFF_ATTENDANCE_REPOSITORY } from '../src/domain/staff-attendance/ports/staff-attendance.repository';
+import { HOLIDAY_REPOSITORY } from '../src/domain/attendance/ports/holiday.repository';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { GetDailyStaffAttendanceViewUseCase } from '../src/application/staff-attendance/use-cases/get-daily-staff-attendance-view.usecase';
 import { MarkStaffAttendanceUseCase } from '../src/application/staff-attendance/use-cases/mark-staff-attendance.usecase';
@@ -19,17 +20,41 @@ import { GetMonthlyStaffAttendanceSummaryUseCase } from '../src/application/staf
 import {
   InMemoryUserRepository,
   InMemoryStaffAttendanceRepository,
+  InMemoryHolidayRepository,
 } from './helpers/in-memory-repos';
 import { createTestTokenService } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
+import { Holiday } from '../src/domain/attendance/entities/holiday.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
 import type { StaffAttendanceRepository } from '../src/domain/staff-attendance/ports/staff-attendance.repository';
+import type { HolidayRepository } from '../src/domain/attendance/ports/holiday.repository';
 import { configureApiVersioning } from '../src/shared/config/api-versioning';
+
+function todayStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function thisMonthStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function dayOfMonth(day: number): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function daysInCurrentMonth(): number {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+}
 
 describe('Staff Attendance Endpoints (e2e)', () => {
   let app: INestApplication;
   let userRepo: InMemoryUserRepository;
   let staffAttendanceRepo: InMemoryStaffAttendanceRepository;
+  let holidayRepo: InMemoryHolidayRepository;
   let jwtService: JwtService;
 
   beforeAll(async () => {
@@ -43,11 +68,12 @@ describe('Staff Attendance Endpoints (e2e)', () => {
 
     userRepo = new InMemoryUserRepository();
     staffAttendanceRepo = new InMemoryStaffAttendanceRepository();
+    holidayRepo = new InMemoryHolidayRepository();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
     const noOpAuditRecorder = { record: async () => {} };
 
-    const deps = [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY];
+    const deps = [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY];
 
     const moduleFixture = await Test.createTestingModule({
       imports: [
@@ -60,29 +86,30 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: STAFF_ATTENDANCE_REPOSITORY, useValue: staffAttendanceRepo },
+        { provide: HOLIDAY_REPOSITORY, useValue: holidayRepo },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'GET_DAILY_STAFF_ATTENDANCE_VIEW_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new GetDailyStaffAttendanceViewUseCase(ur, sar),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new GetDailyStaffAttendanceViewUseCase(ur, sar, hr),
           inject: deps,
         },
         {
           provide: 'MARK_STAFF_ATTENDANCE_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new MarkStaffAttendanceUseCase(ur, sar, noOpAuditRecorder),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new MarkStaffAttendanceUseCase(ur, sar, hr, noOpAuditRecorder),
           inject: deps,
         },
         {
           provide: 'GET_DAILY_STAFF_ATTENDANCE_REPORT_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new GetDailyStaffAttendanceReportUseCase(ur, sar),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new GetDailyStaffAttendanceReportUseCase(ur, sar, hr),
           inject: deps,
         },
         {
           provide: 'GET_MONTHLY_STAFF_ATTENDANCE_SUMMARY_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new GetMonthlyStaffAttendanceSummaryUseCase(ur, sar),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new GetMonthlyStaffAttendanceSummaryUseCase(ur, sar, hr),
           inject: deps,
         },
       ],
@@ -103,6 +130,7 @@ describe('Staff Attendance Endpoints (e2e)', () => {
   beforeEach(() => {
     userRepo.clear();
     staffAttendanceRepo.clear();
+    holidayRepo.clear();
   });
 
   function makeToken(sub = 'owner-1', role = 'OWNER') {
@@ -144,6 +172,18 @@ describe('Staff Attendance Endpoints (e2e)', () => {
     return withAcademy;
   }
 
+  async function seedHoliday(date: string, academyId = 'academy-1') {
+    const holiday = Holiday.create({
+      id: `holiday-${date}`,
+      academyId,
+      date,
+      reason: 'Test Holiday',
+      declaredByUserId: 'owner-1',
+    });
+    await holidayRepo.save(holiday);
+    return holiday;
+  }
+
   describe('Daily View', () => {
     it('should return all staff as PRESENT by default', async () => {
       await seedOwner();
@@ -152,12 +192,13 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken();
 
       const res = await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
       expect(res.body.success).toBe(true);
-      expect(res.body.data.date).toBe('2024-03-15');
+      expect(res.body.data.date).toBe(todayStr());
+      expect(res.body.data.isHoliday).toBe(false);
       expect(res.body.data.data).toHaveLength(2);
       expect(res.body.data.data.every((s: { status: string }) => s.status === 'PRESENT')).toBe(
         true,
@@ -171,14 +212,14 @@ describe('Staff Attendance Endpoints (e2e)', () => {
 
       // Mark absent
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(200);
 
       // View
       const res = await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -193,12 +234,26 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken();
 
       const res = await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
       expect(res.body.data.data).toHaveLength(0);
       expect(res.body.data.meta.totalItems).toBe(0);
+    });
+
+    it('should return isHoliday=true on a holiday', async () => {
+      await seedOwner();
+      await seedStaff('staff-1');
+      await seedHoliday(todayStr());
+      const token = makeToken();
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.data.isHoliday).toBe(true);
     });
   });
 
@@ -209,7 +264,7 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken();
 
       const res = await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(200);
@@ -226,14 +281,14 @@ describe('Staff Attendance Endpoints (e2e)', () => {
 
       // Mark absent first
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(200);
 
       // Edit back to present
       const res = await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'PRESENT' })
         .expect(200);
@@ -242,7 +297,7 @@ describe('Staff Attendance Endpoints (e2e)', () => {
 
       // Verify in daily view
       const viewRes = await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -256,14 +311,33 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       await seedOwner();
       await seedStaff('staff-1');
       const token = makeToken();
+      // Use a date within the ±30 day range
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
       const res = await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-01-01')
+        .put(`/api/v1/staff-attendance/staff-1?date=${yesterdayStr}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(200);
 
       expect(res.body.success).toBe(true);
+    });
+
+    it('should reject marking on a holiday (409)', async () => {
+      await seedOwner();
+      await seedStaff('staff-1');
+      await seedHoliday(todayStr());
+      const token = makeToken();
+
+      const res = await request(app.getHttpServer())
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'ABSENT' })
+        .expect(409);
+
+      expect(res.body.error).toBe('Conflict');
     });
 
     it('should reject marking for inactive staff (409)', async () => {
@@ -272,7 +346,7 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken();
 
       const res = await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(409);
@@ -286,7 +360,7 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken();
 
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'LATE' })
         .expect(400);
@@ -314,18 +388,19 @@ describe('Staff Attendance Endpoints (e2e)', () => {
 
       // Mark 1 absent
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(200);
 
       const res = await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/daily?date=2024-03-15')
+        .get(`/api/v1/staff-attendance/reports/daily?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
       expect(res.body.success).toBe(true);
-      expect(res.body.data.date).toBe('2024-03-15');
+      expect(res.body.data.date).toBe(todayStr());
+      expect(res.body.data.isHoliday).toBe(false);
       expect(res.body.data.presentCount).toBe(2);
       expect(res.body.data.absentCount).toBe(1);
       expect(res.body.data.absentStaff).toHaveLength(1);
@@ -339,11 +414,29 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken();
 
       const res = await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/daily?date=2024-03-15')
+        .get(`/api/v1/staff-attendance/reports/daily?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
       expect(res.body.data.presentCount).toBe(2);
+      expect(res.body.data.absentCount).toBe(0);
+      expect(res.body.data.absentStaff).toHaveLength(0);
+    });
+
+    it('should return isHoliday=true with zero counts on a holiday', async () => {
+      await seedOwner();
+      await seedStaff('staff-1');
+      await seedStaff('staff-2');
+      await seedHoliday(todayStr());
+      const token = makeToken();
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/staff-attendance/reports/daily?date=${todayStr()}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.data.isHoliday).toBe(true);
+      expect(res.body.data.presentCount).toBe(0);
       expect(res.body.data.absentCount).toBe(0);
       expect(res.body.data.absentStaff).toHaveLength(0);
     });
@@ -355,17 +448,17 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       await seedStaff('staff-1');
       const token = makeToken();
 
-      // Mark absent on 3 days in March 2024
-      for (const day of ['2024-03-01', '2024-03-10', '2024-03-20']) {
+      // Mark absent on 3 days in the current month
+      for (const d of [1, 2, 3]) {
         await request(app.getHttpServer())
-          .put(`/api/v1/staff-attendance/staff-1?date=${day}`)
+          .put(`/api/v1/staff-attendance/staff-1?date=${dayOfMonth(d)}`)
           .set('Authorization', `Bearer ${token}`)
           .send({ status: 'ABSENT' })
           .expect(200);
       }
 
       const res = await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/monthly?month=2024-03')
+        .get(`/api/v1/staff-attendance/reports/monthly?month=${thisMonthStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
@@ -374,7 +467,39 @@ describe('Staff Attendance Endpoints (e2e)', () => {
         (s: { staffUserId: string }) => s.staffUserId === 'staff-1',
       );
       expect(staffSummary.absentCount).toBe(3);
-      expect(staffSummary.presentCount).toBe(31 - 3); // March has 31 days
+      expect(staffSummary.holidayCount).toBe(0);
+      expect(staffSummary.presentCount).toBe(daysInCurrentMonth() - 3);
+    });
+
+    it('should deduct holidays from present count', async () => {
+      await seedOwner();
+      await seedStaff('staff-1');
+      const token = makeToken();
+
+      // Declare 2 holidays in the current month (pick days that don't overlap with absent day)
+      const totalDays = daysInCurrentMonth();
+      await seedHoliday(dayOfMonth(totalDays - 1));
+      await seedHoliday(dayOfMonth(totalDays));
+
+      // Mark absent on day 1 (not a holiday)
+      await request(app.getHttpServer())
+        .put(`/api/v1/staff-attendance/staff-1?date=${dayOfMonth(1)}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'ABSENT' })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/staff-attendance/reports/monthly?month=${thisMonthStr()}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const staffSummary = res.body.data.data.find(
+        (s: { staffUserId: string }) => s.staffUserId === 'staff-1',
+      );
+      // totalDays - 1 absent - 2 holidays = totalDays - 3 present
+      expect(staffSummary.absentCount).toBe(1);
+      expect(staffSummary.holidayCount).toBe(2);
+      expect(staffSummary.presentCount).toBe(totalDays - 3);
     });
 
     it('should reject invalid month format (400)', async () => {
@@ -395,7 +520,7 @@ describe('Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('owner-1', 'OWNER');
 
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(403);

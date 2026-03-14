@@ -106,6 +106,8 @@ export const StaffAttendanceErrors = {
   staffNotFound: (id: string) => AppError.notFound('Staff', id),
   staffNotInAcademy: () => AppError.forbidden('Staff does not belong to your academy'),
   staffNotActive: () => AppError.conflict('Cannot mark attendance for inactive staff'),
+  holidayDeclared: () =>
+    AppError.conflict('Cannot mark staff attendance on a holiday. Remove the holiday first.'),
   markNotAllowed: () => AppError.forbidden('Only owners can mark staff attendance'),
   viewNotAllowed: () => AppError.forbidden('Only owners can view staff attendance'),
 } as const;

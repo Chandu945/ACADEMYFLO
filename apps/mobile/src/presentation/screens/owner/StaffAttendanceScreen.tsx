@@ -15,6 +15,7 @@ import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { DatePickerRow } from '../../components/attendance/DatePickerRow';
+import { HolidayBanner } from '../../components/attendance/HolidayBanner';
 import { Toggle } from '../../components/ui/Toggle';
 import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
@@ -50,17 +51,18 @@ function getInitials(name: string): string {
 type StaffAttendanceRowProps = {
   item: DailyStaffAttendanceItem;
   onToggle: () => void;
+  isHoliday: boolean;
 };
 
-function StaffAttendanceRowComponent({ item, onToggle }: StaffAttendanceRowProps) {
+function StaffAttendanceRowComponent({ item, onToggle, isHoliday }: StaffAttendanceRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPresent = item.status === 'PRESENT';
 
   return (
-    <View style={styles.rowCard} testID={`staff-attendance-row-${item.staffUserId}`}>
-      <View style={[styles.avatar, isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
-        <Text style={[styles.avatarText, isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
+    <View style={[styles.rowCard, isHoliday && styles.rowCardHoliday]} testID={`staff-attendance-row-${item.staffUserId}`}>
+      <View style={[styles.avatar, isHoliday ? styles.avatarHoliday : isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
+        <Text style={[styles.avatarText, isHoliday ? styles.avatarTextHoliday : isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
           {getInitials(item.fullName)}
         </Text>
       </View>
@@ -70,9 +72,9 @@ function StaffAttendanceRowComponent({ item, onToggle }: StaffAttendanceRowProps
           {item.fullName}
         </Text>
         <View style={styles.statusRow}>
-          <View style={[styles.statusDot, isPresent ? styles.dotPresent : styles.dotAbsent]} />
-          <Text style={[styles.statusLabel, isPresent ? styles.labelPresent : styles.labelAbsent]}>
-            {isPresent ? 'Present' : 'Absent'}
+          <View style={[styles.statusDot, isHoliday ? styles.dotHoliday : isPresent ? styles.dotPresent : styles.dotAbsent]} />
+          <Text style={[styles.statusLabel, isHoliday ? styles.labelHoliday : isPresent ? styles.labelPresent : styles.labelAbsent]}>
+            {isHoliday ? 'Holiday' : isPresent ? 'Present' : 'Absent'}
           </Text>
         </View>
       </View>
@@ -80,7 +82,7 @@ function StaffAttendanceRowComponent({ item, onToggle }: StaffAttendanceRowProps
       <Toggle
         value={isPresent}
         onValueChange={onToggle}
-        disabled={false}
+        disabled={isHoliday}
         accessibilityLabel={`${item.fullName} attendance toggle`}
         testID={`toggle-staff-${item.staffUserId}`}
       />
@@ -138,7 +140,7 @@ export function StaffAttendanceScreen() {
   const [selectedDate, setSelectedDate] = useState(getTodayIST);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { items, loading, loadingMore, error, refetch, fetchMore, toggleStatus } =
+  const { items, loading, loadingMore, error, isHoliday, refetch, fetchMore, toggleStatus } =
     useStaffAttendance(selectedDate, staffAttendanceApi);
 
   const today = useMemo(() => getTodayIST(), []);
@@ -179,9 +181,10 @@ export function StaffAttendanceScreen() {
       <StaffAttendanceRow
         item={item}
         onToggle={() => toggleStatus(item.staffUserId)}
+        isHoliday={isHoliday}
       />
     ),
-    [toggleStatus],
+    [toggleStatus, isHoliday],
   );
 
   const keyExtractor = useCallback(
@@ -252,6 +255,8 @@ export function StaffAttendanceScreen() {
           isToday={isToday}
         />
       </View>
+
+      {isHoliday && <HolidayBanner isOwner={false} />}
 
       {error && <InlineError message={error.message} onRetry={refetch} />}
 
@@ -405,6 +410,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   avatarAbsent: {
     backgroundColor: colors.dangerBg,
   },
+  avatarHoliday: {
+    backgroundColor: colors.warningBg,
+  },
   avatarText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
@@ -414,6 +422,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   avatarTextAbsent: {
     color: colors.danger,
+  },
+  avatarTextHoliday: {
+    color: colors.warning,
   },
   rowInfo: {
     flex: 1,
@@ -440,6 +451,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   dotAbsent: {
     backgroundColor: colors.danger,
   },
+  dotHoliday: {
+    backgroundColor: colors.warning,
+  },
   statusLabel: {
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.medium,
@@ -449,5 +463,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   labelAbsent: {
     color: colors.danger,
+  },
+  labelHoliday: {
+    color: colors.warning,
+  },
+  rowCardHoliday: {
+    borderColor: colors.warningBorder,
   },
 });

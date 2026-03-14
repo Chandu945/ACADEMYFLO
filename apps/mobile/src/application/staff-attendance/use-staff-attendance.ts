@@ -22,6 +22,7 @@ type UseStaffAttendanceResult = {
   error: AppError | null;
   hasMore: boolean;
   date: string;
+  isHoliday: boolean;
   refetch: () => void;
   fetchMore: () => void;
   toggleStatus: (staffUserId: string) => void;
@@ -39,6 +40,7 @@ export function useStaffAttendance(
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
+  const [isHoliday, setIsHoliday] = useState(false);
   const mountedRef = useRef(true);
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -66,6 +68,7 @@ export function useStaffAttendance(
           setItems((prev) => [...prev, ...result.value.items]);
         } else {
           setItems(result.value.items);
+          setIsHoliday(result.value.isHoliday);
         }
         setPage(targetPage);
         setHasMore(targetPage < result.value.meta.totalPages);
@@ -91,6 +94,8 @@ export function useStaffAttendance(
 
   const toggleStatus = useCallback(
     (staffUserId: string) => {
+      if (isHoliday) return;
+
       setItems((prev) =>
         prev.map((item) => {
           if (item.staffUserId !== staffUserId) return item;
@@ -121,7 +126,7 @@ export function useStaffAttendance(
         },
       );
     },
-    [staffAttendanceApi, date],
+    [staffAttendanceApi, date, isHoliday],
   );
 
   useEffect(() => {
@@ -139,6 +144,7 @@ export function useStaffAttendance(
     error,
     hasMore,
     date,
+    isHoliday,
     refetch,
     fetchMore,
     toggleStatus,

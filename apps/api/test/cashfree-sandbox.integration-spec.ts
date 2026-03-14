@@ -13,8 +13,8 @@ const SANDBOX_BASE_URL = 'https://sandbox.cashfree.com/pg';
 const API_VERSION = '2023-08-01';
 
 const hasCredentials =
-  !!process.env.CASHFREE_CLIENT_ID &&
-  process.env.CASHFREE_CLIENT_ID !== 'TEST_CASHFREE_APP_ID';
+  !!process.env['CASHFREE_CLIENT_ID'] &&
+  process.env['CASHFREE_CLIENT_ID'] !== 'TEST_CASHFREE_APP_ID';
 
 const describeOrSkip = hasCredentials ? describe : describe.skip;
 
@@ -33,8 +33,8 @@ describe('Cashfree Sandbox Integration', () => {
     beforeAll(() => {
       const httpClient = new CashfreeHttpClient(
         {
-          clientId: process.env.CASHFREE_CLIENT_ID!,
-          clientSecret: process.env.CASHFREE_CLIENT_SECRET!,
+          clientId: process.env['CASHFREE_CLIENT_ID']!,
+          clientSecret: process.env['CASHFREE_CLIENT_SECRET']!,
           apiVersion: API_VERSION,
           baseUrl: SANDBOX_BASE_URL,
         },

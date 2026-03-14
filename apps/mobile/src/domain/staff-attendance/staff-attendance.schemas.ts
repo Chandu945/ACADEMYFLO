@@ -8,6 +8,7 @@ export const dailyStaffAttendanceItemSchema = z.object({
 
 export const dailyStaffAttendanceResponseSchema = z.object({
   date: z.string(),
+  isHoliday: z.boolean(),
   data: z.array(dailyStaffAttendanceItemSchema),
   meta: z.object({
     page: z.number().int(),
@@ -25,6 +26,7 @@ export const markStaffAttendanceResponseSchema = z.object({
 
 export const staffDailyReportResponseSchema = z.object({
   date: z.string(),
+  isHoliday: z.boolean(),
   presentCount: z.number().int(),
   absentCount: z.number().int(),
   absentStaff: z.array(
@@ -40,6 +42,7 @@ export const monthlyStaffSummaryItemSchema = z.object({
   fullName: z.string(),
   presentCount: z.number().int(),
   absentCount: z.number().int(),
+  holidayCount: z.number().int(),
 });
 
 export const monthlyStaffSummaryResponseSchema = z.object({

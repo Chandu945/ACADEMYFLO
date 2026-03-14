@@ -48,13 +48,14 @@ describe('file-manager', () => {
       mockRNFS.moveFile.mockResolvedValue(undefined);
       mockRNFS.stat.mockResolvedValue({
         size: 2048,
-        mtime: new Date('2026-03-01T10:00:00Z'),
+        mtime: new Date('2026-03-01T10:00:00Z').getTime(),
         isFile: () => true,
         isDirectory: () => false,
         name: 'test.pdf',
         path: '/mock/test.pdf',
-        ctime: new Date(),
+        ctime: Date.now(),
         originalFilepath: '',
+        mode: 0o644,
       });
 
       const result = await moveToExports('/tmp/test.pdf.tmp', 'test.pdf');
@@ -72,13 +73,14 @@ describe('file-manager', () => {
       mockRNFS.moveFile.mockResolvedValue(undefined);
       mockRNFS.stat.mockResolvedValue({
         size: 1024,
-        mtime: new Date(),
+        mtime: Date.now(),
         isFile: () => true,
         isDirectory: () => false,
         name: 'test.pdf',
         path: '/mock/test.pdf',
-        ctime: new Date(),
+        ctime: Date.now(),
         originalFilepath: '',
+        mode: 0o644,
       });
 
       await moveToExports('/tmp/test.pdf.tmp', 'test.pdf');
@@ -186,8 +188,8 @@ describe('file-manager', () => {
       const result = await listExports();
 
       expect(result).toHaveLength(2);
-      expect(result[0].filename).toBe('new.pdf');
-      expect(result[1].filename).toBe('old.pdf');
+      expect(result[0]!.filename).toBe('new.pdf');
+      expect(result[1]!.filename).toBe('old.pdf');
     });
   });
 });

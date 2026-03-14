@@ -33,6 +33,7 @@ function buildDeps() {
   const challengeRepo: jest.Mocked<PasswordResetChallengeRepository> = {
     save: jest.fn(),
     findLatestActiveByUserId: jest.fn(),
+    invalidateActiveByUserId: jest.fn(),
     markUsed: jest.fn(),
     incrementAttempts: jest.fn(),
   };

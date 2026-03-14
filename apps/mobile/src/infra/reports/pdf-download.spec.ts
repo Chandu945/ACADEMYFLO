@@ -36,7 +36,7 @@ describe('downloadAndStorePdf', () => {
   it('downloads, validates, and stores PDF on success', async () => {
     mockRNFS.downloadFile.mockReturnValue({
       jobId: 1,
-      promise: Promise.resolve({ statusCode: 200, bytesWritten: 2048 }),
+      promise: Promise.resolve({ jobId: 1, statusCode: 200, bytesWritten: 2048 }),
     });
     mockFileManager.moveToExports.mockResolvedValue({
       filePath: '/mock/exports/revenue.pdf',
@@ -69,7 +69,7 @@ describe('downloadAndStorePdf', () => {
   it('returns error on HTTP 403', async () => {
     mockRNFS.downloadFile.mockReturnValue({
       jobId: 1,
-      promise: Promise.resolve({ statusCode: 403, bytesWritten: 0 }),
+      promise: Promise.resolve({ jobId: 1, statusCode: 403, bytesWritten: 0 }),
     });
 
     const result = await downloadAndStorePdf(defaultOptions);
@@ -83,7 +83,7 @@ describe('downloadAndStorePdf', () => {
   it('returns error on zero bytes written', async () => {
     mockRNFS.downloadFile.mockReturnValue({
       jobId: 1,
-      promise: Promise.resolve({ statusCode: 200, bytesWritten: 0 }),
+      promise: Promise.resolve({ jobId: 1, statusCode: 200, bytesWritten: 0 }),
     });
 
     const result = await downloadAndStorePdf(defaultOptions);
@@ -106,7 +106,7 @@ describe('downloadAndStorePdf', () => {
       }
       return {
         jobId: callCount,
-        promise: Promise.resolve({ statusCode: 200, bytesWritten: 1024 }),
+        promise: Promise.resolve({ jobId: callCount, statusCode: 200, bytesWritten: 1024 }),
       };
     });
     mockFileManager.moveToExports.mockResolvedValue({
@@ -139,7 +139,7 @@ describe('downloadAndStorePdf', () => {
   it('does not retry on non-network errors', async () => {
     mockRNFS.downloadFile.mockReturnValue({
       jobId: 1,
-      promise: Promise.resolve({ statusCode: 500, bytesWritten: 0 }),
+      promise: Promise.resolve({ jobId: 1, statusCode: 500, bytesWritten: 0 }),
     });
 
     const result = await downloadAndStorePdf(defaultOptions);

@@ -11,6 +11,7 @@ import { LoggingModule } from '../src/shared/logging/logging.module';
 import { StaffAttendanceController } from '../src/presentation/http/staff-attendance/staff-attendance.controller';
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { STAFF_ATTENDANCE_REPOSITORY } from '../src/domain/staff-attendance/ports/staff-attendance.repository';
+import { HOLIDAY_REPOSITORY } from '../src/domain/attendance/ports/holiday.repository';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { GetDailyStaffAttendanceViewUseCase } from '../src/application/staff-attendance/use-cases/get-daily-staff-attendance-view.usecase';
 import { MarkStaffAttendanceUseCase } from '../src/application/staff-attendance/use-cases/mark-staff-attendance.usecase';
@@ -19,17 +20,30 @@ import { GetMonthlyStaffAttendanceSummaryUseCase } from '../src/application/staf
 import {
   InMemoryUserRepository,
   InMemoryStaffAttendanceRepository,
+  InMemoryHolidayRepository,
 } from './helpers/in-memory-repos';
 import { createTestTokenService } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
 import type { StaffAttendanceRepository } from '../src/domain/staff-attendance/ports/staff-attendance.repository';
+import type { HolidayRepository } from '../src/domain/attendance/ports/holiday.repository';
 import { configureApiVersioning } from '../src/shared/config/api-versioning';
+
+function todayStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function thisMonthStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
 describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
   let app: INestApplication;
   let userRepo: InMemoryUserRepository;
   let staffAttendanceRepo: InMemoryStaffAttendanceRepository;
+  let holidayRepo: InMemoryHolidayRepository;
   let jwtService: JwtService;
 
   beforeAll(async () => {
@@ -43,11 +57,12 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
 
     userRepo = new InMemoryUserRepository();
     staffAttendanceRepo = new InMemoryStaffAttendanceRepository();
+    holidayRepo = new InMemoryHolidayRepository();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
     const noOpAuditRecorder = { record: async () => {} };
 
-    const deps = [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY];
+    const deps = [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY];
 
     const moduleFixture = await Test.createTestingModule({
       imports: [
@@ -60,29 +75,30 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: STAFF_ATTENDANCE_REPOSITORY, useValue: staffAttendanceRepo },
+        { provide: HOLIDAY_REPOSITORY, useValue: holidayRepo },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'GET_DAILY_STAFF_ATTENDANCE_VIEW_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new GetDailyStaffAttendanceViewUseCase(ur, sar),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new GetDailyStaffAttendanceViewUseCase(ur, sar, hr),
           inject: deps,
         },
         {
           provide: 'MARK_STAFF_ATTENDANCE_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new MarkStaffAttendanceUseCase(ur, sar, noOpAuditRecorder),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new MarkStaffAttendanceUseCase(ur, sar, hr, noOpAuditRecorder),
           inject: deps,
         },
         {
           provide: 'GET_DAILY_STAFF_ATTENDANCE_REPORT_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new GetDailyStaffAttendanceReportUseCase(ur, sar),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new GetDailyStaffAttendanceReportUseCase(ur, sar, hr),
           inject: deps,
         },
         {
           provide: 'GET_MONTHLY_STAFF_ATTENDANCE_SUMMARY_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new GetMonthlyStaffAttendanceSummaryUseCase(ur, sar),
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+            new GetMonthlyStaffAttendanceSummaryUseCase(ur, sar, hr),
           inject: deps,
         },
       ],
@@ -103,6 +119,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
   beforeEach(() => {
     userRepo.clear();
     staffAttendanceRepo.clear();
+    holidayRepo.clear();
   });
 
   function makeToken(sub: string, role: string) {
@@ -156,26 +173,26 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
   describe('Unauthenticated access', () => {
     it('should reject unauthenticated GET /staff-attendance (401)', async () => {
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .expect(401);
     });
 
     it('should reject unauthenticated PUT /staff-attendance/:id (401)', async () => {
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .send({ status: 'ABSENT' })
         .expect(401);
     });
 
     it('should reject unauthenticated GET /staff-attendance/reports/daily (401)', async () => {
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/daily?date=2024-03-15')
+        .get(`/api/v1/staff-attendance/reports/daily?date=${todayStr()}`)
         .expect(401);
     });
 
     it('should reject unauthenticated GET /staff-attendance/reports/monthly (401)', async () => {
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/monthly?month=2024-03')
+        .get(`/api/v1/staff-attendance/reports/monthly?month=${thisMonthStr()}`)
         .expect(401);
     });
   });
@@ -186,7 +203,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('staff-1', 'STAFF');
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
     });
@@ -196,7 +213,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('staff-1', 'STAFF');
 
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(403);
@@ -207,7 +224,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('staff-1', 'STAFF');
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/daily?date=2024-03-15')
+        .get(`/api/v1/staff-attendance/reports/daily?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
     });
@@ -217,7 +234,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('staff-1', 'STAFF');
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/monthly?month=2024-03')
+        .get(`/api/v1/staff-attendance/reports/monthly?month=${thisMonthStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
     });
@@ -229,23 +246,23 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('admin-1', 'SUPER_ADMIN');
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
 
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(403);
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/daily?date=2024-03-15')
+        .get(`/api/v1/staff-attendance/reports/daily?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/monthly?month=2024-03')
+        .get(`/api/v1/staff-attendance/reports/monthly?month=${thisMonthStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
     });
@@ -257,7 +274,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('owner-1', 'OWNER');
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance?date=2024-03-15')
+        .get(`/api/v1/staff-attendance?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
     });
@@ -268,7 +285,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('owner-1', 'OWNER');
 
       await request(app.getHttpServer())
-        .put('/api/v1/staff-attendance/staff-1?date=2024-03-15')
+        .put(`/api/v1/staff-attendance/staff-1?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ status: 'ABSENT' })
         .expect(200);
@@ -279,7 +296,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('owner-1', 'OWNER');
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/daily?date=2024-03-15')
+        .get(`/api/v1/staff-attendance/reports/daily?date=${todayStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
     });
@@ -289,7 +306,7 @@ describe('RBAC — Staff Attendance Endpoints (e2e)', () => {
       const token = makeToken('owner-1', 'OWNER');
 
       await request(app.getHttpServer())
-        .get('/api/v1/staff-attendance/reports/monthly?month=2024-03')
+        .get(`/api/v1/staff-attendance/reports/monthly?month=${thisMonthStr()}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
     });

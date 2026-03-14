@@ -82,6 +82,7 @@ class InMemoryAdminQueryRepository implements AdminQueryRepository {
       ownerName: owner.fullName,
       ownerEmail: owner.emailNormalized,
       ownerPhone: owner.phoneE164,
+      ownerProfilePhotoUrl: owner.profilePhotoUrl,
       subscription: sub
         ? {
             id: sub.id.toString(),

@@ -23,7 +23,15 @@ export function OwnerCard({ owner }: OwnerCardProps) {
     <Card title="Owner Contact">
       <div className={styles.profile}>
         <div className={styles.avatar}>
-          <span className={styles.initials}>{getInitials(owner.fullName)}</span>
+          {owner.profilePhotoUrl ? (
+            <img
+              src={owner.profilePhotoUrl}
+              alt={owner.fullName}
+              className={styles.avatarImage}
+            />
+          ) : (
+            <span className={styles.initials}>{getInitials(owner.fullName)}</span>
+          )}
         </div>
         <div className={styles.info}>
           <h3 className={styles.name}>{owner.fullName}</h3>

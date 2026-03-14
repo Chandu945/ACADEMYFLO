@@ -8,14 +8,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import type { ThemeMode } from '../../context/ThemeContext';
 import { Screen } from '../../components/ui/Screen';
+import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'MoreHome'>;
-
-function getInitials(name: string): string {
-  return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-}
 
 type MenuItem = {
   key: string;
@@ -115,8 +112,14 @@ export function MoreScreen() {
         {/* Profile Card */}
         {user && (
           <View style={styles.profileCard} testID="profile-card">
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileAvatarText}>{getInitials(user.fullName)}</Text>
+            <View style={styles.profileAvatarWrap}>
+              <ProfilePhotoUploader
+                currentPhotoUrl={user.profilePhotoUrl ?? null}
+                uploadPath="/api/v1/profile/photo"
+                onPhotoUploaded={() => {}}
+                size={56}
+                testID="profile-photo"
+              />
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName} numberOfLines={1}>{user.fullName}</Text>
@@ -218,19 +221,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.xl,
     ...shadows.md,
   },
-  profileAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  profileAvatarWrap: {
     marginRight: spacing.base,
-  },
-  profileAvatarText: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.bold,
-    color: colors.white,
+    marginBottom: 0,
   },
   profileInfo: {
     flex: 1,

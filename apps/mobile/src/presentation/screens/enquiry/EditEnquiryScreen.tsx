@@ -15,6 +15,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EnquirySource } from '../../../domain/enquiry/enquiry.types';
 import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { isValidDate } from '../../../domain/common/date-utils';
 import { Screen } from '../../components/ui/Screen';
 import { useToast } from '../../context/ToastContext';
@@ -221,13 +222,11 @@ export function EditEnquiryScreen() {
         {/* Follow-up */}
         <Text style={styles.sectionTitle}>Follow-Up</Text>
 
-        <Text style={styles.label}>Next Follow-Up Date (YYYY-MM-DD)</Text>
-        <TextInput
-          style={styles.input}
+        <DatePickerInput
+          label="Next Follow-Up Date"
           value={nextFollowUpDate}
-          onChangeText={setNextFollowUpDate}
-          placeholder="2026-03-10"
-          maxLength={10}
+          onChange={setNextFollowUpDate}
+          placeholder="Select follow-up date"
           testID="edit-next-followup-date"
         />
 

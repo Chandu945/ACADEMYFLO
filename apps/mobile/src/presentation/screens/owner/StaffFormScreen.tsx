@@ -4,6 +4,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import { Input } from '../../components/ui/Input';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
@@ -269,12 +270,11 @@ export function StaffFormScreen() {
           ))}
         </View>
 
-        <Input
+        <DatePickerInput
           label="Start Date"
           value={startDate}
-          onChangeText={setStartDate}
-          placeholder="YYYY-MM-DD"
-          maxLength={10}
+          onChange={setStartDate}
+          placeholder="Select start date"
           testID="input-startDate"
         />
       </View>

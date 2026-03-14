@@ -5,6 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StudentsStackParamList } from '../../navigation/StudentsStack';
 import { useAuth } from '../../context/AuthContext';
 import { Input } from '../../components/ui/Input';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
@@ -280,13 +281,13 @@ export function StudentFormScreen() {
         testID="input-motherName"
       />
 
-      <Input
-        label="Date of Birth (YYYY-MM-DD)"
+      <DatePickerInput
+        label="Date of Birth"
         value={dateOfBirth}
-        onChangeText={setDateOfBirth}
+        onChange={setDateOfBirth}
         error={fieldErrors['dateOfBirth']}
-        placeholder="2010-01-01"
-        maxLength={10}
+        maximumDate={new Date()}
+        placeholder="Select date of birth"
         testID="input-dateOfBirth"
       />
 
@@ -437,13 +438,12 @@ export function StudentFormScreen() {
       {/* Section: Enrollment */}
       <Text style={styles.sectionTitle}>Enrollment</Text>
 
-      <Input
-        label="Joining Date (YYYY-MM-DD)"
+      <DatePickerInput
+        label="Joining Date"
         value={joiningDate}
-        onChangeText={setJoiningDate}
+        onChange={setJoiningDate}
         error={fieldErrors['joiningDate']}
-        placeholder="2024-01-01"
-        maxLength={10}
+        placeholder="Select joining date"
         testID="input-joiningDate"
       />
 

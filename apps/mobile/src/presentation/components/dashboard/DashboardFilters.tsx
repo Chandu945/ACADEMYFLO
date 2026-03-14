@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { OwnerDashboardRange } from '../../../domain/dashboard/dashboard.types';
 import { dateRangeSchema } from '../../../domain/dashboard/dashboard.schemas';
+import { DatePickerInput } from '../ui/DatePickerInput';
 import { fontSizes, fontWeights, radius, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,8 +12,6 @@ type DashboardFiltersProps = {
   range: OwnerDashboardRange;
   onRangeChange: (range: OwnerDashboardRange) => void;
 };
-
-const LOCAL_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function DashboardFilters({ range, onRangeChange }: DashboardFiltersProps) {
   const { colors } = useTheme();
@@ -43,7 +42,7 @@ export function DashboardFilters({ range, onRangeChange }: DashboardFiltersProps
     onRangeChange({ mode: 'custom', from: fromText, to: toText });
   };
 
-  const isApplyEnabled = LOCAL_DATE_RE.test(fromText) && LOCAL_DATE_RE.test(toText);
+  const isApplyEnabled = fromText.length > 0 && toText.length > 0;
 
   return (
     <View style={styles.container}>
@@ -90,38 +89,22 @@ export function DashboardFilters({ range, onRangeChange }: DashboardFiltersProps
         <View style={styles.dateSection}>
           <View style={styles.dateFields}>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>From</Text>
-              <View style={styles.inputWrapper}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="calendar-outline" size={16} color={colors.textDisabled} />
-                <TextInput
-                  style={styles.dateInput}
-                  value={fromText}
-                  onChangeText={setFromText}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.textDisabled}
-                  maxLength={10}
-                  testID="input-from"
-                  accessibilityLabel="From date"
-                />
-              </View>
+              <DatePickerInput
+                label="From"
+                value={fromText}
+                onChange={setFromText}
+                placeholder="Select start date"
+                testID="input-from"
+              />
             </View>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>To</Text>
-              <View style={styles.inputWrapper}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="calendar-outline" size={16} color={colors.textDisabled} />
-                <TextInput
-                  style={styles.dateInput}
-                  value={toText}
-                  onChangeText={setToText}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.textDisabled}
-                  maxLength={10}
-                  testID="input-to"
-                  accessibilityLabel="To date"
-                />
-              </View>
+              <DatePickerInput
+                label="To"
+                value={toText}
+                onChange={setToText}
+                placeholder="Select end date"
+                testID="input-to"
+              />
             </View>
           </View>
           <TouchableOpacity
@@ -192,31 +175,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   dateField: {
     flex: 1,
-  },
-  dateLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.semibold,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bg,
-    gap: spacing.sm,
-  },
-  dateInput: {
-    flex: 1,
-    fontSize: fontSizes.base,
-    color: colors.text,
-    padding: 0,
   },
   applyButton: {
     backgroundColor: colors.primary,

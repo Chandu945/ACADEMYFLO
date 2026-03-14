@@ -28,6 +28,7 @@ export interface LoginOutput {
     phoneNumber: string;
     role: string;
     status: string;
+    profilePhotoUrl: string | null;
   };
 }
 
@@ -102,6 +103,7 @@ export class LoginUseCase {
         phoneNumber: user.phoneE164,
         role: user.role,
         status: user.status,
+        profilePhotoUrl: user.profilePhotoUrl,
       },
     });
   }

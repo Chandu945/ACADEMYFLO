@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { Input } from '../../components/ui/Input';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import type { EventType, TargetAudience } from '../../../domain/event/event.types';
@@ -138,8 +139,8 @@ export function EditEventScreen() {
         <Switch value={isAllDay} onValueChange={setIsAllDay} testID="switch-allDay" />
       </View>
 
-      <Input label="Start Date (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} testID="input-startDate" />
-      <Input label="End Date (YYYY-MM-DD, optional)" value={endDate} onChangeText={setEndDate} testID="input-endDate" />
+      <DatePickerInput label="Start Date" value={startDate} onChange={setStartDate} placeholder="Select start date" testID="input-startDate" />
+      <DatePickerInput label="End Date (optional)" value={endDate} onChange={setEndDate} placeholder="Select end date" testID="input-endDate" />
 
       {!isAllDay && (
         <>

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useOwnerDashboard } from '../../../application/dashboard/use-owner-dashboard';
 import { getOwnerDashboard } from '../../../infra/dashboard/dashboard-api';
 import { useFAB } from '../../context/FABContext';
@@ -22,6 +22,7 @@ const dashboardApi = { getOwnerDashboard };
 export function DashboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation<any>();
   const { data, loading, error, refetch } = useOwnerDashboard(DEFAULT_RANGE, dashboardApi);
   const { showFAB, hideFAB } = useFAB();
 
@@ -69,13 +70,15 @@ export function DashboardScreen() {
       ) : data ? (
         <View testID="kpi-container">
           {/* ── Students Overview ─────────────────────────── */}
-          <View style={styles.card}>
+          <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('Students')}>
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderIcon}>
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon name="school-outline" size={18} color={colors.primary} />
               </View>
               <Text style={styles.cardTitle}>Students Overview</Text>
+              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+              <Icon name="chevron-right" size={20} color={colors.textSecondary} />
             </View>
             <View style={styles.overviewGrid}>
               <View style={styles.overviewItem}>
@@ -98,11 +101,11 @@ export function DashboardScreen() {
                 <Text style={styles.overviewLabel}>Due</Text>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ── Pending Requests ──────────────────────────── */}
           {data.pendingPaymentRequests > 0 && (
-            <View style={styles.pendingBanner}>
+            <TouchableOpacity style={styles.pendingBanner} activeOpacity={0.7} onPress={() => navigation.navigate('Fees')}>
               <View style={styles.pendingLeft}>
                 <View style={styles.cardHeaderIcon}>
                   {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
@@ -110,16 +113,31 @@ export function DashboardScreen() {
                 </View>
                 <Text style={styles.pendingText}>Pending Requests</Text>
               </View>
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingBadgeText}>{data.pendingPaymentRequests}</Text>
+              <View style={styles.pendingRight}>
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingBadgeText}>{data.pendingPaymentRequests}</Text>
+                </View>
+                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                <Icon name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
-            </View>
+            </TouchableOpacity>
           )}
 
-          <FinancialOverviewWidget />
-          <AttendanceSummaryWidget />
-          <AttendanceMarkingCards />
-          <MonthlyChartWidget />
+          <FinancialOverviewWidget
+            onCollectedPress={() => navigation.navigate('Fees')}
+            onPendingPress={() => navigation.navigate('Fees')}
+            onExpensesPress={() => navigation.navigate('More', { screen: 'ExpensesHome' })}
+          />
+          <AttendanceSummaryWidget
+            onPress={() => navigation.navigate('Attendance')}
+          />
+          <AttendanceMarkingCards
+            onStudentPress={() => navigation.navigate('Attendance')}
+            onStaffPress={() => navigation.navigate('More', { screen: 'StaffAttendance' })}
+          />
+          <MonthlyChartWidget
+            onPress={() => navigation.navigate('More', { screen: 'ReportsHome' })}
+          />
           <BirthdayWidget />
         </View>
       ) : null}
@@ -165,6 +183,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: {
+    flex: 1,
     fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.text,
@@ -210,6 +229,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderColor: colors.border,
   },
   pendingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  pendingRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,

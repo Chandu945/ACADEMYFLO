@@ -7,7 +7,7 @@ type EnvConfig = {
 
 import { Platform } from 'react-native';
 
-const isWeb = typeof document !== 'undefined';
+const isWeb = typeof (globalThis as unknown as Record<string, unknown>)['document'] !== 'undefined';
 
 // Android emulator uses 10.0.2.2 to reach host machine; iOS simulator uses localhost
 const devApiHost = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';

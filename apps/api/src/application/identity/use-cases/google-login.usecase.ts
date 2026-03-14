@@ -78,6 +78,7 @@ export class GoogleLoginUseCase {
         phoneNumber: user.phoneE164,
         role: user.role,
         status: user.status,
+        profilePhotoUrl: user.profilePhotoUrl,
       },
     });
   }

@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StaffAttendanceRepository } from '@domain/staff-attendance/ports/staff-attendance.repository';
+import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-attendance.rules';
 import { isValidMonthKey, getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { StaffAttendanceErrors } from '../../common/errors';
@@ -32,6 +33,7 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly staffAttendanceRepo: StaffAttendanceRepository,
+    private readonly holidayRepo: HolidayRepository,
   ) {}
 
   async execute(
@@ -59,28 +61,35 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
       input.pageSize,
     );
 
-    // Get all absent records for the month in bulk
-    const allAbsent = await this.staffAttendanceRepo.findAbsentByAcademyAndMonth(
-      actor.academyId,
-      input.month,
-    );
+    // Get all absent records and holidays for the month in bulk
+    const [allAbsent, holidays] = await Promise.all([
+      this.staffAttendanceRepo.findAbsentByAcademyAndMonth(actor.academyId, input.month),
+      this.holidayRepo.findByAcademyAndMonth(actor.academyId, input.month),
+    ]);
 
     const daysInMonth = getDaysInMonth(input.month);
+    const holidayCount = holidays.length;
+    const holidayDateSet = new Set(holidays.map((h) => h.date));
 
-    // Build absent count per staff
-    const absentCountMap = new Map<string, number>();
+    // Build absent dates per staff (to compute overlap with holidays)
+    const absentDatesMap = new Map<string, string[]>();
     for (const record of allAbsent) {
-      absentCountMap.set(record.staffUserId, (absentCountMap.get(record.staffUserId) ?? 0) + 1);
+      const dates = absentDatesMap.get(record.staffUserId) ?? [];
+      dates.push(record.date);
+      absentDatesMap.set(record.staffUserId, dates);
     }
 
     const data: MonthlyStaffAttendanceSummaryItem[] = staffUsers.map((s) => {
-      const absentCount = absentCountMap.get(s.id.toString()) ?? 0;
-      const presentCount = Math.max(0, daysInMonth - absentCount);
+      const absentDates = absentDatesMap.get(s.id.toString()) ?? [];
+      const absentCount = absentDates.length;
+      const overlapCount = absentDates.filter((d) => holidayDateSet.has(d)).length;
+      const presentCount = Math.max(0, daysInMonth - absentCount - holidayCount + overlapCount);
       return {
         staffUserId: s.id.toString(),
         fullName: s.fullName,
         presentCount,
         absentCount,
+        holidayCount,
       };
     });
 

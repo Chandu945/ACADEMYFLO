@@ -8,6 +8,7 @@ import type { AppError } from '../../../domain/common/errors';
 import type { DailyStaffReportResult } from '../../../domain/staff-attendance/staff-attendance.types';
 import { getStaffDailyReportUseCase } from '../../../application/staff-attendance/use-cases/get-staff-daily-report.usecase';
 import { getStaffDailyReport } from '../../../infra/staff-attendance/staff-attendance-api';
+import { HolidayBanner } from '../../components/attendance/HolidayBanner';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
@@ -131,6 +132,8 @@ export function StaffAttendanceDailyReportScreen() {
     >
       {/* Date header */}
       <Text style={styles.dateLabel}>{formatReportDate(report.date)}</Text>
+
+      {report.isHoliday && <HolidayBanner isOwner={false} />}
 
       {/* Attendance Percentage Card */}
       <View style={styles.percentageCard}>

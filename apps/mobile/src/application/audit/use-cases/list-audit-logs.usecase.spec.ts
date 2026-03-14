@@ -37,7 +37,7 @@ describe('listAuditLogsUseCase', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.items).toHaveLength(1);
-      expect(result.value.items[0].action).toBe('STUDENT_CREATED');
+      expect(result.value.items[0]!.action).toBe('STUDENT_CREATED');
       expect(result.value.meta.totalItems).toBe(1);
     }
   });

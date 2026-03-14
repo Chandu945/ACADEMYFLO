@@ -13,7 +13,6 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { Fab } from '../../components/ui/Fab';
-import { Button } from '../../components/ui/Button';
 import { StaffRow } from '../../components/staff/StaffRow';
 import { spacing, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
@@ -81,10 +80,6 @@ export function StaffListScreen() {
     navigation.navigate('StaffForm', { mode: 'create' });
   }, [navigation]);
 
-  const handleStaffAttendance = useCallback(() => {
-    navigation.navigate('StaffAttendance');
-  }, [navigation]);
-
   const renderItem = useCallback(
     ({ item }: { item: StaffListItem }) => (
       <StaffRow
@@ -111,14 +106,6 @@ export function StaffListScreen() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <SectionHeader title="Staff" />
-        <View style={styles.attendanceButton}>
-          <Button
-            title="Staff Attendance"
-            variant="secondary"
-            onPress={handleStaffAttendance}
-            testID="staff-attendance-button"
-          />
-        </View>
       </View>
 
       {error && <InlineError message={error.message} onRetry={refetch} />}
@@ -178,9 +165,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   header: {
     padding: spacing.base,
     paddingBottom: 0,
-  },
-  attendanceButton: {
-    marginTop: spacing.sm,
   },
   skeletons: {
     padding: spacing.base,

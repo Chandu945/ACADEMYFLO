@@ -6,12 +6,12 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
+import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { getParentProfileUseCase } from '../../../application/parent/use-cases/get-parent-profile.usecase';
 import { updateParentProfileUseCase } from '../../../application/parent/use-cases/update-parent-profile.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
-import { getInitials } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ParentProfile'>;
@@ -23,6 +23,7 @@ export function ParentProfileScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function ParentProfileScreen() {
       setFullName(result.value.fullName);
       setEmail(result.value.email);
       setPhoneNumber(result.value.phoneNumber);
+      setProfilePhotoUrl(result.value.profilePhotoUrl ?? null);
     } else {
       setError(result.error.message);
     }
@@ -78,9 +80,13 @@ export function ParentProfileScreen() {
     <Screen>
       {/* Avatar Header */}
       <View style={styles.avatarSection}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(fullName || 'P')}</Text>
-        </View>
+        <ProfilePhotoUploader
+          currentPhotoUrl={profilePhotoUrl}
+          uploadPath="/api/v1/profile/photo"
+          onPhotoUploaded={setProfilePhotoUrl}
+          size={90}
+          testID="parent-profile-photo"
+        />
         <Text style={styles.avatarName}>{fullName}</Text>
         <View style={styles.roleBadge}>
           <Text style={styles.roleText}>PARENT</Text>
@@ -173,21 +179,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   avatarSection: {
     alignItems: 'center',
     marginBottom: spacing.xl,
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    ...shadows.md,
-  },
-  avatarText: {
-    fontSize: fontSizes['2xl'],
-    fontWeight: fontWeights.bold,
-    color: colors.white,
   },
   avatarName: {
     fontSize: fontSizes.xl,

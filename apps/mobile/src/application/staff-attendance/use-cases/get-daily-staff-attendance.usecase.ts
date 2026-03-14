@@ -38,6 +38,7 @@ export async function getDailyStaffAttendanceUseCase(
 
   return ok({
     date: parsed.data.date,
+    isHoliday: parsed.data.isHoliday,
     items: parsed.data.data,
     meta: parsed.data.meta,
   });

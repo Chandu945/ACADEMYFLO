@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StaffAttendanceRepository } from '@domain/staff-attendance/ports/staff-attendance.repository';
+import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-attendance.rules';
 import { validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { StaffAttendanceErrors } from '../../common/errors';
@@ -20,6 +21,7 @@ export interface GetDailyStaffAttendanceViewInput {
 
 export interface GetDailyStaffAttendanceViewOutput {
   date: string;
+  isHoliday: boolean;
   data: DailyStaffAttendanceViewItem[];
   meta: {
     page: number;
@@ -33,6 +35,7 @@ export class GetDailyStaffAttendanceViewUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly staffAttendanceRepo: StaffAttendanceRepository,
+    private readonly holidayRepo: HolidayRepository,
   ) {}
 
   async execute(
@@ -52,6 +55,9 @@ export class GetDailyStaffAttendanceViewUseCase {
     if (!actor || !actor.academyId) {
       return err(StaffAttendanceErrors.academyRequired());
     }
+
+    const holiday = await this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date);
+    const isHoliday = holiday !== null;
 
     // Fetch ACTIVE staff paginated
     const { users: staffUsers, total } = await this.userRepo.listByAcademyAndRole(
@@ -82,6 +88,7 @@ export class GetDailyStaffAttendanceViewUseCase {
 
     return ok({
       date: input.date,
+      isHoliday,
       data,
       meta: {
         page: input.page,

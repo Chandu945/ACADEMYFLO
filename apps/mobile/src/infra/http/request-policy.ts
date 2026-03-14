@@ -72,7 +72,7 @@ export async function policyFetch(
     return await fetchWithTimeout(url, init, options);
   } catch (error) {
     if (isSafe && isNetworkError(error)) {
-      await new Promise((r) => setTimeout(r, DEFAULT_RETRY_BACKOFF_MS));
+      await new Promise<void>((r) => setTimeout(() => r(), DEFAULT_RETRY_BACKOFF_MS));
       return fetchWithTimeout(url, init, options);
     }
     throw error;

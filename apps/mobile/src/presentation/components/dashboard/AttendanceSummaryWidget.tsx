@@ -28,7 +28,11 @@ function formatMonthKey(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}`;
 }
 
-export function AttendanceSummaryWidget() {
+type AttendanceSummaryWidgetProps = {
+  onPress?: () => void;
+};
+
+export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const now = new Date();
@@ -116,11 +120,15 @@ export function AttendanceSummaryWidget() {
     <View style={styles.container} testID="attendance-summary-widget">
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
           {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
           <Icon name="calendar-check-outline" size={20} color={colors.primary} />
           <Text style={styles.title}>Attendance Summary</Text>
-        </View>
+          {onPress && (
+            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+            <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+          )}
+        </TouchableOpacity>
         <View style={styles.monthNav}>
           <TouchableOpacity onPress={goBack} style={styles.navBtn} testID="attendance-month-back">
             {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}

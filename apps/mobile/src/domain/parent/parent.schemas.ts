@@ -75,6 +75,7 @@ export const parentProfileSchema = z.object({
   fullName: z.string(),
   email: z.string(),
   phoneNumber: z.string(),
+  profilePhotoUrl: z.string().nullable().optional(),
 });
 
 export const academyInfoSchema = z.object({

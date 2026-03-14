@@ -1,7 +1,16 @@
 import { MarkStaffAttendanceUseCase } from './mark-staff-attendance.usecase';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StaffAttendanceRepository } from '@domain/staff-attendance/ports/staff-attendance.repository';
+import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { User } from '@domain/identity/entities/user.entity';
+import { Holiday } from '@domain/attendance/entities/holiday.entity';
+
+function todayStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+const TODAY = todayStr();
 
 function createOwner(academyId: string | null = 'academy-1'): User {
   const user = User.create({
@@ -49,29 +58,35 @@ function buildDeps() {
     save: jest.fn(),
     deleteByAcademyStaffDate: jest.fn(),
     findAbsentByAcademyAndDate: jest.fn(),
-    findAbsentByAcademyDateAndStaffIds: jest.fn(),
+    findAbsentByAcademyDateAndStaffIds: jest.fn().mockResolvedValue([]),
     findAbsentByAcademyAndMonth: jest.fn(),
     countAbsentByAcademyStaffAndMonth: jest.fn(),
   };
+  const holidayRepo: jest.Mocked<HolidayRepository> = {
+    save: jest.fn(),
+    findByAcademyAndDate: jest.fn().mockResolvedValue(null),
+    deleteByAcademyAndDate: jest.fn(),
+    findByAcademyAndMonth: jest.fn().mockResolvedValue([]),
+  };
   const auditRecorder = { record: jest.fn() };
-  return { userRepo, staffAttendanceRepo, auditRecorder };
+  return { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder };
 }
 
 describe('MarkStaffAttendanceUseCase', () => {
   it('should create absent record when marking ABSENT', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockImplementation(async (id: string) => {
       if (id === 'owner-1') return createOwner();
       if (id === 'staff-1') return createStaff();
       return null;
     });
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       staffUserId: 'staff-1',
-      date: '2024-03-15',
+      date: TODAY,
       status: 'ABSENT',
     });
 
@@ -79,25 +94,25 @@ describe('MarkStaffAttendanceUseCase', () => {
     if (result.ok) {
       expect(result.value.status).toBe('ABSENT');
       expect(result.value.staffUserId).toBe('staff-1');
-      expect(result.value.date).toBe('2024-03-15');
+      expect(result.value.date).toBe(TODAY);
     }
     expect(staffAttendanceRepo.save).toHaveBeenCalled();
   });
 
   it('should delete absent record when marking PRESENT', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockImplementation(async (id: string) => {
       if (id === 'owner-1') return createOwner();
       if (id === 'staff-1') return createStaff();
       return null;
     });
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       staffUserId: 'staff-1',
-      date: '2024-03-15',
+      date: TODAY,
       status: 'PRESENT',
     });
 
@@ -105,19 +120,51 @@ describe('MarkStaffAttendanceUseCase', () => {
     expect(staffAttendanceRepo.deleteByAcademyStaffDate).toHaveBeenCalledWith(
       'academy-1',
       'staff-1',
-      '2024-03-15',
+      TODAY,
     );
   });
 
-  it('should reject STAFF role from marking staff attendance (FORBIDDEN)', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+  it('should reject marking on a holiday (CONFLICT)', async () => {
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
+    userRepo.findById.mockImplementation(async (id: string) => {
+      if (id === 'owner-1') return createOwner();
+      if (id === 'staff-1') return createStaff();
+      return null;
+    });
+    holidayRepo.findByAcademyAndDate.mockResolvedValue(
+      Holiday.create({
+        id: 'h-1',
+        academyId: 'academy-1',
+        date: TODAY,
+        reason: 'Holi',
+        declaredByUserId: 'owner-1',
+      }),
+    );
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
+    const result = await uc.execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      staffUserId: 'staff-1',
+      date: TODAY,
+      status: 'ABSENT',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('CONFLICT');
+    }
+  });
+
+  it('should reject STAFF role from marking staff attendance (FORBIDDEN)', async () => {
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
+
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'staff-1',
       actorRole: 'STAFF',
       staffUserId: 'staff-2',
-      date: '2024-03-15',
+      date: TODAY,
       status: 'ABSENT',
     });
 
@@ -128,19 +175,19 @@ describe('MarkStaffAttendanceUseCase', () => {
   });
 
   it('should reject cross-academy marking (FORBIDDEN)', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockImplementation(async (id: string) => {
       if (id === 'owner-1') return createOwner('academy-1');
       if (id === 'staff-1') return createStaff('staff-1', 'academy-2');
       return null;
     });
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       staffUserId: 'staff-1',
-      date: '2024-03-15',
+      date: TODAY,
       status: 'ABSENT',
     });
 
@@ -151,19 +198,19 @@ describe('MarkStaffAttendanceUseCase', () => {
   });
 
   it('should reject marking for inactive staff (CONFLICT)', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockImplementation(async (id: string) => {
       if (id === 'owner-1') return createOwner();
       if (id === 'staff-1') return createStaff('staff-1', 'academy-1', 'INACTIVE');
       return null;
     });
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       staffUserId: 'staff-1',
-      date: '2024-03-15',
+      date: TODAY,
       status: 'ABSENT',
     });
 
@@ -174,18 +221,18 @@ describe('MarkStaffAttendanceUseCase', () => {
   });
 
   it('should reject staff not found (NOT_FOUND)', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockImplementation(async (id: string) => {
       if (id === 'owner-1') return createOwner();
       return null;
     });
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       staffUserId: 'staff-999',
-      date: '2024-03-15',
+      date: TODAY,
       status: 'ABSENT',
     });
 
@@ -196,9 +243,9 @@ describe('MarkStaffAttendanceUseCase', () => {
   });
 
   it('should reject invalid date format (VALIDATION_ERROR)', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
@@ -214,15 +261,15 @@ describe('MarkStaffAttendanceUseCase', () => {
   });
 
   it('should reject owner without academy (ACADEMY_SETUP_REQUIRED)', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    const { userRepo, staffAttendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner(null));
 
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, holidayRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       staffUserId: 'staff-1',
-      date: '2024-03-15',
+      date: TODAY,
       status: 'ABSENT',
     });
 

@@ -33,18 +33,20 @@ function MetricTile({
   label,
   amount,
   maxAmount,
+  onPress,
 }: {
   icon: string;
   label: string;
   amount: number;
   maxAmount: number;
+  onPress?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const pct = maxAmount > 0 ? Math.round((amount / maxAmount) * 100) : 0;
 
   return (
-    <View style={styles.metricTile}>
+    <TouchableOpacity style={styles.metricTile} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
       <View style={styles.metricIconCircle}>
         {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
         <Icon name={icon} size={14} color={colors.primary} />
@@ -59,11 +61,17 @@ function MetricTile({
           ]}
         />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-export function FinancialOverviewWidget() {
+type FinancialOverviewWidgetProps = {
+  onCollectedPress?: () => void;
+  onPendingPress?: () => void;
+  onExpensesPress?: () => void;
+};
+
+export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onExpensesPress }: FinancialOverviewWidgetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const now = new Date();
@@ -203,18 +211,21 @@ export function FinancialOverviewWidget() {
               label="Collected"
               amount={data.collected}
               maxAmount={maxAmount}
+              onPress={onCollectedPress}
             />
             <MetricTile
               icon="clock-outline"
               label="Pending"
               amount={data.pending}
               maxAmount={maxAmount}
+              onPress={onPendingPress}
             />
             <MetricTile
               icon="cash-minus"
               label="Expenses"
               amount={data.expenses}
               maxAmount={maxAmount}
+              onPress={onExpensesPress}
             />
           </View>
         </>

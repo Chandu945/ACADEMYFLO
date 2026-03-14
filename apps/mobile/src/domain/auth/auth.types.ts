@@ -5,6 +5,7 @@ export type AuthUser = {
   phoneNumber: string;
   role: 'OWNER' | 'STAFF' | 'PARENT';
   status: 'ACTIVE' | 'INACTIVE';
+  profilePhotoUrl?: string | null;
 };
 
 export type LoginRequest = {

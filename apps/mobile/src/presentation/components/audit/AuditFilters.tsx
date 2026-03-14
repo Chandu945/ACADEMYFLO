@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@playconnect/contracts';
 import type { AuditFilters as AuditFiltersType } from '../../../application/audit/use-audit-logs';
 import { Button } from '../ui/Button';
+import { DatePickerInput } from '../ui/DatePickerInput';
 import { fontSizes, fontWeights, radius, shadows, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -43,22 +44,20 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
     <View style={styles.container} testID="audit-filters">
       <View style={styles.row}>
         <View style={styles.field}>
-          <Text style={styles.label}>From</Text>
-          <TextInput
-            style={styles.input}
+          <DatePickerInput
+            label="From"
             value={filters.from}
-            onChangeText={(v) => onChange({ ...filters, from: v })}
-            placeholder="YYYY-MM-DD"
+            onChange={(v) => onChange({ ...filters, from: v })}
+            placeholder="Select start date"
             testID="filter-from"
           />
         </View>
         <View style={styles.field}>
-          <Text style={styles.label}>To</Text>
-          <TextInput
-            style={styles.input}
+          <DatePickerInput
+            label="To"
             value={filters.to}
-            onChangeText={(v) => onChange({ ...filters, to: v })}
-            placeholder="YYYY-MM-DD"
+            onChange={(v) => onChange({ ...filters, to: v })}
+            placeholder="Select end date"
             testID="filter-to"
           />
         </View>
@@ -137,14 +136,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textMedium,
     marginBottom: spacing.xs,
     marginTop: spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.base,
-    padding: spacing.sm,
-    fontSize: fontSizes.base,
-    color: colors.text,
   },
   errorHint: {
     fontSize: fontSizes.sm,

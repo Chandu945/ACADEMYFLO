@@ -75,6 +75,7 @@ export type ParentProfile = {
   fullName: string;
   email: string;
   phoneNumber: string;
+  profilePhotoUrl?: string | null;
 };
 
 export type UpdateProfileRequest = {

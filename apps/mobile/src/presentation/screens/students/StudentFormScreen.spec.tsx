@@ -24,7 +24,7 @@ jest.mock('../../components/common/ProfilePhotoUploader', () => {
   const { View } = require('react-native');
   return {
     ProfilePhotoUploader: (props: Record<string, unknown>) =>
-      React.createElement(View, { testID: props.testID }),
+      React.createElement(View, { testID: props['testID'] }),
   };
 });
 

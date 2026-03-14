@@ -33,7 +33,11 @@ function formatCurrencyFull(n: number): string {
   return `\u20B9${n.toLocaleString('en-IN')}`;
 }
 
-export function MonthlyChartWidget() {
+type MonthlyChartWidgetProps = {
+  onPress?: () => void;
+};
+
+export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const currentYear = new Date().getFullYear();
@@ -82,13 +86,17 @@ export function MonthlyChartWidget() {
     <View style={styles.container} testID="monthly-chart-widget">
       {/* ── Header with year navigation ── */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
           <View style={styles.iconCircle}>
             {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
             <Icon name="chart-bar" size={18} color={colors.primary} />
           </View>
           <Text style={styles.title}>Monthly Summary</Text>
-        </View>
+          {onPress && (
+            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
+            <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+          )}
+        </TouchableOpacity>
         <View style={styles.yearNav}>
           <TouchableOpacity
             onPress={() => setYear((y) => y - 1)}

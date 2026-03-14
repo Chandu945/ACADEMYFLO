@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -285,14 +286,14 @@ function AddFollowUpModal({
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Add Follow-Up</Text>
 
-          <Text style={styles.label}>Date (YYYY-MM-DD) *</Text>
-          <TextInput style={styles.input} value={date} onChangeText={setDate} placeholder="2026-03-10" testID="followup-date" />
+          <Text style={styles.label}>Date *</Text>
+          <DatePickerInput value={date} onChange={setDate} placeholder="Select follow-up date" testID="followup-date" />
 
           <Text style={styles.label}>Notes *</Text>
           <TextInput style={[styles.input, styles.notesInput]} value={notes} onChangeText={setNotes} placeholder="What was discussed?" multiline testID="followup-notes" />
 
           <Text style={styles.label}>Next Follow-Up Date</Text>
-          <TextInput style={styles.input} value={nextDate} onChangeText={setNextDate} placeholder="2026-03-14" testID="followup-next-date" />
+          <DatePickerInput value={nextDate} onChange={setNextDate} placeholder="Select next follow-up" testID="followup-next-date" />
 
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="followup-cancel">
@@ -439,14 +440,14 @@ function ConvertToStudentModal({
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Convert to Student</Text>
 
-            <Text style={styles.label}>Joining Date (YYYY-MM-DD) *</Text>
-            <TextInput style={styles.input} value={joiningDate} onChangeText={setJoiningDate} placeholder="2026-03-10" testID="convert-joining-date" />
+            <Text style={styles.label}>Joining Date *</Text>
+            <DatePickerInput value={joiningDate} onChange={setJoiningDate} placeholder="Select joining date" testID="convert-joining-date" />
 
             <Text style={styles.label}>Monthly Fee *</Text>
             <TextInput style={styles.input} value={monthlyFee} onChangeText={setMonthlyFee} placeholder="1500" keyboardType="numeric" testID="convert-monthly-fee" />
 
-            <Text style={styles.label}>Date of Birth (YYYY-MM-DD) *</Text>
-            <TextInput style={styles.input} value={dateOfBirth} onChangeText={setDateOfBirth} placeholder="2015-06-15" testID="convert-dob" />
+            <Text style={styles.label}>Date of Birth *</Text>
+            <DatePickerInput value={dateOfBirth} onChange={setDateOfBirth} placeholder="Select date of birth" maximumDate={new Date()} testID="convert-dob" />
 
             <Text style={styles.label}>Gender *</Text>
             <View style={styles.reasonRow}>

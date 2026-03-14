@@ -49,6 +49,7 @@ export interface AcademyDetail {
   ownerName: string;
   ownerEmail: string;
   ownerPhone: string;
+  ownerProfilePhotoUrl: string | null;
   subscription: {
     id: string;
     status: AdminAcademyStatus;

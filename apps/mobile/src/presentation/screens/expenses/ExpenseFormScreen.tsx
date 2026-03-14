@@ -9,6 +9,7 @@ import {
   Modal,
   StyleSheet,
 } from 'react-native';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -194,13 +195,11 @@ export function ExpenseFormScreen() {
         )}
 
         {/* Date */}
-        <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
-        <TextInput
-          style={styles.input}
+        <Text style={styles.label}>Date</Text>
+        <DatePickerInput
           value={date}
-          onChangeText={setDate}
-          placeholder="2026-03-06"
-          maxLength={10}
+          onChange={setDate}
+          placeholder="Select date"
           testID="expense-date-input"
         />
 

@@ -171,6 +171,7 @@ export class ParentController {
       fullName: found.fullName,
       email: found.emailNormalized,
       phoneNumber: found.phoneE164,
+      profilePhotoUrl: found.profilePhotoUrl,
     };
     return mapResultToResponse(okResult(data), req);
   }

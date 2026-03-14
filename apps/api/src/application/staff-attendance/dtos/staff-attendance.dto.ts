@@ -8,6 +8,7 @@ export interface DailyStaffAttendanceViewItem {
 
 export interface DailyStaffAttendanceReportDto {
   date: string;
+  isHoliday: boolean;
   presentCount: number;
   absentCount: number;
   absentStaff: { staffUserId: string; fullName: string }[];
@@ -18,4 +19,5 @@ export interface MonthlyStaffAttendanceSummaryItem {
   fullName: string;
   presentCount: number;
   absentCount: number;
+  holidayCount: number;
 }

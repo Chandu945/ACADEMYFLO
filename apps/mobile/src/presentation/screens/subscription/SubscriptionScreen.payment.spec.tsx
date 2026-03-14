@@ -8,8 +8,10 @@ import { SubscriptionScreen } from './SubscriptionScreen';
 // Mock payment flow hook
 const mockStartPayment = jest.fn();
 const mockReset = jest.fn();
+import type { PaymentFlowStatus } from '../../../domain/payments/cashfree.types';
+
 let mockPaymentFlow = {
-  status: 'idle' as const,
+  status: 'idle' as PaymentFlowStatus,
   error: null as string | null,
   orderId: null as string | null,
   paymentResult: null,

@@ -1,6 +1,10 @@
 import { Platform } from 'react-native';
 import { env } from '../env';
 
+// Web-only globals — only used when Platform.OS === 'web'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _global = globalThis as any;
+
 /**
  * Opens Cashfree checkout.
  *
@@ -74,8 +78,9 @@ async function loadCashfreeSDK(): Promise<CashfreeInstance> {
 
   // Try the npm package first (bundled by webpack)
   try {
-    const { load } = await import('@cashfreepayments/cashfree-js');
-    const cf = await (load as (options: { mode: string }) => Promise<CashfreeInstance>)({ mode });
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = await (Function('return import("@cashfreepayments/cashfree-js")')() as Promise<{ load: unknown }>);
+    const cf = await (mod.load as (options: { mode: string }) => Promise<CashfreeInstance>)({ mode });
     cashfreeInstance = cf;
     return cf;
   } catch {
@@ -84,19 +89,26 @@ async function loadCashfreeSDK(): Promise<CashfreeInstance> {
 
   // CDN fallback: inject <script> and wait for window.Cashfree
   return new Promise<CashfreeInstance>((resolve, reject) => {
-    const existing = document.querySelector('script[src*="sdk.cashfree.com"]');
-    if (existing && (window as unknown as Record<string, unknown>)['Cashfree']) {
-      const cf = ((window as unknown as Record<string, CashfreeLoader>)['Cashfree'] as CashfreeLoader).initialise({ mode });
+    const doc = _global.document;
+    const win = _global.window;
+
+    const existing = doc?.querySelector('script[src*="sdk.cashfree.com"]');
+    if (existing && win?.['Cashfree']) {
+      const cf = (win['Cashfree'] as CashfreeLoader).initialise({ mode });
       cashfreeInstance = cf;
       resolve(cf);
       return;
     }
 
-    const script = document.createElement('script');
+    const script = doc?.createElement('script');
+    if (!script || !doc) {
+      reject(new Error('DOM not available'));
+      return;
+    }
     script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
     script.onload = () => {
       try {
-        const cf = ((window as unknown as Record<string, CashfreeLoader>)['Cashfree'] as CashfreeLoader).initialise({ mode });
+        const cf = (win['Cashfree'] as CashfreeLoader).initialise({ mode });
         cashfreeInstance = cf;
         resolve(cf);
       } catch (err) {
@@ -104,6 +116,6 @@ async function loadCashfreeSDK(): Promise<CashfreeInstance> {
       }
     };
     script.onerror = () => reject(new Error('Failed to load Cashfree SDK'));
-    document.head.appendChild(script);
+    doc.head.appendChild(script);
   });
 }

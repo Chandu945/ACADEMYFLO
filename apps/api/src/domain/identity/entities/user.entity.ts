@@ -164,6 +164,14 @@ export class User extends Entity<UserProps> {
     });
   }
 
+  updateProfilePhoto(url: string | null): User {
+    return User.reconstitute(this.id.toString(), {
+      ...this.props,
+      profilePhotoUrl: url,
+      audit: updateAuditFields(this.props.audit),
+    });
+  }
+
   changePassword(newHash: string): User {
     return User.reconstitute(this.id.toString(), {
       ...this.props,

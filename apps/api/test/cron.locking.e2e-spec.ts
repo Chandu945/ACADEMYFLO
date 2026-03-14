@@ -141,7 +141,7 @@ describe('Cron Locking (E2E simulation)', () => {
     const fns = services.map(() => jest.fn().mockResolvedValue(undefined));
 
     const results = await Promise.all(
-      services.map((svc, i) => svc.withLock('concurrent-cron', 60_000, fns[i])),
+      services.map((svc, i) => svc.withLock('concurrent-cron', 60_000, fns[i]!)),
     );
 
     const ranCount = results.filter((r) => r.ran).length;

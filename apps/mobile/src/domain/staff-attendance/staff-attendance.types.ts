@@ -8,6 +8,7 @@ export type DailyStaffAttendanceItem = {
 
 export type DailyStaffAttendancePage = {
   date: string;
+  isHoliday: boolean;
   items: DailyStaffAttendanceItem[];
   meta: {
     page: number;
@@ -25,6 +26,7 @@ export type MarkStaffAttendanceResult = {
 
 export type DailyStaffReportResult = {
   date: string;
+  isHoliday: boolean;
   presentCount: number;
   absentCount: number;
   absentStaff: { staffUserId: string; fullName: string }[];
@@ -35,6 +37,7 @@ export type MonthlyStaffSummaryItem = {
   fullName: string;
   presentCount: number;
   absentCount: number;
+  holidayCount: number;
 };
 
 export type MonthlyStaffSummaryPage = {

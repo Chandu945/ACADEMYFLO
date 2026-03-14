@@ -29,6 +29,7 @@ export interface OwnerSignupOutput {
     phoneNumber: string;
     role: string;
     status: string;
+    profilePhotoUrl: string | null;
   };
 }
 
@@ -99,6 +100,7 @@ export class OwnerSignupUseCase {
         phoneNumber: user.phoneE164,
         role: user.role,
         status: user.status,
+        profilePhotoUrl: user.profilePhotoUrl,
       },
     });
   }

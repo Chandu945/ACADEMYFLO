@@ -260,6 +260,7 @@ export class MongoAdminQueryRepository implements AdminQueryRepository {
       ownerName: owner.fullName,
       ownerEmail: owner.emailNormalized,
       ownerPhone: owner.phoneE164,
+      ownerProfilePhotoUrl: (owner as unknown as { profilePhotoUrl?: string | null }).profilePhotoUrl ?? null,
       subscription: subDetail,
       studentCount,
       staffCount,

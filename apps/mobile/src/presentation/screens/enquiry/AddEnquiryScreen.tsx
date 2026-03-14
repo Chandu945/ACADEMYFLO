@@ -14,6 +14,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EnquirySource } from '../../../domain/enquiry/enquiry.types';
 import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { isValidDate } from '../../../domain/common/date-utils';
 import { Screen } from '../../components/ui/Screen';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
@@ -204,13 +205,11 @@ export function AddEnquiryScreen() {
         {/* Follow-up */}
         <Text style={styles.sectionTitle}>Follow-Up</Text>
 
-        <Text style={styles.label}>Next Follow-Up Date (YYYY-MM-DD)</Text>
-        <TextInput
-          style={styles.input}
+        <DatePickerInput
+          label="Next Follow-Up Date"
           value={nextFollowUpDate}
-          onChangeText={setNextFollowUpDate}
-          placeholder="2026-03-10"
-          maxLength={10}
+          onChange={setNextFollowUpDate}
+          placeholder="Select follow-up date"
           testID="next-followup-date"
         />
 

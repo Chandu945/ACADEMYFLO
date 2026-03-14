@@ -6,7 +6,7 @@ import {
 
 // Mock global fetch
 const mockFetch = jest.fn();
-global.fetch = mockFetch;
+(globalThis as unknown as { fetch: typeof mockFetch }).fetch = mockFetch;
 
 function okResponse() {
   return new Response('ok', { status: 200 });

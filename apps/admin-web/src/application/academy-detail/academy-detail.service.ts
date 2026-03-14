@@ -55,6 +55,7 @@ export async function getDetail(academyId: string, accessToken?: string): Promis
       fullName: d.ownerName,
       email: d.ownerEmail,
       phoneNumber: d.ownerPhone,
+      profilePhotoUrl: d.ownerProfilePhotoUrl,
     },
     subscription: d.subscription
       ? {

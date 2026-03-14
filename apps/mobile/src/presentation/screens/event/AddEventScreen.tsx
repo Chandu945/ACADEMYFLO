@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, View, Text, Switch, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Input } from '../../components/ui/Input';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import type { EventType, TargetAudience } from '../../../domain/event/event.types';
@@ -143,21 +144,19 @@ export function AddEventScreen() {
         <Switch value={isAllDay} onValueChange={setIsAllDay} testID="switch-allDay" />
       </View>
 
-      <Input
-        label="Start Date (YYYY-MM-DD)"
+      <DatePickerInput
+        label="Start Date"
         value={startDate}
-        onChangeText={setStartDate}
-        placeholder="2026-03-15"
-        maxLength={10}
+        onChange={setStartDate}
+        placeholder="Select start date"
         testID="input-startDate"
       />
 
-      <Input
-        label="End Date (YYYY-MM-DD, optional)"
+      <DatePickerInput
+        label="End Date (optional)"
         value={endDate}
-        onChangeText={setEndDate}
-        placeholder="2026-03-15"
-        maxLength={10}
+        onChange={setEndDate}
+        placeholder="Select end date"
         testID="input-endDate"
       />
 
