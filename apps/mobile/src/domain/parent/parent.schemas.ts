@@ -96,7 +96,7 @@ export const paymentHistoryItemSchema = z.object({
   studentName: z.string(),
   monthKey: z.string(),
   amount: z.number(),
-  source: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL']),
+  source: z.string(),
   paidAt: z.string(),
 });
 

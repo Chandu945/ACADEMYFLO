@@ -357,8 +357,14 @@ describe('Fee Payments — Parent Flow (e2e)', () => {
         // Get fee payment status use case
         {
           provide: 'GET_FEE_PAYMENT_STATUS_USE_CASE',
-          useFactory: (fpr: any) => new GetFeePaymentStatusUseCase(fpr),
-          inject: [FEE_PAYMENT_REPOSITORY],
+          useFactory: (fpr: any, fdr: any, tlr: any, ar: any, gw: any, c: any, tx: any, l: any, audit: any) =>
+            new GetFeePaymentStatusUseCase(fpr, fdr, tlr, ar, gw, c, tx, l, audit),
+          inject: [
+            FEE_PAYMENT_REPOSITORY, FEE_DUE_REPOSITORY,
+            TRANSACTION_LOG_REPOSITORY, ACADEMY_REPOSITORY,
+            CASHFREE_GATEWAY, CLOCK_PORT,
+            'TRANSACTION_PORT', LOGGER_PORT, AUDIT_RECORDER_PORT,
+          ],
         },
         // Passthrough transaction port
         { provide: 'TRANSACTION_PORT', useValue: passthroughTransaction },

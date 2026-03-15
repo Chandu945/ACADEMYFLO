@@ -16,7 +16,8 @@ export async function getPaymentHistoryUseCase(
 
   const parsed = paymentHistoryListSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    const detail = parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+    return err({ code: 'UNKNOWN', message: `Unexpected server response: ${detail}` });
   }
 
   return ok(parsed.data);

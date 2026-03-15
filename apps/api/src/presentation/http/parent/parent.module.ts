@@ -274,9 +274,39 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     },
     {
       provide: 'GET_FEE_PAYMENT_STATUS_USE_CASE',
-      useFactory: (feePaymentRepo: FeePaymentRepository) =>
-        new GetFeePaymentStatusUseCase(feePaymentRepo),
-      inject: [FEE_PAYMENT_REPOSITORY],
+      useFactory: (
+        feePaymentRepo: FeePaymentRepository,
+        feeDueRepo: FeeDueRepository,
+        txLogRepo: TransactionLogRepository,
+        academyRepo: AcademyRepository,
+        gateway: CashfreeGatewayPort,
+        clock: ClockPort,
+        transaction: TransactionPort,
+        logger: LoggerPort,
+        auditRecorder: AuditRecorderPort,
+      ) =>
+        new GetFeePaymentStatusUseCase(
+          feePaymentRepo,
+          feeDueRepo,
+          txLogRepo,
+          academyRepo,
+          gateway,
+          clock,
+          transaction,
+          logger,
+          auditRecorder,
+        ),
+      inject: [
+        FEE_PAYMENT_REPOSITORY,
+        FEE_DUE_REPOSITORY,
+        TRANSACTION_LOG_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        CASHFREE_GATEWAY,
+        CLOCK_PORT,
+        TRANSACTION_PORT,
+        LOGGER_PORT,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'GET_RECEIPT_USE_CASE',
