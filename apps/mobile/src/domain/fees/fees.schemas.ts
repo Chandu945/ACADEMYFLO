@@ -25,3 +25,15 @@ export const feeDueItemSchema = z.object({
 export const feeDueListResponseSchema = z.array(feeDueItemSchema);
 
 export type FeeDueListApiResponse = z.infer<typeof feeDueListResponseSchema>;
+
+export const feeDuePaginatedResponseSchema = z.object({
+  items: z.array(feeDueItemSchema),
+  meta: z.object({
+    page: z.number().int(),
+    pageSize: z.number().int(),
+    total: z.number().int(),
+    totalPages: z.number().int(),
+  }),
+});
+
+export type FeeDuePaginatedApiResponse = z.infer<typeof feeDuePaginatedResponseSchema>;

@@ -1,5 +1,5 @@
 import type { MonthlyRevenueSummaryApiResponse } from '../../domain/reports/reports.schemas';
-import type { StudentWiseDueListApiResponse } from '../../domain/reports/reports.schemas';
+import type { StudentWiseDuesPaginatedApiResponse } from '../../domain/reports/reports.schemas';
 import type { MonthWiseDuesSummaryApiResponse } from '../../domain/reports/reports.schemas';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
@@ -13,8 +13,12 @@ export function getMonthlyRevenue(
 
 export function getStudentWiseDues(
   month: string,
-): Promise<Result<StudentWiseDueListApiResponse, AppError>> {
-  return apiGet<StudentWiseDueListApiResponse>(`/api/v1/reports/student-wise-dues?month=${month}`);
+  page: number,
+  pageSize: number,
+): Promise<Result<StudentWiseDuesPaginatedApiResponse, AppError>> {
+  return apiGet<StudentWiseDuesPaginatedApiResponse>(
+    `/api/v1/reports/student-wise-dues?month=${month}&page=${page}&pageSize=${pageSize}`,
+  );
 }
 
 export function getMonthWiseDues(

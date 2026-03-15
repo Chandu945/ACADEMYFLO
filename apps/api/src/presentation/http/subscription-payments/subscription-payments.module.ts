@@ -184,6 +184,10 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         subscriptionRepo: SubscriptionRepository,
         paymentRepo: SubscriptionPaymentRepository,
         clock: ClockPort,
+        gateway: CashfreeGatewayPort,
+        transaction: TransactionPort,
+        logger: LoggerPort,
+        auditRecorder: AuditRecorderPort,
       ) =>
         new GetSubscriptionPaymentStatusUseCase(
           userRepo,
@@ -191,6 +195,10 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
           subscriptionRepo,
           paymentRepo,
           clock,
+          gateway,
+          transaction,
+          logger,
+          auditRecorder,
         ),
       inject: [
         USER_REPOSITORY,
@@ -198,6 +206,10 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         SUBSCRIPTION_REPOSITORY,
         SUBSCRIPTION_PAYMENT_REPOSITORY,
         CLOCK_PORT,
+        CASHFREE_GATEWAY,
+        TRANSACTION_PORT,
+        LOGGER_PORT,
+        AUDIT_RECORDER_PORT,
       ],
     },
   ],

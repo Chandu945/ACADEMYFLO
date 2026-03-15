@@ -1,6 +1,14 @@
 import { IsNotEmpty, IsString, Matches } from 'class-validator';
+import { PaginationQueryDto } from '../../common/dto/pagination.query';
 
 export class FeesMonthQueryDto {
+  @IsNotEmpty()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}$/, { message: 'month must be in YYYY-MM format' })
+  month!: string;
+}
+
+export class FeesMonthPaginatedQueryDto extends PaginationQueryDto {
   @IsNotEmpty()
   @IsString()
   @Matches(/^\d{4}-\d{2}$/, { message: 'month must be in YYYY-MM format' })

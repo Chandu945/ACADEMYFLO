@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,8 +30,14 @@ export function StaffListScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Refresh list when screen comes back into focus (e.g. after add/edit)
+  // Skip first focus — useStaff already loads on mount
+  const isFirstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
       refetch();
     }, [refetch]),
   );

@@ -23,6 +23,7 @@ import { ListHolidaysUseCase } from '../src/application/attendance/use-cases/lis
 import { GetDailyAttendanceReportUseCase } from '../src/application/attendance/use-cases/get-daily-attendance-report.usecase';
 import { GetStudentMonthlyAttendanceUseCase } from '../src/application/attendance/use-cases/get-student-monthly-attendance.usecase';
 import { GetMonthlyAttendanceSummaryUseCase } from '../src/application/attendance/use-cases/get-monthly-attendance-summary.usecase';
+import { GetMonthDailyCountsUseCase } from '../src/application/attendance/use-cases/get-month-daily-counts.usecase';
 import {
   InMemoryUserRepository,
   InMemoryStudentRepository,
@@ -163,6 +164,16 @@ describe('Attendance Reports (e2e)', () => {
             ar: StudentAttendanceRepository,
             hr: HolidayRepository,
           ) => new GetMonthlyAttendanceSummaryUseCase(ur, sr, ar, hr),
+          inject: deps,
+        },
+        {
+          provide: 'GET_MONTH_DAILY_COUNTS_USE_CASE',
+          useFactory: (
+            ur: UserRepository,
+            sr: StudentRepository,
+            ar: StudentAttendanceRepository,
+            hr: HolidayRepository,
+          ) => new GetMonthDailyCountsUseCase(ur, sr, ar, hr),
           inject: deps,
         },
       ],

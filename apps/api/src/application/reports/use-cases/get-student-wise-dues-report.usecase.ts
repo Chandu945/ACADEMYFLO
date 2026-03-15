@@ -14,6 +14,18 @@ export interface GetStudentWiseDuesReportInput {
   actorUserId: string;
   actorRole: UserRole;
   month: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface StudentWiseDuesReportOutput {
+  items: StudentWiseDueItemDto[];
+  meta: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export class GetStudentWiseDuesReportUseCase {
@@ -25,7 +37,7 @@ export class GetStudentWiseDuesReportUseCase {
 
   async execute(
     input: GetStudentWiseDuesReportInput,
-  ): Promise<Result<StudentWiseDueItemDto[], AppError>> {
+  ): Promise<Result<StudentWiseDuesReportOutput, AppError>> {
     const check = canViewReports(input.actorRole);
     if (!check.allowed) return err(FeeErrors.reportsNotAllowed());
 
@@ -51,17 +63,15 @@ export class GetStudentWiseDuesReportUseCase {
       unpaidByStudent.set(due.studentId, existing);
     }
 
-    // Load student names
+    // Load student names in batch (instead of one-by-one)
     const studentIds = [...new Set(monthDues.map((d) => d.studentId))];
+    const students = await this.studentRepo.findByIds(studentIds);
     const studentMap = new Map<string, string>();
-    for (const sid of studentIds) {
-      const student = await this.studentRepo.findById(sid);
-      if (student) {
-        studentMap.set(sid, student.fullName);
-      }
+    for (const student of students) {
+      studentMap.set(student.id.toString(), student.fullName);
     }
 
-    const items: StudentWiseDueItemDto[] = monthDues.map((due) => {
+    const allItems: StudentWiseDueItemDto[] = monthDues.map((due) => {
       const unpaid = unpaidByStudent.get(due.studentId) ?? { count: 0, totalAmount: 0 };
       return {
         studentId: due.studentId,
@@ -74,6 +84,20 @@ export class GetStudentWiseDuesReportUseCase {
       };
     });
 
-    return ok(items);
+    // Paginate
+    const total = allItems.length;
+    const totalPages = Math.ceil(total / input.pageSize);
+    const start = (input.page - 1) * input.pageSize;
+    const items = allItems.slice(start, start + input.pageSize);
+
+    return ok({
+      items,
+      meta: {
+        page: input.page,
+        pageSize: input.pageSize,
+        total,
+        totalPages,
+      },
+    });
   }
 }

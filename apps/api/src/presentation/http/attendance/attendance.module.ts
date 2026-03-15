@@ -38,6 +38,7 @@ import { ListHolidaysUseCase } from '@application/attendance/use-cases/list-holi
 import { GetDailyAttendanceReportUseCase } from '@application/attendance/use-cases/get-daily-attendance-report.usecase';
 import { GetStudentMonthlyAttendanceUseCase } from '@application/attendance/use-cases/get-student-monthly-attendance.usecase';
 import { GetMonthlyAttendanceSummaryUseCase } from '@application/attendance/use-cases/get-monthly-attendance-summary.usecase';
+import { GetMonthDailyCountsUseCase } from '@application/attendance/use-cases/get-month-daily-counts.usecase';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
@@ -171,6 +172,21 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
         ar: StudentAttendanceRepository,
         hr: HolidayRepository,
       ) => new GetMonthlyAttendanceSummaryUseCase(ur, sr, ar, hr),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        STUDENT_ATTENDANCE_REPOSITORY,
+        HOLIDAY_REPOSITORY,
+      ],
+    },
+    {
+      provide: 'GET_MONTH_DAILY_COUNTS_USE_CASE',
+      useFactory: (
+        ur: UserRepository,
+        sr: StudentRepository,
+        ar: StudentAttendanceRepository,
+        hr: HolidayRepository,
+      ) => new GetMonthDailyCountsUseCase(ur, sr, ar, hr),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,

@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppError } from '../../domain/common/errors';
-import type { MonthlyRevenueSummary, StudentWiseDueItem } from '../../domain/reports/reports.types';
+import type { MonthlyRevenueSummary } from '../../domain/reports/reports.types';
 import { getMonthlyRevenueUseCase } from './use-cases/get-monthly-revenue.usecase';
-import { getStudentWiseDuesUseCase } from './use-cases/get-student-wise-dues.usecase';
 import type { GetMonthlyRevenueApiPort } from './use-cases/get-monthly-revenue.usecase';
-import type { GetStudentWiseDuesApiPort } from './use-cases/get-student-wise-dues.usecase';
 
-export type ReportsApiDeps = GetMonthlyRevenueApiPort & GetStudentWiseDuesApiPort;
+export type ReportsApiDeps = GetMonthlyRevenueApiPort;
 
 function currentMonthKey(): string {
   const now = new Date();
@@ -16,7 +14,6 @@ function currentMonthKey(): string {
 export function useReports(api: ReportsApiDeps) {
   const [month, setMonth] = useState(currentMonthKey);
   const [revenue, setRevenue] = useState<MonthlyRevenueSummary | null>(null);
-  const [pendingDues, setPendingDues] = useState<StudentWiseDueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
   const mountedRef = useRef(true);
@@ -32,10 +29,7 @@ export function useReports(api: ReportsApiDeps) {
       setLoading(true);
       setError(null);
 
-      const [revResult, duesResult] = await Promise.all([
-        getMonthlyRevenueUseCase({ reportsApi: api }, targetMonth),
-        getStudentWiseDuesUseCase({ reportsApi: api }, targetMonth),
-      ]);
+      const revResult = await getMonthlyRevenueUseCase({ reportsApi: api }, targetMonth);
 
       if (!mountedRef.current) return;
 
@@ -44,14 +38,8 @@ export function useReports(api: ReportsApiDeps) {
         setLoading(false);
         return;
       }
-      if (!duesResult.ok) {
-        setError(duesResult.error);
-        setLoading(false);
-        return;
-      }
 
       setRevenue(revResult.value);
-      setPendingDues(duesResult.value);
       setLoading(false);
     },
     [api],
@@ -63,5 +51,5 @@ export function useReports(api: ReportsApiDeps) {
 
   const refetch = useCallback(() => load(month), [month, load]);
 
-  return { month, setMonth, revenue, pendingDues, loading, error, refetch };
+  return { month, setMonth, revenue, loading, error, refetch };
 }

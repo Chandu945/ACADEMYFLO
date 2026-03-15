@@ -27,6 +27,7 @@ import type { ListHolidaysUseCase } from '@application/attendance/use-cases/list
 import type { GetDailyAttendanceReportUseCase } from '@application/attendance/use-cases/get-daily-attendance-report.usecase';
 import type { GetStudentMonthlyAttendanceUseCase } from '@application/attendance/use-cases/get-student-monthly-attendance.usecase';
 import type { GetMonthlyAttendanceSummaryUseCase } from '@application/attendance/use-cases/get-monthly-attendance-summary.usecase';
+import type { GetMonthDailyCountsUseCase } from '@application/attendance/use-cases/get-month-daily-counts.usecase';
 import { AttendanceQueryDto, DateOnlyQueryDto } from './dto/attendance.query';
 import { MarkStudentAttendanceDto } from './dto/mark-student-attendance.dto';
 import { BulkSetAbsencesDto } from './dto/bulk-set-absences.dto';
@@ -67,6 +68,8 @@ export class AttendanceController {
     private readonly getStudentMonthlyAttendance: GetStudentMonthlyAttendanceUseCase,
     @Inject('GET_MONTHLY_ATTENDANCE_SUMMARY_USE_CASE')
     private readonly getMonthlyAttendanceSummary: GetMonthlyAttendanceSummaryUseCase,
+    @Inject('GET_MONTH_DAILY_COUNTS_USE_CASE')
+    private readonly getMonthDailyCounts: GetMonthDailyCountsUseCase,
     @Inject(LOGGER_PORT) private readonly logger: LoggerPort,
     @Inject(PUSH_NOTIFICATION_SERVICE)
     private readonly pushService: PushNotificationService,
@@ -286,6 +289,23 @@ export class AttendanceController {
       page: query.page,
       pageSize: query.pageSize,
       search: query.search,
+    });
+
+    return mapResultToResponse(result, req);
+  }
+
+  @Get('reports/month-daily-counts')
+  @Roles('OWNER', 'STAFF')
+  @ApiOperation({ summary: 'Get daily absent counts for an entire month (bulk)' })
+  async monthDailyCounts(
+    @Query() query: MonthlyQueryDto,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    const result = await this.getMonthDailyCounts.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      month: query.month,
     });
 
     return mapResultToResponse(result, req);

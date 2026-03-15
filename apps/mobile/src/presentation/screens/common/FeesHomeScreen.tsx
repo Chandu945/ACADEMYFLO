@@ -13,7 +13,6 @@ import type { FeesStackParamList } from '../../navigation/FeesStack';
 import { useAuth } from '../../context/AuthContext';
 import { useFees } from '../../../application/fees/use-fees';
 import { listUnpaidDues, listPaidDues } from '../../../infra/fees/fees-api';
-import { listStudents } from '../../../infra/student/student-api';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
@@ -57,9 +56,11 @@ export function FeesHomeScreen() {
   const segments = isOwner ? ['Unpaid', 'Paid', 'Approvals'] : ['Unpaid', 'Paid', 'My Requests'];
 
   const [selectedSegment, setSelectedSegment] = useState(0);
-  const { unpaidItems, paidItems, loading, error, month, setMonth, refetch } = useFees(feesApiRef);
+  const {
+    unpaidItems, paidItems, loading, error, month, setMonth, refetch,
+    unpaidTotal, hasMoreUnpaid, loadingMoreUnpaid, fetchMoreUnpaid,
+  } = useFees(feesApiRef);
 
-  const [studentNameMap, setStudentNameMap] = useState<Record<string, string>>({});
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -71,35 +72,30 @@ export function FeesHomeScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
 
-  const loadStudentNames = useCallback(async () => {
-    const result = await listStudents({}, 1, 100);
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      const map: Record<string, string> = {};
-      for (const s of result.value.data) {
-        map[s.id] = s.fullName;
-      }
-      setStudentNameMap(map);
+  // Build student name map from fee items (no separate API call needed)
+  const studentNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const item of [...unpaidItems, ...paidItems]) {
+      if (item.studentName) map[item.studentId] = item.studentName;
     }
-  }, []);
+    return map;
+  }, [unpaidItems, paidItems]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Refresh fees + student names each time screen gains focus
+  // Refresh fees each time screen gains focus
   const isFirstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
       if (isFirstFocus.current) {
         isFirstFocus.current = false;
-        loadStudentNames();
         return;
       }
       refetch();
-      loadStudentNames();
-    }, [refetch, loadStudentNames]),
+    }, [refetch]),
   );
 
   useEffect(() => {
@@ -337,6 +333,10 @@ export function FeesHomeScreen() {
           month={month}
           onMarkPaidSuccess={refetch}
           studentNameMap={studentNameMap}
+          hasMore={hasMoreUnpaid}
+          loadingMore={loadingMoreUnpaid}
+          onEndReached={fetchMoreUnpaid}
+          total={unpaidTotal}
         />
       )}
       {selectedSegment === 1 && (

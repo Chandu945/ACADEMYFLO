@@ -17,6 +17,13 @@ export interface ListUnpaidDuesInput {
   actorUserId: string;
   actorRole: UserRole;
   month: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListUnpaidDuesOutput {
+  items: FeeDueDto[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
 export class ListUnpaidDuesUseCase {
@@ -28,7 +35,7 @@ export class ListUnpaidDuesUseCase {
     private readonly studentRepo?: StudentRepository,
   ) {}
 
-  async execute(input: ListUnpaidDuesInput): Promise<Result<FeeDueDto[], AppError>> {
+  async execute(input: ListUnpaidDuesInput): Promise<Result<ListUnpaidDuesOutput, AppError>> {
     const check = canViewFees(input.actorRole);
     if (!check.allowed) return err(FeeErrors.viewNotAllowed());
 
@@ -55,16 +62,24 @@ export class ListUnpaidDuesUseCase {
         }
       : undefined;
 
-    // Build student name map
+    // Build student name map (only for the page slice to avoid unnecessary lookups)
+    const total = dues.length;
+    const { page, pageSize } = input;
+    const start = (page - 1) * pageSize;
+    const paged = dues.slice(start, start + pageSize);
+
     const nameMap: Record<string, string> = {};
-    if (this.studentRepo && dues.length > 0) {
-      const uniqueIds = [...new Set(dues.map((d) => d.studentId))];
+    if (this.studentRepo && paged.length > 0) {
+      const uniqueIds = [...new Set(paged.map((d) => d.studentId))];
       const students = await this.studentRepo.findByIds(uniqueIds);
       for (const s of students) {
         nameMap[s.id.toString()] = s.fullName;
       }
     }
 
-    return ok(dues.map((d) => toFeeDueDto(d, config, today, nameMap[d.studentId])));
+    return ok({
+      items: paged.map((d) => toFeeDueDto(d, config, today, nameMap[d.studentId])),
+      meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) || 1 },
+    });
   }
 }

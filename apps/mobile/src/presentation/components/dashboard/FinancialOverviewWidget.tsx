@@ -69,19 +69,39 @@ type FinancialOverviewWidgetProps = {
   onCollectedPress?: () => void;
   onPendingPress?: () => void;
   onExpensesPress?: () => void;
+  initialData?: { collected: number; pending: number; expenses: number } | null;
 };
 
-export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onExpensesPress }: FinancialOverviewWidgetProps) {
+export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onExpensesPress, initialData }: FinancialOverviewWidgetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [data, setData] = useState<FinancialData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<FinancialData | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const mountedRef = useRef(true);
 
+  // When initialData arrives and we're on the current month, use it directly
+  const initialUsedRef = useRef(false);
+  useEffect(() => {
+    if (initialData && !initialUsedRef.current) {
+      const isCurrent = year === now.getFullYear() && month === now.getMonth() + 1;
+      if (isCurrent) {
+        setData(initialData);
+        setLoading(false);
+        initialUsedRef.current = true;
+      }
+    }
+  }, [initialData, year, month, now]);
+
   const load = useCallback(async () => {
+    // Skip fetch for current month if initialData was used
+    const isCurrent = year === new Date().getFullYear() && month === new Date().getMonth() + 1;
+    if (isCurrent && initialUsedRef.current) {
+      return;
+    }
+
     setLoading(true);
     const { from, to } = getMonthRange(year, month);
     const result = await getOwnerDashboard({ mode: 'custom', from, to });
@@ -105,6 +125,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
   }, [load]);
 
   const goBack = () => {
+    initialUsedRef.current = false;
     if (month === 1) {
       setYear((y) => y - 1);
       setMonth(12);
@@ -123,6 +144,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
     ) {
       return;
     }
+    initialUsedRef.current = false;
     setYear(nextYear);
     setMonth(nextMonth);
   };

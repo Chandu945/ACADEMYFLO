@@ -14,6 +14,9 @@ import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
+// Client-side cache for past years (data won't change)
+const chartCache = new Map<number, MonthlyChartPoint[]>();
+
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_SHORT = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const BAR_MAX_HEIGHT = 120;
@@ -49,14 +52,25 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
-    setData(null);
     setSelectedMonth(null);
+
+    // Use cache for past years
+    if (year < currentYear && chartCache.has(year)) {
+      setData(chartCache.get(year)!);
+      return;
+    }
+
+    setData(null);
     const result = await getMonthlyChart(year);
     if (!mountedRef.current) return;
     if (result.ok) {
       setData(result.value.data);
+      // Cache past years (won't change)
+      if (year < currentYear) {
+        chartCache.set(year, result.value.data);
+      }
     }
-  }, [year]);
+  }, [year, currentYear]);
 
   useEffect(() => {
     mountedRef.current = true;

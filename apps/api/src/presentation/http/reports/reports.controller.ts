@@ -22,6 +22,7 @@ import type { GetMonthlyRevenueReportUseCase } from '@application/reports/use-ca
 import type { ExportMonthlyRevenuePdfUseCase } from '@application/reports/use-cases/export-monthly-revenue-pdf.usecase';
 import type { ExportPendingDuesPdfUseCase } from '@application/reports/use-cases/export-pending-dues-pdf.usecase';
 import { ReportsMonthQueryDto } from './dto/reports.query';
+import { StudentWiseDuesQueryDto } from './dto/student-wise-dues.query';
 import { mapResultToResponse } from '../common/result-mapper';
 import type { Request, Response } from 'express';
 
@@ -48,7 +49,7 @@ export class ReportsController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Student-wise dues report for a month' })
   async studentWiseDues(
-    @Query() query: ReportsMonthQueryDto,
+    @Query() query: StudentWiseDuesQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -56,6 +57,8 @@ export class ReportsController {
       actorUserId: user.userId,
       actorRole: user.role,
       month: query.month,
+      page: query.page,
+      pageSize: query.pageSize,
     });
 
     return mapResultToResponse(result, req);

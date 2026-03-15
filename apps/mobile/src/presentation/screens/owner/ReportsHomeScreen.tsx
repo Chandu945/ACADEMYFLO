@@ -5,10 +5,12 @@ import {
   RefreshControl,
   FlatList,
   Text,
+  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useReports } from '../../../application/reports/use-reports';
+import { usePendingDues } from '../../../application/reports/use-pending-dues';
 import {
   getMonthlyRevenue,
   getStudentWiseDues,
@@ -29,7 +31,8 @@ import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, avatarC
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
-const reportsApiRef = { getMonthlyRevenue, getStudentWiseDues };
+const revenueApiRef = { getMonthlyRevenue };
+const duesApiRef = { getStudentWiseDues };
 
 function addMonths(monthStr: string, delta: number): string {
   const [y, m] = monthStr.split('-').map(Number) as [number, number];
@@ -77,8 +80,18 @@ const SEGMENTS = ['Revenue', 'Pending Dues'];
 export function ReportsHomeScreen() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { month, setMonth, revenue, pendingDues, loading, error, refetch } =
-    useReports(reportsApiRef);
+  const { month, setMonth, revenue, loading, error, refetch } =
+    useReports(revenueApiRef);
+  const {
+    items: pendingDues,
+    loading: duesLoading,
+    loadingMore: duesLoadingMore,
+    total: duesTotal,
+    error: duesError,
+    hasMore: duesHasMore,
+    refetch: refetchDues,
+    fetchMore: fetchMoreDues,
+  } = usePendingDues(duesApiRef, month);
   const [selectedSegment, setSelectedSegment] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -92,9 +105,9 @@ export function ReportsHomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), refetchDues()]);
     setRefreshing(false);
-  }, [refetch]);
+  }, [refetch, refetchDues]);
 
   const handleExportRevenue = useCallback(() => {
     return exportRevenuePdfUseCase(
@@ -157,6 +170,7 @@ export function ReportsHomeScreen() {
       </View>
 
       {error && <InlineError message={error.message} onRetry={refetch} />}
+      {duesError && !error && <InlineError message={duesError.message} onRetry={refetchDues} />}
 
       {loading && !refreshing ? (
         <View style={styles.skeletonContainer} testID="skeleton-container">
@@ -237,35 +251,49 @@ export function ReportsHomeScreen() {
         </ScrollView>
       ) : (
         <View style={styles.duesContainer}>
-          <FlatList
-            data={pendingDues}
-            keyExtractor={(item) => `${item.studentId}-${item.monthKey}`}
-            renderItem={renderDueItem}
-            contentContainerStyle={styles.listContent}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-            ListHeaderComponent={
-              pendingDues.length > 0 ? (
-                <View style={styles.listSectionHeader}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="account-alert-outline" size={18} color={colors.textSecondary} />
-                  <Text style={styles.listSectionTitle}>Pending Dues</Text>
-                  <Text style={styles.listSectionCount}>{pendingDues.length}</Text>
-                </View>
-              ) : null
-            }
-            ListEmptyComponent={<EmptyState message="No pending dues for this month" />}
-            ListFooterComponent={
-              pendingDues.length > 0 ? (
-                <View style={styles.exportRow}>
-                  <ExportButton
-                    onExport={handleExportDues}
-                    testID="export-dues-pdf"
-                  />
-                </View>
-              ) : null
-            }
-            testID="dues-list"
-          />
+          {duesLoading && !refreshing ? (
+            <View style={styles.skeletonContainer}>
+              <SkeletonTile />
+              <SkeletonTile />
+              <SkeletonTile />
+            </View>
+          ) : (
+            <FlatList
+              data={pendingDues}
+              keyExtractor={(item) => `${item.studentId}-${item.monthKey}`}
+              renderItem={renderDueItem}
+              onEndReached={fetchMoreDues}
+              onEndReachedThreshold={0.3}
+              contentContainerStyle={styles.listContent}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+              ListHeaderComponent={
+                pendingDues.length > 0 ? (
+                  <View style={styles.listSectionHeader}>
+                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                    <Icon name="account-alert-outline" size={18} color={colors.textSecondary} />
+                    <Text style={styles.listSectionTitle}>Pending Dues</Text>
+                    <Text style={styles.listSectionCount}>{duesTotal}</Text>
+                  </View>
+                ) : null
+              }
+              ListEmptyComponent={<EmptyState message="No pending dues for this month" />}
+              ListFooterComponent={
+                duesLoadingMore ? (
+                  <View style={styles.footer}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  </View>
+                ) : pendingDues.length > 0 && !duesHasMore ? (
+                  <View style={styles.exportRow}>
+                    <ExportButton
+                      onExport={handleExportDues}
+                      testID="export-dues-pdf"
+                    />
+                  </View>
+                ) : null
+              }
+              testID="dues-list"
+            />
+          )}
         </View>
       )}
     </View>
@@ -463,6 +491,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.semibold,
     color: colors.warningText,
     textTransform: 'uppercase',
+  },
+
+  /* ── Footer ────────────────────────────────────────── */
+  footer: {
+    paddingVertical: spacing.base,
+    alignItems: 'center',
   },
 
   /* ── Export ───────────────────────────────────────── */

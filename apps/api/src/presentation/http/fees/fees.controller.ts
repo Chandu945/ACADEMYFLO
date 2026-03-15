@@ -9,7 +9,7 @@ import type { ListUnpaidDuesUseCase } from '@application/fee/use-cases/list-unpa
 import type { ListPaidDuesUseCase } from '@application/fee/use-cases/list-paid-dues.usecase';
 import type { GetStudentFeesUseCase } from '@application/fee/use-cases/get-student-fees.usecase';
 import type { MarkFeePaidUseCase } from '@application/fee/use-cases/mark-fee-paid.usecase';
-import { FeesMonthQueryDto, StudentFeeRangeQueryDto } from './dto/fee.query';
+import { FeesMonthQueryDto, FeesMonthPaginatedQueryDto, StudentFeeRangeQueryDto } from './dto/fee.query';
 import { MarkFeePaidBodyDto } from './dto/mark-fee-paid.dto';
 import { mapResultToResponse } from '../common/result-mapper';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
@@ -37,7 +37,7 @@ export class FeesController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'List unpaid fee dues for a month' })
   async getDues(
-    @Query() query: FeesMonthQueryDto,
+    @Query() query: FeesMonthPaginatedQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -45,6 +45,8 @@ export class FeesController {
       actorUserId: user.userId,
       actorRole: user.role,
       month: query.month,
+      page: query.page,
+      pageSize: query.pageSize,
     });
 
     return mapResultToResponse(result, req);

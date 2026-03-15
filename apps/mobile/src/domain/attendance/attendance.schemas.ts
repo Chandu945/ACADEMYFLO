@@ -70,6 +70,18 @@ export const studentMonthlyDetailResponseSchema = z.object({
   holidayCount: z.number().int(),
 });
 
+export const monthDailyCountDaySchema = z.object({
+  date: z.string(),
+  absentCount: z.number().int(),
+  isHoliday: z.boolean(),
+});
+
+export const monthDailyCountsResponseSchema = z.object({
+  month: z.string(),
+  totalStudents: z.number().int(),
+  days: z.array(monthDailyCountDaySchema),
+});
+
 export const holidayItemSchema = z.object({
   id: z.string(),
   academyId: z.string(),
@@ -87,4 +99,5 @@ export type BulkSetAbsencesApiResponse = z.infer<typeof bulkSetAbsencesResponseS
 export type DailyReportApiResponse = z.infer<typeof dailyReportResponseSchema>;
 export type MonthlySummaryApiResponse = z.infer<typeof monthlySummaryResponseSchema>;
 export type StudentMonthlyDetailApiResponse = z.infer<typeof studentMonthlyDetailResponseSchema>;
+export type MonthDailyCountsApiResponse = z.infer<typeof monthDailyCountsResponseSchema>;
 export type HolidaysApiResponse = z.infer<typeof holidaysResponseSchema>;

@@ -260,11 +260,12 @@ describe('Subscription Payments — Full Flow (e2e)', () => {
         },
         {
           provide: 'GET_SUBSCRIPTION_PAYMENT_STATUS_USE_CASE',
-          useFactory: (ur: any, ar: any, sr: any, pr: any, c: any) =>
-            new GetSubscriptionPaymentStatusUseCase(ur, ar, sr, pr, c),
+          useFactory: (ur: any, ar: any, sr: any, pr: any, c: any, gw: any, tx: any, l: any, audit: any) =>
+            new GetSubscriptionPaymentStatusUseCase(ur, ar, sr, pr, c, gw, tx, l, audit),
           inject: [
             USER_REPOSITORY, ACADEMY_REPOSITORY, SUBSCRIPTION_REPOSITORY,
             SUBSCRIPTION_PAYMENT_REPOSITORY, CLOCK_PORT,
+            CASHFREE_GATEWAY, TRANSACTION_PORT, LOGGER_PORT, AUDIT_RECORDER_PORT,
           ],
         },
       ],

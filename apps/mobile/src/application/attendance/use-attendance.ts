@@ -94,10 +94,10 @@ export function useAttendance(
   }, [load]);
 
   const fetchMore = useCallback(() => {
-    if (!loadingMore && hasMore) {
+    if (!loading && !loadingMore && hasMore) {
       load(page + 1, true);
     }
-  }, [loadingMore, hasMore, page, load]);
+  }, [loading, loadingMore, hasMore, page, load]);
 
   const toggleStatus = useCallback(
     (studentId: string) => {

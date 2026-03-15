@@ -30,6 +30,18 @@ export interface MonthlyAttendanceSummaryItem {
   holidayCount: number;
 }
 
+export interface MonthDailyCountDay {
+  date: string;
+  absentCount: number;
+  isHoliday: boolean;
+}
+
+export interface MonthDailyCountsDto {
+  month: string;
+  totalStudents: number;
+  days: MonthDailyCountDay[];
+}
+
 export interface HolidayDto {
   id: string;
   academyId: string;

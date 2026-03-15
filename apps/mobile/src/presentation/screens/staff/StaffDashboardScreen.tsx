@@ -18,10 +18,12 @@ import type { DailyReportResult } from '../../../domain/attendance/attendance.ty
 import type { EventSummary } from '../../../domain/event/event.types';
 import type { EnquirySummary } from '../../../domain/enquiry/enquiry.types';
 import type { PaymentRequestItem } from '../../../domain/fees/payment-requests.types';
+import type { BirthdayStudent } from '../../../domain/dashboard/dashboard.types';
 import { getDailyReport } from '../../../infra/attendance/attendance-api';
 import { listPaymentRequests } from '../../../infra/fees/payment-requests-api';
 import { getEventSummary } from '../../../infra/event/event-api';
 import { getEnquirySummary } from '../../../infra/enquiry/enquiry-api';
+import { getBirthdays } from '../../../infra/dashboard/dashboard-api';
 import { useFAB } from '../../context/FABContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { BirthdayWidget } from '../../components/dashboard/BirthdayWidget';
@@ -41,6 +43,7 @@ type DashboardData = {
   pendingRequests: PaymentRequestItem[];
   eventSummary: EventSummary | null;
   enquirySummary: EnquirySummary | null;
+  birthdayStudents: BirthdayStudent[];
 };
 
 function formatCurrency(n: number): string {
@@ -58,6 +61,7 @@ export function StaffDashboardScreen() {
     pendingRequests: [],
     eventSummary: null,
     enquirySummary: null,
+    birthdayStudents: [],
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,11 +70,12 @@ export function StaffDashboardScreen() {
   const load = useCallback(async () => {
     const today = getTodayIST();
 
-    const [attendanceRes, requestsRes, eventsRes, enquiryRes] = await Promise.all([
+    const [attendanceRes, requestsRes, eventsRes, enquiryRes, birthdayRes] = await Promise.all([
       getDailyReport(today),
       listPaymentRequests('PENDING'),
       getEventSummary(),
       getEnquirySummary(),
+      getBirthdays('month'),
     ]);
 
     if (!mountedRef.current) return;
@@ -80,6 +85,7 @@ export function StaffDashboardScreen() {
       pendingRequests: requestsRes.ok ? requestsRes.value.data : [],
       eventSummary: eventsRes.ok ? eventsRes.value : null,
       enquirySummary: enquiryRes.ok ? enquiryRes.value : null,
+      birthdayStudents: birthdayRes.ok ? birthdayRes.value.students : [],
     });
     setLoading(false);
   }, []);
@@ -111,7 +117,7 @@ export function StaffDashboardScreen() {
     setRefreshing(false);
   }, [load]);
 
-  const { attendance, pendingRequests, eventSummary, enquirySummary } = data;
+  const { attendance, pendingRequests, eventSummary, enquirySummary, birthdayStudents } = data;
 
   const totalStudents = attendance ? attendance.presentCount + attendance.absentCount : 0;
   const attendancePct = totalStudents > 0
@@ -461,7 +467,7 @@ export function StaffDashboardScreen() {
           )}
 
           {/* ── Birthday Widget ── */}
-          <BirthdayWidget />
+          <BirthdayWidget students={birthdayStudents} />
         </View>
       )}
     </ScrollView>

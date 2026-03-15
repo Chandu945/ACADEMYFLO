@@ -221,8 +221,9 @@ describe('Fees Endpoints (e2e)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(2);
-      expect(res.body.data[0].status).toBe('DUE');
+      expect(res.body.data.items).toHaveLength(2);
+      expect(res.body.data.items[0].status).toBe('DUE');
+      expect(res.body.data.meta.total).toBe(2);
     });
   });
 
@@ -298,7 +299,7 @@ describe('Fees Endpoints (e2e)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(0);
+      expect(res.body.data.items).toHaveLength(0);
     });
   });
 

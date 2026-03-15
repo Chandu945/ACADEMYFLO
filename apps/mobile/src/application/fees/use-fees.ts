@@ -10,6 +10,8 @@ import { getCurrentMonthIST } from '../../domain/common/date-utils';
 
 export type FeesApiPort = ListUnpaidDuesApiPort & ListPaidDuesApiPort;
 
+const UNPAID_PAGE_SIZE = 20;
+
 type UseFeesResult = {
   unpaidItems: FeeDueItem[];
   paidItems: FeeDueItem[];
@@ -18,6 +20,10 @@ type UseFeesResult = {
   month: string;
   setMonth: (m: string) => void;
   refetch: () => void;
+  unpaidTotal: number;
+  hasMoreUnpaid: boolean;
+  loadingMoreUnpaid: boolean;
+  fetchMoreUnpaid: () => void;
 };
 
 export { getCurrentMonthIST };
@@ -28,14 +34,19 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
   const [paidItems, setPaidItems] = useState<FeeDueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
+  const [unpaidPage, setUnpaidPage] = useState(1);
+  const [unpaidTotal, setUnpaidTotal] = useState(0);
+  const [hasMoreUnpaid, setHasMoreUnpaid] = useState(false);
+  const [loadingMoreUnpaid, setLoadingMoreUnpaid] = useState(false);
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setUnpaidPage(1);
 
     const [unpaidSettled, paidSettled] = await Promise.allSettled([
-      listUnpaidDuesUseCase({ feesApi }, month),
+      listUnpaidDuesUseCase({ feesApi }, month, 1, UNPAID_PAGE_SIZE),
       listPaidDuesUseCase({ feesApi }, month),
     ]);
 
@@ -67,10 +78,29 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
       return;
     }
 
-    setUnpaidItems(unpaidResult.value);
+    setUnpaidItems(unpaidResult.value.items);
+    setUnpaidTotal(unpaidResult.value.meta.total);
+    setHasMoreUnpaid(unpaidResult.value.meta.page < unpaidResult.value.meta.totalPages);
     setPaidItems(paidResult.value);
     setLoading(false);
   }, [month, feesApi]);
+
+  const fetchMoreUnpaid = useCallback(async () => {
+    if (loading || loadingMoreUnpaid || !hasMoreUnpaid) return;
+    const nextPage = unpaidPage + 1;
+    setLoadingMoreUnpaid(true);
+
+    const result = await listUnpaidDuesUseCase({ feesApi }, month, nextPage, UNPAID_PAGE_SIZE);
+
+    if (!mountedRef.current) return;
+    setLoadingMoreUnpaid(false);
+
+    if (result.ok) {
+      setUnpaidItems((prev) => [...prev, ...result.value.items]);
+      setUnpaidPage(nextPage);
+      setHasMoreUnpaid(result.value.meta.page < result.value.meta.totalPages);
+    }
+  }, [loading, loadingMoreUnpaid, hasMoreUnpaid, unpaidPage, feesApi, month]);
 
   const refetch = useCallback(() => {
     load();
@@ -84,5 +114,17 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
     };
   }, [load]);
 
-  return { unpaidItems, paidItems, loading, error, month, setMonth, refetch };
+  return {
+    unpaidItems,
+    paidItems,
+    loading,
+    error,
+    month,
+    setMonth,
+    refetch,
+    unpaidTotal,
+    hasMoreUnpaid,
+    loadingMoreUnpaid,
+    fetchMoreUnpaid,
+  };
 }

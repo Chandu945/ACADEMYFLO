@@ -59,17 +59,25 @@ const mockRevenue = {
   ],
 };
 
-const mockDues = [
-  {
-    studentId: 's1',
-    studentName: 'Priya Sharma',
-    monthKey: '2026-03',
-    amount: 500,
-    status: 'DUE',
-    pendingMonthsCount: 2,
-    totalPendingAmount: 1000,
+const mockDues = {
+  items: [
+    {
+      studentId: 's1',
+      studentName: 'Priya Sharma',
+      monthKey: '2026-03',
+      amount: 500,
+      status: 'DUE',
+      pendingMonthsCount: 2,
+      totalPendingAmount: 1000,
+    },
+  ],
+  meta: {
+    page: 1,
+    pageSize: 20,
+    total: 1,
+    totalPages: 1,
   },
-];
+};
 
 describe('ReportsHomeScreen', () => {
   beforeEach(() => {

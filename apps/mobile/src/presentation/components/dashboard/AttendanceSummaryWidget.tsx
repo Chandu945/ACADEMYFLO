@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getDailyReport } from '../../../infra/attendance/attendance-api';
+import { getMonthDailyCounts } from '../../../infra/attendance/attendance-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,6 +15,9 @@ type DayData = {
 
 const BAR_MAX_HEIGHT = 80;
 
+// Client-side cache for past months (they won't change)
+const monthCache = new Map<string, DayData[]>();
+
 function getMonthLabel(year: number, month: number): string {
   const d = new Date(year, month - 1);
   return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
@@ -26,6 +29,11 @@ function getDaysInMonth(year: number, month: number): number {
 
 function formatMonthKey(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+function isCurrentMonth(year: number, month: number): boolean {
+  const now = new Date();
+  return year === now.getFullYear() && month === now.getMonth() + 1;
 }
 
 type AttendanceSummaryWidgetProps = {
@@ -43,43 +51,61 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
   const mountedRef = useRef(true);
 
   const loadMonth = useCallback(async () => {
-    setLoading(true);
-    const totalDays = getDaysInMonth(year, month);
-    const today = new Date();
-
-    const maxDay =
-      year === today.getFullYear() && month === today.getMonth() + 1
-        ? today.getDate()
-        : totalDays;
-
     const monthKey = formatMonthKey(year, month);
-    const results: DayData[] = [];
+    const isCurrent = isCurrentMonth(year, month);
 
-    for (let start = 1; start <= maxDay; start += 7) {
-      const end = Math.min(start + 6, maxDay);
-      const batch = [];
-      for (let d = start; d <= end; d++) {
-        const dateStr = `${monthKey}-${String(d).padStart(2, '0')}`;
-        batch.push(
-          getDailyReport(dateStr).then((res) => ({
-            day: d,
-            present: res.ok ? res.value.presentCount : 0,
-            absent: res.ok ? res.value.absentCount : 0,
-            isHoliday: res.ok ? res.value.isHoliday : false,
-          })),
-        );
+    // Use cache for past months
+    if (!isCurrent && monthCache.has(monthKey)) {
+      setDays(monthCache.get(monthKey)!);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Single API call instead of 30 individual calls
+    const result = await getMonthDailyCounts(monthKey);
+    if (!mountedRef.current) return;
+
+    if (result.ok) {
+      const { totalStudents, days: apiDays } = result.value;
+      const today = new Date();
+      const totalDaysInMonth = getDaysInMonth(year, month);
+      const maxDay = isCurrent ? today.getDate() : totalDaysInMonth;
+
+      const dayData: DayData[] = apiDays.map((d, idx) => {
+        const dayNum = idx + 1;
+        if (dayNum > maxDay) {
+          return { day: dayNum, present: 0, absent: 0, isHoliday: false };
+        }
+        const presentCount = d.isHoliday ? 0 : totalStudents - d.absentCount;
+        return {
+          day: dayNum,
+          present: presentCount,
+          absent: d.absentCount,
+          isHoliday: d.isHoliday,
+        };
+      });
+
+      // Cache past months
+      if (!isCurrent) {
+        monthCache.set(monthKey, dayData);
       }
-      const batchResults = await Promise.all(batch);
-      if (!mountedRef.current) return;
-      results.push(...batchResults);
+
+      setDays(dayData);
+    } else {
+      // On error, show empty chart
+      const totalDaysInMonth = getDaysInMonth(year, month);
+      setDays(
+        Array.from({ length: totalDaysInMonth }, (_, i) => ({
+          day: i + 1,
+          present: 0,
+          absent: 0,
+          isHoliday: false,
+        })),
+      );
     }
 
-    for (let d = maxDay + 1; d <= totalDays; d++) {
-      results.push({ day: d, present: 0, absent: 0, isHoliday: false });
-    }
-
-    results.sort((a, b) => a.day - b.day);
-    setDays(results);
     setLoading(false);
   }, [year, month]);
 

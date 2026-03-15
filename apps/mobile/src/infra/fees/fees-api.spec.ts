@@ -18,12 +18,20 @@ describe('fees-api', () => {
   });
 
   describe('listUnpaidDues', () => {
-    it('builds URL with month', async () => {
-      mockApiGet.mockResolvedValue(ok([]));
+    it('builds URL with month and pagination', async () => {
+      mockApiGet.mockResolvedValue(ok({ items: [], meta: { page: 1, pageSize: 20, total: 0, totalPages: 1 } }));
 
       await listUnpaidDues('2026-03');
 
-      expect(mockApiGet).toHaveBeenCalledWith('/api/v1/fees/dues?month=2026-03');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/v1/fees/dues?month=2026-03&page=1&pageSize=20');
+    });
+
+    it('passes custom page and pageSize', async () => {
+      mockApiGet.mockResolvedValue(ok({ items: [], meta: { page: 2, pageSize: 10, total: 15, totalPages: 2 } }));
+
+      await listUnpaidDues('2026-03', 2, 10);
+
+      expect(mockApiGet).toHaveBeenCalledWith('/api/v1/fees/dues?month=2026-03&page=2&pageSize=10');
     });
   });
 

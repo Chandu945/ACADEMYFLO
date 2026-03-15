@@ -112,7 +112,12 @@ function BirthdayRow({ student, isToday, testID }: BirthdayRowProps) {
   );
 }
 
-export function BirthdayWidget() {
+type BirthdayWidgetProps = {
+  /** Pre-fetched students from parent's Promise.all — skips internal API call when provided */
+  students?: BirthdayStudent[];
+};
+
+export function BirthdayWidget({ students: prefetchedStudents }: BirthdayWidgetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [todayBirthdays, setTodayBirthdays] = useState<BirthdayStudent[]>([]);
@@ -121,23 +126,46 @@ export function BirthdayWidget() {
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
-    const [todayRes, monthRes] = await Promise.all([
-      getBirthdays('today'),
-      getBirthdays('month'),
-    ]);
+    // Single API call — filter today's birthdays client-side
+    const monthRes = await getBirthdays('month');
     if (!mountedRef.current) return;
-    if (todayRes.ok) setTodayBirthdays(todayRes.value.students);
-    if (monthRes.ok) setMonthBirthdays(monthRes.value.students);
+    if (monthRes.ok) {
+      const all = monthRes.value.students;
+      setMonthBirthdays(all);
+
+      // Filter today's birthdays from month data
+      const now = new Date();
+      const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const todayDay = String(now.getDate()).padStart(2, '0');
+      const todaySuffix = `-${todayMonth}-${todayDay}`;
+      setTodayBirthdays(all.filter((s) => s.dateOfBirth.endsWith(todaySuffix)));
+    }
     setLoaded(true);
   }, []);
 
+  // When prefetched data is provided, use it directly — no API call
   useEffect(() => {
+    if (prefetchedStudents) {
+      const all = prefetchedStudents;
+      setMonthBirthdays(all);
+
+      const now = new Date();
+      const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const todayDay = String(now.getDate()).padStart(2, '0');
+      const todaySuffix = `-${todayMonth}-${todayDay}`;
+      setTodayBirthdays(all.filter((s) => s.dateOfBirth.endsWith(todaySuffix)));
+      setLoaded(true);
+    }
+  }, [prefetchedStudents]);
+
+  useEffect(() => {
+    if (prefetchedStudents) return; // skip self-fetch when parent provides data
     mountedRef.current = true;
     load();
     return () => {
       mountedRef.current = false;
     };
-  }, [load]);
+  }, [load, prefetchedStudents]);
 
   if (!loaded) return null;
 

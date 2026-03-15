@@ -127,6 +127,11 @@ export function DashboardScreen() {
             onCollectedPress={() => navigation.navigate('Fees')}
             onPendingPress={() => navigation.navigate('Fees')}
             onExpensesPress={() => navigation.navigate('More', { screen: 'ExpensesHome' })}
+            initialData={data ? {
+              collected: data.collectedAmount,
+              pending: data.totalPendingAmount,
+              expenses: data.totalExpenses,
+            } : null}
           />
           <AttendanceSummaryWidget
             onPress={() => navigation.navigate('Attendance')}
@@ -134,6 +139,10 @@ export function DashboardScreen() {
           <AttendanceMarkingCards
             onStudentPress={() => navigation.navigate('Attendance')}
             onStaffPress={() => navigation.navigate('More', { screen: 'StaffAttendance' })}
+            initialStudentData={data ? {
+              present: data.todayPresentCount,
+              total: data.todayPresentCount + data.todayAbsentCount,
+            } : null}
           />
           <MonthlyChartWidget
             onPress={() => navigation.navigate('More', { screen: 'ReportsHome' })}

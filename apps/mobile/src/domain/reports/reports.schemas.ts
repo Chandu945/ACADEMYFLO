@@ -30,6 +30,16 @@ export const studentWiseDueItemSchema = z.object({
 
 export const studentWiseDueListSchema = z.array(studentWiseDueItemSchema);
 
+export const studentWiseDuesPaginatedSchema = z.object({
+  items: z.array(studentWiseDueItemSchema),
+  meta: z.object({
+    page: z.number(),
+    pageSize: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+  }),
+});
+
 export const monthWiseDueItemSchema = z.object({
   id: z.string(),
   studentId: z.string(),
@@ -54,4 +64,5 @@ export const monthWiseDuesSummarySchema = z.object({
 
 export type MonthlyRevenueSummaryApiResponse = z.infer<typeof monthlyRevenueSummarySchema>;
 export type StudentWiseDueListApiResponse = z.infer<typeof studentWiseDueListSchema>;
+export type StudentWiseDuesPaginatedApiResponse = z.infer<typeof studentWiseDuesPaginatedSchema>;
 export type MonthWiseDuesSummaryApiResponse = z.infer<typeof monthWiseDuesSummarySchema>;

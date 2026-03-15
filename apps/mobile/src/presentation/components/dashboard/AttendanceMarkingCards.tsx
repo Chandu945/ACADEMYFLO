@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { getDailyReport } from '../../../infra/attendance/attendance-api';
 import { getStaffDailyReport } from '../../../infra/staff-attendance/staff-attendance-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -65,27 +64,29 @@ function MarkingCard({
 type AttendanceMarkingCardsProps = {
   onStudentPress?: () => void;
   onStaffPress?: () => void;
+  initialStudentData?: { present: number; total: number } | null;
 };
 
-export function AttendanceMarkingCards({ onStudentPress, onStaffPress }: AttendanceMarkingCardsProps) {
+export function AttendanceMarkingCards({ onStudentPress, onStaffPress, initialStudentData }: AttendanceMarkingCardsProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [studentData, setStudentData] = useState<CardData | null>(null);
+  const [studentData, setStudentData] = useState<CardData | null>(initialStudentData ?? null);
   const [staffData, setStaffData] = useState<CardData | null>(null);
   const mountedRef = useRef(true);
 
+  // Update student data when initialData arrives from dashboard KPIs
+  useEffect(() => {
+    if (initialStudentData) {
+      setStudentData(initialStudentData);
+    }
+  }, [initialStudentData]);
+
   const load = useCallback(async () => {
     const today = getTodayStr();
-    const [studentRes, staffRes] = await Promise.all([
-      getDailyReport(today),
-      getStaffDailyReport(today),
-    ]);
+    // Only fetch staff data — student data comes from dashboard KPIs
+    const staffRes = await getStaffDailyReport(today);
     if (!mountedRef.current) return;
 
-    if (studentRes.ok) {
-      const total = studentRes.value.presentCount + studentRes.value.absentCount;
-      setStudentData({ present: studentRes.value.presentCount, total });
-    }
     if (staffRes.ok) {
       const total = staffRes.value.presentCount + staffRes.value.absentCount;
       setStaffData({ present: staffRes.value.presentCount, total });

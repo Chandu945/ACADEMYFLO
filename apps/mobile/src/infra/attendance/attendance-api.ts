@@ -6,6 +6,7 @@ import type {
   DailyReportApiResponse,
   MonthlySummaryApiResponse,
   StudentMonthlyDetailApiResponse,
+  MonthDailyCountsApiResponse,
 } from '../../domain/attendance/attendance.schemas';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
@@ -76,6 +77,14 @@ export function getStudentMonthlyDetail(
   );
 }
 
+export function getMonthDailyCounts(
+  month: string,
+): Promise<Result<MonthDailyCountsApiResponse, AppError>> {
+  return apiGet<MonthDailyCountsApiResponse>(
+    `/api/v1/attendance/reports/month-daily-counts?month=${encodeURIComponent(month)}`,
+  );
+}
+
 export const attendanceApi = {
   getDailyAttendance,
   markAttendance,
@@ -83,4 +92,5 @@ export const attendanceApi = {
   getDailyReport,
   getMonthlySummary,
   getStudentMonthlyDetail,
+  getMonthDailyCounts,
 };

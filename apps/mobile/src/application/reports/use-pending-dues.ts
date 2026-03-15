@@ -1,38 +1,37 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppError } from '../../domain/common/errors';
-import type { StudentListItem, StudentListFilters } from '../../domain/student/student.types';
-import { listStudentsUseCase, type StudentApiPort } from './use-cases/list-students.usecase';
+import type { StudentWiseDueItem } from '../../domain/reports/reports.types';
+import { getStudentWiseDuesUseCase } from './use-cases/get-student-wise-dues.usecase';
+import type { GetStudentWiseDuesApiPort } from './use-cases/get-student-wise-dues.usecase';
 
-type UseStudentsResult = {
-  items: StudentListItem[];
+const PAGE_SIZE = 20;
+
+type UsePendingDuesResult = {
+  items: StudentWiseDueItem[];
   loading: boolean;
   loadingMore: boolean;
   error: AppError | null;
   hasMore: boolean;
+  total: number;
   refetch: () => void;
   fetchMore: () => void;
 };
 
-const PAGE_SIZE = 20;
-
-export function useStudents(
-  filters: StudentListFilters,
-  studentApi: StudentApiPort,
-): UseStudentsResult {
-  const [items, setItems] = useState<StudentListItem[]>([]);
+export function usePendingDues(
+  api: GetStudentWiseDuesApiPort,
+  month: string,
+): UsePendingDuesResult {
+  const [items, setItems] = useState<StudentWiseDueItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
+  const [total, setTotal] = useState(0);
   const mountedRef = useRef(true);
-  // Monotonic counter to discard stale responses from superseded filter changes
-  const requestIdRef = useRef(0);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
-      const requestId = ++requestIdRef.current;
-
       if (append) {
         setLoadingMore(true);
       } else {
@@ -40,19 +39,14 @@ export function useStudents(
       }
       setError(null);
 
-      let result;
-      try {
-        result = await listStudentsUseCase({ studentApi }, filters, targetPage, PAGE_SIZE);
-      } catch (e) {
-        if (!mountedRef.current || requestId !== requestIdRef.current) return;
-        setError({ code: 'UNKNOWN', message: String(e) });
-        setLoading(false);
-        setLoadingMore(false);
-        return;
-      }
+      const result = await getStudentWiseDuesUseCase(
+        { reportsApi: api },
+        month,
+        targetPage,
+        PAGE_SIZE,
+      );
 
-      // Discard stale response if filters changed while request was in flight
-      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      if (!mountedRef.current) return;
 
       if (result.ok) {
         if (append) {
@@ -61,6 +55,7 @@ export function useStudents(
           setItems(result.value.items);
         }
         setPage(targetPage);
+        setTotal(result.value.meta.total);
         setHasMore(targetPage < result.value.meta.totalPages);
       } else {
         setError(result.error);
@@ -69,7 +64,7 @@ export function useStudents(
       setLoading(false);
       setLoadingMore(false);
     },
-    [filters, studentApi],
+    [api, month],
   );
 
   const refetch = useCallback(() => {
@@ -90,5 +85,5 @@ export function useStudents(
     };
   }, [load]);
 
-  return { items, loading, loadingMore, error, hasMore, refetch, fetchMore };
+  return { items, loading, loadingMore, error, hasMore, total, refetch, fetchMore };
 }

@@ -201,11 +201,14 @@ describe('Reports (e2e)', () => {
         .expect(200);
 
       expect(res.body.success).toBe(true);
-      expect(res.body.data).toHaveLength(2);
-      expect(res.body.data[0].studentId).toBeDefined();
-      expect(res.body.data[0].amount).toBe(500);
-      expect(res.body.data[0].pendingMonthsCount).toBe(1);
-      expect(res.body.data[0].totalPendingAmount).toBe(500);
+      expect(res.body.data.items).toHaveLength(2);
+      expect(res.body.data.items[0].studentId).toBeDefined();
+      expect(res.body.data.items[0].amount).toBe(500);
+      expect(res.body.data.items[0].pendingMonthsCount).toBe(1);
+      expect(res.body.data.items[0].totalPendingAmount).toBe(500);
+      expect(res.body.data.meta.page).toBe(1);
+      expect(res.body.data.meta.total).toBe(2);
+      expect(res.body.data.meta.totalPages).toBe(1);
     });
 
     it('should reject unauthenticated (401)', async () => {

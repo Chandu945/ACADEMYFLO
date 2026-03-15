@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import type { AppError } from '../../../domain/common/errors';
 import { ownerMarkPaidUseCase } from '../../../application/fees/use-cases/owner-mark-paid.usecase';
@@ -11,6 +11,7 @@ import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { FeeDueRow } from '../../components/fees/FeeDueRow';
 import { spacing, listDefaults } from '../../theme';
 import { useToast } from '../../context/ToastContext';
+import { useTheme } from '../../context/ThemeContext';
 
 type UnpaidDuesScreenProps = {
   items: FeeDueItem[];
@@ -22,6 +23,10 @@ type UnpaidDuesScreenProps = {
   month: string;
   onMarkPaidSuccess: () => void;
   studentNameMap: Record<string, string>;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onEndReached?: () => void;
+  total?: number;
 };
 
 const markPaidApi = { markFeePaid };
@@ -36,7 +41,11 @@ export function UnpaidDuesScreen({
   month,
   onMarkPaidSuccess,
   studentNameMap,
+  hasMore,
+  loadingMore,
+  onEndReached,
 }: UnpaidDuesScreenProps) {
+  const { colors } = useTheme();
   const { showToast } = useToast();
   const [confirmItem, setConfirmItem] = useState<FeeDueItem | null>(null);
   const [marking, setMarking] = useState(false);
@@ -110,6 +119,15 @@ export function UnpaidDuesScreen({
           keyExtractor={keyExtractor}
           extraData={studentNameMap}
           contentContainerStyle={styles.listContent}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footer}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : null
+          }
           testID="unpaid-list"
         />
       )}
@@ -141,5 +159,9 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing.base,
     paddingBottom: listDefaults.contentPaddingBottomNoFab,
+  },
+  footer: {
+    paddingVertical: spacing.md,
+    alignItems: 'center' as const,
   },
 });
