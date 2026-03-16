@@ -12,6 +12,7 @@ jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 jest.mock('react-native-image-picker', () => ({ launchImageLibrary: jest.fn() }));
 
 jest.mock('@react-navigation/native-stack', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const R = require('react');
   return {
     createNativeStackNavigator: () => ({
@@ -25,7 +26,9 @@ jest.mock('@react-navigation/native-stack', () => {
 });
 
 jest.mock('@react-navigation/bottom-tabs', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const R = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Text: T } = require('react-native');
   return {
     createBottomTabNavigator: () => ({
@@ -36,13 +39,17 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   };
 });
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
-  useRoute: () => ({ params: { mode: 'create' } }),
-  useFocusEffect: jest.fn(),
-  NavigationContainer: ({ children }: { children: React.ReactNode }) =>
-    require('react').createElement(require('react').Fragment, null, children),
-}));
+jest.mock('@react-navigation/native', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const R = require('react');
+  return {
+    useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
+    useRoute: () => ({ params: { mode: 'create' } }),
+    useFocusEffect: jest.fn(),
+    NavigationContainer: ({ children }: { children: React.ReactNode }) =>
+      R.createElement(R.Fragment, null, children),
+  };
+});
 
 jest.mock('../../infra/http/api-client', () => ({
   accessTokenStore: { value: null },
@@ -70,6 +77,7 @@ function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthContextVa
     setupAcademy: jest.fn().mockResolvedValue(null),
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
+    forceUpdate: null,
     ...overrides,
   };
 }

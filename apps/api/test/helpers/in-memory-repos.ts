@@ -553,7 +553,7 @@ export class InMemoryStudentRepository implements StudentRepository {
         fullName: s.fullName,
         profilePhotoUrl: s.profilePhotoUrl,
         dateOfBirth: s.dateOfBirth,
-        guardianMobile: s.guardian.mobile,
+        guardianMobile: s.guardian?.mobile ?? '',
       }));
   }
 
@@ -1160,11 +1160,13 @@ export class InMemoryStudentQueryRepository implements StudentQueryRepository {
         state: s.address.state,
         pincode: s.address.pincode,
       },
-      guardian: {
-        name: s.guardian.name,
-        mobile: s.guardian.mobile,
-        email: s.guardian.email,
-      },
+      guardian: s.guardian
+        ? {
+            name: s.guardian.name,
+            mobile: s.guardian.mobile,
+            email: s.guardian.email,
+          }
+        : null,
       joiningDate: s.joiningDate.toISOString().slice(0, 10),
       monthlyFee: s.monthlyFee,
       mobileNumber: s.mobileNumber,
@@ -1172,12 +1174,8 @@ export class InMemoryStudentQueryRepository implements StudentQueryRepository {
       profilePhotoUrl: s.profilePhotoUrl,
       fatherName: s.fatherName,
       motherName: s.motherName,
-      aadhaarNumber: s.aadhaarNumber,
-      caste: s.caste,
       whatsappNumber: s.whatsappNumber,
       addressText: s.addressText,
-      instituteInfo: s.instituteInfo,
-      hasPassword: s.passwordHash !== null,
       status: s.status,
       createdAt: s.audit.createdAt,
       updatedAt: s.audit.updatedAt,
@@ -1244,7 +1242,7 @@ export class InMemoryAuditLogRepository implements AuditLogRepository {
 // ── Expense ────────────────────────────────────────────────────────────
 
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
-import { Expense } from '@domain/expense/entities/expense.entity';
+import type { Expense } from '@domain/expense/entities/expense.entity';
 
 export class InMemoryExpenseRepository implements ExpenseRepository {
   private expenses: Expense[] = [];

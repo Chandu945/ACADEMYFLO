@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
 import { Button } from './Button';
 import { useTheme } from '../../context/ThemeContext';

@@ -126,7 +126,6 @@ export function useAuditLogs(auditApi: AuditApiPort): UseAuditLogsResult {
     return () => {
       mountedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {

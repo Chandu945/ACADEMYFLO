@@ -17,18 +17,26 @@ import { deviceIdStore } from '../../infra/auth/device-id';
 import { subscriptionApi } from '../../infra/subscription/subscription-api';
 import { accessTokenStore, getAccessToken, registerAuthFailureHandler } from '../../infra/http/api-client';
 import { isTokenExpiredOrExpiring } from '../../infra/auth/token-expiry';
+import { checkAppVersionUseCase } from '../../application/auth/use-cases/check-app-version.usecase';
 
 export type AuthPhase =
   | 'initializing'
+  | 'updateRequired'
   | 'unauthenticated'
   | 'needsAcademySetup'
   | 'blocked'
   | 'ready';
 
+export type ForceUpdateInfo = {
+  storeUrl: string;
+  minVersion: string;
+};
+
 export type AuthState = {
   phase: AuthPhase;
   user: AuthUser | null;
   subscription: SubscriptionInfo | null;
+  forceUpdate: ForceUpdateInfo | null;
 };
 
 type AuthActions = {
@@ -45,6 +53,7 @@ const defaultContext: AuthContextValue = {
   phase: 'initializing',
   user: null,
   subscription: null,
+  forceUpdate: null,
   login: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
   signup: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
   setupAcademy: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
@@ -70,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     phase: 'initializing',
     user: null,
     subscription: null,
+    forceUpdate: null,
   });
   const mountedRef = useRef(true);
 
@@ -77,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Parents skip subscription check — go directly to ready
     if (user.role === 'PARENT') {
       if (mountedRef.current) {
-        setState({ phase: 'ready', user, subscription: null });
+        setState({ phase: 'ready', user, subscription: null, forceUpdate: null });
       }
       return;
     }
@@ -91,25 +101,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!subResult.ok) {
       if (subResult.error.code === 'CONFLICT') {
-        setState({ phase: 'needsAcademySetup', user, subscription: null });
+        setState({ phase: 'needsAcademySetup', user, subscription: null, forceUpdate: null });
       } else {
-        setState({ phase: 'unauthenticated', user: null, subscription: null });
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
       }
       return;
     }
 
     const sub = subResult.value;
     if (!sub.canAccessApp) {
-      setState({ phase: 'blocked', user, subscription: sub });
+      setState({ phase: 'blocked', user, subscription: sub, forceUpdate: null });
     } else {
-      setState({ phase: 'ready', user, subscription: sub });
+      setState({ phase: 'ready', user, subscription: sub, forceUpdate: null });
     }
   }, []);
 
   const doLogout = useCallback(async () => {
     await logoutUseCase(deps);
     if (mountedRef.current) {
-      setState({ phase: 'unauthenticated', user: null, subscription: null });
+      setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
     }
   }, []);
 
@@ -117,22 +127,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mountedRef.current = true;
 
     registerAuthFailureHandler(() => {
-      setState({ phase: 'unauthenticated', user: null, subscription: null });
+      setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
     });
 
     (async () => {
+      // Check if app version meets minimum requirement
+      const versionCheck = await checkAppVersionUseCase();
+      if (!mountedRef.current) return;
+      if (versionCheck?.updateRequired) {
+        setState({
+          phase: 'updateRequired',
+          user: null,
+          subscription: null,
+          forceUpdate: { storeUrl: versionCheck.storeUrl, minVersion: versionCheck.minVersion },
+        });
+        return;
+      }
+
       const result = await restoreSessionUseCase(deps);
       if (!mountedRef.current) return;
 
       if (!result.ok) {
-        setState({ phase: 'unauthenticated', user: null, subscription: null });
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
         return;
       }
 
       await resolvePhase(result.value.user);
     })().catch(() => {
       if (mountedRef.current) {
-        setState({ phase: 'unauthenticated', user: null, subscription: null });
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
       }
     });
 
@@ -153,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then((result) => {
             if (!mountedRef.current) return;
             if (!result.ok) {
-              setState({ phase: 'unauthenticated', user: null, subscription: null });
+              setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
             }
             // Token is now refreshed in-memory via restoreSessionUseCase
           })
@@ -180,7 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (input: SignupInput): Promise<AppError | null> => {
     const result = await ownerSignupUseCase(input, deps);
     if (!result.ok) return result.error;
-    setState({ phase: 'needsAcademySetup', user: result.value.user, subscription: null });
+    setState({ phase: 'needsAcademySetup', user: result.value.user, subscription: null, forceUpdate: null });
     return null;
   }, []);
 

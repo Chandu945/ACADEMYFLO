@@ -37,10 +37,6 @@ export class GenerateRegistrationFormUseCase {
     const academy = await this.academyRepo.findById(actor.academyId);
     const academyName = academy?.academyName ?? 'Academy';
     const instituteInfo = academy?.instituteInfo;
-    const maskedAadhaar = student.aadhaarNumber
-      ? `XXXX-XXXX-${student.aadhaarNumber.slice(-4)}`
-      : null;
-
     try {
       const pdf = new PdfGeneratorService();
       const doc = pdf.createDocument();
@@ -71,9 +67,6 @@ export class GenerateRegistrationFormUseCase {
       addField('Mother Name', student.motherName);
       addField('Date of Birth', student.dateOfBirth.toISOString().slice(0, 10));
       addField('Gender', student.gender);
-      addField('Aadhaar', maskedAadhaar);
-      addField('Caste', student.caste);
-
       // Contact Information
       addSection('Contact Information');
       addField('Mobile', student.mobileNumber);
@@ -88,17 +81,9 @@ export class GenerateRegistrationFormUseCase {
 
       // Guardian Information
       addSection('Guardian Information');
-      addField('Guardian Name', student.guardian.name);
-      addField('Guardian Mobile', student.guardian.mobile);
-      addField('Guardian Email', student.guardian.email);
-
-      // Institute/Academic Information
-      if (student.instituteInfo) {
-        addSection('Academic Information');
-        addField('School Name', student.instituteInfo.schoolName);
-        addField('Roll Number', student.instituteInfo.rollNumber);
-        addField('Standard/Class', student.instituteInfo.standard);
-      }
+      addField('Guardian Name', student.guardian?.name);
+      addField('Guardian Mobile', student.guardian?.mobile);
+      addField('Guardian Email', student.guardian?.email);
 
       // Enrollment Details
       addSection('Enrollment Details');

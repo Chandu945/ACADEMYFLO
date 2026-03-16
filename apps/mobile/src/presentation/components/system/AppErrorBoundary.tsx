@@ -81,7 +81,6 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
     const stack = error instanceof Error ? error.stack : undefined;
     // __DEV__ is always defined in React Native
     if (__DEV__) {
-      // eslint-disable-next-line no-console
       console.error('[AppErrorBoundary]', message, { stack, ...context });
     }
     // Production: queue for future reporting service

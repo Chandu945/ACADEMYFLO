@@ -109,12 +109,12 @@ describe('GET /api/admin/academies/[academyId]/audit-logs', () => {
             entityType: 'STUDENT',
             entityId: 's1',
             actorUserId: 'u1',
-            actorRole: 'OWNER',
+            actorName: null,
             context: { month: '2026-03' },
             createdAt: '2026-03-01T10:00:00Z',
           },
         ],
-        total: 1,
+        meta: { page: 1, pageSize: 50, totalItems: 1, totalPages: 1 },
       },
     });
 
@@ -127,7 +127,7 @@ describe('GET /api/admin/academies/[academyId]/audit-logs', () => {
           {
             id: 'log1',
             occurredAt: '2026-03-01T10:00:00Z',
-            actor: { userId: 'u1', role: 'OWNER', name: null },
+            actor: { userId: 'u1', name: null },
             actionType: 'STUDENT_CREATED',
             entity: { type: 'STUDENT', id: 's1' },
             context: { month: '2026-03' },

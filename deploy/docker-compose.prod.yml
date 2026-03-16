@@ -47,6 +47,9 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_APP_ENV: production
+      API_BASE_URL: http://api:3001
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      COOKIE_SALT: ${COOKIE_SALT}
       TZ: Asia/Kolkata
     deploy:
       resources:

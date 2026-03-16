@@ -53,9 +53,11 @@ describe('GET /api/admin/dashboard', () => {
       ok: true,
       data: {
         totalAcademies: 10,
-        activeAcademies: 5,
         trialAcademies: 3,
+        paidAcademies: 5,
+        expiredGraceAcademies: 0,
         blockedAcademies: 2,
+        disabledAcademies: 1,
       },
     });
 
@@ -68,9 +70,11 @@ describe('GET /api/admin/dashboard', () => {
       success: true,
       data: {
         totalAcademies: 10,
-        activeAcademies: 5,
-        trialAcademies: 3,
-        blockedAcademies: 2,
+        activeTrials: 3,
+        activePaid: 5,
+        expiredGrace: 0,
+        blocked: 2,
+        disabled: 1,
       },
     });
   });

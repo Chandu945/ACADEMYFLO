@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsPositive, IsIn, Matches, MinLength } from 'class-validator';
+import { IsString, IsNumber, IsPositive, IsIn, Matches, MinLength } from 'class-validator';
 
 export class ConvertToStudentDto {
   @IsString()

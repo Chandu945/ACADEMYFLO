@@ -44,7 +44,7 @@ export function EventGalleryScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<Nav>();
   const route = useRoute<GalleryRoute>();
-  const { eventId, eventTitle } = route.params;
+  const { eventId, eventTitle: _eventTitle } = route.params;
   const canUpload = user?.role === 'OWNER' || user?.role === 'STAFF';
 
   const { width: screenWidth } = useWindowDimensions();

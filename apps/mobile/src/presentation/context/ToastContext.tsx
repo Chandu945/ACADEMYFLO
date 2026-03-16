@@ -127,7 +127,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
+const makeStyles = (_colors: Colors) => StyleSheet.create({
   toast: {
     position: 'absolute',
     left: spacing.base,

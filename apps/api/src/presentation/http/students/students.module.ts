@@ -42,8 +42,6 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
 import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-storage.service';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
-import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
-import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import type { TransactionPort } from '@application/common/transaction.port';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
@@ -94,9 +92,8 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
         userRepo: UserRepository,
         studentRepo: StudentRepository,
         audit: AuditRecorderPort,
-        passwordHasher: PasswordHasher,
-      ) => new CreateStudentUseCase(userRepo, studentRepo, audit, passwordHasher),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT, PASSWORD_HASHER],
+      ) => new CreateStudentUseCase(userRepo, studentRepo, audit),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'UPDATE_STUDENT_USE_CASE',
@@ -104,9 +101,8 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
         userRepo: UserRepository,
         studentRepo: StudentRepository,
         audit: AuditRecorderPort,
-        passwordHasher: PasswordHasher,
-      ) => new UpdateStudentUseCase(userRepo, studentRepo, audit, passwordHasher),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT, PASSWORD_HASHER],
+      ) => new UpdateStudentUseCase(userRepo, studentRepo, audit),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'LIST_STUDENTS_USE_CASE',

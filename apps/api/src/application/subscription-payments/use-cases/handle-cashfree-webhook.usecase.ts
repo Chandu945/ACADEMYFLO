@@ -8,6 +8,7 @@ import type { LoggerPort } from '@shared/logging/logger.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import { computePaidDates } from '@domain/subscription-payments/rules/subscription-payment.rules';
+import type { TierKey } from '@playconnect/contracts';
 
 export interface WebhookSignatureVerifier {
   verify(rawBody: Buffer, signature: string, timestamp: string): boolean;
@@ -193,7 +194,7 @@ export class HandleCashfreeWebhookUseCase {
       trialEndAt: subscription.trialEndAt,
       paidStartAt,
       paidEndAt,
-      tierKey: tierKey as import('@playconnect/contracts').TierKey,
+      tierKey: tierKey as TierKey,
       pendingTierKey: null,
       pendingTierEffectiveAt: null,
       activeStudentCountSnapshot: subscription.activeStudentCountSnapshot,

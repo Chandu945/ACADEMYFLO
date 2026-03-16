@@ -17,12 +17,6 @@ export interface StudentGuardian {
   email: string;
 }
 
-export interface StudentInstituteInfo {
-  schoolName: string | null;
-  rollNumber: string | null;
-  standard: string | null;
-}
-
 export interface StatusHistoryEntry {
   fromStatus: StudentStatus;
   toStatus: StudentStatus;
@@ -38,7 +32,7 @@ export interface StudentProps {
   dateOfBirth: Date;
   gender: Gender;
   address: StudentAddress;
-  guardian: StudentGuardian;
+  guardian: StudentGuardian | null;
   joiningDate: Date;
   monthlyFee: number;
   mobileNumber: string | null;
@@ -51,12 +45,8 @@ export interface StudentProps {
   profilePhotoUrl: string | null;
   fatherName: string | null;
   motherName: string | null;
-  aadhaarNumber: string | null;
-  caste: string | null;
   whatsappNumber: string | null;
   addressText: string | null;
-  instituteInfo: StudentInstituteInfo | null;
-  passwordHash: string | null;
   audit: AuditFields;
   softDelete: SoftDeleteFields;
 }
@@ -73,7 +63,7 @@ export class Student extends Entity<StudentProps> {
     dateOfBirth: Date;
     gender: Gender;
     address: StudentAddress;
-    guardian: StudentGuardian;
+    guardian?: StudentGuardian;
     joiningDate: Date;
     monthlyFee: number;
     mobileNumber?: string | null;
@@ -81,12 +71,8 @@ export class Student extends Entity<StudentProps> {
     profilePhotoUrl?: string | null;
     fatherName?: string | null;
     motherName?: string | null;
-    aadhaarNumber?: string | null;
-    caste?: string | null;
     whatsappNumber?: string | null;
     addressText?: string | null;
-    instituteInfo?: StudentInstituteInfo | null;
-    passwordHash?: string | null;
   }): Student {
     const trimmedName = params.fullName.trim();
     return new Student(new UniqueId(params.id), {
@@ -96,7 +82,7 @@ export class Student extends Entity<StudentProps> {
       dateOfBirth: params.dateOfBirth,
       gender: params.gender,
       address: params.address,
-      guardian: params.guardian,
+      guardian: params.guardian ?? null,
       joiningDate: params.joiningDate,
       monthlyFee: params.monthlyFee,
       mobileNumber: params.mobileNumber ?? null,
@@ -104,12 +90,8 @@ export class Student extends Entity<StudentProps> {
       profilePhotoUrl: params.profilePhotoUrl ?? null,
       fatherName: params.fatherName ?? null,
       motherName: params.motherName ?? null,
-      aadhaarNumber: params.aadhaarNumber ?? null,
-      caste: params.caste ?? null,
       whatsappNumber: params.whatsappNumber ?? null,
       addressText: params.addressText ?? null,
-      instituteInfo: params.instituteInfo ?? null,
-      passwordHash: params.passwordHash ?? null,
       status: 'ACTIVE',
       statusChangedAt: null,
       statusChangedBy: null,
@@ -147,7 +129,7 @@ export class Student extends Entity<StudentProps> {
     return this.props.address;
   }
 
-  get guardian(): StudentGuardian {
+  get guardian(): StudentGuardian | null {
     return this.props.guardian;
   }
 
@@ -179,28 +161,12 @@ export class Student extends Entity<StudentProps> {
     return this.props.motherName;
   }
 
-  get aadhaarNumber(): string | null {
-    return this.props.aadhaarNumber;
-  }
-
-  get caste(): string | null {
-    return this.props.caste;
-  }
-
   get whatsappNumber(): string | null {
     return this.props.whatsappNumber;
   }
 
   get addressText(): string | null {
     return this.props.addressText;
-  }
-
-  get instituteInfo(): StudentInstituteInfo | null {
-    return this.props.instituteInfo;
-  }
-
-  get passwordHash(): string | null {
-    return this.props.passwordHash;
   }
 
   get status(): StudentStatus {

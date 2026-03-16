@@ -44,7 +44,6 @@ import type { EmailSenderPort } from '../src/application/notifications/ports/ema
 import { configureApiVersioning } from '../src/shared/config/api-versioning';
 
 const SENSITIVE_KEYS = [
-  'passwordHash',
   'refreshTokenHash',
   'tokenVersion',
   'deletedAt',

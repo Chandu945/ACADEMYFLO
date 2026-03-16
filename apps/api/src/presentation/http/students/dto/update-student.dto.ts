@@ -9,7 +9,6 @@ import {
   Matches,
   MaxLength,
   Min,
-  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
@@ -17,7 +16,6 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GENDERS } from '@playconnect/contracts';
 import type { Gender } from '@playconnect/contracts';
 import { trimAndCollapse, normalizeEmail } from '../../common/sanitizers/string-sanitizer';
-import { StudentInstituteInfoDto } from './create-student.dto';
 
 export class UpdateStudentAddressDto {
   @ApiPropertyOptional({ example: '123 Main Street' })
@@ -142,18 +140,6 @@ export class UpdateStudentDto {
   @Transform(({ value }) => (typeof value === 'string' ? trimAndCollapse(value) : value))
   motherName?: string | null;
 
-  @ApiPropertyOptional({ example: '123456789012' })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d{12}$/, { message: 'aadhaarNumber must be exactly 12 digits' })
-  aadhaarNumber?: string | null;
-
-  @ApiPropertyOptional({ example: 'General' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  caste?: string | null;
-
   @ApiPropertyOptional({ example: '919491823468' })
   @IsOptional()
   @IsString()
@@ -166,15 +152,4 @@ export class UpdateStudentDto {
   @MaxLength(500)
   addressText?: string | null;
 
-  @ApiPropertyOptional({ type: StudentInstituteInfoDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => StudentInstituteInfoDto)
-  instituteInfo?: StudentInstituteInfoDto | null;
-
-  @ApiPropertyOptional({ example: 'Student@123' })
-  @IsOptional()
-  @IsString()
-  @MinLength(6)
-  password?: string | null;
 }

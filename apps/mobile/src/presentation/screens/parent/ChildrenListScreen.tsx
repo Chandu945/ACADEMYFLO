@@ -31,7 +31,6 @@ function getAvatarColor(index: number, isDark: boolean): string {
 
 function AttendanceRing({ percent }: { percent: number | null }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   const rStyles = useMemo(() => makeRingStyles(colors), [colors]);
   const value = percent ?? 0;
   const color =

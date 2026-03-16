@@ -79,32 +79,10 @@ export class StudentModel {
   motherName!: string | null;
 
   @Prop({ type: String, default: null })
-  aadhaarNumber!: string | null;
-
-  @Prop({ type: String, default: null })
-  caste!: string | null;
-
-  @Prop({ type: String, default: null })
   whatsappNumber!: string | null;
 
   @Prop({ type: String, default: null })
   addressText!: string | null;
-
-  @Prop(
-    raw({
-      schoolName: { type: String, default: null },
-      rollNumber: { type: String, default: null },
-      standard: { type: String, default: null },
-    }),
-  )
-  instituteInfo!: {
-    schoolName: string | null;
-    rollNumber: string | null;
-    standard: string | null;
-  } | null;
-
-  @Prop({ type: String, default: null })
-  passwordHash!: string | null;
 
   @Prop({ required: true, default: 'ACTIVE' })
   status!: string;

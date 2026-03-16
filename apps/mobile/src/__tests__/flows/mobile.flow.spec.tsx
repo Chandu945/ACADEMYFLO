@@ -14,6 +14,7 @@ jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 jest.mock('react-native-image-picker', () => ({ launchImageLibrary: jest.fn() }));
 
 jest.mock('@react-navigation/native-stack', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const R = require('react');
   return {
     createNativeStackNavigator: () => ({
@@ -27,6 +28,7 @@ jest.mock('@react-navigation/native-stack', () => {
 });
 
 jest.mock('@react-navigation/bottom-tabs', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const R = require('react');
   return {
     createBottomTabNavigator: () => ({
@@ -37,13 +39,17 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   };
 });
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
-  useRoute: () => ({ params: { mode: 'create' } }),
-  useFocusEffect: jest.fn(),
-  NavigationContainer: ({ children }: { children: React.ReactNode }) =>
-    require('react').createElement(require('react').Fragment, null, children),
-}));
+jest.mock('@react-navigation/native', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const R = require('react');
+  return {
+    useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
+    useRoute: () => ({ params: { mode: 'create' } }),
+    useFocusEffect: jest.fn(),
+    NavigationContainer: ({ children }: { children: React.ReactNode }) =>
+      R.createElement(R.Fragment, null, children),
+  };
+});
 
 // Mock API modules
 jest.mock('../../infra/dashboard/dashboard-api', () => ({
@@ -60,6 +66,34 @@ jest.mock('../../infra/event/event-api', () => ({
 jest.mock('../../infra/enquiry/enquiry-api', () => ({
   getEnquirySummary: jest.fn().mockResolvedValue({ ok: true, value: { total: 0, open: 0, converted: 0, closed: 0 } }),
   fetchEnquiries: jest.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } }),
+}));
+
+jest.mock('../../infra/attendance/attendance-api', () => ({
+  getMonthDailyCounts: jest.fn().mockResolvedValue({ ok: true, value: { totalStudents: 0, days: [] } }),
+  getDailyAttendance: jest.fn().mockResolvedValue({ ok: true, value: { students: [] } }),
+  markAttendance: jest.fn().mockResolvedValue({ ok: true, value: {} }),
+  bulkSetAbsences: jest.fn().mockResolvedValue({ ok: true, value: {} }),
+  getDailyReport: jest.fn().mockResolvedValue({ ok: true, value: { date: '2026-03-16', students: [] } }),
+  getMonthlySummary: jest.fn().mockResolvedValue({ ok: true, value: { students: [] } }),
+  getStudentMonthlyDetail: jest.fn().mockResolvedValue({ ok: true, value: { dates: [] } }),
+  attendanceApi: {
+    getMonthDailyCounts: jest.fn().mockResolvedValue({ ok: true, value: { totalStudents: 0, days: [] } }),
+    getDailyAttendance: jest.fn().mockResolvedValue({ ok: true, value: { students: [] } }),
+    markAttendance: jest.fn().mockResolvedValue({ ok: true, value: {} }),
+    bulkSetAbsences: jest.fn().mockResolvedValue({ ok: true, value: {} }),
+    getDailyReport: jest.fn().mockResolvedValue({ ok: true, value: { date: '2026-03-16', students: [] } }),
+    getMonthlySummary: jest.fn().mockResolvedValue({ ok: true, value: { students: [] } }),
+    getStudentMonthlyDetail: jest.fn().mockResolvedValue({ ok: true, value: { dates: [] } }),
+  },
+}));
+
+jest.mock('../../infra/staff-attendance/staff-attendance-api', () => ({
+  getStaffDailyReport: jest.fn().mockResolvedValue({ ok: true, value: { presentCount: 0, absentCount: 0 } }),
+  getStaffMonthlySummary: jest.fn().mockResolvedValue({ ok: true, value: { items: [] } }),
+  staffAttendanceApi: {
+    getStaffDailyReport: jest.fn().mockResolvedValue({ ok: true, value: { presentCount: 0, absentCount: 0 } }),
+    getStaffMonthlySummary: jest.fn().mockResolvedValue({ ok: true, value: { items: [] } }),
+  },
 }));
 
 jest.mock('../../infra/auth/auth-api', () => ({
@@ -118,6 +152,7 @@ function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthContextVa
     setupAcademy: jest.fn().mockResolvedValue(null),
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
+    forceUpdate: null,
     ...overrides,
   };
 }

@@ -32,7 +32,6 @@ function StepIndicator({
   label: string;
 }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   const sStyles = useMemo(() => makeStepStyles(colors), [colors]);
   const isActive = step <= currentStep;
   const isCurrent = step === currentStep;

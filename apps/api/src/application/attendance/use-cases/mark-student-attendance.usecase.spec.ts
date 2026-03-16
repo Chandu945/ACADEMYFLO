@@ -7,6 +7,12 @@ import { User } from '@domain/identity/entities/user.entity';
 import { Student } from '@domain/student/entities/student.entity';
 import { Holiday } from '@domain/attendance/entities/holiday.entity';
 import { StudentAttendance } from '@domain/attendance/entities/student-attendance.entity';
+import { formatLocalDate } from '@shared/date-utils';
+
+/** Return today's date as YYYY-MM-DD (IST-aware). */
+function todayLocalDate(): string {
+  return formatLocalDate(new Date());
+}
 
 function createOwner(academyId: string | null = 'academy-1'): User {
   const user = User.create({
@@ -83,6 +89,7 @@ function buildDeps() {
 
 describe('MarkStudentAttendanceUseCase', () => {
   it('should create absent record when marking ABSENT', async () => {
+    const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
     studentRepo.findById.mockResolvedValue(createStudent());
@@ -100,7 +107,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       studentId: 'student-1',
-      date: '2024-03-15',
+      date: today,
       status: 'ABSENT',
     });
 
@@ -112,6 +119,7 @@ describe('MarkStudentAttendanceUseCase', () => {
   });
 
   it('should delete absent record when marking PRESENT', async () => {
+    const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
     studentRepo.findById.mockResolvedValue(createStudent());
@@ -128,7 +136,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       studentId: 'student-1',
-      date: '2024-03-15',
+      date: today,
       status: 'PRESENT',
     });
 
@@ -136,11 +144,12 @@ describe('MarkStudentAttendanceUseCase', () => {
     expect(attendanceRepo.deleteByAcademyStudentDate).toHaveBeenCalledWith(
       'academy-1',
       'student-1',
-      '2024-03-15',
+      today,
     );
   });
 
   it('should be idempotent when marking absent twice', async () => {
+    const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
     studentRepo.findById.mockResolvedValue(createStudent());
@@ -150,7 +159,7 @@ describe('MarkStudentAttendanceUseCase', () => {
         id: 'att-1',
         academyId: 'academy-1',
         studentId: 'student-1',
-        date: '2024-03-15',
+        date: today,
         markedByUserId: 'owner-1',
       }),
     );
@@ -166,7 +175,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       studentId: 'student-1',
-      date: '2024-03-15',
+      date: today,
       status: 'ABSENT',
     });
 
@@ -175,6 +184,7 @@ describe('MarkStudentAttendanceUseCase', () => {
   });
 
   it('should reject marking on a holiday (409)', async () => {
+    const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
     studentRepo.findById.mockResolvedValue(createStudent());
@@ -182,7 +192,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       Holiday.create({
         id: 'h-1',
         academyId: 'academy-1',
-        date: '2024-03-15',
+        date: today,
         declaredByUserId: 'owner-1',
       }),
     );
@@ -198,7 +208,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       studentId: 'student-1',
-      date: '2024-03-15',
+      date: today,
       status: 'ABSENT',
     });
 
@@ -209,6 +219,7 @@ describe('MarkStudentAttendanceUseCase', () => {
   });
 
   it('should reject cross-academy marking', async () => {
+    const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner('academy-2'));
     studentRepo.findById.mockResolvedValue(createStudent('academy-1'));
@@ -225,7 +236,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
       studentId: 'student-1',
-      date: '2024-03-15',
+      date: today,
       status: 'ABSENT',
     });
 

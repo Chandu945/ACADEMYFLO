@@ -57,7 +57,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     let tokenRefreshUnsubscribe: (() => void) | undefined;
 
-    let cancelled = false;
+    const cancelled = false;
     (async () => {
       const hasPermission = await requestNotificationPermission();
       if (!hasPermission || cancelled) return;

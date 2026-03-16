@@ -99,20 +99,20 @@ export class StudentsController {
       dateOfBirth: dto.dateOfBirth,
       gender: dto.gender,
       address: dto.address,
-      guardian: dto.guardian,
+      guardian: dto.guardian ? {
+        name: dto.guardian.name ?? '',
+        mobile: dto.guardian.mobile ?? '',
+        email: dto.guardian.email ?? '',
+      } : undefined,
       joiningDate: dto.joiningDate,
       monthlyFee: dto.monthlyFee,
       mobileNumber: dto.mobileNumber,
       email: dto.email,
       fatherName: dto.fatherName,
       motherName: dto.motherName,
-      aadhaarNumber: dto.aadhaarNumber,
-      caste: dto.caste,
       whatsappNumber: dto.whatsappNumber,
       addressText: dto.addressText,
-      instituteInfo: dto.instituteInfo,
       profilePhotoUrl: dto.profilePhotoUrl,
-      password: dto.password,
     });
 
     if (result.ok) {
@@ -184,12 +184,8 @@ export class StudentsController {
       email: dto.email,
       fatherName: dto.fatherName,
       motherName: dto.motherName,
-      aadhaarNumber: dto.aadhaarNumber,
-      caste: dto.caste,
       whatsappNumber: dto.whatsappNumber,
       addressText: dto.addressText,
-      instituteInfo: dto.instituteInfo,
-      password: dto.password,
     });
 
     if (result.ok) {

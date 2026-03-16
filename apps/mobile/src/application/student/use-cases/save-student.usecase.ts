@@ -15,10 +15,8 @@ export type SaveStudentDeps = {
   saveApi: SaveStudentApiPort;
 };
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const E164_RE = /^\+[1-9]\d{6,14}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PINCODE_RE = /^[0-9]{6}$/;
 
 export function validateStudentForm(
   fields: Record<string, string>,
@@ -38,19 +36,11 @@ export function validateStudentForm(
     errors['gender'] = 'Gender is required';
   }
 
-  if (!fields['guardianName']?.trim()) {
-    errors['guardianName'] = 'Guardian name is required';
-  }
-
-  if (!fields['guardianMobile']?.trim()) {
-    errors['guardianMobile'] = 'Guardian mobile is required';
-  } else if (!E164_RE.test(fields['guardianMobile'])) {
+  if (fields['guardianMobile']?.trim() && !E164_RE.test(fields['guardianMobile'])) {
     errors['guardianMobile'] = 'Mobile must be in E.164 format (e.g., +919876543210)';
   }
 
-  if (!fields['guardianEmail']?.trim()) {
-    errors['guardianEmail'] = 'Guardian email is required';
-  } else if (!EMAIL_RE.test(fields['guardianEmail'])) {
+  if (fields['guardianEmail']?.trim() && !EMAIL_RE.test(fields['guardianEmail'])) {
     errors['guardianEmail'] = 'Invalid email format';
   }
 
@@ -63,14 +53,6 @@ export function validateStudentForm(
     if (!fields['monthlyFee'] || isNaN(fee) || fee <= 0) {
       errors['monthlyFee'] = 'Monthly fee must be greater than 0';
     }
-  }
-
-  if (fields['aadhaarNumber']?.trim() && !/^\d{12}$/.test(fields['aadhaarNumber'].trim())) {
-    errors['aadhaarNumber'] = 'Aadhaar number must be exactly 12 digits';
-  }
-
-  if (fields['password']?.trim() && fields['password'].trim().length < 6) {
-    errors['password'] = 'Password must be at least 6 characters';
   }
 
   return errors;

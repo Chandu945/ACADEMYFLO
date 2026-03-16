@@ -164,7 +164,7 @@ export class MongoStudentQueryRepository implements StudentQueryRepository {
         name: string;
         mobile: string;
         email: string;
-      };
+      } | null;
       joiningDate: Date;
       monthlyFee: number;
       mobileNumber: string | null;
@@ -172,16 +172,8 @@ export class MongoStudentQueryRepository implements StudentQueryRepository {
       profilePhotoUrl: string | null;
       fatherName: string | null;
       motherName: string | null;
-      aadhaarNumber: string | null;
-      caste: string | null;
       whatsappNumber: string | null;
       addressText: string | null;
-      instituteInfo: {
-        schoolName: string | null;
-        rollNumber: string | null;
-        standard: string | null;
-      } | null;
-      passwordHash: string | null;
       status: string;
       createdAt: Date;
       updatedAt: Date;
@@ -200,11 +192,13 @@ export class MongoStudentQueryRepository implements StudentQueryRepository {
         state: d.address.state,
         pincode: d.address.pincode,
       },
-      guardian: {
-        name: d.guardian.name,
-        mobile: d.guardian.mobile,
-        email: d.guardian.email,
-      },
+      guardian: d.guardian
+        ? {
+            name: d.guardian.name,
+            mobile: d.guardian.mobile,
+            email: d.guardian.email,
+          }
+        : null,
       joiningDate: new Date(d.joiningDate).toISOString().slice(0, 10),
       monthlyFee: d.monthlyFee,
       mobileNumber: d.mobileNumber,
@@ -212,12 +206,8 @@ export class MongoStudentQueryRepository implements StudentQueryRepository {
       profilePhotoUrl: d.profilePhotoUrl ?? null,
       fatherName: d.fatherName ?? null,
       motherName: d.motherName ?? null,
-      aadhaarNumber: d.aadhaarNumber ?? null,
-      caste: d.caste ?? null,
       whatsappNumber: d.whatsappNumber ?? null,
       addressText: d.addressText ?? null,
-      instituteInfo: d.instituteInfo ?? null,
-      hasPassword: !!d.passwordHash,
       status: d.status as StudentStatus,
       createdAt: d.createdAt,
       updatedAt: d.updatedAt,

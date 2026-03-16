@@ -34,11 +34,6 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
-function maskAadhaar(aadhaar: string | null): string {
-  if (!aadhaar) return '—';
-  return `XXXX XXXX ${aadhaar.slice(-4)}`;
-}
-
 function StatusBadge({ status }: { status: string }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -186,8 +181,6 @@ export function StudentDetailScreen() {
           <InfoRow label="Mother Name" value={student.motherName} />
           <InfoRow label="Date of Birth" value={formatDate(student.dateOfBirth)} />
           <InfoRow label="Gender" value={student.gender} />
-          <InfoRow label="Caste" value={student.caste} />
-          <InfoRow label="Aadhaar" value={maskAadhaar(student.aadhaarNumber)} />
         </View>
 
         {/* Contact Information */}
@@ -208,15 +201,15 @@ export function StudentDetailScreen() {
                 <Icon name="phone-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.contactTileInfo}>
-                <Text style={styles.contactTileLabel}>Guardian Mobile</Text>
+                <Text style={styles.contactTileLabel}>Mobile</Text>
                 <Text style={styles.contactTileValue}>{student.guardian.mobile}</Text>
               </View>
               <View style={styles.contactTileActions}>
                 <TouchableOpacity
                   style={styles.callCircle}
-                  onPress={() => handleCall(student.guardian.mobile)}
+                  onPress={() => handleCall(student.guardian!.mobile)}
                   testID="call-guardian"
-                  accessibilityLabel="Call guardian"
+                  accessibilityLabel="Call"
                 >
                   {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                   <Icon name="phone" size={18} color={colors.white} />
@@ -249,7 +242,7 @@ export function StudentDetailScreen() {
             </View>
           )}
 
-          {/* ── Guardian details ────────────────────── */}
+          {/* ── Contact details ────────────────────── */}
           {student.guardian?.name ? (
             <View style={styles.contactDetailRow}>
               {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
@@ -261,13 +254,13 @@ export function StudentDetailScreen() {
             </View>
           ) : null}
 
-          {student.guardian?.email ? (
+          {(student.email || student.guardian?.email) ? (
             <View style={styles.contactDetailRow}>
               {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
               <Icon name="email-outline" size={18} color={colors.textSecondary} />
               <View style={styles.contactDetailInfo}>
-                <Text style={styles.contactDetailLabel}>Guardian Email</Text>
-                <Text style={styles.contactDetailValue}>{student.guardian.email}</Text>
+                <Text style={styles.contactDetailLabel}>Email</Text>
+                <Text style={styles.contactDetailValue}>{student.email || student.guardian?.email}</Text>
               </View>
             </View>
           ) : null}
@@ -284,15 +277,6 @@ export function StudentDetailScreen() {
           ) : null}
         </View>
 
-        {/* Institute Information */}
-        {student.instituteInfo && (
-          <View style={styles.card}>
-            <SectionTitle title="Academic Information" />
-            <InfoRow label="School" value={student.instituteInfo.schoolName} />
-            <InfoRow label="Roll Number" value={student.instituteInfo.rollNumber} />
-            <InfoRow label="Standard" value={student.instituteInfo.standard} />
-          </View>
-        )}
       </ScrollView>
 
       {actionMenuVisible && (

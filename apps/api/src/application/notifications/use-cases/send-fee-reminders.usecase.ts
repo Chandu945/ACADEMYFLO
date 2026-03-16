@@ -107,7 +107,7 @@ export class SendFeeRemindersUseCase {
           continue;
         }
 
-        const recipient = student.email || student.guardian.email || null;
+        const recipient = student.email || student.guardian?.email || null;
         if (!recipient) {
           summary.studentsSkippedNoEmail++;
           continue;

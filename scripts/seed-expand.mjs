@@ -123,12 +123,6 @@ const CITIES_STATES = [
   ['Lucknow', 'Uttar Pradesh', '226'],
 ];
 
-const SCHOOLS = [
-  'DPS', 'Ryan International', "St. Joseph's", 'Kendriya Vidyalaya',
-  'DAV Public School', 'National Public School', 'Bishop Cotton', 'Vidya Mandir',
-  'Army Public School', 'Springdale Academy',
-];
-
 const CASTES = ['General', 'OBC', 'SC', 'ST', null, null, null]; // mostly null
 
 const MONTHLY_FEES = [500, 800, 1000, 1200, 1500, 1800, 2000, 2500];
@@ -180,12 +174,6 @@ function makeExpandedStudent(i) {
     student._extraFields.aadhaarNumber = `${String(1000 + i * 37).slice(0, 4)} ${String(2000 + i * 53).slice(0, 4)} ${String(3000 + i * 71).slice(0, 4)}`;
   if (i % 7 === 0) student._extraFields.caste = CASTES[i % CASTES.length];
   if (i % 3 === 1) student._extraFields.whatsappNumber = `+91987653${String(100 + i).padStart(4, '0')}`;
-  if (i % 2 === 0)
-    student._extraFields.instituteInfo = {
-      schoolName: SCHOOLS[i % SCHOOLS.length],
-      rollNumber: String(1000 + i),
-      standard: `${(i % 10) + 1}th`,
-    };
 
   return student;
 }

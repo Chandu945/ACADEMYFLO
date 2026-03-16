@@ -9,7 +9,6 @@ import {
   Matches,
   MaxLength,
   Min,
-  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
@@ -46,43 +45,26 @@ export class StudentAddressDto {
 }
 
 export class StudentGuardianDto {
-  @ApiProperty({ example: 'Raj Sharma' })
+  @ApiPropertyOptional({ example: 'Raj Sharma' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => (typeof value === 'string' ? trimAndCollapse(value) : value))
-  name!: string;
+  name?: string;
 
-  @ApiProperty({ example: '+919876543210', description: 'E.164 format' })
+  @ApiPropertyOptional({ example: '+919876543210', description: 'E.164 format' })
+  @IsOptional()
   @IsString()
   @Matches(/^\+[1-9]\d{6,14}$/, {
     message: 'mobile must be in E.164 format (e.g. +919876543210)',
   })
-  mobile!: string;
+  mobile?: string;
 
-  @ApiProperty({ example: 'raj@example.com' })
+  @ApiPropertyOptional({ example: 'raj@example.com' })
+  @IsOptional()
   @IsEmail()
   @Transform(({ value }) => (typeof value === 'string' ? normalizeEmail(value) : value))
-  email!: string;
-}
-
-export class StudentInstituteInfoDto {
-  @ApiPropertyOptional({ example: 'Delhi Public School' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  schoolName?: string;
-
-  @ApiPropertyOptional({ example: 'A-42' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  rollNumber?: string;
-
-  @ApiPropertyOptional({ example: '10th' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  standard?: string;
+  email?: string;
 }
 
 export class CreateStudentDto {
@@ -107,10 +89,11 @@ export class CreateStudentDto {
   @Type(() => StudentAddressDto)
   address!: StudentAddressDto;
 
-  @ApiProperty({ type: StudentGuardianDto })
+  @ApiPropertyOptional({ type: StudentGuardianDto })
+  @IsOptional()
   @ValidateNested()
   @Type(() => StudentGuardianDto)
-  guardian!: StudentGuardianDto;
+  guardian?: StudentGuardianDto;
 
   @ApiProperty({ example: '2024-01-01', description: 'ISO date string (YYYY-MM-DD)' })
   @IsString()
@@ -150,18 +133,6 @@ export class CreateStudentDto {
   @Transform(({ value }) => (typeof value === 'string' ? trimAndCollapse(value) : value))
   motherName?: string;
 
-  @ApiPropertyOptional({ example: '123456789012', description: 'Exactly 12 digits' })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d{12}$/, { message: 'aadhaarNumber must be exactly 12 digits' })
-  aadhaarNumber?: string;
-
-  @ApiPropertyOptional({ example: 'General' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  caste?: string;
-
   @ApiPropertyOptional({ example: '919491823468', description: '10-15 digits with country code' })
   @IsOptional()
   @IsString()
@@ -174,21 +145,9 @@ export class CreateStudentDto {
   @MaxLength(500)
   addressText?: string;
 
-  @ApiPropertyOptional({ type: StudentInstituteInfoDto })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => StudentInstituteInfoDto)
-  instituteInfo?: StudentInstituteInfoDto;
-
   @ApiPropertyOptional({ example: 'https://res.cloudinary.com/...', description: 'Pre-uploaded photo URL' })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   profilePhotoUrl?: string;
-
-  @ApiPropertyOptional({ example: 'Student@123', description: 'Min 6 characters' })
-  @IsOptional()
-  @IsString()
-  @MinLength(6)
-  password?: string;
 }

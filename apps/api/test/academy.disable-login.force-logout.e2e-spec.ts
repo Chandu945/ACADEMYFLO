@@ -37,7 +37,6 @@ import {
 import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Academy } from '../src/domain/academy/entities/academy.entity';
-import { Subscription } from '../src/domain/subscription/entities/subscription.entity';
 import { createAuditFields, initSoftDelete } from '../src/shared/kernel';
 import type { AdminQueryRepository } from '../src/domain/admin/ports/admin-query.repository';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';

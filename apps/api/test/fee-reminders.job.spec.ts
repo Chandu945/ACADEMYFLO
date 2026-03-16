@@ -10,6 +10,7 @@ import {
 } from './helpers/in-memory-repos';
 import type { EmailSenderPort } from '../src/application/notifications/ports/email-sender.port';
 import { LOGGER_PORT } from '../src/shared/logging/logger.port';
+import { JOB_LOCK_PORT } from '../src/application/common/ports/job-lock.port';
 import { AppConfigService } from '../src/shared/config/config.service';
 import { Academy } from '../src/domain/academy/entities/academy.entity';
 import { Student } from '../src/domain/student/entities/student.entity';
@@ -61,11 +62,22 @@ describe('FeeRemindersCronService (integration)', () => {
       { now: () => fixedDate },
     );
 
+    const mockJobLock = {
+      withLock: jest.fn(async (_name: string, _ttl: number, fn: () => Promise<void>) => {
+        await fn();
+        return { ran: true };
+      }),
+    };
+
+    const mockOverduePush = { execute: jest.fn().mockResolvedValue({ ok: true, value: {} }) };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FeeRemindersCronService,
         { provide: 'SEND_FEE_REMINDERS_USE_CASE', useValue: useCase },
+        { provide: 'SEND_OVERDUE_PUSH_REMINDERS_USE_CASE', useValue: mockOverduePush },
         { provide: AppConfigService, useValue: mockConfig },
+        { provide: JOB_LOCK_PORT, useValue: mockJobLock },
         { provide: LOGGER_PORT, useValue: logger },
       ],
     }).compile();
@@ -142,8 +154,21 @@ describe('FeeRemindersCronService (integration)', () => {
           useValue: { execute: jest.fn() },
         },
         {
+          provide: 'SEND_OVERDUE_PUSH_REMINDERS_USE_CASE',
+          useValue: { execute: jest.fn() },
+        },
+        {
           provide: AppConfigService,
           useValue: { feeReminderEnabled: false } as unknown as AppConfigService,
+        },
+        {
+          provide: JOB_LOCK_PORT,
+          useValue: {
+            withLock: jest.fn(async (_name: string, _ttl: number, fn: () => Promise<void>) => {
+              await fn();
+              return { ran: true };
+            }),
+          },
         },
         {
           provide: LOGGER_PORT,

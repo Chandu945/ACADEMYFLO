@@ -70,6 +70,17 @@ export class ExternalCallPolicy implements ExternalCallPolicyPort {
         throw error;
       }
 
+      // Fallback: AbortError (DOMException) may reach here if the inner
+      // .catch conversion doesn't propagate through the async boundary.
+      if (error instanceof Error && error.name === 'AbortError') {
+        const timeout = new ExternalTimeoutError(opName, options.timeoutMs);
+        this.logger.error('externalCallTimeout', {
+          opName,
+          timeoutMs: options.timeoutMs,
+        });
+        throw timeout;
+      }
+
       this.logger.error('externalCallFailed', {
         opName,
         error: error instanceof Error ? error.message : String(error),

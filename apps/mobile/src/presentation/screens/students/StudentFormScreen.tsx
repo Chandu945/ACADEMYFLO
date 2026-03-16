@@ -48,14 +48,14 @@ export function StudentFormScreen() {
   const [fullName, setFullName] = useState(student?.fullName ?? '');
   const [dateOfBirth, setDateOfBirth] = useState(student?.dateOfBirth ?? '');
   const [gender, setGender] = useState<Gender | ''>(student?.gender ?? '');
-  const [addressLine1, setAddressLine1] = useState(student?.address.line1 ?? '');
-  const [addressLine2, setAddressLine2] = useState(student?.address.line2 ?? '');
-  const [city, setCity] = useState(student?.address.city ?? '');
-  const [state, setState] = useState(student?.address.state ?? '');
-  const [pincode, setPincode] = useState(student?.address.pincode ?? '');
-  const [guardianName, setGuardianName] = useState(student?.guardian.name ?? '');
-  const [guardianMobile, setGuardianMobile] = useState(student?.guardian.mobile ?? '');
-  const [guardianEmail, setGuardianEmail] = useState(student?.guardian.email ?? '');
+  const [addressLine1] = useState(student?.address.line1 ?? '');
+  const [addressLine2] = useState(student?.address.line2 ?? '');
+  const [city] = useState(student?.address.city ?? '');
+  const [state] = useState(student?.address.state ?? '');
+  const [pincode] = useState(student?.address.pincode ?? '');
+  const [guardianName, setGuardianName] = useState(student?.guardian?.name ?? '');
+  const [guardianMobile, setGuardianMobile] = useState(student?.guardian?.mobile ?? '');
+  const [guardianEmail, setGuardianEmail] = useState(student?.email ?? student?.guardian?.email ?? '');
   const [joiningDate, setJoiningDate] = useState(student?.joiningDate ?? '');
   const [monthlyFee, setMonthlyFee] = useState(
     student?.monthlyFee ? String(student.monthlyFee) : '',
@@ -64,8 +64,6 @@ export function StudentFormScreen() {
   // New extended fields
   const [fatherName, setFatherName] = useState(student?.fatherName ?? '');
   const [motherName, setMotherName] = useState(student?.motherName ?? '');
-  const [aadhaarNumber, setAadhaarNumber] = useState(student?.aadhaarNumber ?? '');
-  const [caste, setCaste] = useState(student?.caste ?? '');
   const [whatsappNumber, setWhatsappNumber] = useState(student?.whatsappNumber ?? '');
   const [mobileNumber, setMobileNumber] = useState(student?.mobileNumber ?? '');
   const [addressText, setAddressText] = useState(
@@ -76,11 +74,6 @@ export function StudentFormScreen() {
             .join(', ')
         : ''),
   );
-  const [schoolName, setSchoolName] = useState(student?.instituteInfo?.schoolName ?? '');
-  const [rollNumber, setRollNumber] = useState(student?.instituteInfo?.rollNumber ?? '');
-  const [standard, setStandard] = useState(student?.instituteInfo?.standard ?? '');
-  const [password, setPassword] = useState('');
-
   const [photoUrl, setPhotoUrl] = useState<string | null>(student?.profilePhotoUrl ?? null);
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
 
@@ -139,8 +132,6 @@ export function StudentFormScreen() {
       guardianEmail,
       joiningDate,
       monthlyFee,
-      aadhaarNumber,
-      password,
     };
 
     const errors = validateStudentForm(fields, mode);
@@ -161,30 +152,32 @@ export function StudentFormScreen() {
         state: state.trim() || '-',
         pincode: pincode.trim() || '000000',
       },
-      guardian: {
-        name: guardianName.trim(),
-        mobile: guardianMobile.trim(),
-        email: guardianEmail.trim(),
-      },
       joiningDate,
       monthlyFee: Number(monthlyFee),
     };
 
-    // Extended fields
+    // Guardian — always include email so parent invite flow can use it
+    if (guardianName.trim() || guardianMobile.trim() || guardianEmail.trim()) {
+      data.guardian = {
+        name: guardianName.trim(),
+        mobile: guardianMobile.trim(),
+        email: guardianEmail.trim(),
+      };
+    }
+
+    // Email goes to both student.email and guardian.email (used for parent invite)
+    if (guardianEmail.trim()) {
+      data.email = guardianEmail.trim();
+      // Ensure guardian exists with at least the email, even if name/mobile are empty
+      if (!data.guardian) {
+        data.guardian = { name: '', mobile: '', email: guardianEmail.trim() };
+      }
+    }
     if (fatherName.trim()) data.fatherName = fatherName.trim();
     if (motherName.trim()) data.motherName = motherName.trim();
-    if (aadhaarNumber.trim()) data.aadhaarNumber = aadhaarNumber.trim();
-    if (caste.trim()) data.caste = caste.trim();
     if (whatsappNumber.trim()) data.whatsappNumber = whatsappNumber.trim();
     if (mobileNumber.trim()) data.mobileNumber = mobileNumber.trim();
     if (addressText.trim()) data.addressText = addressText.trim();
-    if (schoolName.trim() || rollNumber.trim() || standard.trim()) {
-      data.instituteInfo = {};
-      if (schoolName.trim()) data.instituteInfo.schoolName = schoolName.trim();
-      if (rollNumber.trim()) data.instituteInfo.rollNumber = rollNumber.trim();
-      if (standard.trim()) data.instituteInfo.standard = standard.trim();
-    }
-    if (password.trim()) data.password = password.trim();
     if (photoUrl) data.profilePhotoUrl = photoUrl;
 
     // Staff cannot change fees
@@ -227,8 +220,8 @@ export function StudentFormScreen() {
   }, [
     fullName, dateOfBirth, gender, addressLine1, addressLine2, city, state, pincode,
     guardianName, guardianMobile, guardianEmail, joiningDate, monthlyFee,
-    fatherName, motherName, aadhaarNumber, caste, whatsappNumber, mobileNumber,
-    addressText, schoolName, rollNumber, standard, password,
+    fatherName, motherName, whatsappNumber, mobileNumber,
+    addressText,
     mode, student?.id, selectedBatchIds, navigation, isStaff, subscription, showToast,
   ]);
 
@@ -291,25 +284,6 @@ export function StudentFormScreen() {
         testID="input-dateOfBirth"
       />
 
-      <Input
-        label="Aadhaar Number"
-        value={aadhaarNumber}
-        onChangeText={setAadhaarNumber}
-        error={fieldErrors['aadhaarNumber']}
-        keyboardType="numeric"
-        placeholder="12-digit number"
-        maxLength={12}
-        testID="input-aadhaarNumber"
-      />
-
-      <Input
-        label="Caste"
-        value={caste}
-        onChangeText={setCaste}
-        maxLength={50}
-        testID="input-caste"
-      />
-
       <Text style={styles.label}>Gender</Text>
       <View style={styles.genderRow}>
         {GENDER_OPTIONS.map((opt) => (
@@ -354,6 +328,16 @@ export function StudentFormScreen() {
       />
 
       <Input
+        label="Email"
+        value={guardianEmail}
+        onChangeText={setGuardianEmail}
+        error={fieldErrors['guardianEmail']}
+        keyboardType="email-address"
+        maxLength={100}
+        testID="input-guardianEmail"
+      />
+
+      <Input
         label="Address"
         value={addressText}
         onChangeText={setAddressText}
@@ -362,14 +346,13 @@ export function StudentFormScreen() {
         testID="input-addressText"
       />
 
-      {/* Section: Guardian Information */}
+      {/* Section: Guardian Information (Optional) */}
       <Text style={styles.sectionTitle}>Guardian Information</Text>
 
       <Input
         label="Guardian Name"
         value={guardianName}
         onChangeText={setGuardianName}
-        error={fieldErrors['guardianName']}
         maxLength={100}
         autoCapitalize="words"
         testID="input-guardianName"
@@ -384,55 +367,6 @@ export function StudentFormScreen() {
         keyboardType="phone-pad"
         maxLength={16}
         testID="input-guardianMobile"
-      />
-
-      <Input
-        label="Guardian Email"
-        value={guardianEmail}
-        onChangeText={setGuardianEmail}
-        error={fieldErrors['guardianEmail']}
-        keyboardType="email-address"
-        maxLength={100}
-        testID="input-guardianEmail"
-      />
-
-      {/* Section: Institute Information */}
-      <Text style={styles.sectionTitle}>Institute Information</Text>
-      <Text style={styles.sectionSubtitle}>Enter academic details here.</Text>
-
-      <Input
-        label="School Name"
-        value={schoolName}
-        onChangeText={setSchoolName}
-        maxLength={100}
-        testID="input-schoolName"
-      />
-
-      <Input
-        label="Roll Number"
-        value={rollNumber}
-        onChangeText={setRollNumber}
-        maxLength={20}
-        testID="input-rollNumber"
-      />
-
-      <Input
-        label="Standard / Class"
-        value={standard}
-        onChangeText={setStandard}
-        maxLength={20}
-        testID="input-standard"
-      />
-
-      <Input
-        label="Password (for student login)"
-        value={password}
-        onChangeText={setPassword}
-        error={fieldErrors['password']}
-        secureTextEntry
-        placeholder="Min 6 characters"
-        maxLength={64}
-        testID="input-password"
       />
 
       {/* Section: Enrollment */}

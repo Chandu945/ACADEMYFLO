@@ -104,7 +104,7 @@ export function EnquiryListScreen() {
     return dateStr < getTodayIST();
   }, []);
 
-  const activeFilterCount = activeTab !== 'ALL' ? 1 : 0;
+  const _activeFilterCount = activeTab !== 'ALL' ? 1 : 0;
 
   const renderItem = ({ item }: { item: EnquiryListItem }) => (
     <TouchableOpacity

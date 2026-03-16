@@ -42,19 +42,19 @@ describe('mapHttpError', () => {
     it('uses safe message for 500', () => {
       const error = mapHttpError(500, { message: 'MongoError: connection refused' });
       expect(error.code).toBe('UNKNOWN');
-      expect(error.message).toBe('Something went wrong. Please try again later.');
+      expect(error.message).toBe('Something unexpected happened. Please try again or contact support if the issue persists.');
     });
 
     it('uses safe message for 502', () => {
       const error = mapHttpError(502, { message: 'Bad gateway' });
       expect(error.code).toBe('UNKNOWN');
-      expect(error.message).toBe('Something went wrong. Please try again later.');
+      expect(error.message).toBe('Something unexpected happened. Please try again or contact support if the issue persists.');
     });
 
     it('uses safe message for unmapped status codes', () => {
       const error = mapHttpError(418, { message: "I'm a teapot" });
       expect(error.code).toBe('UNKNOWN');
-      expect(error.message).toBe('Something went wrong. Please try again later.');
+      expect(error.message).toBe('Something unexpected happened. Please try again or contact support if the issue persists.');
     });
   });
 

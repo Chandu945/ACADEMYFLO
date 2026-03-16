@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsIn, IsNumberString, IsBooleanString, MaxLength, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsBooleanString, MaxLength, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ListEnquiriesQuery {

@@ -27,23 +27,30 @@ describe('ExternalCallPolicy', () => {
   });
 
   it('times out and throws ExternalTimeoutError', async () => {
-    await expect(
-      policy.run(
+    let caught: unknown;
+    try {
+      await policy.run(
         'slow-op',
-        async ({ signal }) => {
-          await new Promise((resolve, reject) => {
-            const timer = setTimeout(resolve, 5000);
+        ({ signal }) => {
+          return new Promise<string>((resolve, reject) => {
+            const timer = setTimeout(() => resolve('never'), 5000);
             signal.addEventListener('abort', () => {
               clearTimeout(timer);
-              reject(new DOMException('The operation was aborted.', 'AbortError'));
+              // Use a plain Error with name='AbortError' to avoid DOMException
+              // propagation quirks in Node 22 + Jest environments
+              const abortErr = new Error('The operation was aborted.');
+              abortErr.name = 'AbortError';
+              reject(abortErr);
             });
           });
-          return 'never';
         },
         { timeoutMs: 50, retries: 0, retryBackoffMs: 100, idempotent: false },
-      ),
-    ).rejects.toThrow(ExternalTimeoutError);
+      );
+    } catch (e) {
+      caught = e;
+    }
 
+    expect(caught).toBeInstanceOf(ExternalTimeoutError);
     expect(logger.error).toHaveBeenCalledWith(
       'externalCallTimeout',
       expect.objectContaining({ opName: 'slow-op', timeoutMs: 50 }),
@@ -82,7 +89,7 @@ describe('ExternalCallPolicy', () => {
         },
         { timeoutMs: 5000, retries: 2, retryBackoffMs: 10, idempotent: false },
       ),
-    ).rejects.toThrow('fetch failed');
+    ).rejects.toThrow(ExternalUnavailableError);
 
     expect(calls).toBe(1);
     expect(logger.warn).not.toHaveBeenCalled();

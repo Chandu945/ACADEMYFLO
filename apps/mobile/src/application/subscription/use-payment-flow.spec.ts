@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { renderHook, act } from '@testing-library/react-native';
 import { usePaymentFlow } from './use-payment-flow';
 
 // Mock the infra modules
@@ -21,7 +21,9 @@ jest.mock('../../infra/payments/cashfree-web-checkout', () => ({
   openCashfreeCheckout: jest.fn().mockResolvedValue(undefined),
 }));
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { subscriptionApi } = require('../../infra/subscription/subscription-api');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { openCashfreeCheckout } = require('../../infra/payments/cashfree-web-checkout');
 
 describe('usePaymentFlow', () => {

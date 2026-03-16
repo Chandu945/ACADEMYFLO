@@ -78,7 +78,6 @@ async function loadCashfreeSDK(): Promise<CashfreeInstance> {
 
   // Try the npm package first (bundled by webpack)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = await (Function('return import("@cashfreepayments/cashfree-js")')() as Promise<{ load: unknown }>);
     const cf = await (mod.load as (options: { mode: string }) => Promise<CashfreeInstance>)({ mode });
     cashfreeInstance = cf;

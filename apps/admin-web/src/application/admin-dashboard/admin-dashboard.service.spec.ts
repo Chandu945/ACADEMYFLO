@@ -9,9 +9,11 @@ beforeEach(() => {
 
 const validBackendPayload = {
   totalAcademies: 42,
-  activeAcademies: 30,
-  trialAcademies: 8,
-  blockedAcademies: 4,
+  activePaid: 30,
+  activeTrials: 8,
+  expiredGrace: 0,
+  blocked: 4,
+  disabled: 4,
 };
 
 describe('getDashboard', () => {

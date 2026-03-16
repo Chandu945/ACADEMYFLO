@@ -1,17 +1,31 @@
-import { Controller, Get, HttpStatus, Req, Res } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, HttpStatus, Query, Req, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { MongoDbHealthIndicator } from '../../../infrastructure/database/mongodb.health';
+import { AppConfigService } from '../../../shared/config/config.service';
 import { getRequestId } from '../../../shared/logging/request-id.interceptor';
 import { Public } from '../common/decorators/public.decorator';
+
+function compareVersions(current: string, minimum: string): boolean {
+  const cur = current.split('.').map(Number);
+  const min = minimum.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((cur[i] ?? 0) > (min[i] ?? 0)) return true;
+    if ((cur[i] ?? 0) < (min[i] ?? 0)) return false;
+  }
+  return true; // equal
+}
 
 @ApiTags('Health')
 @Controller('health')
 @SkipThrottle()
 @Public()
 export class HealthController {
-  constructor(private readonly mongoHealth: MongoDbHealthIndicator) {}
+  constructor(
+    private readonly mongoHealth: MongoDbHealthIndicator,
+    private readonly config: AppConfigService,
+  ) {}
 
   @Get('liveness')
   @ApiOperation({ summary: 'Liveness probe' })
@@ -76,6 +90,45 @@ export class HealthController {
         mongodb: mongoStatus,
       },
       requestId: getRequestId(req),
+    };
+  }
+
+  @Get('app-version')
+  @ApiOperation({ summary: 'Check if mobile app version meets minimum requirement' })
+  @ApiQuery({ name: 'platform', enum: ['android', 'ios'], required: true })
+  @ApiQuery({ name: 'version', required: true, example: '1.0.0' })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: 'object',
+      properties: {
+        updateRequired: { type: 'boolean' },
+        currentVersion: { type: 'string' },
+        minVersion: { type: 'string' },
+        storeUrl: { type: 'string' },
+      },
+    },
+  })
+  appVersion(
+    @Query('platform') platform: string,
+    @Query('version') version: string,
+  ) {
+    const isAndroid = platform === 'android';
+    const minVersion = isAndroid
+      ? this.config.minAppVersionAndroid
+      : this.config.minAppVersionIos;
+
+    const storeUrl = isAndroid
+      ? 'https://play.google.com/store/apps/details?id=com.playconnect'
+      : 'https://apps.apple.com/app/playconnect/id000000000';
+
+    const updateRequired = !compareVersions(version || '0.0.0', minVersion);
+
+    return {
+      updateRequired,
+      currentVersion: version || '0.0.0',
+      minVersion,
+      storeUrl,
     };
   }
 }

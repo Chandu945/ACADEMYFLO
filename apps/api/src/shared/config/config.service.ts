@@ -213,6 +213,14 @@ export class AppConfigService {
     return this.config.CASHFREE_BASE_URL;
   }
 
+  get minAppVersionAndroid(): string {
+    return this.config.MIN_APP_VERSION_ANDROID;
+  }
+
+  get minAppVersionIos(): string {
+    return this.config.MIN_APP_VERSION_IOS;
+  }
+
   get corsAllowedOrigins(): string[] {
     return this.config.CORS_ALLOWED_ORIGINS.split(',')
       .map((o) => o.trim())

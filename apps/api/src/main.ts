@@ -40,6 +40,11 @@ async function bootstrap() {
   // Security
   app.use(helmet());
 
+  // Trust proxy when behind nginx/load balancer (correct client IP for rate limiting, logging)
+  if (config.appEnv === 'production' || config.appEnv === 'staging') {
+    app.set('trust proxy', 1);
+  }
+
   // Request body size limits
   app.use(json({ limit: '1mb' }));
   app.use(urlencoded({ limit: '1mb', extended: true }));

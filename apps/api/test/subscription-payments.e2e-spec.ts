@@ -173,7 +173,7 @@ describe('Subscription Payments — Full Flow (e2e)', () => {
   let mockStudentCounter: { countActiveStudents: jest.Mock };
   let clockNow: Date;
 
-  function makeToken(userId = 'owner-1', role = 'OWNER', academyId = 'academy-1'): string {
+  function makeToken(userId = 'owner-1', role = 'OWNER', _academyId = 'academy-1'): string {
     return jwtService.sign(
       { sub: userId, role, email: `${userId}@test.com`, tokenVersion: 0 },
       { secret: 'test-access-secret-that-is-at-least-32-characters-long', expiresIn: 900 },

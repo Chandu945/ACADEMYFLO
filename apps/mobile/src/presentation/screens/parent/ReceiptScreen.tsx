@@ -30,7 +30,6 @@ function ReceiptRow({
   valueBold?: boolean;
 }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   const rowStyles = useMemo(() => makeRowStyles(colors), [colors]);
   return (
     <View style={rowStyles.row}>

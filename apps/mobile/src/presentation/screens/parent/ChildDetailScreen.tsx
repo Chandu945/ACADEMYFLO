@@ -60,7 +60,6 @@ function AttendanceBar({
   icon: string;
 }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   const bStyles = useMemo(() => makeBarStyles(colors), [colors]);
   const pct = total > 0 ? (count / total) * 100 : 0;
   return (
@@ -117,7 +116,6 @@ const makeBarStyles = (colors: Colors) => StyleSheet.create({
 
 function FeeStatusIcon({ status }: { status: string }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   if (status === 'PAID') {
     // @ts-expect-error react-native-vector-icons types
     return <Icon name="check-circle" size={20} color={colors.success} />;

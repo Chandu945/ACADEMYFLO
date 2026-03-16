@@ -73,8 +73,6 @@ function OwnerTabsInner() {
 }
 
 export function OwnerTabs() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <FABProvider>
       <OwnerTabsInner />
@@ -82,7 +80,7 @@ export function OwnerTabs() {
   );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
+const makeStyles = (_colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
   },

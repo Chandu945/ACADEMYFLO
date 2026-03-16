@@ -102,7 +102,6 @@ export class RunMonthlyDuesEngineUseCase {
         lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
       };
 
-      const todayStr = input.now.toISOString().slice(0, 10);
       const todayMs = input.now.getTime();
       const dayMs = 24 * 60 * 60 * 1000;
 

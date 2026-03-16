@@ -16,12 +16,6 @@ export interface StudentGuardianDto {
   email: string;
 }
 
-export interface StudentInstituteInfoDto {
-  schoolName: string | null;
-  rollNumber: string | null;
-  standard: string | null;
-}
-
 export interface StudentDto {
   id: string;
   academyId: string;
@@ -29,7 +23,7 @@ export interface StudentDto {
   dateOfBirth: string;
   gender: Gender;
   address: StudentAddressDto;
-  guardian: StudentGuardianDto;
+  guardian: StudentGuardianDto | null;
   joiningDate: string;
   monthlyFee: number;
   mobileNumber: string | null;
@@ -37,22 +31,11 @@ export interface StudentDto {
   profilePhotoUrl: string | null;
   fatherName: string | null;
   motherName: string | null;
-  aadhaarNumber: string | null;
-  caste: string | null;
   whatsappNumber: string | null;
   addressText: string | null;
-  instituteInfo: StudentInstituteInfoDto | null;
-  hasPassword: boolean;
   status: StudentStatus;
   createdAt: Date;
   updatedAt: Date;
-}
-
-function maskAadhaar(value: string | null): string | null {
-  if (!value) return null;
-  const digits = value.replace(/\D/g, '');
-  if (digits.length < 4) return 'XXXX XXXX XXXX';
-  return `XXXX XXXX ${digits.slice(-4)}`;
 }
 
 export function toStudentDto(student: Student): StudentDto {
@@ -69,11 +52,13 @@ export function toStudentDto(student: Student): StudentDto {
       state: student.address.state,
       pincode: student.address.pincode,
     },
-    guardian: {
-      name: student.guardian.name,
-      mobile: student.guardian.mobile,
-      email: student.guardian.email,
-    },
+    guardian: student.guardian
+      ? {
+          name: student.guardian.name,
+          mobile: student.guardian.mobile,
+          email: student.guardian.email,
+        }
+      : null,
     joiningDate: student.joiningDate.toISOString().slice(0, 10),
     monthlyFee: student.monthlyFee,
     mobileNumber: student.mobileNumber,
@@ -81,12 +66,8 @@ export function toStudentDto(student: Student): StudentDto {
     profilePhotoUrl: student.profilePhotoUrl,
     fatherName: student.fatherName,
     motherName: student.motherName,
-    aadhaarNumber: maskAadhaar(student.aadhaarNumber),
-    caste: student.caste,
     whatsappNumber: student.whatsappNumber,
     addressText: student.addressText,
-    instituteInfo: student.instituteInfo,
-    hasPassword: student.passwordHash !== null,
     status: student.status,
     createdAt: student.audit.createdAt,
     updatedAt: student.audit.updatedAt,
@@ -107,11 +88,7 @@ export function toStudentDtoFromRow(row: StudentListRow): StudentDto {
       state: row.address.state,
       pincode: row.address.pincode,
     },
-    guardian: {
-      name: row.guardian.name,
-      mobile: row.guardian.mobile,
-      email: row.guardian.email,
-    },
+    guardian: row.guardian,
     joiningDate: row.joiningDate,
     monthlyFee: row.monthlyFee,
     mobileNumber: row.mobileNumber,
@@ -119,12 +96,8 @@ export function toStudentDtoFromRow(row: StudentListRow): StudentDto {
     profilePhotoUrl: row.profilePhotoUrl,
     fatherName: row.fatherName,
     motherName: row.motherName,
-    aadhaarNumber: maskAadhaar(row.aadhaarNumber),
-    caste: row.caste,
     whatsappNumber: row.whatsappNumber,
     addressText: row.addressText,
-    instituteInfo: row.instituteInfo,
-    hasPassword: row.hasPassword,
     status: row.status,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

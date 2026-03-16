@@ -57,7 +57,7 @@ export class UpdateEventUseCase {
     }
 
     const startDate = input.startDate ? new Date(input.startDate) : event.startDate;
-    let endDate = input.endDate !== undefined
+    const endDate = input.endDate !== undefined
       ? (input.endDate ? new Date(input.endDate) : null)
       : event.endDate;
 

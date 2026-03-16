@@ -77,10 +77,9 @@ describe('AcademiesPage', () => {
 
     render(<AcademiesPage />);
 
-    expect(screen.getByText('Academy Name')).toBeInTheDocument();
+    expect(screen.getByText('Academy')).toBeInTheDocument();
     expect(screen.getByText('Owner')).toBeInTheDocument();
-    expect(screen.getByText('Email')).toBeInTheDocument();
-    expect(screen.getByText('Phone')).toBeInTheDocument();
+    expect(screen.getByText('Contact')).toBeInTheDocument();
     expect(screen.getAllByText('Status').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Tier').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Students')).toBeInTheDocument();
@@ -138,9 +137,9 @@ describe('AcademiesPage', () => {
 
     render(<AcademiesPage />);
 
-    // Phone, Tier, Students, Staff, Revenue should all show dashes
+    // Tier, Students, Staff, Revenue should all show dashes
     const dashes = screen.getAllByText('\u2014');
-    expect(dashes.length).toBeGreaterThanOrEqual(5);
+    expect(dashes.length).toBeGreaterThanOrEqual(4);
   });
 
   it('renders empty state when no academies', () => {

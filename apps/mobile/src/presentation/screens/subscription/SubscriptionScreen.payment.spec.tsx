@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react-native';
+import { render, screen, fireEvent, within } from '@testing-library/react-native';
 import { AuthContext } from '../../context/AuthContext';
 import type { AuthContextValue, AuthPhase } from '../../context/AuthContext';
 import type { SubscriptionInfo } from '../../../domain/subscription/subscription.types';
@@ -64,6 +64,7 @@ function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
     setupAcademy: jest.fn().mockResolvedValue(null),
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
+    forceUpdate: null,
     ...overrides,
   };
 }

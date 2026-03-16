@@ -50,15 +50,13 @@ export class GetStudentCredentialsUseCase {
     const academy = await this.academyRepo.findById(actor.academyId);
     const academyName = academy?.academyName ?? 'Academy';
 
-    const loginId = student.guardian.mobile || student.email || '';
-    const loginIdType: 'MOBILE' | 'EMAIL' = student.guardian.mobile ? 'MOBILE' : 'EMAIL';
-    const hasPassword = student.passwordHash !== null;
+    const loginId = student.guardian?.mobile || student.email || '';
+    const loginIdType: 'MOBILE' | 'EMAIL' = student.guardian?.mobile ? 'MOBILE' : 'EMAIL';
+    const hasPassword = false;
 
     let shareText: string;
     if (!loginId) {
       shareText = `${academyName}\n─────────────────\nStudent: ${student.fullName}\n\nLogin credentials have not been set up yet. Please contact the academy.`;
-    } else if (!hasPassword) {
-      shareText = `${academyName}\n─────────────────\nStudent: ${student.fullName}\nLogin ID: ${loginId}\n\nPassword has not been set yet. Please contact the academy.`;
     } else {
       shareText = `${academyName}\n─────────────────\nStudent: ${student.fullName}\nLogin ID: ${loginId}\n\nPlease contact the academy for your password.`;
     }

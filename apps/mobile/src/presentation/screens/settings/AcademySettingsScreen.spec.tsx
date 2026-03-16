@@ -35,6 +35,7 @@ function makeAuth(role: 'OWNER' | 'STAFF' = 'OWNER'): AuthContextValue {
     setupAcademy: jest.fn().mockResolvedValue(null),
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
+    forceUpdate: null,
   };
 }
 
@@ -60,7 +61,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows settings form on success', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC' }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
     );
 
     renderScreen();
@@ -90,7 +91,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows editable form for OWNER', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC' }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
     );
 
     renderScreen('OWNER');
@@ -105,7 +106,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows read-only form for STAFF', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC' }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
     );
 
     renderScreen('STAFF');
@@ -121,7 +122,7 @@ describe('AcademySettingsScreen', () => {
 
   it('enables save button when values change', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC' }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
     );
 
     renderScreen('OWNER');
@@ -145,7 +146,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows validation error for invalid due date day', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC' }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
     );
 
     renderScreen('OWNER');

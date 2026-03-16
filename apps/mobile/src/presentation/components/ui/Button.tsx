@@ -97,7 +97,7 @@ export function Button({
   );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
+const makeStyles = (_colors: Colors) => StyleSheet.create({
   base: {
     paddingVertical: spacing.md + 2,
     paddingHorizontal: spacing.xl,

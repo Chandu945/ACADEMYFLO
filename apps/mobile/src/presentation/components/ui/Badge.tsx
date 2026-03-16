@@ -48,7 +48,7 @@ export function Badge({ label, variant = 'neutral', testID }: BadgeProps) {
   );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
+const makeStyles = (_colors: Colors) => StyleSheet.create({
   badge: {
     paddingHorizontal: spacing.md,
     paddingVertical: 3,

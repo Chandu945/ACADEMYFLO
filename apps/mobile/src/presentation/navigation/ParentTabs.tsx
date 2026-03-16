@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { ParentDashboardScreen } from '../screens/parent/ParentDashboardScreen';
@@ -6,7 +6,6 @@ import { ParentHomeStack } from './ParentHomeStack';
 import { ParentPaymentsStack } from './ParentPaymentsStack';
 import { MoreStack } from './MoreStack';
 import { fontSizes, fontWeights } from '../theme';
-import type { Colors } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {

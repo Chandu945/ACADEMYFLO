@@ -88,7 +88,6 @@ const makeStepStyles = (colors: Colors) => StyleSheet.create({
 
 function StepIndicator({ current }: { current: string }) {
   const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   const stepStyles = useMemo(() => makeStepStyles(colors), [colors]);
   const currentIdx = STEPS.findIndex((s) => s.key === current);
   return (

@@ -69,10 +69,10 @@ describe('RunMonthlyDuesEngineUseCase', () => {
     }
   });
 
-  it('should skip students who joined mid-month', async () => {
+  it('should skip students who joined after the 15th of the month', async () => {
     const academy = createAcademy('academy-1', 5);
     await academyRepo.save(academy);
-    const student = createStudent('s1', 'academy-1', new Date('2024-03-15'), 500);
+    const student = createStudent('s1', 'academy-1', new Date('2024-03-16'), 500);
     await studentRepo.save(student);
 
     const result = await useCase.execute({

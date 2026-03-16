@@ -23,7 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
-import { spacing, fontSizes, fontWeights, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
 import { env } from '../../../infra/env';
 import { getAccessToken } from '../../../infra/http/api-client';

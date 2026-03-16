@@ -5,7 +5,6 @@ import {
   Post,
   Delete,
   Body,
-  Param,
   Inject,
   UseGuards,
   UseInterceptors,

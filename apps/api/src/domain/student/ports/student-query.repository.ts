@@ -28,7 +28,7 @@ export interface StudentListRow {
     name: string;
     mobile: string;
     email: string;
-  };
+  } | null;
   joiningDate: string;
   monthlyFee: number;
   mobileNumber: string | null;
@@ -36,16 +36,8 @@ export interface StudentListRow {
   profilePhotoUrl: string | null;
   fatherName: string | null;
   motherName: string | null;
-  aadhaarNumber: string | null;
-  caste: string | null;
   whatsappNumber: string | null;
   addressText: string | null;
-  instituteInfo: {
-    schoolName: string | null;
-    rollNumber: string | null;
-    standard: string | null;
-  } | null;
-  hasPassword: boolean;
   status: StudentStatus;
   createdAt: Date;
   updatedAt: Date;

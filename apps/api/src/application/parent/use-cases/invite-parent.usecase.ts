@@ -46,14 +46,15 @@ export class InviteParentUseCase {
     if (student.academyId !== owner.academyId) return err(StudentErrors.notInAcademy());
 
     const guardian = student.guardian;
-    if (!guardian.email) return err(ParentErrors.guardianEmailRequired());
-    if (!guardian.mobile) return err(ParentErrors.guardianPhoneRequired());
+    // Email: prefer guardian.email, fall back to student.email (Contact Information field)
+    const parentEmail = (guardian?.email || student.email || '').trim().toLowerCase();
+    if (!parentEmail) return err(ParentErrors.guardianEmailRequired());
 
-    const guardianEmail = guardian.email.trim().toLowerCase();
-    const guardianPhone = guardian.mobile.trim();
+    const guardianPhone = (guardian?.mobile || '').trim();
+    const guardianName = (guardian?.name || student.fullName || '').trim();
 
     // Check if user with this email already exists
-    const existingUser = await this.userRepo.findByEmail(guardianEmail);
+    const existingUser = await this.userRepo.findByEmail(parentEmail);
 
     let parentUserId: string;
     let tempPassword = '';
@@ -66,9 +67,11 @@ export class InviteParentUseCase {
       parentUserId = existingUser.id.toString();
       isExistingUser = true;
     } else {
-      // Check phone uniqueness
-      const existingByPhone = await this.userRepo.findByPhone(guardianPhone);
-      if (existingByPhone) return err(AuthErrors.duplicatePhone());
+      // Check phone uniqueness only if phone is provided
+      if (guardianPhone) {
+        const existingByPhone = await this.userRepo.findByPhone(guardianPhone);
+        if (existingByPhone) return err(AuthErrors.duplicatePhone());
+      }
 
       tempPassword = randomUUID().substring(0, 8);
       const passwordHash = await this.passwordHasher.hash(tempPassword);
@@ -76,8 +79,8 @@ export class InviteParentUseCase {
 
       const parent = User.create({
         id: parentUserId,
-        fullName: guardian.name,
-        email: guardianEmail,
+        fullName: guardianName,
+        email: parentEmail,
         phoneNumber: guardianPhone,
         role: 'PARENT',
         passwordHash,
@@ -117,7 +120,7 @@ export class InviteParentUseCase {
       parentId: parentUserId,
       tempPassword,
       studentId: input.studentId,
-      parentEmail: guardianEmail,
+      parentEmail,
       isExistingUser,
     });
   }

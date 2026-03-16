@@ -20,7 +20,9 @@ jest.mock('../../../infra/batch/batch-api', () => ({
 }));
 
 jest.mock('../../components/common/ProfilePhotoUploader', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return {
     ProfilePhotoUploader: (props: Record<string, unknown>) =>
@@ -29,7 +31,9 @@ jest.mock('../../components/common/ProfilePhotoUploader', () => {
 });
 
 jest.mock('../../components/batches/BatchMultiSelect', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return {
     BatchMultiSelect: () => React.createElement(View, { testID: 'batch-multi-select' }),

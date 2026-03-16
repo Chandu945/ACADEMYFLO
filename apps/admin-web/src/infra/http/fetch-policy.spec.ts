@@ -10,7 +10,7 @@ const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 function okResponse() {
-  return new Response('ok', { status: 200 });
+  return { ok: true, status: 200, text: async () => 'ok' } as unknown as Response;
 }
 
 describe('fetch-policy', () => {

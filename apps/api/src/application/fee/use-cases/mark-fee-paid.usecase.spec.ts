@@ -52,7 +52,7 @@ function createStudent(id: string, academyId: string): Student {
 }
 
 function createFeeDue(academyId: string, studentId: string, monthKey = '2024-03'): FeeDue {
-  return FeeDue.create({
+  const upcoming = FeeDue.create({
     id: `${studentId}-${monthKey}`,
     academyId,
     studentId,
@@ -60,6 +60,8 @@ function createFeeDue(academyId: string, studentId: string, monthKey = '2024-03'
     dueDate: `${monthKey}-05`,
     amount: 500,
   });
+  // Flip to DUE status since markPaid rejects UPCOMING fees
+  return upcoming.flipToDue();
 }
 
 const fixedClock: ClockPort = {
@@ -104,7 +106,7 @@ describe('MarkFeePaidUseCase', () => {
     await academyRepo.save(academy);
   });
 
-  it('should mark an UPCOMING fee as PAID and create transaction log', async () => {
+  it('should mark a DUE fee as PAID and create transaction log', async () => {
     const owner = createOwner();
     await userRepo.save(owner);
     const student = createStudent('s1', 'academy-1');

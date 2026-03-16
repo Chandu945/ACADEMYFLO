@@ -20,7 +20,6 @@ import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
 import type { Gender, UserRole } from '@playconnect/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
-import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import { randomUUID } from 'crypto';
 
 export interface CreateStudentAddress {
@@ -37,12 +36,6 @@ export interface CreateStudentGuardian {
   email: string;
 }
 
-export interface CreateStudentInstituteInfo {
-  schoolName?: string | null;
-  rollNumber?: string | null;
-  standard?: string | null;
-}
-
 export interface CreateStudentInput {
   actorUserId: string;
   actorRole: UserRole;
@@ -50,20 +43,16 @@ export interface CreateStudentInput {
   dateOfBirth: string;
   gender: string;
   address: CreateStudentAddress;
-  guardian: CreateStudentGuardian;
+  guardian?: CreateStudentGuardian;
   joiningDate: string;
   monthlyFee: number;
   mobileNumber?: string | null;
   email?: string | null;
   fatherName?: string | null;
   motherName?: string | null;
-  aadhaarNumber?: string | null;
-  caste?: string | null;
   whatsappNumber?: string | null;
   addressText?: string | null;
-  instituteInfo?: CreateStudentInstituteInfo | null;
   profilePhotoUrl?: string | null;
-  password?: string | null;
 }
 
 export class CreateStudentUseCase {
@@ -71,7 +60,6 @@ export class CreateStudentUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly auditRecorder: AuditRecorderPort,
-    private readonly passwordHasher?: PasswordHasher,
   ) {}
 
   async execute(input: CreateStudentInput): Promise<Result<StudentDto, AppError>> {
@@ -111,29 +99,18 @@ export class CreateStudentUseCase {
       return err(AppErrorClass.validation(feeCheck.reason!));
     }
 
-    const guardianMobileCheck = validateGuardianMobile(input.guardian.mobile);
-    if (!guardianMobileCheck.valid) {
-      return err(AppErrorClass.validation(guardianMobileCheck.reason!));
-    }
-
-    const guardianEmailCheck = validateGuardianEmail(input.guardian.email);
-    if (!guardianEmailCheck.valid) {
-      return err(AppErrorClass.validation(guardianEmailCheck.reason!));
-    }
-
-    if (input.aadhaarNumber) {
-      if (!/^\d{12}$/.test(input.aadhaarNumber)) {
-        return err(AppErrorClass.validation('Aadhaar number must be exactly 12 digits'));
+    if (input.guardian?.mobile) {
+      const guardianMobileCheck = validateGuardianMobile(input.guardian.mobile);
+      if (!guardianMobileCheck.valid) {
+        return err(AppErrorClass.validation(guardianMobileCheck.reason!));
       }
     }
 
-    if (input.password && input.password.length < 6) {
-      return err(AppErrorClass.validation('Password must be at least 6 characters'));
-    }
-
-    let passwordHash: string | null = null;
-    if (input.password && this.passwordHasher) {
-      passwordHash = await this.passwordHasher.hash(input.password);
+    if (input.guardian?.email) {
+      const guardianEmailCheck = validateGuardianEmail(input.guardian.email);
+      if (!guardianEmailCheck.valid) {
+        return err(AppErrorClass.validation(guardianEmailCheck.reason!));
+      }
     }
 
     const student = Student.create({
@@ -149,30 +126,22 @@ export class CreateStudentUseCase {
         state: input.address.state,
         pincode: input.address.pincode,
       },
-      guardian: {
-        name: input.guardian.name,
-        mobile: input.guardian.mobile,
-        email: input.guardian.email,
-      },
+      guardian: input.guardian
+        ? {
+            name: input.guardian.name,
+            mobile: input.guardian.mobile,
+            email: input.guardian.email,
+          }
+        : undefined,
       joiningDate: new Date(input.joiningDate),
       monthlyFee: input.monthlyFee,
       mobileNumber: input.mobileNumber,
       email: input.email,
       fatherName: input.fatherName,
       motherName: input.motherName,
-      aadhaarNumber: input.aadhaarNumber,
-      caste: input.caste,
       whatsappNumber: input.whatsappNumber,
       addressText: input.addressText,
       profilePhotoUrl: input.profilePhotoUrl,
-      instituteInfo: input.instituteInfo
-        ? {
-            schoolName: input.instituteInfo.schoolName ?? null,
-            rollNumber: input.instituteInfo.rollNumber ?? null,
-            standard: input.instituteInfo.standard ?? null,
-          }
-        : null,
-      passwordHash,
     });
 
     await this.studentRepo.save(student);

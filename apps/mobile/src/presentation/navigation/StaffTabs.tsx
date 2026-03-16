@@ -73,8 +73,6 @@ function StaffTabsInner() {
 }
 
 export function StaffTabs() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <FABProvider>
       <StaffTabsInner />
@@ -82,7 +80,7 @@ export function StaffTabs() {
   );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
+const makeStyles = (_colors: Colors) => StyleSheet.create({
   container: {
     flex: 1,
   },

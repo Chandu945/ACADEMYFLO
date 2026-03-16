@@ -46,6 +46,7 @@ function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
     setupAcademy: jest.fn().mockResolvedValue(null),
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
+    forceUpdate: null,
     ...overrides,
   };
 }

@@ -85,7 +85,7 @@ describe('GET /api/admin/academies', () => {
     await GET(createMockRequest('tier=TIER_0_50'));
 
     expect(mockApiGet).toHaveBeenCalledWith(
-      expect.stringContaining('tier=TIER_0_50'),
+      expect.stringContaining('tierKey=TIER_0_50'),
       expect.objectContaining({ accessToken: 'tok' }),
     );
   });

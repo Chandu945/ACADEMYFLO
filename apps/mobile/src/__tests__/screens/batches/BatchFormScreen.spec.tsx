@@ -51,6 +51,9 @@ describe('BatchFormScreen', () => {
         batchName: 'Morning Batch',
         days: undefined,
         notes: null,
+        startTime: null,
+        endTime: null,
+        maxStudents: null,
       });
       expect(mockGoBack).toHaveBeenCalled();
     });
@@ -74,6 +77,9 @@ describe('BatchFormScreen', () => {
         batchName: 'Morning Batch',
         days: ['MON', 'WED'],
         notes: null,
+        startTime: null,
+        endTime: null,
+        maxStudents: null,
       });
       expect(mockGoBack).toHaveBeenCalled();
     });

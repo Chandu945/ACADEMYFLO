@@ -12,8 +12,13 @@ describe('Fee Rules', () => {
       expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(true);
     });
 
-    it('should return false for student joined mid-month (e.g. 15th)', () => {
+    it('should return true for student joined on the 15th of the month', () => {
       const joiningDate = new Date('2024-03-15');
+      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(true);
+    });
+
+    it('should return false for student joined after the 15th (e.g. 16th)', () => {
+      const joiningDate = new Date('2024-03-16');
       expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(false);
     });
 

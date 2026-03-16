@@ -8,8 +8,6 @@ import {
   Matches,
 } from 'class-validator';
 
-const ENQUIRY_SOURCES = ['WALK_IN', 'PHONE', 'REFERRAL', 'SOCIAL_MEDIA', 'WEBSITE', 'OTHER'] as const;
-
 export class UpdateEnquiryDto {
   @IsOptional()
   @IsString()

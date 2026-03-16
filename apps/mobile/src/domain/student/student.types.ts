@@ -16,12 +16,6 @@ export type StudentGuardian = {
   email: string;
 };
 
-export type StudentInstituteInfo = {
-  schoolName: string | null;
-  rollNumber: string | null;
-  standard: string | null;
-};
-
 export type StudentListItem = {
   id: string;
   academyId: string;
@@ -37,12 +31,8 @@ export type StudentListItem = {
   profilePhotoUrl: string | null;
   fatherName: string | null;
   motherName: string | null;
-  aadhaarNumber: string | null;
-  caste: string | null;
   whatsappNumber: string | null;
   addressText: string | null;
-  instituteInfo: StudentInstituteInfo | null;
-  hasPassword: boolean;
   status: StudentStatus;
   createdAt: string;
   updatedAt: string;
@@ -67,7 +57,7 @@ export type CreateStudentRequest = {
     state: string;
     pincode: string;
   };
-  guardian: {
+  guardian?: {
     name: string;
     mobile: string;
     email: string;
@@ -78,17 +68,9 @@ export type CreateStudentRequest = {
   email?: string;
   fatherName?: string;
   motherName?: string;
-  aadhaarNumber?: string;
-  caste?: string;
   whatsappNumber?: string;
   addressText?: string;
-  instituteInfo?: {
-    schoolName?: string;
-    rollNumber?: string;
-    standard?: string;
-  };
   profilePhotoUrl?: string;
-  password?: string;
 };
 
 export type UpdateStudentRequest = Partial<CreateStudentRequest>;

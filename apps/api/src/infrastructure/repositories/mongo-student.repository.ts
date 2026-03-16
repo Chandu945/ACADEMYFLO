@@ -34,11 +34,13 @@ export class MongoStudentRepository implements StudentRepository {
           state: student.address.state,
           pincode: student.address.pincode,
         },
-        guardian: {
-          name: student.guardian.name,
-          mobile: student.guardian.mobile,
-          email: student.guardian.email,
-        },
+        guardian: student.guardian
+          ? {
+              name: student.guardian.name,
+              mobile: student.guardian.mobile,
+              email: student.guardian.email,
+            }
+          : null,
         joiningDate: student.joiningDate,
         monthlyFee: student.monthlyFee,
         mobileNumber: student.mobileNumber,
@@ -46,12 +48,8 @@ export class MongoStudentRepository implements StudentRepository {
         profilePhotoUrl: student.profilePhotoUrl,
         fatherName: student.fatherName,
         motherName: student.motherName,
-        aadhaarNumber: student.aadhaarNumber,
-        caste: student.caste,
         whatsappNumber: student.whatsappNumber,
         addressText: student.addressText,
-        instituteInfo: student.instituteInfo,
-        passwordHash: student.passwordHash,
         status: student.status,
         statusChangedAt: student.statusChangedAt,
         statusChangedBy: student.statusChangedBy,
@@ -175,7 +173,7 @@ export class MongoStudentRepository implements StudentRepository {
       fullName: d.fullName,
       profilePhotoUrl: d.profilePhotoUrl ?? null,
       dateOfBirth: d.dateOfBirth,
-      guardianMobile: d.guardian.mobile,
+      guardianMobile: d.guardian?.mobile ?? '',
     }));
   }
 
@@ -198,7 +196,7 @@ export class MongoStudentRepository implements StudentRepository {
         name: string;
         mobile: string;
         email: string;
-      };
+      } | null;
       joiningDate: Date;
       monthlyFee: number;
       mobileNumber: string | null;
@@ -206,16 +204,8 @@ export class MongoStudentRepository implements StudentRepository {
       profilePhotoUrl: string | null;
       fatherName: string | null;
       motherName: string | null;
-      aadhaarNumber: string | null;
-      caste: string | null;
       whatsappNumber: string | null;
       addressText: string | null;
-      instituteInfo: {
-        schoolName: string | null;
-        rollNumber: string | null;
-        standard: string | null;
-      } | null;
-      passwordHash: string | null;
       status: string;
       statusChangedAt: Date | null;
       statusChangedBy: string | null;
@@ -246,11 +236,13 @@ export class MongoStudentRepository implements StudentRepository {
         state: d.address.state,
         pincode: d.address.pincode,
       },
-      guardian: {
-        name: d.guardian.name,
-        mobile: d.guardian.mobile,
-        email: d.guardian.email,
-      },
+      guardian: d.guardian
+        ? {
+            name: d.guardian.name,
+            mobile: d.guardian.mobile,
+            email: d.guardian.email,
+          }
+        : null,
       joiningDate: d.joiningDate,
       monthlyFee: d.monthlyFee,
       mobileNumber: d.mobileNumber,
@@ -258,12 +250,8 @@ export class MongoStudentRepository implements StudentRepository {
       profilePhotoUrl: d.profilePhotoUrl ?? null,
       fatherName: d.fatherName ?? null,
       motherName: d.motherName ?? null,
-      aadhaarNumber: d.aadhaarNumber ?? null,
-      caste: d.caste ?? null,
       whatsappNumber: d.whatsappNumber ?? null,
       addressText: d.addressText ?? null,
-      instituteInfo: d.instituteInfo ?? null,
-      passwordHash: d.passwordHash ?? null,
       status: d.status as StudentStatus,
       statusChangedAt: d.statusChangedAt ?? null,
       statusChangedBy: d.statusChangedBy ?? null,

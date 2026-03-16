@@ -21,7 +21,6 @@ import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
 import type { Gender, UserRole } from '@playconnect/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
-import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 
 export interface UpdateStudentAddress {
   line1?: string;
@@ -35,12 +34,6 @@ export interface UpdateStudentGuardian {
   name?: string;
   mobile?: string;
   email?: string;
-}
-
-export interface UpdateStudentInstituteInfo {
-  schoolName?: string | null;
-  rollNumber?: string | null;
-  standard?: string | null;
 }
 
 export interface UpdateStudentInput {
@@ -58,12 +51,8 @@ export interface UpdateStudentInput {
   email?: string | null;
   fatherName?: string | null;
   motherName?: string | null;
-  aadhaarNumber?: string | null;
-  caste?: string | null;
   whatsappNumber?: string | null;
   addressText?: string | null;
-  instituteInfo?: UpdateStudentInstituteInfo | null;
-  password?: string | null;
 }
 
 export class UpdateStudentUseCase {
@@ -71,7 +60,6 @@ export class UpdateStudentUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly auditRecorder: AuditRecorderPort,
-    private readonly passwordHasher?: PasswordHasher,
   ) {}
 
   async execute(input: UpdateStudentInput): Promise<Result<StudentDto, AppError>> {
@@ -149,31 +137,6 @@ export class UpdateStudentUseCase {
       }
     }
 
-    if (input.aadhaarNumber !== undefined && input.aadhaarNumber !== null) {
-      if (!/^\d{12}$/.test(input.aadhaarNumber)) {
-        return err(AppErrorClass.validation('Aadhaar number must be exactly 12 digits'));
-      }
-    }
-
-    if (input.password !== undefined && input.password !== null && input.password.length < 6) {
-      return err(AppErrorClass.validation('Password must be at least 6 characters'));
-    }
-
-    let newPasswordHash = student.passwordHash;
-    if (input.password && this.passwordHasher) {
-      newPasswordHash = await this.passwordHasher.hash(input.password);
-    }
-
-    const newInstituteInfo = input.instituteInfo !== undefined
-      ? input.instituteInfo
-        ? {
-            schoolName: input.instituteInfo.schoolName ?? student.instituteInfo?.schoolName ?? null,
-            rollNumber: input.instituteInfo.rollNumber ?? student.instituteInfo?.rollNumber ?? null,
-            standard: input.instituteInfo.standard ?? student.instituteInfo?.standard ?? null,
-          }
-        : null
-      : student.instituteInfo;
-
     const newAddress = {
       line1: input.address?.line1 ?? student.address.line1,
       line2:
@@ -185,11 +148,13 @@ export class UpdateStudentUseCase {
       pincode: input.address?.pincode ?? student.address.pincode,
     };
 
-    const newGuardian = {
-      name: input.guardian?.name ?? student.guardian.name,
-      mobile: input.guardian?.mobile ?? student.guardian.mobile,
-      email: input.guardian?.email ?? student.guardian.email,
-    };
+    const newGuardian = input.guardian
+      ? {
+          name: input.guardian.name ?? student.guardian?.name ?? '',
+          mobile: input.guardian.mobile ?? student.guardian?.mobile ?? '',
+          email: input.guardian.email ?? student.guardian?.email ?? '',
+        }
+      : student.guardian;
 
     const newName = input.fullName ?? student.fullName;
 
@@ -209,12 +174,8 @@ export class UpdateStudentUseCase {
       profilePhotoUrl: student.profilePhotoUrl,
       fatherName: input.fatherName !== undefined ? (input.fatherName ?? null) : student.fatherName,
       motherName: input.motherName !== undefined ? (input.motherName ?? null) : student.motherName,
-      aadhaarNumber: input.aadhaarNumber !== undefined ? (input.aadhaarNumber ?? null) : student.aadhaarNumber,
-      caste: input.caste !== undefined ? (input.caste ?? null) : student.caste,
       whatsappNumber: input.whatsappNumber !== undefined ? (input.whatsappNumber ?? null) : student.whatsappNumber,
       addressText: input.addressText !== undefined ? (input.addressText ?? null) : student.addressText,
-      instituteInfo: newInstituteInfo,
-      passwordHash: newPasswordHash,
       status: student.status,
       statusChangedAt: student.statusChangedAt,
       statusChangedBy: student.statusChangedBy,

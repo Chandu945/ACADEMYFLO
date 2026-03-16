@@ -25,20 +25,8 @@ export const studentListItemSchema = z.object({
   profilePhotoUrl: z.string().nullable().optional().default(null),
   fatherName: z.string().nullable().optional().default(null),
   motherName: z.string().nullable().optional().default(null),
-  aadhaarNumber: z.string().nullable().optional().default(null),
-  caste: z.string().nullable().optional().default(null),
   whatsappNumber: z.string().nullable().optional().default(null),
   addressText: z.string().nullable().optional().default(null),
-  instituteInfo: z
-    .object({
-      schoolName: z.string().nullable(),
-      rollNumber: z.string().nullable(),
-      standard: z.string().nullable(),
-    })
-    .nullable()
-    .optional()
-    .default(null),
-  hasPassword: z.boolean().optional().default(false),
   status: z.enum(['ACTIVE', 'INACTIVE', 'LEFT']),
   createdAt: z.string(),
   updatedAt: z.string(),

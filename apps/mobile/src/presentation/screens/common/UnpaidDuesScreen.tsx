@@ -41,7 +41,7 @@ export function UnpaidDuesScreen({
   month,
   onMarkPaidSuccess,
   studentNameMap,
-  hasMore,
+  hasMore: _hasMore,
   loadingMore,
   onEndReached,
 }: UnpaidDuesScreenProps) {

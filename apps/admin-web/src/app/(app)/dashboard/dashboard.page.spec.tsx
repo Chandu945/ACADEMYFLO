@@ -47,8 +47,8 @@ describe('DashboardPage', () => {
         activeTrials: 8,
         activePaid: 30,
         expiredGrace: 0,
-        disabled: 4,
-        blocked: 4,
+        disabled: 3,
+        blocked: 1,
       },
       loading: false,
       error: null,
@@ -63,7 +63,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Active Trials')).toBeInTheDocument();
     expect(screen.getByText('30')).toBeInTheDocument();
     expect(screen.getByText('Active Paid')).toBeInTheDocument();
-    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('Disabled')).toBeInTheDocument();
   });
 

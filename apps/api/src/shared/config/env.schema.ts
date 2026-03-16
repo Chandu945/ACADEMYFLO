@@ -94,6 +94,10 @@ export const envSchema = z
     FIREBASE_PROJECT_ID: z.string().default(''),
     FIREBASE_SERVICE_ACCOUNT_JSON: z.string().default(''),
 
+    // Mobile App Minimum Versions (force update)
+    MIN_APP_VERSION_ANDROID: z.string().default('1.0.0'),
+    MIN_APP_VERSION_IOS: z.string().default('1.0.0'),
+
     // CORS
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:8081'),
 

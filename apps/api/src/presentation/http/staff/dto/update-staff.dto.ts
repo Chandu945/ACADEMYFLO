@@ -3,7 +3,6 @@ import {
   IsOptional,
   IsString,
   IsIn,
-  IsNumber,
   IsDateString,
   Matches,
   MinLength,

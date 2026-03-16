@@ -31,6 +31,7 @@ function makeAuth(role: 'OWNER' | 'STAFF' = 'OWNER'): AuthContextValue {
     setupAcademy: jest.fn().mockResolvedValue(null),
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
+    forceUpdate: null,
   };
 }
 
@@ -98,7 +99,7 @@ describe('AuditLogsScreen', () => {
     renderScreen('OWNER');
 
     await waitFor(() => {
-      expect(screen.getByText('No audit logs found')).toBeTruthy();
+      expect(screen.getByText('No audit logs found for the selected filters')).toBeTruthy();
     });
   });
 
@@ -123,9 +124,13 @@ describe('AuditLogsScreen', () => {
     renderScreen('OWNER');
 
     await waitFor(() => {
-      expect(screen.getByTestId('audit-filters')).toBeTruthy();
+      expect(screen.getByTestId('toggle-filters')).toBeTruthy();
     });
 
+    // Filters panel starts hidden; toggle it open
+    fireEvent.press(screen.getByTestId('toggle-filters'));
+
+    expect(screen.getByTestId('audit-filters')).toBeTruthy();
     expect(screen.getByTestId('filter-from')).toBeTruthy();
     expect(screen.getByTestId('filter-to')).toBeTruthy();
     expect(screen.getByTestId('filter-apply')).toBeTruthy();
@@ -138,11 +143,15 @@ describe('AuditLogsScreen', () => {
     renderScreen('OWNER');
 
     await waitFor(() => {
-      expect(screen.getByTestId('audit-filters')).toBeTruthy();
+      expect(screen.getByTestId('toggle-filters')).toBeTruthy();
     });
 
+    // Open the filters panel
     fireEvent.press(screen.getByTestId('toggle-filters'));
+    expect(screen.getByTestId('audit-filters')).toBeTruthy();
 
+    // Close the filters panel
+    fireEvent.press(screen.getByTestId('toggle-filters'));
     expect(screen.queryByTestId('audit-filters')).toBeNull();
   });
 

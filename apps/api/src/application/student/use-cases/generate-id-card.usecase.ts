@@ -86,9 +86,9 @@ export class GenerateIdCardUseCase {
       let currentY = detailY;
       addIdField('DOB', student.dateOfBirth.toISOString().slice(0, 10), currentY);
       currentY += 14;
-      addIdField('Guardian', student.guardian.name, currentY);
+      addIdField('Guardian', student.guardian?.name ?? '', currentY);
       currentY += 14;
-      addIdField('Contact', student.guardian.mobile, currentY);
+      addIdField('Contact', student.guardian?.mobile ?? '', currentY);
       currentY += 14;
       if (batchNames.length > 0) {
         const batchText = batchNames.length > 2

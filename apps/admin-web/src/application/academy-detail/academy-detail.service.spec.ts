@@ -11,17 +11,24 @@ const validPayload = {
   academyId: 'a1',
   academyName: 'Test Academy',
   loginDisabled: false,
-  owner: { fullName: 'John Doe', email: 'john@test.com', phoneNumber: '+919876543210' },
+  ownerUserId: 'u1',
+  ownerName: 'John Doe',
+  ownerEmail: 'john@test.com',
+  ownerPhone: '+919876543210',
   subscription: {
+    id: 'sub1',
     status: 'TRIAL',
     tierKey: null,
+    trialStartAt: null,
     trialEndAt: '2026-02-01T00:00:00.000Z',
     paidStartAt: null,
     paidEndAt: null,
     manualNotes: null,
     paymentReference: null,
   },
-  metrics: { activeStudentCount: 10, staffCount: 2, thisMonthRevenueTotal: 0 },
+  studentCount: 10,
+  staffCount: 2,
+  revenueThisMonth: 0,
 };
 
 describe('getDetail', () => {

@@ -81,8 +81,8 @@ export class GenerateStudentReportUseCase {
       doc.font('Helvetica').fontSize(10);
       const info = [
         ['Name', student.fullName],
-        ['Guardian', student.guardian.name],
-        ['Mobile', student.guardian.mobile],
+        ['Guardian', student.guardian?.name ?? ''],
+        ['Mobile', student.guardian?.mobile ?? ''],
         ['DOB', student.dateOfBirth.toISOString().slice(0, 10)],
         ['Joining Date', student.joiningDate.toISOString().slice(0, 10)],
         ['Monthly Fee', `₹${student.monthlyFee}`],

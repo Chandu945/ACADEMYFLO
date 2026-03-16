@@ -29,13 +29,10 @@ import { CashfreeSignatureVerifier } from '../src/infrastructure/payments/cashfr
 import { FeePayment } from '../src/domain/parent/entities/fee-payment.entity';
 import { FeeDue } from '../src/domain/fee/entities/fee-due.entity';
 import { ParentStudentLink } from '../src/domain/parent/entities/parent-student-link.entity';
-import { TransactionLog } from '../src/domain/fee/entities/transaction-log.entity';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Academy } from '../src/domain/academy/entities/academy.entity';
 import type { FeePaymentRepository } from '../src/domain/parent/ports/fee-payment.repository';
 import type { ParentStudentLinkRepository } from '../src/domain/parent/ports/parent-student-link.repository';
-import type { FeeDueRepository } from '../src/domain/fee/ports/fee-due.repository';
-import type { TransactionLogRepository } from '../src/domain/fee/ports/transaction-log.repository';
 import type { TransactionPort } from '../src/application/common/transaction.port';
 import {
   InMemoryUserRepository,
