@@ -12,11 +12,12 @@ export function useMonthlyRevenue(month?: string) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ type: 'monthly-revenue' });
       if (month) params.set('month', month);
-      const res = await fetch(`/api/reports?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/reports?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken, month]);
@@ -31,11 +32,12 @@ export function useStudentWiseDues(month?: string, page = 1) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ type: 'student-wise-dues', page: String(page) });
       if (month) params.set('month', month);
-      const res = await fetch(`/api/reports?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/reports?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
     } finally { setLoading(false); }
   }, [accessToken, month, page]);

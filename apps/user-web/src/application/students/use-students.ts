@@ -46,6 +46,7 @@ export function useStudents(filters: StudentFilters = {}) {
   const filtersKey = JSON.stringify(filters);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
@@ -55,7 +56,7 @@ export function useStudents(filters: StudentFilters = {}) {
         if (v !== undefined && v !== '') params.set(k, String(v));
       });
       const res = await fetch(`/api/students?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
@@ -80,12 +81,12 @@ export function useStudentDetail(id: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
-    if (!id) return;
+    if (!id || !accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/students/${id}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error((await res.json()).message);
       setData(await res.json());

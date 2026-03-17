@@ -12,9 +12,10 @@ export function useChildren() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/parent/children', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/parent/children', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(Array.isArray(json) ? json : json.data ?? []); }
     } finally { setLoading(false); }
   }, [accessToken]);
@@ -29,12 +30,12 @@ export function useChildAttendance(studentId: string | null, month?: string) {
   const [loading, setLoading] = useState(!!studentId);
 
   const fetch_ = useCallback(async () => {
-    if (!studentId) return;
+    if (!studentId || !accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (month) params.set('month', month);
-      const res = await fetch(`/api/parent/children/${studentId}/attendance?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/parent/children/${studentId}/attendance?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken, studentId, month]);
@@ -49,10 +50,10 @@ export function useChildFees(studentId: string | null) {
   const [loading, setLoading] = useState(!!studentId);
 
   const fetch_ = useCallback(async () => {
-    if (!studentId) return;
+    if (!studentId || !accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/parent/children/${studentId}/fees`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/parent/children/${studentId}/fees`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(Array.isArray(json) ? json : json.data ?? []); }
     } finally { setLoading(false); }
   }, [accessToken, studentId]);
@@ -67,9 +68,10 @@ export function useParentProfile() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/parent/profile', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/parent/profile', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken]);
@@ -84,9 +86,10 @@ export function usePaymentHistory() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/parent/payment-history', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/parent/payment-history', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(Array.isArray(json) ? json : json.data ?? []); }
     } finally { setLoading(false); }
   }, [accessToken]);

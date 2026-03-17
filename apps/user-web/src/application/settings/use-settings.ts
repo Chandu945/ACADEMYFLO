@@ -12,9 +12,10 @@ export function useAcademySettings() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/settings/academy', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/settings/academy', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken]);
@@ -35,9 +36,10 @@ export function useInstituteInfo() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/settings/institute-info', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/settings/institute-info', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken]);

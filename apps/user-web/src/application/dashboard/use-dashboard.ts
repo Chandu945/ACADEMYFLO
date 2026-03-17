@@ -37,11 +37,12 @@ export function useDashboardKpis(preset = 'THIS_MONTH') {
   const [error, setError] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/dashboard?preset=${preset}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error((await res.json()).message);
       setData(await res.json());
@@ -65,9 +66,10 @@ export function useMonthlyChart(year?: number) {
   const fetch_ = useCallback(async () => {
     setLoading(true);
     try {
+      if (!accessToken) return;
       const params = year ? `&year=${year}` : '';
       const res = await fetch(`/api/dashboard?type=chart${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (res.ok) setData(await res.json());
     } finally {
@@ -88,8 +90,9 @@ export function useBirthdays(scope: 'today' | 'month' = 'today') {
   const fetch_ = useCallback(async () => {
     setLoading(true);
     try {
+      if (!accessToken) return;
       const res = await fetch(`/api/dashboard?type=birthdays&scope=${scope}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (res.ok) {
         const json = await res.json();

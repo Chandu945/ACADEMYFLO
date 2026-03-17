@@ -11,9 +11,10 @@ export function useSubscription() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/subscription', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/subscription', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken]);

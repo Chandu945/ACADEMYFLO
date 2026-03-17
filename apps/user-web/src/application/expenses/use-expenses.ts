@@ -14,12 +14,13 @@ export function useExpenses(month?: string, categoryId?: string, page = 1) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '20' });
       if (month) params.set('month', month);
       if (categoryId) params.set('categoryId', categoryId);
-      const res = await fetch(`/api/expenses?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/expenses?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(json.data ?? []); setMeta(json.meta ?? null); }
     } finally { setLoading(false); }
   }, [accessToken, month, categoryId, page]);
@@ -34,11 +35,12 @@ export function useExpenseSummary(month?: string) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ type: 'summary' });
       if (month) params.set('month', month);
-      const res = await fetch(`/api/expenses?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/expenses?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken, month]);
@@ -53,9 +55,10 @@ export function useExpenseCategories() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/expenses/categories', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/expenses/categories', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(Array.isArray(json) ? json : json.data ?? []); }
     } finally { setLoading(false); }
   }, [accessToken]);
@@ -77,6 +80,6 @@ export async function updateExpense(id: string, body: Record<string, unknown>, a
 }
 
 export async function deleteExpense(id: string, accessToken?: string | null) {
-  const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+  const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
   return res.ok ? { ok: true as const } : { ok: false as const, error: (await res.json()).message };
 }

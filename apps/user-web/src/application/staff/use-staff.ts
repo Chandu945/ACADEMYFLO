@@ -25,11 +25,12 @@ export function useStaff() {
   const [error, setError] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/staff', {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();

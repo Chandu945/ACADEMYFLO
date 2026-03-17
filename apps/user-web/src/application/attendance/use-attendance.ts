@@ -33,6 +33,7 @@ export function useDailyAttendance(date: string, batchId?: string, search?: stri
   const [error, setError] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
@@ -40,7 +41,7 @@ export function useDailyAttendance(date: string, batchId?: string, search?: stri
       if (batchId) params.set('batchId', batchId);
       if (search) params.set('search', search);
       const res = await fetch(`/api/attendance?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error((await res.json()).message);
       setData(await res.json());
@@ -96,10 +97,11 @@ export function useMonthlySummary(month: string, search?: string) {
   const fetch_ = useCallback(async () => {
     setLoading(true);
     try {
+      if (!accessToken) return;
       const params = new URLSearchParams({ type: 'monthly-summary', month, pageSize: '200' });
       if (search) params.set('search', search);
       const res = await fetch(`/api/attendance?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (res.ok) {
         const json = await res.json();
@@ -123,9 +125,10 @@ export function useMonthDailyCounts(month: string) {
   const fetch_ = useCallback(async () => {
     setLoading(true);
     try {
+      if (!accessToken) return;
       const params = new URLSearchParams({ type: 'month-daily-counts', month });
       const res = await fetch(`/api/attendance?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (res.ok) {
         const json = await res.json();

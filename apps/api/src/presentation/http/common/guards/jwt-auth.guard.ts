@@ -76,8 +76,22 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     if (user.tokenVersion !== payload.tokenVersion) {
-      await this.cacheService.del(cacheKey); // Invalidate stale cache
-      throw new UnauthorizedException('Token revoked');
+      // Cache may be stale (e.g. after token refresh incremented tokenVersion).
+      // Re-fetch from DB before rejecting.
+      await this.cacheService.del(cacheKey);
+      const freshUser = await this.userRepo.findById(payload.sub);
+      if (!freshUser || freshUser.tokenVersion !== payload.tokenVersion) {
+        throw new UnauthorizedException('Token revoked');
+      }
+      user = {
+        id: freshUser.id.toString(),
+        tokenVersion: freshUser.tokenVersion,
+        status: freshUser.status,
+        role: freshUser.role,
+        academyId: freshUser.academyId,
+        email: freshUser.emailNormalized,
+      };
+      await this.cacheService.set(cacheKey, user, 300);
     }
 
     if (user.status !== 'ACTIVE') {

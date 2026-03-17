@@ -13,12 +13,13 @@ export function useEvents(filters: Record<string, string | undefined> = {}) {
   const filtersKey = JSON.stringify(filters);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       const currentFilters = JSON.parse(filtersKey) as Record<string, string | undefined>;
       Object.entries(currentFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
-      const res = await fetch(`/api/events?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/events?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
     } finally { setLoading(false); }
   }, [accessToken, filtersKey]);
@@ -33,10 +34,10 @@ export function useEventDetail(id: string | null) {
   const [loading, setLoading] = useState(!!id);
 
   const fetch_ = useCallback(async () => {
-    if (!id) return;
+    if (!id || !accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/events/${id}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/events/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken, id]);
@@ -58,6 +59,6 @@ export async function updateEvent(id: string, body: Record<string, unknown>, acc
 }
 
 export async function deleteEvent(id: string, accessToken?: string | null) {
-  const res = await fetch(`/api/events/${id}`, { method: 'DELETE', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+  const res = await fetch(`/api/events/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
   return res.ok ? { ok: true as const } : { ok: false as const, error: (await res.json()).message };
 }

@@ -14,12 +14,13 @@ export function useAuditLogs(filters: Record<string, string | undefined> = {}) {
   const filtersKey = JSON.stringify(filters);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       const currentFilters = JSON.parse(filtersKey) as Record<string, string | undefined>;
       Object.entries(currentFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
-      const res = await fetch(`/api/audit-logs?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/audit-logs?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); setMeta(json.meta ?? null); }
     } finally { setLoading(false); }
   }, [accessToken, filtersKey]);

@@ -15,12 +15,13 @@ export function useEnquiries(filters: Record<string, string | undefined> = {}) {
   const filtersKey = JSON.stringify(filters);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       const currentFilters = JSON.parse(filtersKey) as Record<string, string | undefined>;
       Object.entries(currentFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
-      const res = await fetch(`/api/enquiries?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/enquiries?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
     } finally { setLoading(false); }
   }, [accessToken, filtersKey]);
@@ -35,9 +36,10 @@ export function useEnquirySummary() {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/enquiries?type=summary', { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch('/api/enquiries?type=summary', { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken]);
@@ -52,10 +54,10 @@ export function useEnquiryDetail(id: string | null) {
   const [loading, setLoading] = useState(!!id);
 
   const fetch_ = useCallback(async () => {
-    if (!id) return;
+    if (!id || !accessToken) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/enquiries/${id}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/enquiries/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) setData(await res.json());
     } finally { setLoading(false); }
   }, [accessToken, id]);

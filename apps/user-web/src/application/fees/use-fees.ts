@@ -44,13 +44,14 @@ export function useFeeDues(month?: string, page = 1) {
   const [error, setError] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '20' });
       if (month) params.set('month', month);
       const res = await fetch(`/api/fees/dues?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
@@ -74,12 +75,13 @@ export function usePaidFees(month?: string) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (month) params.set('month', month);
       const res = await fetch(`/api/fees/paid?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (res.ok) {
         const json = await res.json();
@@ -101,12 +103,13 @@ export function usePaymentRequests(status?: string) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (status) params.set('status', status);
       const res = await fetch(`/api/fees/payment-requests?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (res.ok) {
         const json = await res.json();

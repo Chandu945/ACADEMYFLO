@@ -12,10 +12,11 @@ export function useDailyStaffAttendance(date: string) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ date });
-      const res = await fetch(`/api/staff-attendance?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/staff-attendance?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
     } finally { setLoading(false); }
   }, [accessToken, date]);
@@ -30,10 +31,11 @@ export function useMonthlyStaffSummary(month: string) {
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ type: 'monthly', month });
-      const res = await fetch(`/api/staff-attendance?${params}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+      const res = await fetch(`/api/staff-attendance?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
     } finally { setLoading(false); }
   }, [accessToken, month]);

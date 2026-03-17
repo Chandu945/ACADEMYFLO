@@ -24,13 +24,14 @@ export function useBatches(search?: string) {
   const [error, setError] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ pageSize: '100' });
       if (search) params.set('search', search);
       const res = await fetch(`/api/batches?${params}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();

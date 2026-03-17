@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') || 'kpis';
 
   if (type === 'chart') {
-    const params = buildSafeParams({ year: searchParams.get('year') || undefined });
+    const year = searchParams.get('year') || String(new Date().getFullYear());
+    const params = buildSafeParams({ year });
     const result = await apiGet(`/api/v1/dashboard/monthly-chart?${params}`, { accessToken });
     if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
     return NextResponse.json(result.data);

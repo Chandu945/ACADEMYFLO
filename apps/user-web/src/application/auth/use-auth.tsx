@@ -44,6 +44,18 @@ type SignupData = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Module-level singleton — ensures only ONE refresh call happens even if
+// the component mounts multiple times (React 18 strict mode, fast navigations).
+let _initPromise: Promise<{ accessToken: string } | null> | null = null;
+
+function initAuth(): Promise<{ accessToken: string } | null> {
+  if (_initPromise) return _initPromise;
+  _initPromise = fetch('/api/auth/refresh', { method: 'POST' })
+    .then((res) => (res.ok ? (res.json() as Promise<{ accessToken: string }>) : null))
+    .catch(() => null);
+  return _initPromise;
+}
+
 function decodeUserFromToken(token: string): AuthUser | null {
   try {
     const payload = token.split('.')[1];
@@ -91,8 +103,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshAuth();
-  }, [refreshAuth]);
+    let cancelled = false;
+    initAuth().then((data) => {
+      if (cancelled) return;
+      if (data?.accessToken) {
+        const user = decodeUserFromToken(data.accessToken);
+        setState({
+          user,
+          accessToken: data.accessToken,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+      } else {
+        setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const login = useCallback(async (identifier: string, password: string) => {
     try {
@@ -105,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) {
         return { ok: false, error: data.message || 'Login failed' };
       }
+      _initPromise = null; // Reset so post-login navigation gets a fresh refresh
       const user = decodeUserFromToken(data.accessToken);
       setState({
         user,
@@ -146,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } finally {
+      _initPromise = null; // Reset so next login gets a fresh refresh
       setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
       window.location.href = '/login';
     }
@@ -155,6 +184,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({ ...state, login, signup, logout, refreshAuth }),
     [state, login, signup, logout, refreshAuth],
   );
+
+  // Redirect to login when auth resolution completes but user is not authenticated.
+  // This handles expired sessions where the cookie exists (middleware let us through)
+  // but the refresh token is no longer valid.
+  useEffect(() => {
+    if (!state.isLoading && !state.isAuthenticated) {
+      window.location.href = '/login';
+    }
+  }, [state.isLoading, state.isAuthenticated]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
