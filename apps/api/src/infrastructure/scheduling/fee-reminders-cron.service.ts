@@ -7,6 +7,11 @@ import type { JobLockPort } from '@application/common/ports/job-lock.port';
 import { JOB_LOCK_PORT } from '@application/common/ports/job-lock.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
+import { PUSH_NOTIFICATION_SERVICE } from '../../presentation/http/device-tokens/device-tokens.module';
+import { QueueService } from '@infrastructure/queue/queue.service';
 
 const LOCK_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -22,7 +27,26 @@ export class FeeRemindersCronService {
     private readonly jobLock: JobLockPort,
     @Inject(LOGGER_PORT)
     private readonly logger: LoggerPort,
-  ) {}
+    @Inject(EMAIL_SENDER_PORT)
+    private readonly emailSender: EmailSenderPort,
+    @Inject(PUSH_NOTIFICATION_SERVICE)
+    private readonly pushService: PushNotificationService,
+    private readonly queueService: QueueService,
+  ) {
+    // Register synchronous fallbacks for when Redis/BullMQ is unavailable.
+    // This ensures emails and push notifications still work without a queue.
+    this.queueService.registerEmailFallback(async (data) => {
+      await this.emailSender.send(data);
+    });
+
+    this.queueService.registerNotificationFallback(async (data) => {
+      await this.pushService.sendToUsers(data.userIds, {
+        title: data.title,
+        body: data.body,
+        data: data.data,
+      });
+    });
+  }
 
   /** Email reminders — 3 days before due date, daily at 09:00 IST */
   @Cron('0 9 * * *', { timeZone: 'Asia/Kolkata' })

@@ -87,7 +87,7 @@ export class RunMonthlyDuesEngineUseCase {
       );
       if (upcoming.length > 0) {
         const ids = upcoming.map((u) => u.id.toString());
-        await this.feeDueRepo.bulkUpdateStatus(ids, 'DUE');
+        await this.feeDueRepo.bulkUpdateStatus(ids, 'DUE', 'UPCOMING');
         flippedToDue = upcoming.length;
       }
     }

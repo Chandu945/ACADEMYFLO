@@ -54,6 +54,8 @@ export class ResetOwnerPasswordUseCase {
       tokenVersion: owner.tokenVersion + 1,
     });
     await this.userRepo.save(updated);
+    // Note: user auth cache (user:auth:{userId}) will be invalidated on next
+    // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
 
     // Revoke all sessions for the owner
     await this.sessionRepo.revokeAllByUserIds([owner.id.toString()]);

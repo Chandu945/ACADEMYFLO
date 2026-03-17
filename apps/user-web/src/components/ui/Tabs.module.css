@@ -1,0 +1,90 @@
+.tabs {
+  display: flex;
+  flex-direction: column;
+}
+
+.tabList {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabList::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium, 500);
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--transition-base),
+    background-color var(--transition-base);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg-subtle);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.tabActive:hover {
+  color: var(--color-primary);
+}
+
+.tabDisabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.tabDisabled:hover {
+  background: none;
+  color: var(--color-text-disabled);
+}
+
+/* ── Badge inside tab ── */
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold, 600);
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-full);
+}
+
+.tabActive .tabBadge {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+/* ── Panel ── */
+.tabPanel {
+  padding-top: var(--space-4);
+}

@@ -15,6 +15,11 @@ import { formatLocalDate, addDaysToLocalDate } from '@shared/date-utils';
 import { evaluateSubscriptionStatus } from '@domain/subscription/rules/subscription.rules';
 import { renderFeeReminderEmail } from './fee-reminder-template';
 
+/** Minimal interface so we can accept QueueService without a hard dependency */
+interface EmailQueuePort {
+  enqueueEmail(data: { to: string; subject: string; html: string }): Promise<void>;
+}
+
 const CONCURRENCY = 5;
 
 export class SendFeeRemindersUseCase {
@@ -27,6 +32,7 @@ export class SendFeeRemindersUseCase {
     private readonly logger: LoggerPort,
     private readonly clock: ClockPort,
     private readonly pushService?: PushNotificationService,
+    private readonly emailQueue?: EmailQueuePort,
   ) {}
 
   async execute(): Promise<Result<FeeReminderRunSummary, never>> {
@@ -129,16 +135,27 @@ export class SendFeeRemindersUseCase {
       }
     }
 
-    // Send emails in chunks of CONCURRENCY
-    for (let i = 0; i < messages.length; i += CONCURRENCY) {
-      const chunk = messages.slice(i, i + CONCURRENCY);
-      const results = await Promise.allSettled(chunk.map((msg) => this.emailSender.send(msg)));
-
-      for (const result of results) {
-        if (result.status === 'fulfilled' && result.value) {
+    // Send emails: use async queue when available, otherwise send in chunks synchronously
+    if (this.emailQueue) {
+      for (const msg of messages) {
+        try {
+          await this.emailQueue.enqueueEmail(msg);
           summary.emailsSent++;
-        } else {
+        } catch {
           summary.emailsFailed++;
+        }
+      }
+    } else {
+      for (let i = 0; i < messages.length; i += CONCURRENCY) {
+        const chunk = messages.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(chunk.map((msg) => this.emailSender.send(msg)));
+
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value) {
+            summary.emailsSent++;
+          } else {
+            summary.emailsFailed++;
+          }
         }
       }
     }

@@ -30,6 +30,7 @@ import { SendFeeRemindersUseCase } from '@application/notifications/use-cases/se
 import { SendOverduePushRemindersUseCase } from '@application/notifications/use-cases/send-overdue-push-reminders.usecase';
 import { DeviceTokensModule } from '../../presentation/http/device-tokens/device-tokens.module';
 import { PUSH_NOTIFICATION_SERVICE } from '../../presentation/http/device-tokens/device-tokens.module';
+import { QueueService } from '@infrastructure/queue/queue.service';
 import type { PushNotificationService } from '@application/notifications/push-notification.service';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
@@ -71,6 +72,7 @@ import type { ClockPort } from '@application/common/clock.port';
         logger: LoggerPort,
         clock: ClockPort,
         pushService: PushNotificationService,
+        queueService: QueueService,
       ) =>
         new SendFeeRemindersUseCase(
           feeDueRepo,
@@ -81,6 +83,7 @@ import type { ClockPort } from '@application/common/clock.port';
           logger,
           clock,
           pushService,
+          queueService,
         ),
       inject: [
         FEE_DUE_REPOSITORY,
@@ -91,6 +94,7 @@ import type { ClockPort } from '@application/common/clock.port';
         LOGGER_PORT,
         CLOCK_PORT,
         PUSH_NOTIFICATION_SERVICE,
+        QueueService,
       ],
     },
     {
@@ -102,6 +106,7 @@ import type { ClockPort } from '@application/common/clock.port';
         pushService: PushNotificationService,
         logger: LoggerPort,
         clock: ClockPort,
+        queueService: QueueService,
       ) =>
         new SendOverduePushRemindersUseCase(
           feeDueRepo,
@@ -110,6 +115,7 @@ import type { ClockPort } from '@application/common/clock.port';
           pushService,
           logger,
           clock,
+          queueService,
         ),
       inject: [
         FEE_DUE_REPOSITORY,
@@ -118,6 +124,7 @@ import type { ClockPort } from '@application/common/clock.port';
         PUSH_NOTIFICATION_SERVICE,
         LOGGER_PORT,
         CLOCK_PORT,
+        QueueService,
       ],
     },
     FeeRemindersCronService,

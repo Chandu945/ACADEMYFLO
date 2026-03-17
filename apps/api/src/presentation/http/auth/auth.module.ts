@@ -27,6 +27,7 @@ import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender
 import { OwnerSignupUseCase } from '@application/identity/use-cases/owner-signup.usecase';
 import { LoginUseCase } from '@application/identity/use-cases/login.usecase';
 import { LoginAttemptTracker, LOGIN_ATTEMPT_TRACKER } from '@application/identity/services/login-attempt-tracker';
+import type { LoginAttemptTrackerPort } from '@application/identity/services/login-attempt-tracker';
 import { RefreshUseCase } from '@application/identity/use-cases/refresh.usecase';
 import { LogoutUseCase } from '@application/identity/use-cases/logout.usecase';
 import { LogoutAllUseCase } from '@application/identity/use-cases/logout-all.usecase';
@@ -91,7 +92,7 @@ import { AppConfigService } from '@shared/config/config.service';
         hasher: PasswordHasher,
         tokenSvc: TokenService,
         config: AppConfigService,
-        tracker: LoginAttemptTracker,
+        tracker: LoginAttemptTrackerPort,
       ) => new LoginUseCase(userRepo, sessionRepo, hasher, tokenSvc, config.jwtRefreshTtl, tracker),
       inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, TOKEN_SERVICE, AppConfigService, LOGIN_ATTEMPT_TRACKER],
     },

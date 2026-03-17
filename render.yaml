@@ -1,0 +1,175 @@
+# ============================================================
+# PlayConnect — Render Blueprint
+# ============================================================
+# Deploy: Connect this repo to Render, it auto-detects this file.
+# Or go to https://dashboard.render.com → Blueprints → New Blueprint
+# ============================================================
+
+services:
+  # ─────────────────────────────────────────────
+  # NestJS API Backend
+  # ─────────────────────────────────────────────
+  - type: web
+    name: playconnect-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    region: singapore  # Closest to India
+    plan: starter      # $7/mo — 512MB RAM, 0.5 CPU. Upgrade to standard ($25) for production load.
+    healthCheckPath: /api/v1/health/liveness
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+      - key: TZ
+        value: Asia/Kolkata
+      - key: LOG_LEVEL
+        value: info
+
+      # MongoDB — Use Render's managed MongoDB or external Atlas
+      - key: MONGODB_URI
+        sync: false  # Set manually in Render dashboard
+      - key: MONGODB_READ_PREFERENCE
+        value: secondaryPreferred
+
+      # Redis — Reference the Render Redis instance
+      - key: REDIS_URL
+        fromService:
+          name: playconnect-redis
+          type: redis
+          property: connectionString
+
+      # JWT — Generate unique secrets
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: "900"
+      - key: JWT_REFRESH_TTL
+        value: "2592000"
+      - key: BCRYPT_COST
+        value: "12"
+
+      # CORS
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false  # Set to your actual domains
+
+      # SMTP
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: EMAIL_DRY_RUN
+        value: "false"
+
+      # Cashfree
+      - key: CASHFREE_CLIENT_ID
+        sync: false
+      - key: CASHFREE_CLIENT_SECRET
+        sync: false
+      - key: CASHFREE_WEBHOOK_SECRET
+        sync: false
+      - key: CASHFREE_BASE_URL
+        value: https://api.cashfree.com/pg
+      - key: CASHFREE_API_VERSION
+        value: "2025-01-01"
+
+      # Cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # Super Admin
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false
+
+      # Features
+      - key: FEE_REMINDER_ENABLED
+        value: "true"
+      - key: SUBSCRIPTION_TIER_CRON_ENABLED
+        value: "true"
+      - key: SWAGGER_ENABLED
+        value: "false"
+
+      # Cache
+      - key: CACHE_TTL_SECONDS
+        value: "300"
+
+  # ─────────────────────────────────────────────
+  # Admin Web (Super Admin Panel)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: playconnect-admin
+    runtime: docker
+    dockerfilePath: ./apps/admin-web/Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: free  # $0/mo — only super admin uses this, free tier is sufficient.
+                # Note: Free tier spins down after 15 min inactivity (cold start ~30s).
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_ENV
+        value: production
+      - key: TZ
+        value: Asia/Kolkata
+      # API_BASE_URL: Set manually in Render dashboard.
+      # Use internal URL if same region: http://<internal-hostname>:3001
+      # Or public: https://playconnect-api.onrender.com
+      - key: API_BASE_URL
+        sync: false
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: COOKIE_SALT
+        generateValue: true
+
+  # ─────────────────────────────────────────────
+  # User Web (Owner / Staff / Parent Portal)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: playconnect-app
+    runtime: docker
+    dockerfilePath: ./apps/user-web/Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: starter  # $7/mo
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_ENV
+        value: production
+      - key: TZ
+        value: Asia/Kolkata
+      - key: API_BASE_URL
+        sync: false
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: COOKIE_SALT
+        generateValue: true
+
+  # ─────────────────────────────────────────────
+  # Redis (Cache + Job Queues)
+  # ─────────────────────────────────────────────
+  - type: redis
+    name: playconnect-redis
+    region: singapore
+    plan: starter     # $7/mo — 25MB. Upgrade to standard ($20, 100MB) if queue depth grows.
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []   # Only internal services can connect

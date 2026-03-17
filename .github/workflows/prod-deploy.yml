@@ -83,6 +83,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push User Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/user-web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/user-web:${{ needs.validate-tag.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/user-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy to Production Server
     needs: [validate-tag, build-and-push]
@@ -125,4 +137,5 @@ jobs:
         env:
           API_URL: ${{ secrets.PRODUCTION_API_URL }}
           ADMIN_URL: ${{ secrets.PRODUCTION_ADMIN_URL }}
+          USER_URL: ${{ secrets.PRODUCTION_USER_URL }}
         run: node scripts/smoke-check.mjs

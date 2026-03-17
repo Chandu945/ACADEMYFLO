@@ -35,9 +35,9 @@ import { HttpLoggingInterceptor } from './http/common/interceptors/http-logging.
 @Module({
   imports: [
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 10_000, limit: 80 },    // burst: 80 req / 10s
-      { name: 'medium', ttl: 60_000, limit: 300 },   // sustained: 300 req / 60s
-      { name: 'long', ttl: 900_000, limit: 2000 },   // long-window: 2000 req / 15min
+      { name: 'short', ttl: 10_000, limit: 200 },     // burst: 200 req / 10s (handles page loads with multiple API calls)
+      { name: 'medium', ttl: 60_000, limit: 1000 },   // sustained: 1000 req / 60s (~16.7 req/sec)
+      { name: 'long', ttl: 900_000, limit: 10_000 },  // long-window: 10k req / 15min (~11 req/sec)
     ]),
     HealthModule,
     AuthModule,

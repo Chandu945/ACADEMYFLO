@@ -137,8 +137,16 @@ export class PaymentRequest extends Entity<PaymentRequestProps> {
     });
   }
 
-  /** Allow staff to resubmit a previously rejected request with updated notes/amount */
+  /** Allow staff to resubmit a previously rejected request with updated notes/amount.
+   *  Only allowed from REJECTED status to prevent resubmitting APPROVED/CANCELLED/PENDING requests. */
   resubmit(notes: string, amount?: number): PaymentRequest {
+    if (this.props.status !== 'REJECTED') {
+      throw new Error(
+        `Cannot resubmit payment request ${this.id.toString()}: ` +
+        `current status is ${this.props.status}, expected REJECTED`,
+      );
+    }
+
     return PaymentRequest.reconstitute(this.id.toString(), {
       ...this.props,
       status: 'PENDING',

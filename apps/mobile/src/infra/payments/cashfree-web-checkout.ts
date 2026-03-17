@@ -78,7 +78,8 @@ async function loadCashfreeSDK(): Promise<CashfreeInstance> {
 
   // Try the npm package first (bundled by webpack)
   try {
-    const mod = await (Function('return import("@cashfreepayments/cashfree-js")')() as Promise<{ load: unknown }>);
+    // @ts-expect-error - dynamic import for web-only module that may not be resolvable at build time
+    const mod = await (import('@cashfreepayments/cashfree-js') as Promise<{ load: unknown }>);
     const cf = await (mod.load as (options: { mode: string }) => Promise<CashfreeInstance>)({ mode });
     cashfreeInstance = cf;
     return cf;

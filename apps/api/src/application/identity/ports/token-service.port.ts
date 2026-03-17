@@ -4,6 +4,7 @@ export interface AccessTokenPayload {
   sub: string;
   role: string;
   email: string;
+  academyId: string | null;
   tokenVersion: number;
 }
 

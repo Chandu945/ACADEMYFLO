@@ -7,7 +7,7 @@ export interface FeeDueRepository {
   save(feeDue: FeeDue): Promise<void>;
   bulkSave(feeDues: FeeDue[]): Promise<void>;
   findById(id: string): Promise<FeeDue | null>;
-  bulkUpdateStatus(ids: string[], status: FeeDueStatus): Promise<void>;
+  bulkUpdateStatus(ids: string[], status: FeeDueStatus, expectedCurrentStatus?: FeeDueStatus): Promise<void>;
   findByAcademyStudentMonth(
     academyId: string,
     studentId: string,

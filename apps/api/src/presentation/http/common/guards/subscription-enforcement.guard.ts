@@ -43,7 +43,11 @@ export class SubscriptionEnforcementGuard implements CanActivate {
       | undefined;
 
     if (!user?.userId) {
-      return true;
+      // Deny access — JwtAuthGuard (which runs before this guard) handles
+      // the 401 response for unauthenticated requests. Returning false here
+      // prevents unauthenticated requests from bypassing subscription checks
+      // if guard ordering changes in the future.
+      return false;
     }
 
     const result = await this.getSubscription.execute(user.userId);

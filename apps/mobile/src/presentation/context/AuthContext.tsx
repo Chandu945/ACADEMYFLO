@@ -180,8 +180,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             // Token is now refreshed in-memory via restoreSessionUseCase
           })
-          .catch(() => {
-            // Token refresh failed silently — user will need to re-login on next API call
+          .catch((err) => {
+            console.warn(
+              '[AuthContext] Background token refresh failed:',
+              err instanceof Error ? err.message : 'unknown',
+            );
+            // Token refresh failed — user will need to re-login on next API call
           });
       }
     };

@@ -104,27 +104,64 @@ export class HandleFeePaymentWebhookUseCase {
         now,
       );
 
-      // Load fee due and check if already paid (race condition)
-      const feeDue = await this.loadFeeDueById(payment.feeDueId, payment.academyId, payment.studentId);
+      // Pre-fetch academy and receipt prefix outside transaction (read-only, stable data)
+      const academy = await this.academyRepo.findById(payment.academyId);
+      const prefix = academy?.receiptPrefix ?? DEFAULT_RECEIPT_PREFIX;
 
-      if (!feeDue) {
-        // Fee due record missing — mark payment as failed
-        const failedPayment = payment.markFailed('FEE_DUE_NOT_FOUND');
-        await this.feePaymentRepo.save(failedPayment);
-        this.logger.error('Fee due not found during webhook processing', { orderId, feeDueId: payment.feeDueId });
-        return ok(undefined);
-      }
+      // Run entire fee-due check + payment transition + mark-paid atomically inside the transaction
+      // to prevent race conditions where concurrent webhooks both see fee as unpaid.
+      let receiptNumber: string | undefined;
+      let wasAlreadyPaid = false;
 
-      if (feeDue.status === 'PAID') {
-        // Fee was already marked paid (e.g. by owner manually) but Cashfree collected money.
-        // Mark payment as SUCCESS so we have a record that money was collected — needs manual reconciliation.
-        await this.transaction.run(async () => {
-          const transitioned = await this.feePaymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
-          if (!transitioned) {
-            this.logger.info('Fee payment already transitioned from PENDING — skipping', { orderId });
-            return;
-          }
+      await this.transaction.run(async () => {
+        const transitioned = await this.feePaymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
+        if (!transitioned) {
+          // Another concurrent webhook already processed this payment — idempotent success
+          this.logger.info('Fee payment already transitioned from PENDING — skipping', { orderId });
+          return;
+        }
+
+        // Load fee due INSIDE the transaction so the read is consistent with the write
+        const feeDue = await this.loadFeeDueById(payment.feeDueId, payment.academyId, payment.studentId);
+
+        if (!feeDue) {
+          this.logger.error('Fee due not found during webhook processing', { orderId, feeDueId: payment.feeDueId });
+          // Payment was already marked SUCCESS above; will need manual reconciliation
+          return;
+        }
+
+        if (feeDue.status === 'PAID') {
+          // Fee was already marked paid (e.g. by owner manually) but Cashfree collected money.
+          // Payment is marked SUCCESS so we have a record — needs manual reconciliation.
+          wasAlreadyPaid = true;
+          return;
+        }
+
+        // Mark fee due as paid and create transaction log atomically
+        const paidDue = feeDue.markPaidByParentOnline(payment.parentUserId, now, payment.lateFeeSnapshot);
+
+        const count = await this.transactionLogRepo.countByAcademyAndPrefix(payment.academyId, prefix);
+        receiptNumber = generateReceiptNumber(prefix, count + 1);
+
+        const txLog = TransactionLog.create({
+          id: randomUUID(),
+          academyId: payment.academyId,
+          feeDueId: payment.feeDueId,
+          paymentRequestId: null,
+          studentId: payment.studentId,
+          monthKey: payment.monthKey,
+          amount: payment.baseAmount,
+          source: 'PARENT_ONLINE',
+          collectedByUserId: payment.parentUserId,
+          approvedByUserId: payment.parentUserId,
+          receiptNumber,
         });
+
+        await this.feeDueRepo.save(paidDue);
+        await this.transactionLogRepo.save(txLog);
+      });
+
+      if (wasAlreadyPaid) {
         this.logger.warn('Fee already paid by owner but online payment collected — needs reconciliation', {
           orderId,
           feeDueId: payment.feeDueId,
@@ -147,40 +184,6 @@ export class HandleFeePaymentWebhookUseCase {
         return ok(undefined);
       }
 
-      // Mark fee due as paid and create transaction log atomically
-      const paidDue = feeDue.markPaidByParentOnline(payment.parentUserId, now, payment.lateFeeSnapshot);
-
-      const academy = await this.academyRepo.findById(payment.academyId);
-      const prefix = academy?.receiptPrefix ?? DEFAULT_RECEIPT_PREFIX;
-      const count = await this.transactionLogRepo.countByAcademyAndPrefix(payment.academyId, prefix);
-      const receiptNumber = generateReceiptNumber(prefix, count + 1);
-
-      const txLog = TransactionLog.create({
-        id: randomUUID(),
-        academyId: payment.academyId,
-        feeDueId: payment.feeDueId,
-        paymentRequestId: null,
-        studentId: payment.studentId,
-        monthKey: payment.monthKey,
-        amount: payment.baseAmount,
-        source: 'PARENT_ONLINE',
-        collectedByUserId: payment.parentUserId,
-        approvedByUserId: payment.parentUserId,
-        receiptNumber,
-      });
-
-      await this.transaction.run(async () => {
-        const transitioned = await this.feePaymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
-        if (!transitioned) {
-          // Another concurrent webhook already processed this payment — idempotent success
-          this.logger.info('Fee payment already transitioned from PENDING — skipping', { orderId });
-          return;
-        }
-
-        await this.feeDueRepo.save(paidDue);
-        await this.transactionLogRepo.save(txLog);
-      });
-
       this.logger.info('Fee payment SUCCESS', {
         orderId,
         feeDueId: payment.feeDueId,
@@ -199,7 +202,7 @@ export class HandleFeePaymentWebhookUseCase {
           monthKey: payment.monthKey,
           baseAmount: String(payment.baseAmount),
           providerPaymentId: cfPaymentId ? String(cfPaymentId) : '',
-          receiptNumber,
+          receiptNumber: receiptNumber ?? '',
         },
       });
     } else if (paymentStatus === 'FAILED' || paymentStatus === 'USER_DROPPED') {

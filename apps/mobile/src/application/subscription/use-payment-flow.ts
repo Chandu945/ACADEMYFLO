@@ -66,8 +66,10 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
       if (!mountedRef.current) return;
 
       if (!result.ok) {
-        // Network error — retry
-        pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+        // Network error — retry (only if still mounted)
+        if (mountedRef.current) {
+          pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+        }
         return;
       }
 
@@ -86,8 +88,10 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
         return;
       }
 
-      // Still PENDING — continue polling
-      pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+      // Still PENDING — continue polling (only if still mounted)
+      if (mountedRef.current) {
+        pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+      }
     },
     [deps, onSuccess],
   );

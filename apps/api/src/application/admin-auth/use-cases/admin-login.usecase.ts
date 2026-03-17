@@ -6,7 +6,7 @@ import { Session } from '@domain/identity/entities/session.entity';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import type { TokenService } from '../../identity/ports/token-service.port';
-import type { LoginAttemptTracker } from '../../identity/services/login-attempt-tracker';
+import type { LoginAttemptTrackerPort } from '../../identity/services/login-attempt-tracker';
 import { AuthErrors } from '../../common/errors';
 import { AdminErrors } from '../../common/errors';
 import { randomUUID } from 'crypto';
@@ -39,13 +39,13 @@ export class AdminLoginUseCase {
     private readonly passwordHasher: PasswordHasher,
     private readonly tokenService: TokenService,
     private readonly refreshTtlSeconds: number = 2_592_000,
-    private readonly loginAttemptTracker?: LoginAttemptTracker,
+    private readonly loginAttemptTracker?: LoginAttemptTrackerPort,
   ) {}
 
   async execute(input: AdminLoginInput): Promise<Result<AdminLoginOutput, AppError>> {
     const emailLower = input.email.trim().toLowerCase();
 
-    if (this.loginAttemptTracker?.isLocked(emailLower)) {
+    if (await this.loginAttemptTracker?.isLocked(emailLower)) {
       return err(AuthErrors.accountLocked());
     }
 
@@ -53,7 +53,7 @@ export class AdminLoginUseCase {
 
     if (!user) {
       await this.passwordHasher.compare(input.password, DUMMY_HASH);
-      this.loginAttemptTracker?.recordFailure(emailLower);
+      await this.loginAttemptTracker?.recordFailure(emailLower);
       return err(AuthErrors.invalidCredentials());
     }
 
@@ -67,11 +67,11 @@ export class AdminLoginUseCase {
 
     const passwordValid = await this.passwordHasher.compare(input.password, user.passwordHash);
     if (!passwordValid) {
-      this.loginAttemptTracker?.recordFailure(emailLower);
+      await this.loginAttemptTracker?.recordFailure(emailLower);
       return err(AuthErrors.invalidCredentials());
     }
 
-    this.loginAttemptTracker?.recordSuccess(emailLower);
+    await this.loginAttemptTracker?.recordSuccess(emailLower);
 
     const deviceId = input.deviceId || randomUUID();
 
@@ -95,6 +95,7 @@ export class AdminLoginUseCase {
       sub: user.id.toString(),
       role: user.role,
       email: user.emailNormalized,
+      academyId: user.academyId,
       tokenVersion: user.tokenVersion,
     });
 

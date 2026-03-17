@@ -96,6 +96,17 @@ export class ApprovePaymentRequestUseCase {
     });
 
     await this.transaction.run(async () => {
+      // Re-check payment request status INSIDE transaction to prevent race condition
+      // where two concurrent approval requests both pass the earlier PENDING check.
+      // The version check on save() would also catch this, but this early check
+      // avoids creating orphaned transaction logs and gives a clear error.
+      const freshRequest = await this.paymentRequestRepo.findById(input.requestId);
+      if (!freshRequest || freshRequest.status !== 'PENDING') {
+        throw new Error(
+          `Payment request ${input.requestId} is no longer PENDING (current: ${freshRequest?.status ?? 'NOT_FOUND'}) — concurrent approval detected`,
+        );
+      }
+
       const count = await this.transactionLogRepo.countByAcademyAndPrefix(request.academyId, prefix);
       const receiptNumber = generateReceiptNumber(prefix, count + 1);
 

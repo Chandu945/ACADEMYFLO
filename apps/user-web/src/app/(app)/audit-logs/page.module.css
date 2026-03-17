@@ -1,0 +1,97 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Audit Logs Page
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  max-width: var(--content-max-width);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.dateRange {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dateRangeLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.actionBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.actionBadge.create {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.actionBadge.update {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.actionBadge.delete {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.actionBadge.other {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+}
+
+.detailsText {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-4);
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dateRange {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

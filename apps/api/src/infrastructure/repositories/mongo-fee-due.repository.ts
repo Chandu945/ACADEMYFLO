@@ -86,10 +86,30 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     await this.model.bulkWrite(ops as never[], { session: getTransactionSession() });
   }
 
-  async bulkUpdateStatus(ids: string[], status: FeeDueStatus): Promise<void> {
+  /**
+   * Bulk-update fee due statuses.
+   *
+   * WARNING: This method skips per-document version checks. Unlike `save()`, which uses
+   * optimistic concurrency (version filter), this uses `updateMany` and only increments
+   * the version — it does NOT verify the previous version. A concurrent `save()` on the
+   * same document could be silently overwritten.
+   *
+   * @param expectedCurrentStatus — if provided, only documents currently in this status
+   *   will be updated. This acts as a precondition filter to reduce the blast radius of
+   *   race conditions (e.g., avoid overwriting a fee that was concurrently marked PAID).
+   */
+  async bulkUpdateStatus(
+    ids: string[],
+    status: FeeDueStatus,
+    expectedCurrentStatus?: FeeDueStatus,
+  ): Promise<void> {
     if (ids.length === 0) return;
+    const filter: Record<string, unknown> = { _id: { $in: ids } };
+    if (expectedCurrentStatus) {
+      filter['status'] = expectedCurrentStatus;
+    }
     await this.model.updateMany(
-      { _id: { $in: ids } },
+      filter,
       { $set: { status, updatedAt: new Date() }, $inc: { version: 1 } },
       { session: getTransactionSession() },
     );
@@ -111,6 +131,7 @@ export class MongoFeeDueRepository implements FeeDueRepository {
   ): Promise<FeeDue[]> {
     const docs = await this.model
       .find({ academyId, monthKey, status: { $in: statuses } })
+      .limit(1000)
       .lean()
       .exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
@@ -152,6 +173,7 @@ export class MongoFeeDueRepository implements FeeDueRepository {
   async listUnpaidByAcademy(academyId: string): Promise<FeeDue[]> {
     const docs = await this.model
       .find({ academyId, status: { $in: ['UPCOMING', 'DUE'] } })
+      .limit(1000)
       .lean()
       .exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
@@ -165,9 +187,10 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
   }
 
-  async findOverdueDues(upToDate: string): Promise<FeeDue[]> {
+  async findOverdueDues(upToDate: string, limit = 500): Promise<FeeDue[]> {
     const docs = await this.model
       .find({ status: 'DUE', dueDate: { $lte: upToDate } })
+      .limit(limit)
       .lean()
       .exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));

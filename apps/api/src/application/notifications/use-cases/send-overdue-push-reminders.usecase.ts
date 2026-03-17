@@ -9,6 +9,16 @@ import { ok } from '@shared/kernel';
 import { formatLocalDate } from '@shared/date-utils';
 import { computeLateFee } from '@playconnect/contracts';
 
+/** Minimal interface so we can accept QueueService without a hard dependency */
+interface NotificationQueuePort {
+  enqueueNotification(data: {
+    userIds: string[];
+    title: string;
+    body: string;
+    data?: Record<string, string>;
+  }): Promise<void>;
+}
+
 export interface OverduePushReminderSummary {
   runDate: string;
   totalOverdueDues: number;
@@ -54,6 +64,7 @@ export class SendOverduePushRemindersUseCase {
     private readonly pushService: PushNotificationService,
     private readonly logger: LoggerPort,
     private readonly clock: ClockPort,
+    private readonly notificationQueue?: NotificationQueuePort,
   ) {}
 
   async execute(): Promise<Result<OverduePushReminderSummary, never>> {
@@ -109,7 +120,7 @@ export class SendOverduePushRemindersUseCase {
       }
     }
 
-    // Send push notifications
+    // Send push notifications: use async queue when available, otherwise send directly
     for (const due of duesForToday) {
       const parentUserIds = parentUserIdsByStudent.get(due.studentId);
       if (!parentUserIds || parentUserIds.length === 0) {
@@ -137,17 +148,28 @@ export class SendOverduePushRemindersUseCase {
         body = `Fee of \u20B9${due.amount} for ${studentName} (${formatMonthKey(due.monthKey)}) is overdue by ${daysOverdue} days.${lateFeeNote} Please pay immediately.`;
       }
 
+      const notificationPayload = {
+        userIds: parentUserIds,
+        title: 'Fee Payment Reminder',
+        body,
+        data: {
+          type: 'FEE_REMINDER',
+          studentId: due.studentId,
+          feeDueId: due.id.toString(),
+          monthKey: due.monthKey,
+        },
+      };
+
       try {
-        await this.pushService.sendToUsers(parentUserIds, {
-          title: 'Fee Payment Reminder',
-          body,
-          data: {
-            type: 'FEE_REMINDER',
-            studentId: due.studentId,
-            feeDueId: due.id.toString(),
-            monthKey: due.monthKey,
-          },
-        });
+        if (this.notificationQueue) {
+          await this.notificationQueue.enqueueNotification(notificationPayload);
+        } else {
+          await this.pushService.sendToUsers(parentUserIds, {
+            title: notificationPayload.title,
+            body: notificationPayload.body,
+            data: notificationPayload.data,
+          });
+        }
         summary.remindersSent++;
       } catch {
         this.logger.warn('Overdue push reminder failed', {

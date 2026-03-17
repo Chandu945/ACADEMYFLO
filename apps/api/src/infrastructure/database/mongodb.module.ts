@@ -29,6 +29,15 @@ export class MongoDbModule {
               retryAttempts: uri ? 3 : 0,
               retryDelay: 1000,
               lazyConnection: !uri,
+              maxPoolSize: 100,
+              minPoolSize: 20,
+              maxIdleTimeMS: 30000,
+              serverSelectionTimeoutMS: 5000,
+              socketTimeoutMS: 45000,
+              // readPreference: 'secondaryPreferred' routes read queries to replica secondaries
+              // when available, reducing load on the primary. Falls back to primary if no
+              // secondaries are reachable. Requires a MongoDB replica set deployment.
+              readPreference: (config.mongodbReadPreference ?? 'secondaryPreferred') as 'primary' | 'primaryPreferred' | 'secondary' | 'secondaryPreferred' | 'nearest',
               connectionFactory: (connection: {
                 plugin: (fn: typeof queryProfilerPlugin) => void;
               }) => {

@@ -11,6 +11,7 @@ import { canMarkAttendance, validateLocalDate, validateDateRange } from '@domain
 import { AttendanceErrors } from '../../common/errors';
 import type { UserRole } from '@playconnect/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { TransactionPort } from '../../common/transaction.port';
 import { randomUUID } from 'crypto';
 
 export interface BulkSetAbsencesInput {
@@ -32,6 +33,7 @@ export class BulkSetAbsencesUseCase {
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly transaction?: TransactionPort,
   ) {}
 
   async execute(input: BulkSetAbsencesInput): Promise<Result<BulkSetAbsencesOutput, AppError>> {
@@ -54,9 +56,10 @@ export class BulkSetAbsencesUseCase {
     if (!actor || !actor.academyId) {
       return err(AttendanceErrors.academyRequired());
     }
+    const academyId: string = actor.academyId;
 
     // Check holiday
-    const holiday = await this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date);
+    const holiday = await this.holidayRepo.findByAcademyAndDate(academyId, input.date);
     if (holiday) {
       return err(AttendanceErrors.holidayDeclared());
     }
@@ -74,7 +77,7 @@ export class BulkSetAbsencesUseCase {
       if (!student || student.isDeleted()) {
         return err(AttendanceErrors.studentNotFound(studentId));
       }
-      if (student.academyId !== actor.academyId) {
+      if (student.academyId !== academyId) {
         return err(AttendanceErrors.studentNotInAcademy());
       }
       if (student.status !== 'ACTIVE') {
@@ -84,35 +87,46 @@ export class BulkSetAbsencesUseCase {
 
     // Get current absent records for the day
     const currentAbsent = await this.attendanceRepo.findAbsentByAcademyAndDate(
-      actor.academyId,
+      academyId,
       input.date,
     );
     const currentAbsentSet = new Set(currentAbsent.map((r) => r.studentId));
     const targetAbsentSet = new Set(uniqueIds);
 
-    // Delete records not in target set
-    for (const record of currentAbsent) {
-      if (!targetAbsentSet.has(record.studentId)) {
-        await this.attendanceRepo.deleteByAcademyStudentDate(
-          actor.academyId,
-          record.studentId,
-          input.date,
-        );
+    // Wrap delete+create in a transaction to ensure atomicity.
+    // Without this, a failure mid-way could leave attendance in an inconsistent state
+    // (some records deleted but new ones not yet created).
+    const bulkOps = async () => {
+      // Delete records not in target set
+      for (const record of currentAbsent) {
+        if (!targetAbsentSet.has(record.studentId)) {
+          await this.attendanceRepo.deleteByAcademyStudentDate(
+            academyId,
+            record.studentId,
+            input.date,
+          );
+        }
       }
-    }
 
-    // Create missing absent records
-    for (const studentId of uniqueIds) {
-      if (!currentAbsentSet.has(studentId)) {
-        const record = StudentAttendance.create({
-          id: randomUUID(),
-          academyId: actor.academyId,
-          studentId,
-          date: input.date,
-          markedByUserId: input.actorUserId,
-        });
-        await this.attendanceRepo.save(record);
+      // Create missing absent records
+      for (const studentId of uniqueIds) {
+        if (!currentAbsentSet.has(studentId)) {
+          const record = StudentAttendance.create({
+            id: randomUUID(),
+            academyId,
+            studentId,
+            date: input.date,
+            markedByUserId: input.actorUserId,
+          });
+          await this.attendanceRepo.save(record);
+        }
       }
+    };
+
+    if (this.transaction) {
+      await this.transaction.run(bulkOps);
+    } else {
+      await bulkOps();
     }
 
     await this.auditRecorder.record({

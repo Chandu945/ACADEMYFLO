@@ -64,6 +64,7 @@ export class GoogleLoginUseCase {
       sub: user.id.toString(),
       role: user.role,
       email: user.emailNormalized,
+      academyId: user.academyId,
       tokenVersion: user.tokenVersion,
     });
 

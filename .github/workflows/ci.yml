@@ -100,6 +100,14 @@ jobs:
           path: apps/admin-web/coverage/
           if-no-files-found: ignore
           retention-days: 14
+      - name: Upload User Web coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: user-web-coverage
+          path: apps/user-web/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Upload Mobile coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -249,6 +257,7 @@ jobs:
         run: |
           [ -d api-coverage ] && mkdir -p apps/api/coverage && cp -r api-coverage/* apps/api/coverage/ || true
           [ -d admin-web-coverage ] && mkdir -p apps/admin-web/coverage && cp -r admin-web-coverage/* apps/admin-web/coverage/ || true
+          [ -d user-web-coverage ] && mkdir -p apps/user-web/coverage && cp -r user-web-coverage/* apps/user-web/coverage/ || true
           [ -d mobile-coverage ] && mkdir -p apps/mobile/coverage && cp -r mobile-coverage/* apps/mobile/coverage/ || true
         continue-on-error: true
 

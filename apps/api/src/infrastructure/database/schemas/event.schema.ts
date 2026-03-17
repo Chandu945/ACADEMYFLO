@@ -51,3 +51,5 @@ export const EventSchema = SchemaFactory.createForClass(EventModel);
 EventSchema.index({ academyId: 1, startDate: -1 });
 EventSchema.index({ academyId: 1, status: 1, startDate: 1 });
 EventSchema.index({ academyId: 1, startDate: 1, endDate: 1 });
+EventSchema.index({ academyId: 1, eventType: 1 });
+EventSchema.index({ academyId: 1, createdAt: -1 });

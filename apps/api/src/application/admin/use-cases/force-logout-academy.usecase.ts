@@ -34,6 +34,8 @@ export class ForceLogoutAcademyUseCase {
       return err(AdminErrors.academyNotFound(input.academyId));
     }
 
+    // Note: user auth cache entries (user:auth:{userId}) for affected users will be
+    // invalidated on next JWT check via tokenVersion mismatch, and expire within 5 min TTL.
     const affectedUserIds = await this.userRepo.incrementTokenVersionByAcademyId(input.academyId);
     if (affectedUserIds.length > 0) {
       await this.sessionRepo.revokeAllByUserIds(affectedUserIds);

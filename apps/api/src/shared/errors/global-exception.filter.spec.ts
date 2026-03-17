@@ -88,33 +88,27 @@ describe('GlobalExceptionFilter', () => {
   });
 
   it('should not leak error details in production for 500 errors', () => {
-    const originalEnv = process.env['APP_ENV'];
-    process.env['APP_ENV'] = 'production';
+    const prodFilter = new GlobalExceptionFilter(true);
 
     const exception = new Error('Database connection string leaked');
 
-    filter.catch(exception, mockHost as never);
+    prodFilter.catch(exception, mockHost as never);
 
     const body = mockResponse.json.mock.calls[0][0] as ErrorEnvelope;
     expect(body.statusCode).toBe(500);
     expect(body.message).toBe('Internal server error');
     expect(body.details).toEqual([]);
-
-    process.env['APP_ENV'] = originalEnv;
   });
 
   it('should preserve non-500 error details in production', () => {
-    const originalEnv = process.env['APP_ENV'];
-    process.env['APP_ENV'] = 'production';
+    const prodFilter = new GlobalExceptionFilter(true);
 
     const exception = new HttpException('Not authorized', HttpStatus.UNAUTHORIZED);
 
-    filter.catch(exception, mockHost as never);
+    prodFilter.catch(exception, mockHost as never);
 
     const body = mockResponse.json.mock.calls[0][0] as ErrorEnvelope;
     expect(body.statusCode).toBe(401);
     expect(body.message).toBe('Not authorized');
-
-    process.env['APP_ENV'] = originalEnv;
   });
 });

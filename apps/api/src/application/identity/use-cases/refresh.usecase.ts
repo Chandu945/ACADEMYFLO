@@ -62,7 +62,9 @@ export class RefreshUseCase {
       return err(AuthErrors.invalidRefreshToken());
     }
 
-    // Atomically increment tokenVersion to prevent race conditions
+    // Atomically increment tokenVersion to prevent race conditions.
+    // Note: user auth cache (user:auth:{userId}) will be invalidated on next
+    // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
     const bumped = await this.userRepo.incrementTokenVersionByUserId(
       user.id.toString(),
       user.tokenVersion,
@@ -75,6 +77,7 @@ export class RefreshUseCase {
       sub: user.id.toString(),
       role: user.role,
       email: user.emailNormalized,
+      academyId: user.academyId,
       tokenVersion: user.tokenVersion + 1,
     });
 

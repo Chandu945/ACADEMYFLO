@@ -19,6 +19,7 @@ import { MongoHolidayRepository } from '@infrastructure/repositories/mongo-holid
 import { MongoStudentRepository } from '@infrastructure/repositories/mongo-student.repository';
 import { MongoStudentBatchRepository } from '@infrastructure/repositories/mongo-student-batch.repository';
 import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
+import { MongoTransactionService } from '@infrastructure/database/mongo-transaction.service';
 import {
   ParentStudentLinkModel,
   ParentStudentLinkSchema,
@@ -46,6 +47,8 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { TRANSACTION_PORT } from '@application/common/transaction.port';
+import type { TransactionPort } from '@application/common/transaction.port';
 
 @Module({
   imports: [
@@ -67,6 +70,7 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
     { provide: STUDENT_REPOSITORY, useClass: MongoStudentRepository },
     { provide: STUDENT_BATCH_REPOSITORY, useClass: MongoStudentBatchRepository },
     { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
+    { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
       provide: 'GET_DAILY_ATTENDANCE_VIEW_USE_CASE',
       useFactory: (
@@ -109,13 +113,15 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
         ar: StudentAttendanceRepository,
         hr: HolidayRepository,
         audit: AuditRecorderPort,
-      ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, audit),
+        tx: TransactionPort,
+      ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, audit, tx),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
         STUDENT_ATTENDANCE_REPOSITORY,
         HOLIDAY_REPOSITORY,
         AUDIT_RECORDER_PORT,
+        TRANSACTION_PORT,
       ],
     },
     {

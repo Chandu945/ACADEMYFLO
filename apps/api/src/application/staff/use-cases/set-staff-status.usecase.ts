@@ -93,6 +93,8 @@ export class SetStaffStatusUseCase {
     });
 
     await this.userRepo.save(updated);
+    // Note: user auth cache (user:auth:{staffId}) will be invalidated on next
+    // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
 
     if (input.status === 'INACTIVE' && this.sessionRepo) {
       await this.sessionRepo.revokeAllByUserIds([input.staffId]);

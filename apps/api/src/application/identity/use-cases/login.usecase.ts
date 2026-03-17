@@ -7,7 +7,7 @@ import { Session } from '@domain/identity/entities/session.entity';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { PasswordHasher } from '../ports/password-hasher.port';
 import type { TokenService } from '../ports/token-service.port';
-import type { LoginAttemptTracker } from '../services/login-attempt-tracker';
+import type { LoginAttemptTrackerPort } from '../services/login-attempt-tracker';
 import { canLogin } from '@domain/identity/rules/auth.rules';
 import { AuthErrors } from '../../common/errors';
 import { randomUUID } from 'crypto';
@@ -43,7 +43,7 @@ export class LoginUseCase {
     private readonly passwordHasher: PasswordHasher,
     private readonly tokenService: TokenService,
     private readonly refreshTtlSeconds: number = 2_592_000,
-    private readonly loginAttemptTracker?: LoginAttemptTracker,
+    private readonly loginAttemptTracker?: LoginAttemptTrackerPort,
   ) {}
 
   async execute(input: LoginInput): Promise<Result<LoginOutput, AppError>> {
@@ -51,7 +51,7 @@ export class LoginUseCase {
     const identifierLower = identifier.toLowerCase();
 
     // Check account lockout before any other processing
-    if (this.loginAttemptTracker?.isLocked(identifierLower)) {
+    if (await this.loginAttemptTracker?.isLocked(identifierLower)) {
       return err(AuthErrors.accountLocked());
     }
 
@@ -66,7 +66,7 @@ export class LoginUseCase {
 
     if (!user) {
       await this.passwordHasher.compare(input.password, DUMMY_HASH);
-      this.loginAttemptTracker?.recordFailure(identifierLower);
+      await this.loginAttemptTracker?.recordFailure(identifierLower);
       return err(AuthErrors.invalidCredentials());
     }
 
@@ -77,7 +77,7 @@ export class LoginUseCase {
 
     const passwordValid = await this.passwordHasher.compare(input.password, user.passwordHash);
     if (!passwordValid) {
-      this.loginAttemptTracker?.recordFailure(identifierLower);
+      await this.loginAttemptTracker?.recordFailure(identifierLower);
       return err(AuthErrors.invalidCredentials());
     }
 
@@ -101,12 +101,13 @@ export class LoginUseCase {
     await this.sessionRepo.save(session);
 
     // Reset attempt counter on successful login
-    this.loginAttemptTracker?.recordSuccess(identifierLower);
+    await this.loginAttemptTracker?.recordSuccess(identifierLower);
 
     const accessToken = this.tokenService.generateAccessToken({
       sub: user.id.toString(),
       role: user.role,
       email: user.emailNormalized,
+      academyId: user.academyId,
       tokenVersion: user.tokenVersion,
     });
 

@@ -32,7 +32,8 @@
     "handoff:generate": "node scripts/handoff/generate-traceability.mjs && node scripts/handoff/generate-handoff-summary.mjs",
     "docker:build:api": "docker build -f apps/api/Dockerfile -t playconnect-api .",
     "docker:build:admin": "docker build -f apps/admin-web/Dockerfile -t playconnect-admin-web .",
-    "docker:build": "npm run docker:build:api && npm run docker:build:admin",
+    "docker:build:user": "docker build -f apps/user-web/Dockerfile -t playconnect-user-web .",
+    "docker:build": "npm run docker:build:api && npm run docker:build:admin && npm run docker:build:user",
     "prepare": "husky || true"
   },
   "devDependencies": {

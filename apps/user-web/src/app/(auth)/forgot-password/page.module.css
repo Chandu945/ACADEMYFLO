@@ -1,0 +1,346 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Forgot Password Page — Two-step OTP flow
+   Matches mobile ForgotPasswordScreen design
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+  background-color: var(--color-bg);
+}
+
+.wrapper {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* ── Header Section ────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.iconBadge {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background-color: var(--color-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+
+.iconBadge svg {
+  width: 28px;
+  height: 28px;
+  color: var(--color-primary);
+}
+
+.title {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  letter-spacing: -0.3px;
+  line-height: var(--leading-3xl);
+}
+
+.subtitle {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+  text-align: center;
+  padding: 0 var(--space-2);
+  line-height: var(--leading-base);
+}
+
+/* ── Step Indicator ────────────────────────────────────────────────────── */
+.stepRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-6);
+}
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stepLine {
+  height: 2px;
+  width: 48px;
+  background-color: var(--color-border);
+  margin: 0 var(--space-2);
+  margin-bottom: var(--space-5);
+  transition: background-color var(--transition-base);
+}
+
+.stepLineDone {
+  background-color: var(--color-primary);
+}
+
+.stepDot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--color-bg-subtle);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-1);
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.stepDotDone {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.stepDotActive {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+}
+
+.stepDotText {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.stepDotTextActive {
+  color: var(--color-primary);
+}
+
+.stepCheckIcon {
+  width: 12px;
+  height: 12px;
+  color: var(--color-white);
+}
+
+.stepLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.stepLabelActive {
+  color: var(--color-primary);
+}
+
+/* ── Form Card ─────────────────────────────────────────────────────────── */
+.card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-lg);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Error Banner ──────────────────────────────────────────────────────── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+
+.errorBanner svg {
+  flex-shrink: 0;
+  color: var(--color-danger);
+}
+
+.errorText {
+  font-size: var(--text-sm);
+  color: var(--color-danger-text);
+  line-height: var(--leading-sm);
+}
+
+/* ── Success Banner ────────────────────────────────────────────────────── */
+.successBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+
+.successBanner svg {
+  flex-shrink: 0;
+  color: var(--color-success);
+}
+
+.successText {
+  font-size: var(--text-sm);
+  color: var(--color-success-text);
+  line-height: var(--leading-sm);
+}
+
+/* ── Resend Link ───────────────────────────────────────────────────────── */
+.resendRow {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+.resendButton {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-base), background-color var(--transition-base);
+}
+
+.resendButton:hover:not(:disabled) {
+  background-color: var(--color-primary-soft);
+}
+
+.resendButton:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* ── Submit ────────────────────────────────────────────────────────────── */
+.submitButton {
+  margin-top: var(--space-2);
+}
+
+/* ── Footer / Back Link ────────────────────────────────────────────────── */
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--space-8);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-base);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.backLink:hover {
+  color: var(--color-primary-hover);
+  background-color: var(--color-primary-soft);
+}
+
+.backLink svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Success State ─────────────────────────────────────────────────────── */
+.successCard {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-10);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.successIconBadge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--color-success-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-5);
+}
+
+.successIconBadge svg {
+  width: 32px;
+  height: 32px;
+  color: var(--color-success);
+}
+
+.successTitle {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.successSubtitle {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-6);
+  line-height: var(--leading-base);
+}
+
+.successLoginLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-primary);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+}
+
+.successLoginLink:hover {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .page {
+    padding: var(--space-4);
+  }
+
+  .card,
+  .successCard {
+    padding: var(--space-6);
+  }
+
+  .header {
+    margin-bottom: var(--space-5);
+  }
+
+  .stepLine {
+    width: 32px;
+  }
+}

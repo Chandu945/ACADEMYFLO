@@ -37,17 +37,17 @@ export class MongoParentStudentLinkRepository implements ParentStudentLinkReposi
   }
 
   async findByParentUserId(parentUserId: string): Promise<ParentStudentLink[]> {
-    const docs = await this.model.find({ parentUserId }).lean().exec();
+    const docs = await this.model.find({ parentUserId }).limit(100).lean().exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
   }
 
   async findByStudentId(studentId: string): Promise<ParentStudentLink[]> {
-    const docs = await this.model.find({ studentId }).lean().exec();
+    const docs = await this.model.find({ studentId }).limit(100).lean().exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
   }
 
   async findByAcademyId(academyId: string): Promise<ParentStudentLink[]> {
-    const docs = await this.model.find({ academyId }).lean().exec();
+    const docs = await this.model.find({ academyId }).limit(100).lean().exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
   }
 

@@ -90,14 +90,24 @@ export class ChangeStudentStatusUseCase {
       softDelete: student.softDelete,
     });
 
+    const needsFeeCleanup =
+      (input.status === 'INACTIVE' || input.status === 'LEFT') && this.feeDueRepo;
+
+    // SAFETY: If fee cleanup is needed, a transaction is required to keep
+    // student status and fee-due deletion atomic. Without a transaction,
+    // a failure after save but before delete (or vice-versa) leaves data inconsistent.
+    if (needsFeeCleanup && !this.transaction) {
+      console.warn(
+        `[ChangeStudentStatusUseCase] Transaction is missing but fee cleanup is needed for student ${input.studentId}. ` +
+        `This risks partial updates — ensure TransactionPort is injected.`,
+      );
+    }
+
     const saveOps = async () => {
       await this.studentRepo.save(updated);
 
-      if (
-        (input.status === 'INACTIVE' || input.status === 'LEFT') &&
-        this.feeDueRepo
-      ) {
-        await this.feeDueRepo.deleteUpcomingByStudent(academyId, input.studentId);
+      if (needsFeeCleanup) {
+        await this.feeDueRepo!.deleteUpcomingByStudent(academyId, input.studentId);
       }
     };
 

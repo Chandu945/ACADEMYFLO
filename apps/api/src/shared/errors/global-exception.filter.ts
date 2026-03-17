@@ -14,6 +14,20 @@ import { v4 as uuidv4 } from 'uuid';
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('GlobalExceptionFilter');
+  private readonly isProductionEnv: boolean;
+
+  /**
+   * @param isProduction - Explicitly pass the production flag from AppConfigService
+   *   so the filter does not rely on reading process.env at runtime. This makes
+   *   the behaviour deterministic and testable.
+   *   Callers in main.ts: `new GlobalExceptionFilter(config.isProduction)`
+   */
+  constructor(isProduction?: boolean) {
+    // Prefer the explicitly injected flag; fall back to process.env only if
+    // the filter is instantiated without arguments (e.g. in tests).
+    this.isProductionEnv =
+      isProduction ?? process.env['APP_ENV'] === 'production';
+  }
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -53,8 +67,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     // Never leak stack traces in production
-    const isProduction = process.env['APP_ENV'] === 'production';
-    if (isProduction && statusCode === HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (this.isProductionEnv && statusCode === HttpStatus.INTERNAL_SERVER_ERROR) {
       message = 'Internal server error';
       details = [];
     }

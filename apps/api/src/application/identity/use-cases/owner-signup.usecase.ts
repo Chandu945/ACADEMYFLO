@@ -86,6 +86,7 @@ export class OwnerSignupUseCase {
       sub: userId,
       role: user.role,
       email: user.emailNormalized,
+      academyId: user.academyId,
       tokenVersion: user.tokenVersion,
     });
 

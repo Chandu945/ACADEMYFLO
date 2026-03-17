@@ -52,7 +52,9 @@ export class SetAcademyLoginDisabledUseCase {
 
     let affectedUsers = 0;
 
-    // When disabling: force logout all academy users immediately
+    // When disabling: force logout all academy users immediately.
+    // Note: user auth cache entries (user:auth:{userId}) for affected users will be
+    // invalidated on next JWT check via tokenVersion mismatch, and expire within 5 min TTL.
     if (input.disabled) {
       const affectedUserIds = await this.userRepo.incrementTokenVersionByAcademyId(
         input.academyId,

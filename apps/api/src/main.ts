@@ -8,6 +8,8 @@ process.env['TZ'] ||= 'Asia/Kolkata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+// @ts-expect-error — @types/compression added as devDep, install with npm i
+import compression from 'compression';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './shared/errors/global-exception.filter';
@@ -45,6 +47,9 @@ async function bootstrap() {
     app.set('trust proxy', 1);
   }
 
+  // HTTP response compression (helps mobile apps connecting directly, internal service calls, dev without nginx)
+  app.use(compression({ threshold: 1024 })); // Compress responses > 1KB
+
   // Request body size limits
   app.use(json({ limit: '1mb' }));
   app.use(urlencoded({ limit: '1mb', extended: true }));
@@ -60,7 +65,7 @@ async function bootstrap() {
 
   // Global interceptors, filters, pipes
   app.useGlobalInterceptors(new RequestIdInterceptor());
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalFilters(new GlobalExceptionFilter(config.isProduction));
   app.useGlobalPipes(new SanitizePipe(), createGlobalValidationPipe());
 
   // Swagger (env-gated)

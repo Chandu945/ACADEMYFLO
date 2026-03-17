@@ -8,6 +8,8 @@ import { SubscriptionTierCronModule } from './infrastructure/scheduling/subscrip
 import { JobLockModule } from './infrastructure/reliability/job-lock/job-lock.module';
 import { ExternalCallPolicy } from './infrastructure/reliability/external-call/external-call-policy';
 import { EXTERNAL_CALL_POLICY } from './application/common/ports/external-call-policy.port';
+import { CacheModule } from './infrastructure/cache/redis.module';
+import { QueueModule } from './infrastructure/queue/queue.module';
 
 @Global()
 @Module({
@@ -15,6 +17,8 @@ import { EXTERNAL_CALL_POLICY } from './application/common/ports/external-call-p
     AppConfigModule,
     LoggingModule,
     JobLockModule,
+    CacheModule,
+    QueueModule,
     PresentationModule,
     CronModule,
     FeeRemindersCronModule,

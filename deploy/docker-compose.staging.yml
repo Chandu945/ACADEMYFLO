@@ -31,9 +31,23 @@ services:
     networks:
       - playconnect-net
 
+  redis:
+    image: redis:7-alpine
+    container_name: playconnect-staging-redis
+    restart: unless-stopped
+    volumes:
+      - staging_redis_data:/data
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '256mb', '--maxmemory-policy', 'allkeys-lru']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - playconnect-net
+
   api:
     image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/api:${IMAGE_TAG:-staging-latest}
-    container_name: playconnect-staging-api
     restart: unless-stopped
     expose:
       - '3001'
@@ -45,15 +59,28 @@ services:
       PORT: '3001'
       TZ: Asia/Kolkata
       MONGODB_URI: mongodb://mongo:27017/playconnect_staging?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3001/api/v1/health/liveness']
-      interval: 30s
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3001/api/v1/health/liveness']
+      interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 30s
     depends_on:
       mongo:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 2G
+          cpus: '4.0'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
     networks:
       - playconnect-net
 
@@ -77,6 +104,24 @@ services:
     networks:
       - playconnect-net
 
+  user-web:
+    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/user-web:${IMAGE_TAG:-staging-latest}
+    container_name: playconnect-staging-user-web
+    restart: unless-stopped
+    expose:
+      - '3003'
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_ENV: staging
+      API_BASE_URL: http://api:3001
+      TZ: Asia/Kolkata
+    depends_on:
+      - api
+    networks:
+      - playconnect-net
+
   nginx:
     image: nginx:1.27-alpine
     container_name: playconnect-staging-nginx
@@ -92,11 +137,13 @@ services:
     depends_on:
       - api
       - admin-web
+      - user-web
     networks:
       - playconnect-net
 
 volumes:
   staging_mongo_data:
+  staging_redis_data:
 
 networks:
   playconnect-net:

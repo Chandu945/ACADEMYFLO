@@ -23,11 +23,17 @@ export class CashfreeSignatureVerifier implements WebhookSignatureVerifier {
       const sigBuffer = Buffer.from(signature, 'base64');
       const expectedBuffer = Buffer.from(expectedSignature, 'base64');
 
-      if (sigBuffer.length !== expectedBuffer.length) {
-        return false;
-      }
+      // Pad both buffers to equal length so timingSafeEqual always runs in
+      // constant time, avoiding length-leaking via an early return.
+      const maxLen = Math.max(sigBuffer.length, expectedBuffer.length);
+      const paddedSig = Buffer.alloc(maxLen);
+      const paddedExpected = Buffer.alloc(maxLen);
+      sigBuffer.copy(paddedSig);
+      expectedBuffer.copy(paddedExpected);
 
-      return timingSafeEqual(sigBuffer, expectedBuffer);
+      const equal = timingSafeEqual(paddedSig, paddedExpected);
+      // Reject if original lengths differed (attacker-supplied signature was wrong size)
+      return equal && sigBuffer.length === expectedBuffer.length;
     } catch {
       return false;
     }

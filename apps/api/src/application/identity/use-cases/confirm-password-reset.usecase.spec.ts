@@ -77,8 +77,12 @@ function buildDeps() {
 describe('ConfirmPasswordResetUseCase', () => {
   it('should reset password on happy path', async () => {
     const deps = buildDeps();
+    const challenge = createActiveChallenge();
     deps.userRepo.findByEmail.mockResolvedValue(createMockUser());
-    deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(createActiveChallenge());
+    // Called twice: initial fetch + re-fetch after atomic increment
+    deps.challengeRepo.findLatestActiveByUserId
+      .mockResolvedValueOnce(challenge)
+      .mockResolvedValueOnce(challenge);
     deps.otpHasher.compare.mockResolvedValue(true);
 
     const uc = new ConfirmPasswordResetUseCase(
@@ -98,6 +102,8 @@ describe('ConfirmPasswordResetUseCase', () => {
     if (result.ok) {
       expect(result.value.message).toBe('Password reset successful.');
     }
+    // Atomic increment happens before OTP check
+    expect(deps.challengeRepo.incrementAttempts).toHaveBeenCalledWith('c-1');
     expect(deps.passwordHasher.hash).toHaveBeenCalledWith('NewPass123!');
     expect(deps.userRepo.save).toHaveBeenCalled();
     expect(deps.sessionRepo.revokeAllByUserIds).toHaveBeenCalledWith(['user-1']);
@@ -107,8 +113,11 @@ describe('ConfirmPasswordResetUseCase', () => {
   it('should bump tokenVersion on reset', async () => {
     const deps = buildDeps();
     const user = createMockUser();
+    const challenge = createActiveChallenge();
     deps.userRepo.findByEmail.mockResolvedValue(user);
-    deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(createActiveChallenge());
+    deps.challengeRepo.findLatestActiveByUserId
+      .mockResolvedValueOnce(challenge)
+      .mockResolvedValueOnce(challenge);
     deps.otpHasher.compare.mockResolvedValue(true);
 
     const uc = new ConfirmPasswordResetUseCase(
@@ -174,8 +183,21 @@ describe('ConfirmPasswordResetUseCase', () => {
 
   it('should increment attempts and return error on wrong OTP', async () => {
     const deps = buildDeps();
+    const challenge = createActiveChallenge();
+    // After atomic increment, attempts go from 0 to 1 (still under maxAttempts=5)
+    const challengeAfterIncrement = PasswordResetChallenge.reconstitute('c-1', {
+      userId: 'user-1',
+      otpHash: 'hashed-otp',
+      expiresAt: challenge.expiresAt,
+      attempts: 1,
+      maxAttempts: 5,
+      usedAt: null,
+      createdAt: challenge.createdAt,
+    });
     deps.userRepo.findByEmail.mockResolvedValue(createMockUser());
-    deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(createActiveChallenge());
+    deps.challengeRepo.findLatestActiveByUserId
+      .mockResolvedValueOnce(challenge)
+      .mockResolvedValueOnce(challengeAfterIncrement);
     deps.otpHasher.compare.mockResolvedValue(false);
 
     const uc = new ConfirmPasswordResetUseCase(
@@ -195,6 +217,7 @@ describe('ConfirmPasswordResetUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('UNAUTHORIZED');
     }
+    // Atomic increment happens before OTP comparison
     expect(deps.challengeRepo.incrementAttempts).toHaveBeenCalledWith('c-1');
   });
 
@@ -240,12 +263,24 @@ describe('ConfirmPasswordResetUseCase', () => {
       userId: 'user-1',
       otpHash: 'hash',
       expiresAt: new Date(Date.now() + 60000),
+      attempts: 4,
+      maxAttempts: 5,
+      usedAt: null,
+      createdAt: new Date(),
+    });
+    // After atomic increment, attempts go from 4 to 5 (now >= maxAttempts)
+    const exhaustedAfterIncrement = PasswordResetChallenge.reconstitute('c-1', {
+      userId: 'user-1',
+      otpHash: 'hash',
+      expiresAt: new Date(Date.now() + 60000),
       attempts: 5,
       maxAttempts: 5,
       usedAt: null,
       createdAt: new Date(),
     });
-    deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(exhaustedChallenge);
+    deps.challengeRepo.findLatestActiveByUserId
+      .mockResolvedValueOnce(exhaustedChallenge)
+      .mockResolvedValueOnce(exhaustedAfterIncrement);
 
     const uc = new ConfirmPasswordResetUseCase(
       deps.userRepo,
@@ -264,6 +299,7 @@ describe('ConfirmPasswordResetUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('FORBIDDEN');
     }
+    expect(deps.challengeRepo.incrementAttempts).toHaveBeenCalledWith('c-1');
   });
 
   it('should return error for already-used challenge', async () => {

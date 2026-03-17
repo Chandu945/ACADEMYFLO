@@ -51,6 +51,7 @@ export const envSchema = z
       .default('false')
       .transform((v) => v === 'true'),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(200),
+    MONGODB_READ_PREFERENCE: z.enum(['primary', 'primaryPreferred', 'secondary', 'secondaryPreferred', 'nearest']).default('secondaryPreferred'),
 
     // Swagger
     SWAGGER_ENABLED: z
@@ -100,6 +101,13 @@ export const envSchema = z
 
     // CORS
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:8081'),
+
+    // Redis Cache
+    REDIS_URL: z.string().url().optional(),
+    REDIS_HOST: z.string().default('localhost'),
+    REDIS_PORT: z.coerce.number().int().default(6379),
+    REDIS_PASSWORD: z.string().optional(),
+    CACHE_TTL_SECONDS: z.coerce.number().int().min(10).default(300),
 
     // Cashfree Payment Gateway
     CASHFREE_CLIENT_ID: z.string().default(''),

@@ -1,0 +1,148 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 6px 12px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium, 500);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+  white-space: nowrap;
+}
+
+.trigger:hover {
+  background-color: var(--color-bg-subtle);
+  border-color: var(--color-border-strong);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.triggerOpen {
+  background-color: var(--color-bg-subtle);
+  border-color: var(--color-primary);
+}
+
+/* ── Panel ── */
+.panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.08));
+  padding: var(--space-1) 0;
+  z-index: var(--z-dropdown, 100);
+  animation: dropIn 0.15s ease;
+}
+
+.panelLeft {
+  right: auto;
+  left: 0;
+}
+
+/* ── Menu Item ── */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 8px 14px;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.item:hover {
+  background-color: var(--color-bg-subtle);
+}
+
+.item:focus-visible {
+  background-color: var(--color-bg-subtle);
+  outline: none;
+}
+
+.itemDanger {
+  color: var(--color-danger);
+}
+
+.itemDanger:hover {
+  background-color: var(--color-danger-bg);
+}
+
+.itemDisabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.itemDisabled:hover {
+  background-color: transparent;
+}
+
+/* ── Icon in item ── */
+.itemIcon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-secondary);
+}
+
+.itemDanger .itemIcon {
+  color: var(--color-danger);
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: var(--space-1) 0;
+}
+
+/* ── Label (group heading) ── */
+.label {
+  padding: 6px 14px 4px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold, 600);
+  color: var(--color-text-disabled);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+@keyframes dropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

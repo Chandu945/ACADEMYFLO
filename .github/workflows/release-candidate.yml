@@ -75,6 +75,7 @@ jobs:
           path: |
             apps/api/coverage/
             apps/admin-web/coverage/
+            apps/user-web/coverage/
             apps/mobile/coverage/
           if-no-files-found: ignore
           retention-days: 30
@@ -118,6 +119,7 @@ jobs:
       image_tag: ${{ steps.tags.outputs.tag }}
       api_digest: ${{ steps.push-api.outputs.digest }}
       admin_digest: ${{ steps.push-admin.outputs.digest }}
+      user_web_digest: ${{ steps.push-user-web.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
 
@@ -154,6 +156,17 @@ jobs:
             ${{ env.DOCKER_REGISTRY }}/admin-web:${{ steps.tags.outputs.tag }}
             ${{ env.DOCKER_REGISTRY }}/admin-web:staging-latest
 
+      - name: Build and push User Web image
+        id: push-user-web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/user-web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/user-web:${{ steps.tags.outputs.tag }}
+            ${{ env.DOCKER_REGISTRY }}/user-web:staging-latest
+
       - name: Write docker digests
         run: |
           mkdir -p artifacts
@@ -168,6 +181,10 @@ jobs:
             "adminWeb": {
               "image": "${{ env.DOCKER_REGISTRY }}/admin-web:${{ steps.tags.outputs.tag }}",
               "digest": "${{ steps.push-admin.outputs.digest }}"
+            },
+            "userWeb": {
+              "image": "${{ env.DOCKER_REGISTRY }}/user-web:${{ steps.tags.outputs.tag }}",
+              "digest": "${{ steps.push-user-web.outputs.digest }}"
             },
             "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
@@ -228,6 +245,7 @@ jobs:
         env:
           STAGING_API_URL: ${{ secrets.STAGING_API_URL }}
           STAGING_ADMIN_URL: ${{ secrets.STAGING_ADMIN_URL }}
+          STAGING_USER_URL: ${{ secrets.STAGING_USER_URL }}
           SMOKE_ADMIN_EMAIL: ${{ secrets.SMOKE_ADMIN_EMAIL }}
           SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD }}
           SMOKE_OWNER_EMAIL: ${{ secrets.SMOKE_OWNER_EMAIL }}

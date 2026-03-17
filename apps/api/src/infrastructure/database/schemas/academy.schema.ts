@@ -90,3 +90,6 @@ export class AcademyModel {
 }
 
 export const AcademySchema = SchemaFactory.createForClass(AcademyModel);
+
+AcademySchema.index({ ownerUserId: 1 }, { unique: true });
+AcademySchema.index({ deletedAt: 1 });

@@ -113,6 +113,10 @@ export class AppConfigService {
     return this.config.SLOW_QUERY_THRESHOLD_MS;
   }
 
+  get mongodbReadPreference(): string {
+    return this.config.MONGODB_READ_PREFERENCE;
+  }
+
   get swaggerEnabled(): boolean {
     return this.config.SWAGGER_ENABLED;
   }
@@ -225,5 +229,25 @@ export class AppConfigService {
     return this.config.CORS_ALLOWED_ORIGINS.split(',')
       .map((o) => o.trim())
       .filter(Boolean);
+  }
+
+  get redisUrl(): string | undefined {
+    return this.config.REDIS_URL;
+  }
+
+  get redisHost(): string {
+    return this.config.REDIS_HOST;
+  }
+
+  get redisPort(): number {
+    return this.config.REDIS_PORT;
+  }
+
+  get redisPassword(): string | undefined {
+    return this.config.REDIS_PASSWORD;
+  }
+
+  get cacheTtlSeconds(): number {
+    return this.config.CACHE_TTL_SECONDS;
   }
 }

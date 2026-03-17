@@ -45,17 +45,25 @@ export class ConfirmPasswordResetUseCase {
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
-    if (!challenge.canVerify()) {
-      if (challenge.hasExceededAttempts()) {
-        return err(PasswordResetErrors.tooManyAttempts());
-      }
+    // Check expiry and used status (but NOT attempts yet — that's done atomically below)
+    if (challenge.isExpired() || challenge.isUsed()) {
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
-    const otpValid = await this.otpHasher.compare(input.otp, challenge.otpHash);
+    // Atomically increment attempts FIRST to prevent concurrent requests from
+    // bypassing the attempt limit. Each concurrent request will get its own
+    // incremented count from the database, closing the TOCTOU race window.
+    await this.challengeRepo.incrementAttempts(challenge.id.toString());
+
+    // Re-fetch the challenge to get the authoritative post-increment attempt count
+    const refreshedChallenge = await this.challengeRepo.findLatestActiveByUserId(userId);
+    if (!refreshedChallenge || refreshedChallenge.hasExceededAttempts()) {
+      return err(PasswordResetErrors.tooManyAttempts());
+    }
+
+    const otpValid = await this.otpHasher.compare(input.otp, refreshedChallenge.otpHash);
 
     if (!otpValid) {
-      await this.challengeRepo.incrementAttempts(challenge.id.toString());
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
@@ -67,6 +75,8 @@ export class ConfirmPasswordResetUseCase {
       tokenVersion: user.tokenVersion + 1,
     });
     await this.userRepo.save(updated);
+    // Note: user auth cache (user:auth:{userId}) will be invalidated on next
+    // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
 
     await this.sessionRepo.revokeAllByUserIds([userId]);
     await this.challengeRepo.markUsed(challenge.id.toString());

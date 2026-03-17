@@ -112,6 +112,7 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
     const docs = await this.model
       .find({ studentId: { $in: studentIds } })
       .sort({ createdAt: -1 })
+      .limit(1000)
       .lean()
       .exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));

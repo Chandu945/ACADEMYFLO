@@ -13,6 +13,16 @@ import { TOKEN_SERVICE } from '@application/identity/ports/token-service.port';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { CacheService } from '../../../../infrastructure/cache/cache.service';
+
+interface CachedAuthUser {
+  id: string;
+  tokenVersion: number;
+  status: string;
+  role: string;
+  academyId: string | null;
+  email: string;
+}
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -20,6 +30,7 @@ export class JwtAuthGuard implements CanActivate {
     @Inject(TOKEN_SERVICE) private readonly tokenService: TokenService,
     @Inject(USER_REPOSITORY) private readonly userRepo: UserRepository,
     private readonly reflector: Reflector,
+    private readonly cacheService: CacheService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -45,16 +56,31 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired access token');
     }
 
-    const user = await this.userRepo.findById(payload.sub);
+    const cacheKey = `user:auth:${payload.sub}`;
+    let user = await this.cacheService.get<CachedAuthUser>(cacheKey);
+
     if (!user) {
-      throw new UnauthorizedException('Token revoked');
+      const dbUser = await this.userRepo.findById(payload.sub);
+      if (!dbUser) {
+        throw new UnauthorizedException('Token revoked');
+      }
+      user = {
+        id: dbUser.id.toString(),
+        tokenVersion: dbUser.tokenVersion,
+        status: dbUser.status,
+        role: dbUser.role,
+        academyId: dbUser.academyId,
+        email: dbUser.emailNormalized,
+      };
+      await this.cacheService.set(cacheKey, user, 300); // 5 min cache
     }
 
     if (user.tokenVersion !== payload.tokenVersion) {
+      await this.cacheService.del(cacheKey); // Invalidate stale cache
       throw new UnauthorizedException('Token revoked');
     }
 
-    if (!user.isActive()) {
+    if (user.status !== 'ACTIVE') {
       throw new ForbiddenException('User account is inactive');
     }
 
@@ -62,6 +88,7 @@ export class JwtAuthGuard implements CanActivate {
       userId: payload.sub,
       email: payload.email,
       role: payload.role,
+      academyId: payload.academyId,
     };
 
     return true;

@@ -48,3 +48,4 @@ export const ExpenseSchema = SchemaFactory.createForClass(ExpenseModel);
 ExpenseSchema.index({ academyId: 1, date: -1 });
 ExpenseSchema.index({ academyId: 1, deletedAt: 1 });
 ExpenseSchema.index({ academyId: 1, categoryId: 1, date: -1 });
+ExpenseSchema.index({ academyId: 1, createdAt: -1 });

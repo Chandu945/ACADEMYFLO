@@ -55,3 +55,4 @@ PaymentRequestSchema.index({ academyId: 1, status: 1 });
 PaymentRequestSchema.index({ academyId: 1, monthKey: 1 });
 PaymentRequestSchema.index({ feeDueId: 1, status: 1 });
 PaymentRequestSchema.index({ staffUserId: 1, academyId: 1 });
+PaymentRequestSchema.index({ academyId: 1, createdAt: -1 });
