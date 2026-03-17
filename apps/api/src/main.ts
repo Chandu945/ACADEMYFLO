@@ -8,7 +8,6 @@ process.env['TZ'] ||= 'Asia/Kolkata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
-// @ts-expect-error — @types/compression added as devDep, install with npm i
 import compression from 'compression';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
