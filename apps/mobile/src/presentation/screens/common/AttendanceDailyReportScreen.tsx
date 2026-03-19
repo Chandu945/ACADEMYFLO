@@ -91,7 +91,7 @@ export function AttendanceDailyReportScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.content}>
-        <Text style={styles.dateLabel}>{report.date}</Text>
+        <Text style={styles.dateLabel}>{new Date(report.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
 
         {report.isHoliday && (
           <View style={styles.holidayBadge}>

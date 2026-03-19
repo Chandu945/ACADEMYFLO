@@ -102,7 +102,7 @@ function AddNewModalComponent({ visible, onClose, onSelect }: AddNewModalProps) 
       onRequestClose={onClose}
     >
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <View style={styles.sheet} onStartShouldSetResponder={() => true}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Add New</Text>
             <Pressable onPress={onClose} hitSlop={12} testID="add-new-close">
@@ -132,7 +132,7 @@ function AddNewModalComponent({ visible, onClose, onSelect }: AddNewModalProps) 
               </Pressable>
             ))}
           </ScrollView>
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );

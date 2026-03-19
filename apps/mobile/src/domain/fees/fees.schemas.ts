@@ -13,7 +13,7 @@ export const feeDueItemSchema = z.object({
   status: z.enum(['UPCOMING', 'DUE', 'PAID']),
   paidAt: z.string().nullable(),
   paidByUserId: z.string().nullable(),
-  paidSource: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE']).nullable(),
+  paidSource: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL']).nullable(),
   paymentLabel: z.enum(['CASH', 'UPI', 'CARD', 'NET_BANKING', 'ONLINE']).nullable(),
   collectedByUserId: z.string().nullable(),
   approvedByUserId: z.string().nullable(),

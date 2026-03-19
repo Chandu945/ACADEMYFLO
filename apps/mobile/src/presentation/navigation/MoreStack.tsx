@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme } from '../context/ThemeContext';
 import { MoreScreen } from '../screens/settings/MoreScreen';
 import { AcademySettingsScreen } from '../screens/settings/AcademySettingsScreen';
 import { AuditLogsScreen } from '../screens/owner/AuditLogsScreen';
@@ -75,6 +76,7 @@ export type MoreStackParamList = {
 const Stack = createNativeStackNavigator<MoreStackParamList>();
 
 export function MoreStack() {
+  const { colors } = useTheme();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
     <Stack.Navigator>
@@ -156,7 +158,7 @@ export function MoreStack() {
         options={{
           title: '',
           headerTransparent: true,
-          headerTintColor: '#fff',
+          headerTintColor: colors.white,
           headerStyle: { backgroundColor: 'transparent' },
         }}
       />

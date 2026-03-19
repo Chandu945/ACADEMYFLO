@@ -8,6 +8,26 @@ import { NotificationProvider } from './presentation/context/NotificationContext
 import { ThemeProvider, useTheme } from './presentation/context/ThemeContext';
 import { ToastProvider } from './presentation/context/ToastContext';
 import { RootNavigator } from './presentation/navigation/RootNavigator';
+import { AppErrorBoundary } from './presentation/components/system/AppErrorBoundary';
+import { OfflineBanner } from './presentation/components/global/OfflineBanner';
+
+/**
+ * Deep linking configuration for PlayConnect.
+ * Expand the `screens` map as new linkable routes are added.
+ */
+const linking = {
+  prefixes: ['playconnect://', 'https://playconnect.app'],
+  config: {
+    screens: {
+      AuthStack: {
+        screens: {
+          Login: 'login',
+          ForgotPassword: 'forgot-password',
+        },
+      },
+    },
+  },
+};
 
 function AppInner() {
   const { colors, isDark } = useTheme();
@@ -23,18 +43,21 @@ function AppInner() {
       };
 
   return (
-    <>
+    <AppErrorBoundary>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <NavigationContainer theme={navTheme}>
+      <OfflineBanner />
+      <NavigationContainer theme={navTheme} linking={linking}>
         <RootNavigator />
       </NavigationContainer>
-    </>
+    </AppErrorBoundary>
   );
 }
 
+const rootStyle = { flex: 1 } as const;
+
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={rootStyle}>
       <SafeAreaProvider>
         <ThemeProvider>
           <ToastProvider>

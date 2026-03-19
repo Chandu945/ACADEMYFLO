@@ -22,7 +22,10 @@ export async function fetchWithTimeout(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const combinedSignal = init.signal
+      ? AbortSignal.any([controller.signal, init.signal])
+      : controller.signal;
+    return await fetch(url, { ...init, signal: combinedSignal });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       throw new FetchTimeoutError(url, timeoutMs);

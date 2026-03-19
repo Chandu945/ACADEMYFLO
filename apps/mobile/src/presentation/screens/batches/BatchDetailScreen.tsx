@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -53,15 +54,6 @@ export function BatchDetailScreen() {
   const batch = route.params?.batch;
   const { user } = useAuth();
 
-  if (!batch?.id) {
-    return (
-      <View style={styles.screen}>
-        <Text style={{ textAlign: 'center', marginTop: 40, color: colors.textSecondary }}>
-          Batch data unavailable
-        </Text>
-      </View>
-    );
-  }
   const isOwner = user?.role === 'OWNER';
 
   const [students, setStudents] = useState<StudentListItem[]>([]);
@@ -89,6 +81,7 @@ export function BatchDetailScreen() {
 
   const fetchStudents = useCallback(
     async (page: number, append = false) => {
+      if (!batch?.id) return;
       const result = await listBatchStudents(batch.id, page, PAGE_SIZE, debouncedSearch || undefined);
 
       if (result.ok) {
@@ -101,7 +94,7 @@ export function BatchDetailScreen() {
         setError(result.error.message);
       }
     },
-    [batch.id, debouncedSearch],
+    [batch?.id, debouncedSearch],
   );
 
   const loadInitial = useCallback(async () => {
@@ -113,8 +106,8 @@ export function BatchDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadInitial();
-    }, [loadInitial]),
+      if (batch?.id) loadInitial();
+    }, [loadInitial, batch?.id]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -135,6 +128,7 @@ export function BatchDetailScreen() {
 
   const handleRemove = useCallback(
     (student: StudentListItem) => {
+      if (!batch?.id) return;
       Alert.alert(
         'Remove Student',
         `Remove ${student.fullName} from this batch?`,
@@ -158,14 +152,16 @@ export function BatchDetailScreen() {
         ],
       );
     },
-    [batch.id],
+    [batch?.id],
   );
 
   const handleEdit = useCallback(() => {
+    if (!batch) return;
     navigation.navigate('BatchForm', { mode: 'edit', batch });
   }, [navigation, batch]);
 
   const handleDelete = useCallback(() => {
+    if (!batch) return;
     Alert.alert(
       'Delete Batch',
       `Delete "${batch.batchName}"? All students will be unassigned from this batch.`,
@@ -188,12 +184,24 @@ export function BatchDetailScreen() {
   }, [batch, navigation]);
 
   const handleAddStudent = useCallback(() => {
+    if (!batch?.id) return;
     const existingIds = students.map((s) => s.id);
     navigation.navigate('AddStudentToBatch', {
       batchId: batch.id,
       existingStudentIds: existingIds,
     });
-  }, [navigation, batch.id, students]);
+  }, [navigation, batch?.id, students]);
+
+  // Early return guard — all hooks are above
+  if (!batch?.id) {
+    return (
+      <View style={styles.screen}>
+        <Text style={{ textAlign: 'center', marginTop: 40, color: colors.textSecondary }}>
+          Batch data unavailable
+        </Text>
+      </View>
+    );
+  }
 
   const daysText = batch.days.length > 0
     ? batch.days.map((d) => DAY_SHORT[d] ?? d).join(', ')
@@ -349,7 +357,7 @@ export function BatchDetailScreen() {
   );
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       {error && <InlineError message={error} onRetry={loadInitial} />}
 
       {loading && !refreshing ? (
@@ -377,7 +385,7 @@ export function BatchDetailScreen() {
           testID="batch-students-list"
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

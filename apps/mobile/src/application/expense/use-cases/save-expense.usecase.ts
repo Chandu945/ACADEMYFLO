@@ -1,5 +1,7 @@
 import type { AppError } from '../../../domain/common/errors';
+import * as Errors from '../../../domain/common/errors';
 import type { Result } from '../../../domain/common/result';
+import { err } from '../../../domain/common/result';
 
 export type SaveExpenseApiPort = {
   createExpense(data: {
@@ -45,6 +47,9 @@ export async function saveExpenseUseCase(
   input: SaveExpenseInput,
 ): Promise<Result<{ id: string }, AppError>> {
   if (input.mode === 'create') {
+    if (!input.amount || input.amount <= 0) return err(Errors.validation('Amount must be positive'));
+    if (!input.categoryId?.trim()) return err(Errors.validation('Category is required'));
+    if (!input.date?.trim()) return err(Errors.validation('Date is required'));
     return deps.expenseApi.createExpense({
       categoryId: input.categoryId,
       date: input.date,

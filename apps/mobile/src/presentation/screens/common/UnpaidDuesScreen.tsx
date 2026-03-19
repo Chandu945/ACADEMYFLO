@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, FlatList, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import type { AppError } from '../../../domain/common/errors';
 import { ownerMarkPaidUseCase } from '../../../application/fees/use-cases/owner-mark-paid.usecase';
@@ -50,6 +50,13 @@ export function UnpaidDuesScreen({
   const [confirmItem, setConfirmItem] = useState<FeeDueItem | null>(null);
   const [marking, setMarking] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await onRetry();
+    setRefreshing(false);
+  }, [onRetry]);
 
   const handleMarkPaid = useCallback(async () => {
     if (!confirmItem) return;
@@ -119,6 +126,9 @@ export function UnpaidDuesScreen({
           keyExtractor={keyExtractor}
           extraData={studentNameMap}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.3}
           ListFooterComponent={

@@ -308,7 +308,10 @@ export default function ForgotPasswordPage() {
                 label="Email or Phone"
                 type="text"
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next['identifier']; return next; });
+                }}
                 error={fieldErrors['identifier']}
                 placeholder="Enter your email or phone"
                 autoComplete="email"
@@ -336,7 +339,10 @@ export default function ForgotPasswordPage() {
                 label="Verification Code"
                 type="text"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => {
+                  setOtp(e.target.value);
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next['otp']; return next; });
+                }}
                 error={fieldErrors['otp']}
                 placeholder="Enter 6-digit code"
                 autoComplete="one-time-code"
@@ -349,7 +355,10 @@ export default function ForgotPasswordPage() {
                 label="New Password"
                 type="password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next['newPassword']; return next; });
+                }}
                 error={fieldErrors['newPassword']}
                 placeholder="Enter new password"
                 autoComplete="new-password"
@@ -361,7 +370,10 @@ export default function ForgotPasswordPage() {
                 label="Confirm Password"
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setFieldErrors((prev) => { const next = { ...prev }; delete next['confirmPassword']; return next; });
+                }}
                 error={fieldErrors['confirmPassword']}
                 placeholder="Confirm new password"
                 autoComplete="new-password"

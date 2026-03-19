@@ -72,19 +72,26 @@ export class AppErrorBoundary extends Component<Props, State> {
 
 /**
  * Error capture function. Logs structured error data for diagnostics.
- * Replace the body with Sentry.captureException(error, { extra: context })
- * once a crash-reporting provider is configured.
+ *
+ * TODO: Integrate Sentry or Firebase Crashlytics for production crash reporting.
+ * Replace the console.error calls below with:
+ *   Sentry.captureException(error, { extra: context });
+ * or:
+ *   crashlytics().recordError(error instanceof Error ? error : new Error(String(error)));
  */
 export function captureError(error: unknown, context?: Record<string, unknown>): void {
   try {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
-    // __DEV__ is always defined in React Native
-    if (__DEV__) {
-      console.error('[AppErrorBoundary]', message, { stack, ...context });
-    }
-    // Production: queue for future reporting service
-    // Sentry.captureException(error, { extra: context });
+
+    // Always log structured error data — both dev and production.
+    // In production this ensures errors surface in device logs / log-drain services
+    // even before a dedicated crash reporter is wired up.
+    console.error('[AppErrorBoundary] Uncaught error:', {
+      message,
+      stack,
+      ...context,
+    });
   } catch {
     // Swallow to prevent infinite error loops in the error boundary
   }

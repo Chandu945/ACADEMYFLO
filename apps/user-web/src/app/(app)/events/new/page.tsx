@@ -51,6 +51,9 @@ export default function NewEventPage() {
     const errors: Record<string, string> = {};
     if (!form.title.trim()) errors.title = 'Title is required';
     if (!form.startDate) errors.startDate = 'Start date is required';
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      errors['endDate'] = 'End date must be after start date';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -107,7 +110,7 @@ export default function NewEventPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
             <DatePicker label="Start Date" required value={form.startDate} onChange={(e) => set('startDate', e.target.value)} error={fieldErrors.startDate} />
-            <DatePicker label="End Date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} />
+            <DatePicker label="End Date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} error={fieldErrors.endDate} />
           </div>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-base)', fontWeight: 500 }}>
@@ -126,7 +129,7 @@ export default function NewEventPage() {
 
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
             <Button type="button" variant="outline" onClick={() => router.push('/events')}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={loading}>Create Event</Button>
+            <Button type="submit" variant="primary" loading={loading} disabled={success}>Create Event</Button>
           </div>
         </form>
       </Card>

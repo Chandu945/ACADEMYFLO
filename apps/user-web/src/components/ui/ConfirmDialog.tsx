@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useId } from 'react';
 import styles from './ConfirmDialog.module.css';
+import { Button } from '@/components/ui/Button';
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -13,6 +14,7 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   danger?: boolean;
   loading?: boolean;
+  children?: React.ReactNode;
 }
 
 export function ConfirmDialog({
@@ -25,8 +27,11 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   danger = false,
   loading = false,
+  children,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogTitleId = useId();
+  const dialogMessageId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -37,6 +42,17 @@ export function ConfirmDialog({
     } else if (!open && dialog.open) {
       dialog.close();
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [open]);
 
   const handleCancel = useCallback(
@@ -70,8 +86,8 @@ export function ConfirmDialog({
       className={styles.dialog}
       onCancel={handleCancel}
       onClick={handleBackdropClick}
-      aria-labelledby="confirm-dialog-title"
-      aria-describedby="confirm-dialog-message"
+      aria-labelledby={dialogTitleId}
+      aria-describedby={dialogMessageId}
       aria-modal="true"
     >
       <div className={styles.body}>
@@ -93,30 +109,29 @@ export function ConfirmDialog({
             </svg>
           )}
         </div>
-        <h3 id="confirm-dialog-title" className={styles.title}>
+        <h3 id={dialogTitleId} className={styles.title}>
           {title}
         </h3>
-        <p id="confirm-dialog-message" className={styles.message}>
+        <p id={dialogMessageId} className={styles.message}>
           {message}
         </p>
+        {children}
       </div>
       <div className={styles.footer}>
-        <button
-          type="button"
-          className={styles.cancelButton}
+        <Button
+          variant="secondary"
           onClick={onClose}
           disabled={loading}
         >
           {cancelLabel}
-        </button>
-        <button
-          type="button"
-          className={`${styles.confirmButton} ${danger ? styles.confirmButtonDanger : ''}`}
+        </Button>
+        <Button
+          variant={danger ? 'danger' : 'primary'}
+          loading={loading}
           onClick={onConfirm}
-          disabled={loading}
         >
-          {loading ? 'Processing...' : confirmLabel}
-        </button>
+          {confirmLabel}
+        </Button>
       </div>
     </dialog>
   );

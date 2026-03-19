@@ -43,6 +43,7 @@ export function ConfirmSheet({
                 title="Cancel"
                 variant="secondary"
                 onPress={onCancel}
+                disabled={loading}
                 testID="confirm-cancel"
               />
             </View>

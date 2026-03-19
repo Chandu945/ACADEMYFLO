@@ -15,10 +15,15 @@ export type ListPaymentRequestsDeps = {
   paymentRequestsApi: ListPaymentRequestsApiPort;
 };
 
+export type ListPaymentRequestsResult = {
+  items: PaymentRequestItem[];
+  meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+};
+
 export async function listPaymentRequestsUseCase(
   deps: ListPaymentRequestsDeps,
   status?: string,
-): Promise<Result<PaymentRequestItem[], AppError>> {
+): Promise<Result<ListPaymentRequestsResult, AppError>> {
   const result = await deps.paymentRequestsApi.listPaymentRequests(status);
 
   if (!result.ok) {
@@ -30,5 +35,5 @@ export async function listPaymentRequestsUseCase(
     return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
   }
 
-  return ok(parsed.data.data);
+  return ok({ items: parsed.data.data, meta: parsed.data.meta });
 }

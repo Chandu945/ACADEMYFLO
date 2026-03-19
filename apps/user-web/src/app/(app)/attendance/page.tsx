@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useDailyAttendance, markAttendance, markBulkAttendance, useMonthlySummary, useMonthDailyCounts } from '@/application/attendance/use-attendance';
 import { useBatches } from '@/application/batches/use-batches';
 import { useAuth } from '@/application/auth/use-auth';
@@ -11,6 +11,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
 function formatDateLabel(dateStr: string) {
@@ -18,13 +19,13 @@ function formatDateLabel(dateStr: string) {
 }
 
 function toISODate(d: Date) {
-  return d.toISOString().split('T')[0];
+  return d.toLocaleDateString('en-CA');
 }
 
 export default function AttendancePage() {
   const { accessToken, user } = useAuth();
   const isOwner = user?.role === 'OWNER';
-  const today = useMemo(() => toISODate(new Date()), []);
+  const today = toISODate(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [batchId, setBatchId] = useState('');
   const [activeTab, setActiveTab] = useState('mark');
@@ -42,6 +43,9 @@ export default function AttendancePage() {
   ];
 
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
+  const [attendanceError, setAttendanceError] = useState<string | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<{ action: string; label: string } | null>(null);
 
   // When attendance data loads, reset local overrides
   React.useEffect(() => {
@@ -59,28 +63,60 @@ export default function AttendancePage() {
   };
 
   const handleStatusChange = useCallback(async (studentId: string, status: string) => {
+    const previousStatus = localStatuses[studentId];
     setLocalStatuses((prev) => ({ ...prev, [studentId]: status }));
-    await markAttendance(studentId, selectedDate, status, accessToken);
-  }, [selectedDate, accessToken]);
+    setAttendanceError(null);
+    const result = await markAttendance(studentId, selectedDate, status, accessToken);
+    if (!result.ok) {
+      setLocalStatuses((prev) => ({ ...prev, [studentId]: previousStatus }));
+      setAttendanceError(result.error || 'Failed to mark attendance');
+    }
+  }, [selectedDate, accessToken, localStatuses]);
 
   const handleBulk = useCallback(async (status: string) => {
     if (!attendance?.items) return;
+    setBulkLoading(true);
+    setAttendanceError(null);
+    const previousStatuses = { ...localStatuses };
     const updates = attendance.items.map((item) => ({ studentId: item.studentId, status }));
     setLocalStatuses((prev) => {
       const n = { ...prev };
       updates.forEach((u) => { n[u.studentId] = u.status; });
       return n;
     });
-    await markBulkAttendance(selectedDate, updates, accessToken);
+    const result = await markBulkAttendance(selectedDate, updates, accessToken);
+    setBulkLoading(false);
+    if (!result.ok) {
+      setLocalStatuses(previousStatuses);
+      setAttendanceError(result.error || 'Failed to mark bulk attendance');
+      return;
+    }
     refetch();
-  }, [attendance, selectedDate, accessToken, refetch]);
+  }, [attendance, selectedDate, accessToken, refetch, localStatuses]);
 
   const handleDeclareHoliday = useCallback(async () => {
     if (!attendance?.items) return;
+    setBulkLoading(true);
+    setAttendanceError(null);
     const updates = attendance.items.map((item) => ({ studentId: item.studentId, status: 'HOLIDAY' }));
-    await markBulkAttendance(selectedDate, updates, accessToken);
+    const result = await markBulkAttendance(selectedDate, updates, accessToken);
+    setBulkLoading(false);
+    if (!result.ok) {
+      setAttendanceError(result.error || 'Failed to declare holiday');
+      return;
+    }
     refetch();
   }, [attendance, selectedDate, accessToken, refetch]);
+
+  const handleBulkConfirm = useCallback(async () => {
+    if (!bulkConfirm) return;
+    if (bulkConfirm.action === 'HOLIDAY') {
+      await handleDeclareHoliday();
+    } else {
+      await handleBulk(bulkConfirm.action);
+    }
+    setBulkConfirm(null);
+  }, [bulkConfirm, handleBulk, handleDeclareHoliday]);
 
   const markAttendanceTab = (
     <>
@@ -104,14 +140,14 @@ export default function AttendancePage() {
           onChange={(e) => setBatchId(e.target.value)}
         />
         <div className={styles.bulkActions}>
-          <Button variant="outline" size="sm" onClick={() => handleBulk('PRESENT')}>
+          <Button variant="outline" size="sm" disabled={bulkLoading} onClick={() => setBulkConfirm({ action: 'PRESENT', label: 'Mark All Present' })}>
             Mark All Present
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleBulk('ABSENT')}>
+          <Button variant="outline" size="sm" disabled={bulkLoading} onClick={() => setBulkConfirm({ action: 'ABSENT', label: 'Mark All Absent' })}>
             Mark All Absent
           </Button>
           {isOwner && !attendance?.isHoliday && (
-            <Button variant="secondary" size="sm" onClick={handleDeclareHoliday}>
+            <Button variant="secondary" size="sm" disabled={bulkLoading} onClick={() => setBulkConfirm({ action: 'HOLIDAY', label: 'Declare Holiday' })}>
               Declare Holiday
             </Button>
           )}
@@ -119,6 +155,7 @@ export default function AttendancePage() {
       </div>
 
       {/* Error / Loading */}
+      {attendanceError && <Alert variant="error" message={attendanceError} />}
       {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: refetch }} />}
 
       {loading ? (
@@ -238,7 +275,7 @@ export default function AttendancePage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
         <span className={styles.dateLabel}>{formatDateLabel(selectedDate)}</span>
-        <button type="button" className={styles.dateNavBtn} onClick={() => navigateDate(1)}>
+        <button type="button" className={styles.dateNavBtn} disabled={selectedDate >= today} style={selectedDate >= today ? { opacity: 0.4, cursor: 'not-allowed' } : undefined} onClick={() => navigateDate(1)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
         </button>
         <Button variant="outline" size="sm" onClick={() => setSelectedDate(today)}>Today</Button>
@@ -253,6 +290,18 @@ export default function AttendancePage() {
         ]}
         activeKey={activeTab}
         onChange={setActiveTab}
+      />
+
+      {/* Bulk Action Confirmation */}
+      <ConfirmDialog
+        open={!!bulkConfirm}
+        onClose={() => setBulkConfirm(null)}
+        onConfirm={handleBulkConfirm}
+        title={bulkConfirm?.label ?? 'Confirm Action'}
+        message={`Are you sure you want to "${bulkConfirm?.label?.toLowerCase()}" for all students on ${formatDateLabel(selectedDate)}?`}
+        confirmLabel={bulkConfirm?.label ?? 'Confirm'}
+        danger={bulkConfirm?.action === 'ABSENT'}
+        loading={bulkLoading}
       />
     </div>
   );

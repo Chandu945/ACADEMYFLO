@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StaffDashboardScreen } from '../screens/staff/StaffDashboardScreen';
 import { StaffDashboardHeaderLeft, StaffDashboardHeaderRight } from '../components/dashboard/StaffDashboardNavHeader';
 import { StudentsStack } from './StudentsStack';
@@ -10,9 +11,9 @@ import { FeesStack } from './FeesStack';
 import { MoreStack } from './MoreStack';
 import { GlobalFAB } from '../components/global/GlobalFAB';
 import { FABProvider } from '../context/FABContext';
-import { fontSizes, fontWeights } from '../theme';
 import type { Colors } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { makeTabScreenOptions } from './tab-options';
 
 const TAB_ICONS: Record<string, string> = {
   Dashboard: 'view-dashboard-outline',
@@ -34,19 +35,14 @@ const Tab = createBottomTabNavigator<StaffTabParamList>();
 
 function StaffTabsInner() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       {/* @ts-expect-error @types/react version mismatch in monorepo */}
       <Tab.Navigator
         screenOptions={({ route }) => ({
-          headerStyle: { backgroundColor: colors.surface, elevation: 0, shadowOpacity: 0, borderBottomWidth: 0 },
-          headerTitleStyle: { fontWeight: fontWeights.semibold, fontSize: fontSizes.lg },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textDisabled,
-          tabBarShowLabel: true,
-          tabBarLabelStyle: { fontSize: 11, fontWeight: fontWeights.medium, marginTop: -2, marginBottom: 2 },
-          tabBarStyle: { backgroundColor: colors.surface, borderTopWidth: 0, elevation: 8, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, height: 60, paddingTop: 4 },
+          ...makeTabScreenOptions(colors, insets.bottom),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
             <Icon name={TAB_ICONS[route.name] ?? 'circle'} size={size} color={color} />

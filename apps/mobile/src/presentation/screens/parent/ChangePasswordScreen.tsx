@@ -23,6 +23,10 @@ export function ChangePasswordScreen() {
   const handleSubmit = useCallback(async () => {
     setError(null);
 
+    if (!currentPassword) {
+      setError('Current password is required');
+      return;
+    }
     if (newPassword.length < 8) {
       setError('New password must be at least 8 characters');
       return;

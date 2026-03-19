@@ -40,7 +40,7 @@ export function ActiveFilterBar({ filters, onClearAll }: Props) {
             </Text>
             <TouchableOpacity
               onPress={f.onRemove}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
               style={styles.pillClose}
               accessibilityRole="button"
               accessibilityLabel={`Remove ${f.label}: ${f.value} filter`}

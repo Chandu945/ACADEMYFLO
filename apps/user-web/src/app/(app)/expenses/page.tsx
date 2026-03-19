@@ -27,13 +27,13 @@ function getMonthLabel(monthKey: string) {
 
 export default function ExpensesPage() {
   const { accessToken } = useAuth();
-  const now = useMemo(() => new Date(), []);
+  const now = new Date();
   const [monthOffset, setMonthOffset] = useState(0);
 
   const month = useMemo(() => {
     const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, [now, monthOffset]);
+  }, [now.getFullYear(), now.getMonth(), monthOffset]);
 
   const { data: expenses, loading, refetch } = useExpenses(month);
   const { data: summary, loading: summaryLoading } = useExpenseSummary(month);
@@ -43,18 +43,20 @@ export default function ExpensesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toLocaleDateString('en-CA'),
     categoryId: '',
     amount: '',
     notes: '',
   });
 
   const resetForm = () => {
-    setForm({ date: new Date().toISOString().split('T')[0], categoryId: '', amount: '', notes: '' });
+    setForm({ date: new Date().toLocaleDateString('en-CA'), categoryId: '', amount: '', notes: '' });
     setEditId(null);
     setError(null);
   };
@@ -81,14 +83,21 @@ export default function ExpensesPage() {
     if (!result.ok) { setError(result.error); return; }
     setModalOpen(false);
     resetForm();
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
     refetch();
   }, [form, editId, accessToken, refetch]);
 
   const handleDelete = useCallback(async () => {
     if (!deleteId) return;
     setDeleting(true);
-    await deleteExpense(deleteId, accessToken);
+    setDeleteError(null);
+    const result = await deleteExpense(deleteId, accessToken);
     setDeleting(false);
+    if (!result.ok) {
+      setDeleteError(result.error || 'Failed to delete expense');
+      return;
+    }
     setDeleteId(null);
     refetch();
   }, [deleteId, accessToken, refetch]);
@@ -104,6 +113,8 @@ export default function ExpensesPage() {
         <h1 className={styles.title}>Expenses</h1>
         <Button variant="primary" onClick={openAdd}>Add Expense</Button>
       </div>
+
+      {saveSuccess && <Alert variant="success" message="Expense saved successfully" />}
 
       {/* Month Navigation */}
       <div className={styles.monthNav}>
@@ -187,14 +198,16 @@ export default function ExpensesPage() {
       {/* Delete Confirm */}
       <ConfirmDialog
         open={!!deleteId}
-        onClose={() => setDeleteId(null)}
+        onClose={() => { setDeleteId(null); setDeleteError(null); }}
         onConfirm={handleDelete}
         title="Delete Expense"
         message="Are you sure you want to delete this expense? This cannot be undone."
         confirmLabel="Delete"
         danger
         loading={deleting}
-      />
+      >
+        {deleteError && <Alert variant="error" message={deleteError} />}
+      </ConfirmDialog>
     </div>
   );
 }

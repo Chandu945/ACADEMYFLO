@@ -7,7 +7,6 @@ import type {
 import { initiateSubscriptionPaymentUseCase } from './use-cases/initiate-subscription-payment.usecase';
 import { pollSubscriptionPaymentStatusUseCase } from './use-cases/poll-subscription-payment-status.usecase';
 import { subscriptionApi } from '../../infra/subscription/subscription-api';
-import { accessTokenStore } from '../../infra/http/api-client';
 import { openCashfreeCheckout } from '../../infra/payments/cashfree-web-checkout';
 
 const POLL_INTERVAL_MS = 3000;
@@ -29,8 +28,9 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
   const [paymentResult, setPaymentResult] = useState<PaymentStatusResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const startingRef = useRef(false);
 
-  const deps = useMemo(() => ({ subscriptionApi, accessToken: accessTokenStore }), []);
+  const deps = useMemo(() => ({ subscriptionApi }), []);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -99,37 +99,43 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
   const startPayment = useCallback(async () => {
     // Prevent double-tap: ignore if already in progress
     if (status !== 'idle' && status !== 'failed') return;
+    if (startingRef.current) return;
+    startingRef.current = true;
 
-    setStatus('initiating');
-    setError(null);
-    setPaymentResult(null);
-
-    const result = await initiateSubscriptionPaymentUseCase(deps);
-
-    if (!mountedRef.current) return;
-
-    if (!result.ok) {
-      setStatus('failed');
-      setError(result.error.message);
-      return;
-    }
-
-    const data: InitiatePaymentResponse = result.value;
-    setOrderId(data.orderId);
-    setStatus('checkout');
-
-    // Open web checkout
     try {
-      await openCashfreeCheckout(data.paymentSessionId, data.orderId);
-    } catch {
-      // If browser open fails, still start polling
+      setStatus('initiating');
+      setError(null);
+      setPaymentResult(null);
+
+      const result = await initiateSubscriptionPaymentUseCase(deps);
+
+      if (!mountedRef.current) return;
+
+      if (!result.ok) {
+        setStatus('failed');
+        setError(result.error.message);
+        return;
+      }
+
+      const data: InitiatePaymentResponse = result.value;
+      setOrderId(data.orderId);
+      setStatus('checkout');
+
+      // Open web checkout
+      try {
+        await openCashfreeCheckout(data.paymentSessionId, data.orderId);
+      } catch {
+        // If browser open fails, still start polling
+      }
+
+      if (!mountedRef.current) return;
+
+      // Start polling for payment status
+      setStatus('polling');
+      pollStatus(data.orderId);
+    } finally {
+      startingRef.current = false;
     }
-
-    if (!mountedRef.current) return;
-
-    // Start polling for payment status
-    setStatus('polling');
-    pollStatus(data.orderId);
   }, [deps, pollStatus, status]);
 
   const reset = useCallback(() => {

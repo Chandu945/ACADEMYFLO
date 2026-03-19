@@ -106,14 +106,14 @@ export function TimePickerInput({
               {/* Hour */}
               <View style={styles.spinnerCol}>
                 <Text style={styles.spinnerLabel}>Hour</Text>
-                <Pressable onPress={incHour} style={styles.spinnerBtn} testID={testID ? `${testID}-hour-up` : undefined}>
+                <Pressable onPress={incHour} style={styles.spinnerBtn} accessibilityLabel="Increase hour" testID={testID ? `${testID}-hour-up` : undefined}>
                   {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                   <Icon name="chevron-up" size={28} color={colors.primary} />
                 </Pressable>
                 <View style={styles.spinnerValue}>
                   <Text style={styles.spinnerValueText}>{pad2(hour12)}</Text>
                 </View>
-                <Pressable onPress={decHour} style={styles.spinnerBtn} testID={testID ? `${testID}-hour-down` : undefined}>
+                <Pressable onPress={decHour} style={styles.spinnerBtn} accessibilityLabel="Decrease hour" testID={testID ? `${testID}-hour-down` : undefined}>
                   {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                   <Icon name="chevron-down" size={28} color={colors.primary} />
                 </Pressable>
@@ -124,14 +124,14 @@ export function TimePickerInput({
               {/* Minute */}
               <View style={styles.spinnerCol}>
                 <Text style={styles.spinnerLabel}>Min</Text>
-                <Pressable onPress={incMin} style={styles.spinnerBtn} testID={testID ? `${testID}-min-up` : undefined}>
+                <Pressable onPress={incMin} style={styles.spinnerBtn} accessibilityLabel="Increase minute" testID={testID ? `${testID}-min-up` : undefined}>
                   {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                   <Icon name="chevron-up" size={28} color={colors.primary} />
                 </Pressable>
                 <View style={styles.spinnerValue}>
                   <Text style={styles.spinnerValueText}>{pad2(minute)}</Text>
                 </View>
-                <Pressable onPress={decMin} style={styles.spinnerBtn} testID={testID ? `${testID}-min-down` : undefined}>
+                <Pressable onPress={decMin} style={styles.spinnerBtn} accessibilityLabel="Decrease minute" testID={testID ? `${testID}-min-down` : undefined}>
                   {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                   <Icon name="chevron-down" size={28} color={colors.primary} />
                 </Pressable>
@@ -142,6 +142,7 @@ export function TimePickerInput({
                 <Pressable
                   style={[styles.ampmBtn, !isPM && styles.ampmBtnActive]}
                   onPress={() => setIsPM(false)}
+                  accessibilityState={{ selected: !isPM }}
                   testID={testID ? `${testID}-am` : undefined}
                 >
                   <Text style={[styles.ampmText, !isPM && styles.ampmTextActive]}>AM</Text>
@@ -149,6 +150,7 @@ export function TimePickerInput({
                 <Pressable
                   style={[styles.ampmBtn, isPM && styles.ampmBtnActive]}
                   onPress={() => setIsPM(true)}
+                  accessibilityState={{ selected: isPM }}
                   testID={testID ? `${testID}-pm` : undefined}
                 >
                   <Text style={[styles.ampmText, isPM && styles.ampmTextActive]}>PM</Text>

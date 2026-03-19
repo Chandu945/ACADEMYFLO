@@ -49,7 +49,9 @@ export default function NewStaffPage() {
     const errors: Record<string, string> = {};
     if (!form.fullName.trim()) errors.fullName = 'Full name is required';
     if (!form.email.trim()) errors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors['email'] = 'Invalid email format';
     if (!form.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
+    else if (!/^\+?[0-9]{7,15}$/.test(form.phoneNumber.trim())) errors['phoneNumber'] = 'Invalid phone number';
     if (!form.password || form.password.length < 6) errors.password = 'Password must be at least 6 characters';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -139,7 +141,7 @@ export default function NewStaffPage() {
 
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
             <Button type="button" variant="outline" onClick={() => router.push('/staff')}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={loading}>Create Staff</Button>
+            <Button type="submit" variant="primary" loading={loading} disabled={success}>Create Staff</Button>
           </div>
         </form>
       </Card>

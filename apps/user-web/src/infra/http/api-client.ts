@@ -53,7 +53,8 @@ async function apiFetch<T>(
     if (!res.ok) {
       return { ok: false, error: mapApiError(res.status) };
     }
-    return { ok: true, data: undefined as T };
+    // 204 No Content or empty body — return empty object
+    return { ok: true, data: {} as T };
   }
 
   if (!res.ok) {

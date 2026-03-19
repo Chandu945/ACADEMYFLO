@@ -22,6 +22,7 @@ export default function StaffPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; currentStatus: string; name: string } | null>(null);
   const [toggling, setToggling] = useState(false);
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
   const handleToggleStatus = useCallback((id: string, currentStatus: string, name: string) => {
     setConfirmTarget({ id, currentStatus, name });
@@ -31,9 +32,14 @@ export default function StaffPage() {
   const handleConfirmToggle = useCallback(async () => {
     if (!confirmTarget) return;
     setToggling(true);
+    setToggleError(null);
     const newStatus = confirmTarget.currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    await toggleStaffStatus(confirmTarget.id, newStatus, accessToken);
+    const result = await toggleStaffStatus(confirmTarget.id, newStatus, accessToken);
     setToggling(false);
+    if (!result.ok) {
+      setToggleError(result.error || 'Failed to update staff status');
+      return;
+    }
     setConfirmOpen(false);
     setConfirmTarget(null);
     refetch();
@@ -114,14 +120,16 @@ export default function StaffPage() {
 
       <ConfirmDialog
         open={confirmOpen}
-        onClose={() => { setConfirmOpen(false); setConfirmTarget(null); }}
+        onClose={() => { setConfirmOpen(false); setConfirmTarget(null); setToggleError(null); }}
         onConfirm={handleConfirmToggle}
         title={confirmTarget?.currentStatus === 'ACTIVE' ? 'Deactivate Staff' : 'Activate Staff'}
         message={`Are you sure you want to ${confirmTarget?.currentStatus === 'ACTIVE' ? 'deactivate' : 'activate'} ${confirmTarget?.name ?? 'this staff member'}?`}
         confirmLabel={confirmTarget?.currentStatus === 'ACTIVE' ? 'Deactivate' : 'Activate'}
         danger={confirmTarget?.currentStatus === 'ACTIVE'}
         loading={toggling}
-      />
+      >
+        {toggleError && <Alert variant="error" message={toggleError} />}
+      </ConfirmDialog>
     </div>
   );
 }

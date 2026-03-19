@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { orderId } = await params;
-  const result = await apiGet(`/api/v1/subscription-payments/${orderId}/status`, { accessToken });
+  const result = await apiGet(`/api/v1/subscription-payments/${encodeURIComponent(orderId)}/status`, { accessToken });
   if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
   return NextResponse.json(result.data);
 }

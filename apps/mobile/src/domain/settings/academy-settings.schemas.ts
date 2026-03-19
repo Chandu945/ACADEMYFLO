@@ -6,5 +6,5 @@ export const academySettingsSchema = z.object({
   lateFeeEnabled: z.boolean(),
   gracePeriodDays: z.number().int().min(0).max(30),
   lateFeeAmountInr: z.number().int().min(0).max(10000),
-  lateFeeRepeatIntervalDays: z.number().int(),
+  lateFeeRepeatIntervalDays: z.number().int().min(1),
 });

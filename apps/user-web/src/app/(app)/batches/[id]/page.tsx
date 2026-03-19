@@ -34,8 +34,10 @@ export default function BatchDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState(false);
 
   const [editForm, setEditForm] = useState({
     batchName: '',
@@ -81,14 +83,22 @@ export default function BatchDetailPage() {
     setSaving(false);
     if (!result.ok) { setEditError(result.error); return; }
     setEditOpen(false);
+    setEditSuccess(true);
+    setTimeout(() => setEditSuccess(false), 3000);
     refetch();
   }, [editForm, params.id, accessToken, refetch]);
 
   const handleDelete = useCallback(async () => {
     setDeleting(true);
+    setDeleteError(null);
     const result = await deleteBatch(params.id, accessToken);
     setDeleting(false);
-    if (result.ok) router.push('/batches');
+    if (!result.ok) {
+      setDeleteError(result.error || 'Failed to delete batch');
+      return;
+    }
+    setDeleteOpen(false);
+    router.push('/batches');
   }, [params.id, accessToken, router]);
 
   if (loading) return <Spinner centered size="lg" />;
@@ -118,10 +128,12 @@ export default function BatchDetailPage() {
           </div>
         </div>
         <div className={styles.actions}>
-          <Button variant="outline" onClick={() => setEditOpen(true)}>Edit</Button>
+          <Button variant="outline" onClick={() => { setEditError(null); setEditOpen(true); }}>Edit</Button>
           <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>
         </div>
       </div>
+
+      {editSuccess && <Alert variant="success" message="Batch updated successfully" />}
 
       {/* Students Section */}
       <div className={styles.studentsSection}>
@@ -195,14 +207,16 @@ export default function BatchDetailPage() {
       {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
+        onClose={() => { setDeleteOpen(false); setDeleteError(null); }}
         onConfirm={handleDelete}
         title="Delete Batch"
         message={`Are you sure you want to delete "${batch.batchName}"? This cannot be undone.`}
         confirmLabel="Delete"
         danger
         loading={deleting}
-      />
+      >
+        {deleteError && <Alert variant="error" message={deleteError} />}
+      </ConfirmDialog>
     </div>
   );
 }

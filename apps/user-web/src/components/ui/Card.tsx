@@ -38,6 +38,16 @@ export function Card({
       className={classNames}
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === ' ') e.preventDefault();
+                props.onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>);
+              }
+            }
+          : undefined
+      }
       {...props}
     >
       {(title || subtitle) && (

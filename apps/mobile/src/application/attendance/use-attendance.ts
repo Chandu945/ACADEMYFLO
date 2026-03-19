@@ -49,6 +49,7 @@ export function useAttendance(
   const mountedRef = useRef(true);
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const pendingTogglesRef = useRef(new Set<string>());
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -102,6 +103,9 @@ export function useAttendance(
   const toggleStatus = useCallback(
     (studentId: string) => {
       if (isHoliday) return;
+      if (pendingTogglesRef.current.has(studentId)) return;
+
+      pendingTogglesRef.current.add(studentId);
 
       setItems((prev) =>
         prev.map((item) => {
@@ -112,21 +116,28 @@ export function useAttendance(
       );
 
       const currentItem = itemsRef.current.find((i) => i.studentId === studentId);
-      if (!currentItem) return;
+      if (!currentItem) {
+        pendingTogglesRef.current.delete(studentId);
+        return;
+      }
 
       const newStatus: AttendanceStatus = currentItem.status === 'ABSENT' ? 'PRESENT' : 'ABSENT';
 
-      markAttendanceUseCase({ attendanceApi }, studentId, date, newStatus).then((result) => {
-        if (!mountedRef.current) return;
-        if (!result.ok) {
-          setItems((prev) =>
-            prev.map((item) =>
-              item.studentId === studentId ? { ...item, status: currentItem.status } : item,
-            ),
-          );
-          setError(result.error);
-        }
-      });
+      markAttendanceUseCase({ attendanceApi }, studentId, date, newStatus)
+        .then((result) => {
+          if (!mountedRef.current) return;
+          if (!result.ok) {
+            setItems((prev) =>
+              prev.map((item) =>
+                item.studentId === studentId ? { ...item, status: currentItem.status } : item,
+              ),
+            );
+            setError(result.error);
+          }
+        })
+        .finally(() => {
+          pendingTogglesRef.current.delete(studentId);
+        });
     },
     [isHoliday, attendanceApi, date],
   );

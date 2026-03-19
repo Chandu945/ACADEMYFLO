@@ -40,39 +40,7 @@ export function ProfilePhotoUploader({
 
   const effectivePath = uploadPath || GENERAL_UPLOAD_PATH;
 
-  const pickImage = useCallback(() => {
-    Alert.alert('Profile Photo', 'Choose an option', [
-      {
-        text: 'Camera',
-        onPress: () => {
-          launchCamera(
-            { mediaType: 'photo', maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
-            (response) => {
-              if (response.assets?.[0]) {
-                void uploadPhoto(response.assets[0]);
-              }
-            },
-          );
-        },
-      },
-      {
-        text: 'Gallery',
-        onPress: () => {
-          launchImageLibrary(
-            { mediaType: 'photo', maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
-            (response) => {
-              if (response.assets?.[0]) {
-                void uploadPhoto(response.assets[0]);
-              }
-            },
-          );
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }, [effectivePath]);
-
-  const uploadPhoto = async (asset: {
+  const uploadPhoto = useCallback(async (asset: {
     uri?: string;
     fileName?: string;
     type?: string;
@@ -111,7 +79,39 @@ export function ProfilePhotoUploader({
     } finally {
       setUploading(false);
     }
-  };
+  }, [effectivePath, onPhotoUploaded]);
+
+  const pickImage = useCallback(() => {
+    Alert.alert('Profile Photo', 'Choose an option', [
+      {
+        text: 'Camera',
+        onPress: () => {
+          launchCamera(
+            { mediaType: 'photo', maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
+            (response) => {
+              if (response.assets?.[0]) {
+                void uploadPhoto(response.assets[0]);
+              }
+            },
+          );
+        },
+      },
+      {
+        text: 'Gallery',
+        onPress: () => {
+          launchImageLibrary(
+            { mediaType: 'photo', maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
+            (response) => {
+              if (response.assets?.[0]) {
+                void uploadPhoto(response.assets[0]);
+              }
+            },
+          );
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [uploadPhoto]);
 
   const resolvedUri = photoUrl
     ? photoUrl.startsWith('http')

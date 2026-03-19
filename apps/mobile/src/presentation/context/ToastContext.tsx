@@ -7,10 +7,12 @@ import { useTheme } from './ThemeContext';
 
 type ToastType = 'success' | 'error' | 'info';
 
-type ToastState = {
+type ToastItem = {
   message: string;
   type: ToastType;
-} | null;
+};
+
+const MAX_QUEUE_SIZE = 3;
 
 type ToastContextValue = {
   showToast: (message: string, type?: ToastType) => void;
@@ -28,22 +30,33 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const [toast, setToast] = useState<ToastState>(null);
+  const [queue, setQueue] = useState<ToastItem[]>([]);
   const translateY = useRef(new Animated.Value(-100)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dismissAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-  const generationRef = useRef(0);
+  const isShowingRef = useRef(false);
 
-  const showToast = useCallback((message: string, type: ToastType = 'success') => {
-    // Cancel any pending dismiss
+  const dismissCurrent = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (dismissAnimRef.current) dismissAnimRef.current.stop();
     dismissAnimRef.current = null;
+    timerRef.current = null;
+  }, []);
 
-    generationRef.current += 1;
-    const gen = generationRef.current;
+  const showNext = useCallback(() => {
+    setQueue((prev) => {
+      if (prev.length <= 1) {
+        // No more items after current; clear everything
+        isShowingRef.current = false;
+        return [];
+      }
+      // Remove the first item (current) and the next will be displayed via the effect
+      return prev.slice(1);
+    });
+  }, []);
 
-    setToast({ message, type });
+  const presentToast = useCallback(() => {
+    isShowingRef.current = true;
     translateY.setValue(-100);
     Animated.spring(translateY, {
       toValue: 0,
@@ -59,43 +72,69 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       });
       dismissAnimRef.current = anim;
       anim.start(({ finished }) => {
-        // Only clear if this is still the same toast generation
-        if (finished && generationRef.current === gen) {
-          setToast(null);
+        if (finished) {
+          showNext();
         }
       });
     }, 3000);
-  }, [translateY]);
+  }, [translateY, showNext]);
+
+  // When queue changes and we're not currently showing, present the first item
+  useEffect(() => {
+    if (queue.length > 0 && !isShowingRef.current) {
+      presentToast();
+    }
+  }, [queue, presentToast]);
+
+  const showToast = useCallback((message: string, type: ToastType = 'success') => {
+    setQueue((prev) => {
+      const newItem: ToastItem = { message, type };
+      // If already showing, dismiss current animation timers so the new queue kicks in
+      if (prev.length === 0) {
+        // Queue is empty, just add — effect will present it
+        return [newItem];
+      }
+      // Already showing; push to queue
+      let next = [...prev, newItem];
+      // Enforce max queue size (drop oldest queued, but keep the currently-showing first item)
+      if (next.length > MAX_QUEUE_SIZE) {
+        // Keep first (currently showing) + last (MAX_QUEUE_SIZE - 1) items
+        next = [next[0]!, ...next.slice(next.length - (MAX_QUEUE_SIZE - 1))];
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (dismissAnimRef.current) dismissAnimRef.current.stop();
+      dismissCurrent();
     };
-  }, []);
+  }, [dismissCurrent]);
 
   const value = useMemo(() => ({ showToast }), [showToast]);
 
-  const bgColor = toast
-    ? toast.type === 'success'
+  const currentToast = queue.length > 0 ? queue[0]! : null;
+
+  const bgColor = currentToast
+    ? currentToast.type === 'success'
       ? colors.successBg
-      : toast.type === 'error'
+      : currentToast.type === 'error'
         ? colors.dangerBg
         : colors.infoBg
     : colors.infoBg;
 
-  const textColor = toast
-    ? toast.type === 'success'
+  const textColor = currentToast
+    ? currentToast.type === 'success'
       ? colors.successText
-      : toast.type === 'error'
+      : currentToast.type === 'error'
         ? colors.dangerText
         : colors.infoText
     : colors.infoText;
 
-  const borderColor = toast
-    ? toast.type === 'success'
+  const borderColor = currentToast
+    ? currentToast.type === 'success'
       ? colors.successBorder
-      : toast.type === 'error'
+      : currentToast.type === 'error'
         ? colors.dangerBorder
         : colors.primary
     : colors.primary;
@@ -103,7 +142,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {toast && (
+      {currentToast && (
         <Animated.View
           style={[
             styles.toast,
@@ -119,7 +158,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           accessibilityLiveRegion="assertive"
         >
           <Text style={[styles.toastText, { color: textColor }]} numberOfLines={3}>
-            {toast.message}
+            {currentToast.message}
           </Text>
         </Animated.View>
       )}

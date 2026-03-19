@@ -80,6 +80,6 @@ export async function updateExpense(id: string, body: Record<string, unknown>, a
 }
 
 export async function deleteExpense(id: string, accessToken?: string | null) {
-  const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
+  const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
   return res.ok ? { ok: true as const } : { ok: false as const, error: (await res.json()).message };
 }

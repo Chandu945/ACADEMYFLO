@@ -87,7 +87,7 @@ export function AttendanceScreen() {
   const { items, loading, loadingMore, error, isHoliday, refetch, fetchMore, toggleStatus } =
     useAttendance(selectedDate, attendanceApi, selectedBatchId, debouncedSearch || null);
 
-  const today = useMemo(() => getTodayIST(), []);
+  const today = getTodayIST();
   const isToday = selectedDate === today;
 
   const onRefresh = useCallback(async () => {

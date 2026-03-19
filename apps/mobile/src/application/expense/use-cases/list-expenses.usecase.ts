@@ -11,6 +11,7 @@ export type ExpenseApiPort = {
   listExpenses(query: {
     month: string;
     categoryId?: string;
+    search?: string;
     page: number;
     pageSize: number;
   }): Promise<Result<ExpenseListApiResponse, AppError>>;
@@ -36,8 +37,9 @@ export async function listExpensesUseCase(
   page: number,
   pageSize: number,
   categoryId?: string,
+  search?: string,
 ): Promise<Result<ListExpensesResult, AppError>> {
-  const result = await deps.expenseApi.listExpenses({ month, categoryId, page, pageSize });
+  const result = await deps.expenseApi.listExpenses({ month, categoryId, search, page, pageSize });
 
   if (!result.ok) {
     return result;

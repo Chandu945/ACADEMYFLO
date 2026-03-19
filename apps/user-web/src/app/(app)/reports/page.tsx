@@ -21,7 +21,7 @@ function getMonthLabel(monthKey: string) {
 }
 
 export default function ReportsPage() {
-  const now = useMemo(() => new Date(), []);
+  const [now] = useState(() => new Date());
   const [monthOffset, setMonthOffset] = useState(0);
   const [activeTab, setActiveTab] = useState('revenue');
 

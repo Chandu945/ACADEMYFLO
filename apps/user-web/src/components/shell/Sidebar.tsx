@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -118,15 +119,15 @@ const PARENT_NAV: NavSection[] = [
   {
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Children', href: '/my-children', icon: Baby },
-      { label: 'Payments', href: '/payments', icon: Receipt },
+      { label: 'My Children', href: '/students', icon: Baby },
+      { label: 'Payments', href: '/fees', icon: Receipt },
     ],
   },
   {
     title: 'Account',
     items: [
       { label: 'Profile', href: '/profile', icon: User },
-      { label: 'Academy Info', href: '/academy-info', icon: Building2 },
+      { label: 'Settings', href: '/settings', icon: Building2 },
     ],
   },
 ];
@@ -147,6 +148,17 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  /* Close sidebar on Escape when mobile overlay is visible */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !collapsed) {
+        onToggle();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [collapsed, onToggle]);
 
   const role = user?.role;
   if (!role) return null;
@@ -215,6 +227,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         href={item.href}
                         className={`${styles.navItem} ${active ? styles.navItemActive : ''}`}
                         title={collapsed ? item.label : undefined}
+                        aria-label={collapsed ? item.label : undefined}
                       >
                         <Icon size={20} className={styles.navIcon} />
                         {!collapsed && (
@@ -256,6 +269,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </div>
               )}
               <button
+                type="button"
                 className={styles.logoutBtn}
                 onClick={logout}
                 title="Logout"
@@ -267,6 +281,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )}
 
           <button
+            type="button"
             className={styles.collapseBtn}
             onClick={onToggle}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

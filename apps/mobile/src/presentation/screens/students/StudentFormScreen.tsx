@@ -82,10 +82,31 @@ export function StudentFormScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const initialRef = useRef({ fullName, monthlyFee, joiningDate });
-  const isDirty = fullName !== initialRef.current.fullName ||
-    monthlyFee !== initialRef.current.monthlyFee ||
-    joiningDate !== initialRef.current.joiningDate;
+  const initialRef = useRef({
+    fullName, dateOfBirth, gender, guardianName, guardianMobile, guardianEmail,
+    joiningDate, monthlyFee, fatherName, motherName, whatsappNumber, mobileNumber,
+    addressText, photoUrl, selectedBatchIds: [] as string[],
+  });
+  const isDirty = useMemo(() => {
+    const init = initialRef.current;
+    return fullName !== init.fullName ||
+      dateOfBirth !== init.dateOfBirth ||
+      gender !== init.gender ||
+      guardianName !== init.guardianName ||
+      guardianMobile !== init.guardianMobile ||
+      guardianEmail !== init.guardianEmail ||
+      joiningDate !== init.joiningDate ||
+      monthlyFee !== init.monthlyFee ||
+      fatherName !== init.fatherName ||
+      motherName !== init.motherName ||
+      whatsappNumber !== init.whatsappNumber ||
+      mobileNumber !== init.mobileNumber ||
+      addressText !== init.addressText ||
+      photoUrl !== init.photoUrl ||
+      JSON.stringify(selectedBatchIds) !== JSON.stringify(init.selectedBatchIds);
+  }, [fullName, dateOfBirth, gender, guardianName, guardianMobile, guardianEmail,
+    joiningDate, monthlyFee, fatherName, motherName, whatsappNumber, mobileNumber,
+    addressText, photoUrl, selectedBatchIds]);
   useUnsavedChangesWarning(isDirty && !submitting);
 
   useEffect(() => {
@@ -93,7 +114,9 @@ export function StudentFormScreen() {
       let cancelled = false;
       getStudentBatches(student.id).then((result) => {
         if (!cancelled && result.ok) {
-          setSelectedBatchIds(result.value.map((b) => b.id));
+          const ids = result.value.map((b) => b.id);
+          setSelectedBatchIds(ids);
+          initialRef.current.selectedBatchIds = ids;
         }
       }).catch(() => {});
       return () => { cancelled = true; };
@@ -195,7 +218,10 @@ export function StudentFormScreen() {
     if (result.ok) {
       const studentId = mode === 'edit' ? student?.id : (result.value as { id?: string })?.id;
       if (studentId) {
-        await setStudentBatches(studentId, selectedBatchIds);
+        const batchResult = await setStudentBatches(studentId, selectedBatchIds);
+        if (batchResult && !batchResult.ok) {
+          showToast('Student saved but batch assignment failed. Please try again.', 'error');
+        }
       }
 
       showToast(mode === 'create' ? 'Student created' : 'Student updated');

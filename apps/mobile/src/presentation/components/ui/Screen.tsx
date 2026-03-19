@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, type ViewStyle } from 'react-native';
+import { SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, type ViewStyle } from 'react-native';
 
 import { spacing } from '../../theme';
 import type { Colors } from '../../theme';
@@ -22,7 +22,13 @@ export function Screen({ children, scroll = true, style }: ScreenProps) {
     children
   );
 
-  return <SafeAreaView style={[styles.container, style]}>{content}</SafeAreaView>;
+  return (
+    <SafeAreaView style={[styles.container, style]}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{flex: 1}}>
+        {content}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({

@@ -1,13 +1,25 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 import { apiPost } from '@/infra/http/api-client';
+import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { getSessionCookie, clearSessionCookie } from '@/infra/auth/session-cookie';
+import { isOriginValid } from '@/infra/auth/csrf';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  if (!isOriginValid(request)) {
+    return NextResponse.json({ message: 'Invalid origin' }, { status: 403 });
+  }
+
+  const accessToken = await resolveAccessToken(request);
   const session = await getSessionCookie();
 
   if (session) {
-    await apiPost('/api/v1/auth/logout', { deviceId: session.deviceId });
+    try {
+      await apiPost('/api/v1/auth/logout', { deviceId: session.deviceId }, accessToken ? { accessToken } : undefined);
+    } catch {
+      // Best-effort: still clear cookie even if backend fails
+    }
   }
 
   await clearSessionCookie();

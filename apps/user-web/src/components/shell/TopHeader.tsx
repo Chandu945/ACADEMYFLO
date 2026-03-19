@@ -45,6 +45,7 @@ export function TopHeader({ onMenuToggle }: TopHeaderProps) {
       {/* ── Left: Mobile menu + Breadcrumbs ────────────────────────── */}
       <div className={styles.left}>
         <button
+          type="button"
           className={styles.menuBtn}
           onClick={onMenuToggle}
           aria-label="Toggle menu"
@@ -86,17 +87,19 @@ export function TopHeader({ onMenuToggle }: TopHeaderProps) {
 
       {/* ── Right: Search, Notifications, User ─────────────────────── */}
       <div className={styles.right}>
-        <button className={styles.iconBtn} aria-label="Search" title="Search">
+        <button type="button" className={styles.iconBtn} aria-label="Search" title="Search">
           <Search size={20} />
         </button>
 
         <button
+          type="button"
           className={styles.iconBtn}
           aria-label="Notifications"
           title="Notifications"
         >
           <Bell size={20} />
           <span className={styles.notifDot} />
+          <span className="sr-only">Unread notifications</span>
         </button>
 
         <div className={styles.userPill}>

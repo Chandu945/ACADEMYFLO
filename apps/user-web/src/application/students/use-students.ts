@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 
 type StudentListItem = {
@@ -42,11 +42,13 @@ export function useStudents(filters: StudentFilters = {}) {
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cancelRef = useRef(0);
 
   const filtersKey = JSON.stringify(filters);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
+    const id = ++cancelRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -58,14 +60,16 @@ export function useStudents(filters: StudentFilters = {}) {
       const res = await fetch(`/api/students?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      if (id !== cancelRef.current) return;
       if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
       setData(json.data ?? json.items ?? []);
       setMeta(json.meta ?? null);
     } catch (e) {
+      if (id !== cancelRef.current) return;
       setError(e instanceof Error ? e.message : 'Failed to load students');
     } finally {
-      setLoading(false);
+      if (id === cancelRef.current) setLoading(false);
     }
   }, [accessToken, filtersKey]);
 
@@ -79,21 +83,27 @@ export function useStudentDetail(id: string | null) {
   const [data, setData] = useState<StudentListItem | null>(null);
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState<string | null>(null);
+  const cancelRef = useRef(0);
+
+  useEffect(() => { setData(null); }, [id]);
 
   const fetch_ = useCallback(async () => {
     if (!id || !accessToken) return;
+    const reqId = ++cancelRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/students/${id}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      if (reqId !== cancelRef.current) return;
       if (!res.ok) throw new Error((await res.json()).message);
       setData(await res.json());
     } catch (e) {
+      if (reqId !== cancelRef.current) return;
       setError(e instanceof Error ? e.message : 'Failed to load student');
     } finally {
-      setLoading(false);
+      if (reqId === cancelRef.current) setLoading(false);
     }
   }, [accessToken, id]);
 

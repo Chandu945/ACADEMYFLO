@@ -89,7 +89,7 @@ export function StudentMonthlyAttendanceScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.monthLabel}>{detail.month}</Text>
+      <Text style={styles.monthLabel}>{new Date(detail.month + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</Text>
 
       <View style={styles.countsRow}>
         <View style={styles.countBox}>
@@ -117,7 +117,7 @@ export function StudentMonthlyAttendanceScreen() {
           <Text style={styles.sectionTitle}>Absences & Holidays</Text>
           {dateItems.map((item) => (
             <View style={styles.dateRow} key={`${item.date}-${item.type}`} testID={`date-${item.date}`}>
-              <Text style={styles.dateText}>{item.date}</Text>
+              <Text style={styles.dateText}>{new Date(item.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
               <Badge
                 label={item.type}
                 variant={item.type === 'ABSENT' ? 'danger' : 'warning'}

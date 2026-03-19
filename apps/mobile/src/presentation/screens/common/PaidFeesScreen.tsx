@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import type { AppError } from '../../../domain/common/errors';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
@@ -25,6 +25,14 @@ export function PaidFeesScreen({
   onRowPress,
   studentNameMap,
 }: PaidFeesScreenProps) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await onRetry();
+    setRefreshing(false);
+  }, [onRetry]);
+
   const renderItem = useCallback(
     ({ item }: { item: FeeDueItem }) => (
       <FeeDueRow
@@ -68,6 +76,9 @@ export function PaidFeesScreen({
       keyExtractor={keyExtractor}
       extraData={studentNameMap}
       contentContainerStyle={styles.listContent}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
       testID="paid-list"
     />
   );

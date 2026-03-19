@@ -21,6 +21,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows, avatarColors } from '
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { getGreeting, getInitials, formatCurrency, formatMonthShort, formatDate } from '../../utils/format';
+import { getCurrentMonthIST } from '../../../domain/common/date-utils';
 
 type DashboardData = {
   children: ChildSummary[];
@@ -99,7 +100,10 @@ export function ParentDashboardScreen() {
     : null;
 
   const totalMonthlyFee = children.reduce((sum, c) => sum + c.monthlyFee, 0);
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const currentMonth = getCurrentMonthIST();
+  const totalPaid = payments
+    .filter((p) => p.paidAt?.startsWith(currentMonth))
+    .reduce((sum, p) => sum + p.amount, 0);
   const recentPayments = payments.slice(0, 3);
 
   return (
@@ -334,7 +338,7 @@ export function ParentDashboardScreen() {
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                 <Icon name="check-decagram" size={20} color={colors.success} />
                 <View style={styles.totalPaidInfo}>
-                  <Text style={styles.totalPaidLabel}>Total Paid</Text>
+                  <Text style={styles.totalPaidLabel}>Paid This Month</Text>
                   <Text style={styles.totalPaidValue}>{formatCurrency(totalPaid)}</Text>
                 </View>
                 <View style={styles.totalPaidCount}>

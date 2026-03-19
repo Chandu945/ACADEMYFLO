@@ -33,22 +33,35 @@ export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken } = useAuth();
-  const { data: student, loading, error } = useStudentDetail(params.id);
+  const { data: student, loading, error, refetch } = useStudentDetail(params.id);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = useCallback(async () => {
     if (!params.id) return;
     setDeleting(true);
+    setDeleteError(null);
     const result = await deleteStudent(params.id, accessToken);
     setDeleting(false);
-    if (result.ok) {
-      router.push('/students');
+    if (!result.ok) {
+      setDeleteError(result.error || 'Failed to delete student');
+      return;
     }
+    setDeleteOpen(false);
+    router.push('/students');
   }, [params.id, accessToken, router]);
 
   if (loading) return <Spinner centered size="lg" />;
-  if (error) return <Alert variant="error" message={error} />;
+  if (error) return (
+    <div>
+      <Alert variant="error" message={error} />
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <Button onClick={refetch}>Retry</Button>
+        <Button variant="secondary" onClick={() => router.push('/students')}>Back to Students</Button>
+      </div>
+    </div>
+  );
   if (!student) return <Alert variant="error" message="Student not found" />;
 
   return (
@@ -105,6 +118,12 @@ export default function StudentDetailPage() {
             <span className={styles.infoLabel}>Monthly Fee</span>
             <span className={styles.infoValue}>{formatCurrency(student.monthlyFee)}</span>
           </div>
+          {student.address && (
+            <div className={styles.infoRow}>
+              <span className={styles.infoLabel}>Address</span>
+              <span className={styles.infoValue}>{student.address}</span>
+            </div>
+          )}
         </div>
 
         {/* Contact Info */}
@@ -141,14 +160,16 @@ export default function StudentDetailPage() {
       {/* Delete Confirmation */}
       <ConfirmDialog
         open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
+        onClose={() => { setDeleteOpen(false); setDeleteError(null); }}
         onConfirm={handleDelete}
         title="Delete Student"
         message={`Are you sure you want to delete "${student.fullName}"? This action cannot be undone.`}
         confirmLabel="Delete"
         danger
         loading={deleting}
-      />
+      >
+        {deleteError && <Alert variant="error" message={deleteError} />}
+      </ConfirmDialog>
     </div>
   );
 }

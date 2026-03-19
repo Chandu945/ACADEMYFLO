@@ -5,6 +5,7 @@ import { apiGet, apiPut } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { buildSafeParams } from '@/infra/http/query-sanitizer';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 type Params = { params: Promise<{ studentId: string }> };
 
@@ -18,8 +19,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     from: searchParams.get('from') || undefined,
     to: searchParams.get('to') || undefined,
   });
-  const result = await apiGet(`/api/v1/fees/students/${studentId}?${qp}`, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  const result = await apiGet(`/api/v1/fees/students/${encodeURIComponent(studentId)}?${qp}`, { accessToken });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }
 
@@ -29,9 +30,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { studentId } = await params;
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
   const { month, ...payData } = body;
-  const result = await apiPut(`/api/v1/fees/students/${studentId}/${month}/pay`, payData, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  const result = await apiPut(`/api/v1/fees/students/${encodeURIComponent(studentId)}/${encodeURIComponent(month)}/pay`, payData, { accessToken });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

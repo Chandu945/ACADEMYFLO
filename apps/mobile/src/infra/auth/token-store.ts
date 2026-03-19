@@ -13,7 +13,9 @@ export const tokenStore = {
     try {
       const credentials = await Keychain.getGenericPassword({ service: SERVICE_KEY });
       if (!credentials) return null;
-      return JSON.parse(credentials.password) as StoredSession;
+      const parsed = JSON.parse(credentials.password);
+      if (!parsed?.refreshToken || !parsed?.user?.id) return null;
+      return parsed as StoredSession;
     } catch (error) {
       console.warn('[TokenStore] Keychain read failed:', error instanceof Error ? error.message : 'unknown');
       return null;
@@ -25,9 +27,11 @@ export const tokenStore = {
       const payload: StoredSession = { refreshToken, user };
       await Keychain.setGenericPassword('session', JSON.stringify(payload), {
         service: SERVICE_KEY,
+        accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
       });
     } catch (error) {
       console.warn('[TokenStore] Keychain write failed:', error instanceof Error ? error.message : 'unknown');
+      throw new Error('Failed to save session to secure storage');
     }
   },
 

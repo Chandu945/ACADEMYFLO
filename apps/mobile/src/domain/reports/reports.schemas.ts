@@ -7,8 +7,8 @@ export const monthlyRevenueItemSchema = z.object({
   amount: z.number(),
   source: z.string(),
   receiptNumber: z.string(),
-  collectedByUserId: z.string(),
-  approvedByUserId: z.string(),
+  collectedByUserId: z.string().nullable(),
+  approvedByUserId: z.string().nullable(),
   createdAt: z.string(),
 });
 

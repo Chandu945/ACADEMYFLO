@@ -46,7 +46,7 @@ export function MyPaymentRequestsScreen() {
     if (!mountedRef.current) return;
 
     if (result.ok) {
-      setItems(result.value);
+      setItems(result.value.items);
     } else {
       setError(result.error);
     }

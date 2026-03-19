@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const { studentId } = await params;
   const { searchParams } = request.nextUrl;
   const qp = buildSafeParams({ month: searchParams.get('month') || undefined });
-  const result = await apiGet(`/api/v1/parent/children/${studentId}/attendance?${qp}`, { accessToken });
+  const result = await apiGet(`/api/v1/parent/children/${encodeURIComponent(studentId)}/attendance?${qp}`, { accessToken });
   if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
   return NextResponse.json(result.data);
 }

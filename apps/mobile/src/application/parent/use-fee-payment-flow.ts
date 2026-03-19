@@ -28,6 +28,7 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
   const [paymentResult, setPaymentResult] = useState<FeePaymentStatusResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const startingRef = useRef(false);
 
   const deps = useMemo(() => ({ parentApi }), []);
 
@@ -94,35 +95,41 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
     async (feeDueId: string) => {
       // Prevent double-tap: ignore if already in progress
       if (status !== 'idle' && status !== 'failed') return;
-
-      setStatus('initiating');
-      setError(null);
-      setPaymentResult(null);
-
-      const result = await initiateFeePaymentUseCase(deps, feeDueId);
-
-      if (!mountedRef.current) return;
-
-      if (!result.ok) {
-        setStatus('failed');
-        setError(result.error.message);
-        return;
-      }
-
-      const data: InitiateFeePaymentResponse = result.value;
-      setOrderId(data.orderId);
-      setStatus('checkout');
+      if (startingRef.current) return;
+      startingRef.current = true;
 
       try {
-        await openCashfreeCheckout(data.paymentSessionId, data.orderId);
-      } catch {
-        // If browser open fails, still start polling
+        setStatus('initiating');
+        setError(null);
+        setPaymentResult(null);
+
+        const result = await initiateFeePaymentUseCase(deps, feeDueId);
+
+        if (!mountedRef.current) return;
+
+        if (!result.ok) {
+          setStatus('failed');
+          setError(result.error.message);
+          return;
+        }
+
+        const data: InitiateFeePaymentResponse = result.value;
+        setOrderId(data.orderId);
+        setStatus('checkout');
+
+        try {
+          await openCashfreeCheckout(data.paymentSessionId, data.orderId);
+        } catch {
+          // If browser open fails, still start polling
+        }
+
+        if (!mountedRef.current) return;
+
+        setStatus('polling');
+        pollStatus(data.orderId);
+      } finally {
+        startingRef.current = false;
       }
-
-      if (!mountedRef.current) return;
-
-      setStatus('polling');
-      pollStatus(data.orderId);
     },
     [deps, pollStatus, status],
   );

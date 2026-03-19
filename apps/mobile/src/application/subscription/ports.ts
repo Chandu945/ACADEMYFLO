@@ -7,7 +7,7 @@ import type {
 } from '../../domain/payments/cashfree.types';
 
 export interface SubscriptionApiPort {
-  getMySubscription(accessToken: string): Promise<Result<SubscriptionInfo, AppError>>;
-  initiatePayment(accessToken: string): Promise<Result<InitiatePaymentResponse, AppError>>;
-  getPaymentStatus(accessToken: string, orderId: string): Promise<Result<PaymentStatusResponse, AppError>>;
+  getMySubscription(): Promise<Result<SubscriptionInfo, AppError>>;
+  initiatePayment(): Promise<Result<InitiatePaymentResponse, AppError>>;
+  getPaymentStatus(orderId: string): Promise<Result<PaymentStatusResponse, AppError>>;
 }

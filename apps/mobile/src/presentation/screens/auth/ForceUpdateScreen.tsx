@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../components/ui/Button';
 import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
@@ -15,7 +16,7 @@ export function ForceUpdateScreen({ storeUrl, minVersion }: Props) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Update Required</Text>
       <Text style={styles.message}>
         A new version ({minVersion}) of PlayConnect is available. Please update to continue using
@@ -26,7 +27,7 @@ export function ForceUpdateScreen({ storeUrl, minVersion }: Props) {
         onPress={() => Linking.openURL(storeUrl)}
         testID="update-button"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

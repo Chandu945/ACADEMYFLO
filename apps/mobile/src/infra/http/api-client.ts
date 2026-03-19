@@ -31,7 +31,7 @@ export const accessTokenStore = {
 
 let _refreshPromise: Promise<string | null> | null = null;
 
-async function tryRefresh(): Promise<string | null> {
+export async function tryRefresh(): Promise<string | null> {
   // Deduplicate concurrent refresh calls — all callers share the same promise
   if (_refreshPromise) return _refreshPromise;
 
@@ -86,9 +86,11 @@ async function request<T>(
   }
 
   const url = `${env.API_BASE_URL}${path}`;
+  const requestId = generateRequestId();
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-Request-Id': generateRequestId(),
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    'X-Request-Id': requestId,
   };
 
   if (_accessToken) {
@@ -99,7 +101,7 @@ async function request<T>(
     const res = await policyFetch(url, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: isFormData ? (body as BodyInit) : (body !== undefined ? JSON.stringify(body) : undefined),
     });
 
     if (res.status === 401 && !retried) {
@@ -117,6 +119,8 @@ async function request<T>(
       const json = await res.json().catch(() => null);
       return err(mapHttpError(res.status, json));
     }
+
+    if (res.status === 204) return ok(undefined as T);
 
     const json = (await res.json()) as { data: T };
     return ok(json.data);

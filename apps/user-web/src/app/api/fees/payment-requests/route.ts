@@ -5,6 +5,7 @@ import { apiGet, apiPost } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { buildSafeParams } from '@/infra/http/query-sanitizer';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 export async function GET(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const params = buildSafeParams({ status: searchParams.get('status') || undefined });
   const result = await apiGet(`/api/v1/fees/payment-requests?${params}`, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }
 
@@ -22,8 +23,13 @@ export async function POST(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
   const result = await apiPost('/api/v1/fees/payment-requests', body, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data, { status: 201 });
 }

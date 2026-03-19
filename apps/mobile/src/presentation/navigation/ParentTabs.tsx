@@ -1,12 +1,13 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ParentDashboardScreen } from '../screens/parent/ParentDashboardScreen';
 import { ParentHomeStack } from './ParentHomeStack';
 import { ParentPaymentsStack } from './ParentPaymentsStack';
 import { MoreStack } from './MoreStack';
-import { fontSizes, fontWeights } from '../theme';
 import { useTheme } from '../context/ThemeContext';
+import { makeTabScreenOptions } from './tab-options';
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Dashboard: { active: 'view-dashboard', inactive: 'view-dashboard-outline' },
@@ -26,17 +27,12 @@ const Tab = createBottomTabNavigator<ParentTabParamList>();
 
 export function ParentTabs() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerStyle: { backgroundColor: colors.surface, elevation: 0, shadowOpacity: 0, borderBottomWidth: 0 },
-        headerTitleStyle: { fontWeight: fontWeights.semibold, fontSize: fontSizes.lg },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textDisabled,
-        tabBarShowLabel: true,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: fontWeights.medium, marginTop: -2, marginBottom: 2 },
-        tabBarStyle: { backgroundColor: colors.surface, borderTopWidth: 0, elevation: 8, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, height: 60, paddingTop: 4 },
+        ...makeTabScreenOptions(colors, insets.bottom),
         tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
           const icons = TAB_ICONS[route.name];
           const iconName = focused ? icons?.active : icons?.inactive;

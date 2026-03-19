@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 
 type BatchListItem = {
@@ -22,9 +22,11 @@ export function useBatches(search?: string) {
   const [data, setData] = useState<BatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cancelRef = useRef(0);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
+    const id = ++cancelRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -33,13 +35,15 @@ export function useBatches(search?: string) {
       const res = await fetch(`/api/batches?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      if (id !== cancelRef.current) return;
       if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
       setData(json.data ?? json.items ?? []);
     } catch (e) {
+      if (id !== cancelRef.current) return;
       setError(e instanceof Error ? e.message : 'Failed to load batches');
     } finally {
-      setLoading(false);
+      if (id === cancelRef.current) setLoading(false);
     }
   }, [accessToken, search]);
 

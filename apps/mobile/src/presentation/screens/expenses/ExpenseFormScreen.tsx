@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
 } from 'react-native';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
@@ -137,6 +139,10 @@ export function ExpenseFormScreen() {
       Alert.alert('Validation', 'Amount must be greater than zero');
       return;
     }
+    if (new Date(date + 'T00:00:00') > new Date()) {
+      Alert.alert('Validation', 'Expense date cannot be in the future');
+      return;
+    }
 
     setSaving(true);
     const result = await saveExpenseUseCase(
@@ -242,6 +248,7 @@ export function ExpenseFormScreen() {
           label="Date"
           value={date}
           onChange={setDate}
+          maximumDate={new Date()}
           placeholder="Select date"
           testID="expense-date-input"
         />
@@ -331,62 +338,64 @@ export function ExpenseFormScreen() {
         animationType="fade"
         onRequestClose={() => setShowAddCategory(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowAddCategory(false)}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleRow}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="shape-outline" size={22} color={colors.primary} />
-                <Text style={styles.modalTitle}>New Category</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowAddCategory(false)}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleRow}>
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="shape-outline" size={22} color={colors.primary} />
+                  <Text style={styles.modalTitle}>New Category</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowAddCategory(false)}
+                  style={styles.modalCloseBtn}
+                  testID="close-add-category"
+                >
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="close" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowAddCategory(false)}
-                style={styles.modalCloseBtn}
-                testID="close-add-category"
-              >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
 
-            <Text style={styles.modalFieldLabel}>CATEGORY NAME</Text>
-            <View style={styles.modalInputWrap}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="tag-outline" size={18} color={colors.textDisabled} />
-              <TextInput
-                style={styles.modalInput}
-                value={newCategoryName}
-                onChangeText={setNewCategoryName}
-                placeholder="e.g. Office Supplies"
-                placeholderTextColor={colors.textDisabled}
-                autoFocus
-                maxLength={50}
-                testID="new-category-input"
-              />
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setShowAddCategory(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalSaveBtn, addingCategory && styles.saveButtonDisabled]}
-                onPress={handleAddCategory}
-                disabled={addingCategory}
-                testID="save-category-button"
-              >
+              <Text style={styles.modalFieldLabel}>CATEGORY NAME</Text>
+              <View style={styles.modalInputWrap}>
                 {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="plus" size={18} color={colors.white} />
-                <Text style={styles.modalSaveText}>
-                  {addingCategory ? 'Adding...' : 'Add'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                <Icon name="tag-outline" size={18} color={colors.textDisabled} />
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCategoryName}
+                  onChangeText={setNewCategoryName}
+                  placeholder="e.g. Office Supplies"
+                  placeholderTextColor={colors.textDisabled}
+                  autoFocus
+                  maxLength={50}
+                  testID="new-category-input"
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setShowAddCategory(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, addingCategory && styles.saveButtonDisabled]}
+                  onPress={handleAddCategory}
+                  disabled={addingCategory}
+                  testID="save-category-button"
+                >
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="plus" size={18} color={colors.white} />
+                  <Text style={styles.modalSaveText}>
+                    {addingCategory ? 'Adding...' : 'Add'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   );

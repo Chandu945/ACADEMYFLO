@@ -159,7 +159,7 @@ export default function EditStaffPage() {
 
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
             <Button type="button" variant="outline" onClick={() => router.push('/staff')}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={loading}>Update Staff</Button>
+            <Button type="submit" variant="primary" loading={loading} disabled={success}>Update Staff</Button>
           </div>
         </form>
       </Card>

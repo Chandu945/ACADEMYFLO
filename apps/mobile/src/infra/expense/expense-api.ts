@@ -10,6 +10,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../http/api-client';
 export function listExpenses(query: {
   month: string;
   categoryId?: string;
+  search?: string;
   page: number;
   pageSize: number;
 }): Promise<Result<ExpenseListApiResponse, AppError>> {
@@ -18,6 +19,7 @@ export function listExpenses(query: {
   parts.push(`page=${encodeURIComponent(String(query.page))}`);
   parts.push(`pageSize=${encodeURIComponent(String(query.pageSize))}`);
   if (query.categoryId) parts.push(`categoryId=${encodeURIComponent(query.categoryId)}`);
+  if (query.search) parts.push(`search=${encodeURIComponent(query.search)}`);
   return apiGet<ExpenseListApiResponse>(`/api/v1/expenses?${parts.join('&')}`);
 }
 

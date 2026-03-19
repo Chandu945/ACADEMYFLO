@@ -19,6 +19,7 @@ export function useExpenses(
   month: string,
   expenseApi: ExpenseApiPort,
   categoryId?: string,
+  search?: string,
 ): UseExpensesResult {
   const [items, setItems] = useState<ExpenseItem[]>([]);
   const [page, setPage] = useState(1);
@@ -43,6 +44,7 @@ export function useExpenses(
         targetPage,
         PAGE_SIZE,
         categoryId,
+        search,
       );
 
       if (!mountedRef.current) return;
@@ -62,7 +64,7 @@ export function useExpenses(
       setLoading(false);
       setLoadingMore(false);
     },
-    [expenseApi, month, categoryId],
+    [expenseApi, month, categoryId, search],
   );
 
   const refetch = useCallback(() => {

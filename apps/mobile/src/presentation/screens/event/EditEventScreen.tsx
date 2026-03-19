@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   ScrollView,
   View,
@@ -23,6 +23,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 type EditRoute = RouteProp<MoreStackParamList, 'EditEvent'>;
 
@@ -67,6 +68,18 @@ export function EditEventScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const isDirty = title !== (event?.title ?? '')
+    || description !== (event?.description ?? '')
+    || eventType !== (event?.eventType as EventType ?? '')
+    || startDate !== (event?.startDate ?? '')
+    || endDate !== (event?.endDate ?? '')
+    || startTime !== (event?.startTime ?? '')
+    || endTime !== (event?.endTime ?? '')
+    || isAllDay !== (event?.isAllDay ?? false)
+    || location !== (event?.location ?? '')
+    || targetAudience !== (event?.targetAudience as TargetAudience ?? '');
+  useUnsavedChangesWarning(isDirty && !submitting);
+
   if (!event?.id) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -82,6 +95,10 @@ export function EditEventScreen() {
     }
     if (!startDate.trim()) {
       Alert.alert('Validation', 'Start date is required');
+      return;
+    }
+    if (startDate.trim() && endDate.trim() && endDate.trim() < startDate.trim()) {
+      Alert.alert('Validation', 'End date must be on or after start date');
       return;
     }
 

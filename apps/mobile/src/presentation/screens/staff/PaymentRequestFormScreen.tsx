@@ -15,6 +15,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 type Route = RouteProp<FeesStackParamList, 'PaymentRequestForm'>;
 
@@ -25,6 +26,7 @@ export function PaymentRequestFormScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
   const navigation = useNavigation();
+  const { showToast } = useToast();
   const studentId = route.params?.studentId ?? '';
   const monthKey = route.params?.monthKey ?? '';
   const amount = route.params?.amount ?? 0;
@@ -61,6 +63,7 @@ export function PaymentRequestFormScreen() {
     setSubmitting(false);
 
     if (result.ok) {
+      showToast(isEditMode ? 'Request updated successfully' : 'Request submitted successfully');
       navigation.goBack();
     } else {
       setServerError(result.error.message);

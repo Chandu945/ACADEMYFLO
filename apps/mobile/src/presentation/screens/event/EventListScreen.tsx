@@ -71,7 +71,8 @@ export function EventListScreen() {
   const filters: EventListFilters = useMemo(() => ({
     month,
     status: statusFilter,
-  }), [month, statusFilter]);
+    search: debouncedSearch || undefined,
+  }), [month, statusFilter, debouncedSearch]);
 
   const fetchEvents = useCallback(async (pageNum: number, append = false) => {
     if (!append) setLoading(true);
@@ -132,7 +133,7 @@ export function EventListScreen() {
     setDebouncedSearch('');
   }, []);
 
-  // Client-side filter by title
+  // Client-side filter by title (fallback — primary search is now server-side via filters.search)
   const filteredItems = useMemo(() => {
     if (!debouncedSearch) return items;
     return items.filter((item) => item.title.toLowerCase().includes(debouncedSearch));

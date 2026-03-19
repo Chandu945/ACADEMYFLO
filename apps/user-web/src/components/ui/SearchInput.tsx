@@ -7,6 +7,7 @@ export interface SearchInputProps {
   value?: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  label?: string;
   debounceMs?: number;
   disabled?: boolean;
   className?: string;
@@ -17,6 +18,7 @@ export function SearchInput({
   value: controlledValue,
   onChange,
   placeholder = 'Search...',
+  label = 'Search',
   debounceMs = 300,
   disabled = false,
   className,
@@ -95,7 +97,7 @@ export function SearchInput({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         role="searchbox"
-        aria-label={placeholder}
+        aria-label={label}
       />
       {showClear && !disabled && (
         <button

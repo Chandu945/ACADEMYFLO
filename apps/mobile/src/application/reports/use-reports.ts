@@ -3,12 +3,12 @@ import type { AppError } from '../../domain/common/errors';
 import type { MonthlyRevenueSummary } from '../../domain/reports/reports.types';
 import { getMonthlyRevenueUseCase } from './use-cases/get-monthly-revenue.usecase';
 import type { GetMonthlyRevenueApiPort } from './use-cases/get-monthly-revenue.usecase';
+import { getCurrentMonthIST } from '../../domain/common/date-utils';
 
 export type ReportsApiDeps = GetMonthlyRevenueApiPort;
 
 function currentMonthKey(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return getCurrentMonthIST();
 }
 
 export function useReports(api: ReportsApiDeps) {
@@ -19,6 +19,7 @@ export function useReports(api: ReportsApiDeps) {
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };

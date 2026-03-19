@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { LoadingOverlay } from '../components/ui/LoadingOverlay';
 import { AuthStack } from './AuthStack';
@@ -9,36 +10,68 @@ import { BlockedStack } from './BlockedStack';
 import { AcademySetupScreen } from '../screens/auth/AcademySetupScreen';
 import { ForceUpdateScreen } from '../screens/auth/ForceUpdateScreen';
 
+const rootFadeStyle = { flex: 1 } as const;
+
 export function RootNavigator() {
   const { phase, user, forceUpdate } = useAuth();
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const prevPhaseRef = useRef(phase);
+
+  // Fade transition when auth phase changes to prevent jarring flash
+  useEffect(() => {
+    if (prevPhaseRef.current !== phase) {
+      prevPhaseRef.current = phase;
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [phase, fadeAnim]);
+
+  let content: React.ReactNode;
 
   switch (phase) {
     case 'initializing':
-      return <LoadingOverlay message="Starting PlayConnect..." />;
+      content = <LoadingOverlay message="Starting PlayConnect..." />;
+      break;
 
     case 'updateRequired':
-      return (
+      content = (
         <ForceUpdateScreen
           storeUrl={forceUpdate?.storeUrl ?? ''}
           minVersion={forceUpdate?.minVersion ?? ''}
         />
       );
+      break;
 
     case 'unauthenticated':
-      return <AuthStack />;
+      content = <AuthStack />;
+      break;
 
     case 'needsAcademySetup':
-      return <AcademySetupScreen />;
+      content = <AcademySetupScreen />;
+      break;
 
     case 'blocked':
-      return <BlockedStack />;
+      content = <BlockedStack />;
+      break;
 
     case 'ready':
-      if (user?.role === 'OWNER') return <OwnerTabs />;
-      if (user?.role === 'PARENT') return <ParentTabs />;
-      return <StaffTabs />;
+      if (user?.role === 'OWNER') content = <OwnerTabs />;
+      else if (user?.role === 'PARENT') content = <ParentTabs />;
+      else content = <StaffTabs />;
+      break;
 
     default:
-      return <AuthStack />;
+      content = <AuthStack />;
+      break;
   }
+
+  return (
+    <Animated.View style={[rootFadeStyle, { opacity: fadeAnim }]}>
+      {content}
+    </Animated.View>
+  );
 }

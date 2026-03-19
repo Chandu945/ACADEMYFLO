@@ -17,6 +17,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
     ref,
   ) => {
     const autoId = useId();
+    const charCountId = useId();
     const textareaId = id ?? autoId;
     const errorId = error ? `${textareaId}-error` : undefined;
     const hintId = hint && !error ? `${textareaId}-hint` : undefined;
@@ -41,7 +42,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
           id={textareaId}
           className={styles.textarea}
           aria-invalid={!!error}
-          aria-describedby={errorId ?? hintId}
+          aria-describedby={[errorId ?? hintId, showCharCount && maxLength ? charCountId : undefined].filter(Boolean).join(' ') || undefined}
           aria-required={required}
           maxLength={maxLength}
           value={value}
@@ -58,7 +59,11 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
           </span>
         )}
         {showCharCount && maxLength && (
-          <span className={`${styles.charCount} ${isOver ? styles.charCountOver : ''}`}>
+          <span
+            id={charCountId}
+            className={`${styles.charCount} ${isOver ? styles.charCountOver : ''}`}
+            aria-live="polite"
+          >
             {currentLength}/{maxLength}
           </span>
         )}

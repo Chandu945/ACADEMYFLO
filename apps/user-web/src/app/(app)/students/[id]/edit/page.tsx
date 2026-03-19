@@ -47,7 +47,7 @@ export default function EditStudentPage() {
         guardianEmail: student.guardian?.email ?? '',
         joiningDate: student.joiningDate ? student.joiningDate.split('T')[0] : '',
         monthlyFee: String(student.monthlyFee ?? ''),
-        address: '',
+        address: student.address ?? '',
       });
     }
   }, [student]);
@@ -151,7 +151,7 @@ export default function EditStudentPage() {
 
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
             <Button type="button" variant="outline" onClick={() => router.push(`/students/${params.id}`)}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={loading}>Update Student</Button>
+            <Button type="submit" variant="primary" loading={loading} disabled={success}>Update Student</Button>
           </div>
         </form>
       </Card>

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { BatchesStackParamList } from '../../navigation/BatchesStack';
@@ -73,6 +74,13 @@ export function AddStudentToBatchScreen() {
   useEffect(() => {
     loadInitial('');
   }, [loadInitial]);
+
+  // Clear search debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
 
   const handleSearchChange = useCallback(
     (text: string) => {
@@ -157,7 +165,7 @@ export function AddStudentToBatchScreen() {
   }, [loadingMore, colors, styles]);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -192,7 +200,7 @@ export function AddStudentToBatchScreen() {
           testID="add-student-list"
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -2,23 +2,29 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { z } from 'zod';
 
 import { publicEnv, serverEnv } from '@/infra/env';
 
 const COOKIE_NAME = 'pc_user_session';
 const ALGORITHM = 'aes-256-gcm';
 
-export type SessionPayload = {
-  refreshToken: string;
-  deviceId: string;
-  userId: string;
-  role: 'OWNER' | 'STAFF' | 'PARENT';
-  academyId?: string;
-};
+const sessionPayloadSchema = z.object({
+  refreshToken: z.string(),
+  deviceId: z.string(),
+  userId: z.string(),
+  role: z.enum(['OWNER', 'STAFF', 'PARENT']),
+  academyId: z.string().optional(),
+});
 
+export type SessionPayload = z.infer<typeof sessionPayloadSchema>;
+
+let _cachedKey: Buffer | null = null;
 function getDerivedKey(): Buffer {
+  if (_cachedKey) return _cachedKey;
   const { COOKIE_SECRET, COOKIE_SALT } = serverEnv();
-  return scryptSync(COOKIE_SECRET, COOKIE_SALT, 32);
+  _cachedKey = scryptSync(COOKIE_SECRET, COOKIE_SALT, 32);
+  return _cachedKey;
 }
 
 function encrypt(plaintext: string): string {
@@ -63,15 +69,22 @@ export async function getSessionCookie(): Promise<SessionPayload | null> {
 
   try {
     const decrypted = decrypt(cookie.value);
-    return JSON.parse(decrypted) as SessionPayload;
+    return sessionPayloadSchema.parse(JSON.parse(decrypted));
   } catch {
+    await clearSessionCookie();
     return null;
   }
 }
 
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+  cookieStore.set(COOKIE_NAME, '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: publicEnv().NEXT_PUBLIC_APP_ENV !== 'development',
+    path: '/',
+    maxAge: 0,
+  });
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;

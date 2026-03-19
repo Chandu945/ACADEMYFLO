@@ -60,16 +60,19 @@ export function OwnerSignupScreen() {
     if (!validate()) return;
 
     setLoading(true);
-    const err = await signup({
-      fullName: fullName.trim(),
-      email: email.trim().toLowerCase(),
-      phoneNumber: phoneNumber.trim(),
-      password,
-    });
-    setLoading(false);
+    try {
+      const err = await signup({
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        phoneNumber: phoneNumber.trim(),
+        password,
+      });
 
-    if (err) {
-      setError(err.message);
+      if (err) {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
     }
   }, [fullName, email, phoneNumber, password, signup, validate]);
 

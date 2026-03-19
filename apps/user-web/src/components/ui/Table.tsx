@@ -61,7 +61,22 @@ export function Tr({ clickable, className, children, ...props }: TrProps) {
     .join(' ');
 
   return (
-    <tr className={classNames} {...props}>
+    <tr
+      className={classNames}
+      tabIndex={clickable ? 0 : undefined}
+      role={clickable ? 'link' : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === ' ') e.preventDefault();
+                props.onClick?.(e as unknown as React.MouseEvent<HTMLTableRowElement>);
+              }
+            }
+          : undefined
+      }
+      {...props}
+    >
       {children}
     </tr>
   );
@@ -72,7 +87,7 @@ export interface ThProps extends React.ThHTMLAttributes<HTMLTableCellElement> {}
 
 export function Th({ className, children, ...props }: ThProps) {
   return (
-    <th className={`${styles.th} ${className ?? ''}`} {...props}>
+    <th scope={props.scope ?? 'col'} className={`${styles.th} ${className ?? ''}`} {...props}>
       {children}
     </th>
   );

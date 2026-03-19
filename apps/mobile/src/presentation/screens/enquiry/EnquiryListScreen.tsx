@@ -150,7 +150,7 @@ export function EnquiryListScreen() {
             {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
             <Icon name="calendar-clock" size={14} color={isOverdue(item.nextFollowUpDate) ? colors.danger : colors.textSecondary} />
             <Text style={[styles.followUpDate, isOverdue(item.nextFollowUpDate) && styles.overdueText]}>
-              {new Date(item.nextFollowUpDate).toLocaleDateString('en-IN')}
+              {new Date(item.nextFollowUpDate + 'T00:00:00').toLocaleDateString('en-IN')}
               {isOverdue(item.nextFollowUpDate) ? ' (Overdue)' : ''}
             </Text>
           </View>

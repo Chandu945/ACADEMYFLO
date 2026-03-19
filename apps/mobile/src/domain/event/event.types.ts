@@ -54,4 +54,5 @@ export type EventListFilters = {
   eventType?: EventType;
   fromDate?: string;
   toDate?: string;
+  search?: string;
 };

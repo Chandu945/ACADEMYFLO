@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import styles from './page.module.css';
@@ -13,6 +14,7 @@ const E164_REGEX = /^\+[1-9]\d{6,14}$/;
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signup } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,30 +46,16 @@ export default function SignupPage() {
 
       setLoading(true);
       try {
-        const res = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fullName: fullName.trim(),
-            email: email.trim().toLowerCase(),
-            phoneNumber: phoneNumber.trim(),
-            password,
-          }),
+        const result = await signup({
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          phoneNumber: phoneNumber.trim(),
+          password,
         });
 
-        const data = await res.json();
-
-        if (!res.ok) {
-          // Merge backend field errors if present
-          if (data.fieldErrors) {
-            setFieldErrors((prev) => ({ ...prev, ...data.fieldErrors }));
-          }
-          setError(data.message ?? 'Signup failed. Please try again.');
+        if (!result.ok) {
+          setError(result.error ?? 'Signup failed. Please try again.');
           return;
-        }
-
-        if (typeof window !== 'undefined' && data.accessToken) {
-          sessionStorage.setItem('accessToken', data.accessToken);
         }
 
         router.push('/');
@@ -77,7 +65,7 @@ export default function SignupPage() {
         setLoading(false);
       }
     },
-    [fullName, email, phoneNumber, password, validate, router],
+    [fullName, email, phoneNumber, password, validate, router, signup],
   );
 
   return (
@@ -122,7 +110,10 @@ export default function SignupPage() {
               label="Full Name"
               type="text"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                setFieldErrors((prev) => { const next = { ...prev }; delete next['fullName']; return next; });
+              }}
               error={fieldErrors['fullName']}
               placeholder="Enter your full name"
               autoComplete="name"
@@ -134,7 +125,10 @@ export default function SignupPage() {
               label="Email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setFieldErrors((prev) => { const next = { ...prev }; delete next['email']; return next; });
+              }}
               error={fieldErrors['email']}
               placeholder="you@example.com"
               autoComplete="email"
@@ -146,7 +140,10 @@ export default function SignupPage() {
               label="Phone Number"
               type="tel"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => {
+                setPhoneNumber(e.target.value);
+                setFieldErrors((prev) => { const next = { ...prev }; delete next['phoneNumber']; return next; });
+              }}
               error={fieldErrors['phoneNumber']}
               placeholder="+919876543210"
               autoComplete="tel"
@@ -158,7 +155,10 @@ export default function SignupPage() {
               label="Password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setFieldErrors((prev) => { const next = { ...prev }; delete next['password']; return next; });
+              }}
               error={fieldErrors['password']}
               placeholder="Min 8 characters"
               autoComplete="new-password"

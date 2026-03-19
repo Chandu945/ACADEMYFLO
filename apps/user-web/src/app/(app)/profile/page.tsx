@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import { Spinner } from '@/components/ui/Spinner';
 import styles from './page.module.css';
 
 export default function ProfilePage() {
@@ -17,6 +18,12 @@ export default function ProfilePage() {
     email: user?.email ?? '',
     phoneNumber: user?.phoneNumber ?? '',
   });
+  useEffect(() => {
+    if (user) {
+      setEditForm({ fullName: user.fullName ?? '', email: user.email ?? '', phoneNumber: user.phoneNumber ?? '' });
+    }
+  }, [user]);
+
   const [saving, setSaving] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -34,6 +41,11 @@ export default function ProfilePage() {
     setSaving(true);
     setEditError(null);
     setEditSuccess(false);
+    if (!editForm.fullName.trim()) {
+      setEditError('Full name is required');
+      setSaving(false);
+      return;
+    }
     try {
       const res = await fetch('/api/profile', {
         method: 'PUT',
@@ -52,6 +64,7 @@ export default function ProfilePage() {
         setEditError(json.message || 'Failed to update profile');
       } else {
         setEditSuccess(true);
+        setTimeout(() => setEditSuccess(false), 4000);
       }
     } catch {
       setEditError('Network error');
@@ -86,6 +99,7 @@ export default function ProfilePage() {
         setPasswordError(json.message || 'Failed to change password');
       } else {
         setPasswordSuccess(true);
+        setTimeout(() => setPasswordSuccess(false), 4000);
         setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       }
     } catch {
@@ -94,6 +108,8 @@ export default function ProfilePage() {
       setChangingPassword(false);
     }
   }, [passwordForm, accessToken]);
+
+  if (!user) return <Spinner centered size="lg" />;
 
   return (
     <div className={styles.page}>

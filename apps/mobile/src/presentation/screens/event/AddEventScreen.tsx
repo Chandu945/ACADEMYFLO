@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   ScrollView,
   View,
@@ -22,6 +22,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 const EVENT_TYPES: { label: string; value: EventType; icon: string }[] = [
   { label: 'Tournament', value: 'TOURNAMENT', icon: 'trophy-outline' },
@@ -59,6 +60,9 @@ export function AddEventScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const isDirty = !!(title || description || eventType || startDate || endDate || startTime || endTime || location || targetAudience);
+  useUnsavedChangesWarning(isDirty && !submitting);
+
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
       Alert.alert('Validation', 'Event title is required');
@@ -74,6 +78,10 @@ export function AddEventScreen() {
     }
     if (!isAllDay && !startTime.trim()) {
       Alert.alert('Validation', 'Start time is required for non-all-day events');
+      return;
+    }
+    if (startDate.trim() && endDate.trim() && endDate.trim() < startDate.trim()) {
+      Alert.alert('Validation', 'End date must be on or after start date');
       return;
     }
 

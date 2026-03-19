@@ -1,24 +1,21 @@
 import { restoreSessionUseCase } from './restore-session.usecase';
 import type { RestoreSessionDeps } from './restore-session.usecase';
 
+// Mock the shared tryRefresh from api-client
+jest.mock('../../../infra/http/api-client', () => ({
+  tryRefresh: jest.fn(),
+}));
+
+import { tryRefresh } from '../../../infra/http/api-client';
+
+const mockTryRefresh = tryRefresh as jest.MockedFunction<typeof tryRefresh>;
+
 function makeDeps(overrides?: Partial<RestoreSessionDeps>): RestoreSessionDeps {
   return {
-    authApi: {
-      login: jest.fn(),
-      ownerSignup: jest.fn(),
-      refresh: jest.fn(),
-      logout: jest.fn(),
-      setupAcademy: jest.fn(),
-      requestPasswordReset: jest.fn(),
-      confirmPasswordReset: jest.fn(),
-    },
     tokenStore: {
       getSession: jest.fn(),
       setSession: jest.fn(),
       clearSession: jest.fn(),
-    },
-    deviceId: {
-      getDeviceId: jest.fn().mockResolvedValue('device-123'),
     },
     accessToken: {
       set: jest.fn(),
@@ -38,6 +35,10 @@ const storedUser = {
 };
 
 describe('restoreSessionUseCase', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('returns unauthenticated when no stored session', async () => {
     const deps = makeDeps();
     (deps.tokenStore.getSession as jest.Mock).mockResolvedValue(null);
@@ -48,18 +49,16 @@ describe('restoreSessionUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('UNAUTHORIZED');
     }
+    expect(mockTryRefresh).not.toHaveBeenCalled();
   });
 
-  it('refreshes token and returns user on valid session', async () => {
+  it('refreshes token via shared tryRefresh and returns user on valid session', async () => {
     const deps = makeDeps();
     (deps.tokenStore.getSession as jest.Mock).mockResolvedValue({
       refreshToken: 'old-refresh',
       user: storedUser,
     });
-    (deps.authApi.refresh as jest.Mock).mockResolvedValue({
-      ok: true,
-      value: { accessToken: 'new-access', refreshToken: 'new-refresh' },
-    });
+    mockTryRefresh.mockResolvedValue('new-access');
 
     const result = await restoreSessionUseCase(deps);
 
@@ -68,8 +67,7 @@ describe('restoreSessionUseCase', () => {
       expect(result.value.user.id).toBe('u1');
       expect(result.value.accessToken).toBe('new-access');
     }
-    expect(deps.tokenStore.setSession).toHaveBeenCalledWith('new-refresh', storedUser);
-    expect(deps.accessToken.set).toHaveBeenCalledWith('new-access');
+    expect(mockTryRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('clears session on refresh failure', async () => {
@@ -78,31 +76,28 @@ describe('restoreSessionUseCase', () => {
       refreshToken: 'expired-refresh',
       user: storedUser,
     });
-    (deps.authApi.refresh as jest.Mock).mockResolvedValue({
-      ok: false,
-      error: { code: 'UNAUTHORIZED', message: 'Token expired' },
-    });
+    mockTryRefresh.mockResolvedValue(null);
 
     const result = await restoreSessionUseCase(deps);
 
     expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('UNAUTHORIZED');
+    }
     expect(deps.tokenStore.clearSession).toHaveBeenCalled();
-    expect(deps.accessToken.set).not.toHaveBeenCalled();
   });
 
-  it('passes stored refresh token and device ID to auth API', async () => {
+  it('delegates to shared tryRefresh for deduplication', async () => {
     const deps = makeDeps();
     (deps.tokenStore.getSession as jest.Mock).mockResolvedValue({
       refreshToken: 'my-refresh',
       user: storedUser,
     });
-    (deps.authApi.refresh as jest.Mock).mockResolvedValue({
-      ok: true,
-      value: { accessToken: 'tok', refreshToken: 'new' },
-    });
+    mockTryRefresh.mockResolvedValue('tok');
 
     await restoreSessionUseCase(deps);
 
-    expect(deps.authApi.refresh).toHaveBeenCalledWith('my-refresh', 'device-123', 'u1');
+    // Verify it uses the shared mechanism, not a direct API call
+    expect(mockTryRefresh).toHaveBeenCalledTimes(1);
   });
 });

@@ -185,7 +185,7 @@ export default function NewStudentPage() {
             <Button type="button" variant="outline" onClick={() => router.push('/students')}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" loading={loading}>
+            <Button type="submit" variant="primary" loading={loading} disabled={success}>
               Create Student
             </Button>
           </div>

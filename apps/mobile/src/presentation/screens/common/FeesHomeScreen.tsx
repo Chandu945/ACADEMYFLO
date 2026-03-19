@@ -115,7 +115,7 @@ export function FeesHomeScreen() {
     }
     let cancelled = false;
     async function load() {
-      const result = await listBatchStudents(selectedBatchId!, 1, 100);
+      const result = await listBatchStudents(selectedBatchId!, 1, 500);
       if (cancelled) return;
       if (result.ok) {
         const ids = new Set(result.value.data.map((s: { id: string }) => s.id));

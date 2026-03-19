@@ -28,6 +28,7 @@ import { useFAB } from '../../context/FABContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { BirthdayWidget } from '../../components/dashboard/BirthdayWidget';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
+import { InlineError } from '../../components/ui/InlineError';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -65,28 +66,40 @@ export function StaffDashboardScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
     const today = getTodayIST();
+    setError(null);
 
-    const [attendanceRes, requestsRes, eventsRes, enquiryRes, birthdayRes] = await Promise.all([
-      getDailyReport(today),
-      listPaymentRequests('PENDING'),
-      getEventSummary(),
-      getEnquirySummary(),
-      getBirthdays('month'),
-    ]);
+    try {
+      const [attendanceRes, requestsRes, eventsRes, enquiryRes, birthdayRes] = await Promise.all([
+        getDailyReport(today),
+        listPaymentRequests('PENDING'),
+        getEventSummary(),
+        getEnquirySummary(),
+        getBirthdays('month'),
+      ]);
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    setData({
-      attendance: attendanceRes.ok ? attendanceRes.value : null,
-      pendingRequests: requestsRes.ok ? requestsRes.value.data : [],
-      eventSummary: eventsRes.ok ? eventsRes.value : null,
-      enquirySummary: enquiryRes.ok ? enquiryRes.value : null,
-      birthdayStudents: birthdayRes.ok ? birthdayRes.value.students : [],
-    });
+      const allFailed = !attendanceRes.ok && !requestsRes.ok && !eventsRes.ok && !enquiryRes.ok && !birthdayRes.ok;
+      if (allFailed) {
+        setError('Failed to load dashboard data. Please try again.');
+      }
+
+      setData({
+        attendance: attendanceRes.ok ? attendanceRes.value : null,
+        pendingRequests: requestsRes.ok ? requestsRes.value.data : [],
+        eventSummary: eventsRes.ok ? eventsRes.value : null,
+        enquirySummary: enquiryRes.ok ? enquiryRes.value : null,
+        birthdayStudents: birthdayRes.ok ? birthdayRes.value.students : [],
+      });
+    } catch (_e) {
+      if (!mountedRef.current) return;
+      setError('Failed to load dashboard data. Please try again.');
+    }
     setLoading(false);
   }, []);
 
@@ -134,6 +147,7 @@ export function StaffDashboardScreen() {
       showsVerticalScrollIndicator={false}
       testID="staff-dashboard-scroll"
     >
+      {error && <InlineError message={error} onRetry={load} />}
       {loading && !refreshing ? (
         <View testID="staff-skeleton">
           <View style={styles.gridRow}>
@@ -342,7 +356,7 @@ export function StaffDashboardScreen() {
                 <View
                   style={[
                     styles.progressFill,
-                    { width: `${attendancePct}%` as unknown as number },
+                    { width: `${attendancePct}%` },
                   ]}
                 />
               </View>

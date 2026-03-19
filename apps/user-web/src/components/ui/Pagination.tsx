@@ -8,6 +8,7 @@ export interface PaginationProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   pageSize?: number;
+  totalItems?: number;
   pageSizeOptions?: number[];
   onPageSizeChange?: (size: number) => void;
   className?: string;
@@ -33,6 +34,7 @@ export function Pagination({
   totalPages,
   onPageChange,
   pageSize,
+  totalItems,
   pageSizeOptions,
   onPageSizeChange,
   className,
@@ -47,7 +49,14 @@ export function Pagination({
   return (
     <div className={`${styles.wrapper} ${className ?? ''}`}>
       <div className={styles.info}>
-        Page {currentPage} of {totalPages}
+        {totalItems != null && pageSize != null ? (
+          <>
+            Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)}-
+            {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+          </>
+        ) : (
+          <>Page {currentPage} of {totalPages}</>
+        )}
       </div>
 
       <div className={styles.controls}>

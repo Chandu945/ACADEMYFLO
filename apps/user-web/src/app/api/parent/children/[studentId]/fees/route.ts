@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     from: searchParams.get('from') || undefined,
     to: searchParams.get('to') || undefined,
   });
-  const result = await apiGet(`/api/v1/parent/children/${studentId}/fees?${qp}`, { accessToken });
+  const result = await apiGet(`/api/v1/parent/children/${encodeURIComponent(studentId)}/fees?${qp}`, { accessToken });
   if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
   return NextResponse.json(result.data);
 }

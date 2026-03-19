@@ -52,21 +52,24 @@ export function AcademySetupScreen() {
     if (!validate()) return;
 
     setLoading(true);
-    const err = await setupAcademy({
-      academyName: academyName.trim(),
-      address: {
-        line1: line1.trim(),
-        line2: line2.trim() || undefined,
-        city: city.trim(),
-        state: state.trim(),
-        pincode: pincode.trim(),
-        country: 'India',
-      },
-    });
-    setLoading(false);
+    try {
+      const err = await setupAcademy({
+        academyName: academyName.trim(),
+        address: {
+          line1: line1.trim(),
+          line2: line2.trim() || undefined,
+          city: city.trim(),
+          state: state.trim(),
+          pincode: pincode.trim(),
+          country: 'India',
+        },
+      });
 
-    if (err) {
-      setError(err.message);
+      if (err) {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
     }
   }, [academyName, line1, line2, city, state, pincode, setupAcademy, validate]);
 

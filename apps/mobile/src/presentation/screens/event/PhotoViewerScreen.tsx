@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
 import { env } from '../../../infra/env';
@@ -37,6 +38,7 @@ function resolveUrl(url: string): string {
 export function PhotoViewerScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MoreStackParamList>>();
@@ -189,7 +191,7 @@ export function PhotoViewerScreen() {
       />
 
       {/* Bottom info & actions bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(spacing.xl, insets.bottom) }]}>
         {currentPhoto?.caption && (
           <Text style={styles.caption} numberOfLines={2}>
             {currentPhoto.caption}

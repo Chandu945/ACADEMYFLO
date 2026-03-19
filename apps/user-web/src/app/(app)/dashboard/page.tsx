@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useDashboardKpis, useMonthlyChart, useBirthdays } from '@/application/dashboard/use-dashboard';
+import { useDashboardKpis, useBirthdays } from '@/application/dashboard/use-dashboard';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -30,7 +30,7 @@ function formatCurrency(amount: number): string {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: kpis, loading: kpisLoading, error: kpisError, refetch: refetchKpis } = useDashboardKpis();
-  const { data: _chart, loading: _chartLoading } = useMonthlyChart();
+  // Monthly chart hook removed — data not used on dashboard yet
   const { data: birthdays, loading: birthdaysLoading } = useBirthdays('today');
 
   const handleRefresh = () => {
@@ -85,7 +85,7 @@ export default function DashboardPage() {
                     className={styles.kpiIcon}
                     style={{ backgroundColor: `${cfg.color}15`, color: cfg.color }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <circle cx="12" cy="12" r="10" />
                     </svg>
                   </span>
@@ -133,7 +133,7 @@ export default function DashboardPage() {
                 <div className={styles.birthdayInfo}>
                   <span className={styles.birthdayName}>{student.fullName}</span>
                   <span className={styles.birthdayDate}>
-                    {new Date(student.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-'}
                     {student.guardianMobile ? ` | ${student.guardianMobile}` : ''}
                   </span>
                 </div>

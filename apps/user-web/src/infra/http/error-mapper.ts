@@ -1,4 +1,28 @@
+import { NextResponse } from 'next/server';
+
 import { AppError } from '@/domain/common/errors';
+import type { AppErrorCode } from '@/domain/common/errors';
+
+/** Build a NextResponse from an AppError — use after `if (!result.ok)` checks. */
+export function toErrorResponse(error: AppError): NextResponse {
+  return NextResponse.json(
+    { message: error.message },
+    { status: errorCodeToStatus(error.code) },
+  );
+}
+
+export function errorCodeToStatus(code: AppErrorCode): number {
+  switch (code) {
+    case 'UNAUTHORIZED': return 401;
+    case 'FORBIDDEN': return 403;
+    case 'NOT_FOUND': return 404;
+    case 'CONFLICT': return 409;
+    case 'RATE_LIMITED': return 429;
+    case 'VALIDATION': return 400;
+    case 'NETWORK': return 502;
+    default: return 500;
+  }
+}
 
 export function mapApiError(status: number, body?: Record<string, unknown>): AppError {
   const message = typeof body?.['message'] === 'string' ? body['message'] : undefined;

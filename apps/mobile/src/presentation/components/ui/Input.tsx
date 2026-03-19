@@ -58,13 +58,15 @@ export function Input({
           editable={editable}
           returnKeyType={returnKeyType}
           accessibilityLabel={label}
+          accessibilityState={{ disabled: editable === false }}
+          accessibilityHint={error || undefined}
           testID={testID}
         />
         {isPassword ? (
           <Pressable
             onPress={() => setPasswordVisible((prev) => !prev)}
             style={styles.toggleButton}
-            hitSlop={8}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
             accessibilityRole="button"
             testID={testID ? `${testID}-toggle` : 'password-toggle'}

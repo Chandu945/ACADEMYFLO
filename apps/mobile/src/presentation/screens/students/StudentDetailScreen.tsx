@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -79,22 +79,19 @@ export function StudentDetailScreen() {
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
   const mountedRef = useRef(true);
 
-  // Guard against missing route params — show error state
-  if (!paramStudent?.id) {
-    return (
-      <View style={styles.screen}>
-        <Text style={{ textAlign: 'center', marginTop: 40 }}>Student data unavailable</Text>
-      </View>
-    );
-  }
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const refetchStudent = useCallback(async () => {
+    if (!paramStudent?.id) return;
     const result = await getStudent(student.id);
     if (!mountedRef.current) return;
     if (result.ok) {
       setStudent(result.value);
     }
-  }, [student.id]);
+  }, [student.id, paramStudent?.id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -114,6 +111,15 @@ export function StudentDetailScreen() {
   const handlePhotoUploaded = useCallback((url: string) => {
     setStudent((prev) => ({ ...prev, profilePhotoUrl: url }));
   }, []);
+
+  // Guard against missing route params — all hooks are above
+  if (!paramStudent?.id) {
+    return (
+      <View style={styles.screen}>
+        <Text style={{ textAlign: 'center', marginTop: 40 }}>Student data unavailable</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>

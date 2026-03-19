@@ -2,17 +2,21 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppError } from '../../domain/common/errors';
 import type { AuditLogItem, AuditActionType, AuditEntityType } from '../../domain/audit/audit.types';
 import { listAuditLogsUseCase, type AuditApiPort } from './use-cases/list-audit-logs.usecase';
+import { getTodayIST, nowIST } from '../../domain/common/date-utils';
 
 const PAGE_SIZE = 50;
 
 function defaultFrom(): string {
-  const d = new Date();
+  const d = nowIST();
   d.setDate(d.getDate() - 7);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function defaultTo(): string {
-  return new Date().toISOString().slice(0, 10);
+  return getTodayIST();
 }
 
 export type AuditFilters = {

@@ -53,6 +53,11 @@ export const lightColors = {
   // Overlays
   overlay: 'rgba(0,0,0,0.5)',
 
+  // UI state
+  disabledBg: '#f1f5f9',
+  link: '#0369a1',
+  focusRing: 'rgba(8,145,178,0.4)',
+
   // Constant
   white: '#ffffff',
   transparent: 'transparent',
@@ -76,8 +81,8 @@ export const darkColors: Colors = {
   textDark: '#f1f5f9',
   textMedium: '#cbd5e1',
   textLight: '#94a3b8',
-  textSecondary: '#7c93b0',
-  textDisabled: '#4a6380',
+  textSecondary: '#94adc9',
+  textDisabled: '#6b8aab',
 
   // Borders
   border: '#1e3a5f',
@@ -111,6 +116,11 @@ export const darkColors: Colors = {
   // Overlays
   overlay: 'rgba(0,0,0,0.7)',
 
+  // UI state
+  disabledBg: '#0c2a42',
+  link: '#38bdf8',
+  focusRing: 'rgba(34,211,238,0.4)',
+
   // Constant
   white: '#ffffff',
   transparent: 'transparent',
@@ -129,6 +139,7 @@ export const spacing = {
   base: 16,
   lg: 20,
   xl: 24,
+  xxl: 28,
   '2xl': 32,
   '3xl': 48,
 } as const;

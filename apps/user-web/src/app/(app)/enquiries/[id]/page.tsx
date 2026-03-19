@@ -35,11 +35,13 @@ export default function EnquiryDetailPage() {
   const [followUpError, setFollowUpError] = useState<string | null>(null);
 
   const [closeOpen, setCloseOpen] = useState(false);
-  const [closeReason, _setCloseReason] = useState('');
+  const [closeReason, setCloseReason] = useState('');
   const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   const [convertOpen, setConvertOpen] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [convertError, setConvertError] = useState<string | null>(null);
 
   const handleAddFollowUp = useCallback(async () => {
     if (!followUpNotes.trim()) { setFollowUpError('Notes are required'); return; }
@@ -58,20 +60,28 @@ export default function EnquiryDetailPage() {
 
   const handleClose = useCallback(async () => {
     setClosing(true);
-    await closeEnquiry(params.id, closeReason, accessToken);
+    setCloseError(null);
+    const result = await closeEnquiry(params.id, closeReason, accessToken);
     setClosing(false);
+    if (!result.ok) {
+      setCloseError(result.error || 'Failed to close enquiry');
+      return;
+    }
     setCloseOpen(false);
     refetch();
   }, [params.id, closeReason, accessToken, refetch]);
 
   const handleConvert = useCallback(async () => {
     setConverting(true);
+    setConvertError(null);
     const result = await convertEnquiry(params.id, {}, accessToken);
     setConverting(false);
-    if (result.ok) {
-      router.push('/enquiries');
+    if (!result.ok) {
+      setConvertError(result.error || 'Failed to convert enquiry');
+      return;
     }
     setConvertOpen(false);
+    router.push('/enquiries');
   }, [params.id, accessToken, router]);
 
   if (loading) return <Spinner centered size="lg" />;
@@ -187,24 +197,36 @@ export default function EnquiryDetailPage() {
       {/* Close Dialog */}
       <ConfirmDialog
         open={closeOpen}
-        onClose={() => setCloseOpen(false)}
+        onClose={() => { setCloseOpen(false); setCloseReason(''); setCloseError(null); }}
         onConfirm={handleClose}
         title="Close Enquiry"
         message="Are you sure you want to close this enquiry?"
         confirmLabel="Close Enquiry"
         loading={closing}
-      />
+      >
+        {closeError && <Alert variant="error" message={closeError} />}
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <Input
+            label="Reason for closing"
+            value={closeReason}
+            onChange={(e) => setCloseReason(e.target.value)}
+            placeholder="Optional reason"
+          />
+        </div>
+      </ConfirmDialog>
 
       {/* Convert Dialog */}
       <ConfirmDialog
         open={convertOpen}
-        onClose={() => setConvertOpen(false)}
+        onClose={() => { setConvertOpen(false); setConvertError(null); }}
         onConfirm={handleConvert}
         title="Convert to Student"
         message={`Convert "${enquiry.prospectName}" to a student?`}
         confirmLabel="Convert"
         loading={converting}
-      />
+      >
+        {convertError && <Alert variant="error" message={convertError} />}
+      </ConfirmDialog>
     </div>
   );
 }

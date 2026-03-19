@@ -52,6 +52,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingVertical: spacing.sm + 3,
     alignItems: 'center',
     borderRadius: radius.lg,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   segmentSelected: {
     backgroundColor: colors.surface,

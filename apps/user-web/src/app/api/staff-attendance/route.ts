@@ -5,6 +5,7 @@ import { apiGet, apiPut } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { buildSafeParams } from '@/infra/http/query-sanitizer';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 export async function GET(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   if (type === 'daily-report') {
     const params = buildSafeParams({ date: searchParams.get('date') || undefined });
     const result = await apiGet(`/api/v1/staff-attendance/reports/daily?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
       pageSize: searchParams.get('pageSize') || '50',
     });
     const result = await apiGet(`/api/v1/staff-attendance/reports/monthly?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     pageSize: searchParams.get('pageSize') || '50',
   });
   const result = await apiGet(`/api/v1/staff-attendance?${params}`, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }
 
@@ -46,8 +47,13 @@ export async function PUT(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
   const result = await apiPut(`/api/v1/staff-attendance/${encodeURIComponent(body.staffUserId)}?date=${encodeURIComponent(body.date)}`, { status: body.status }, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

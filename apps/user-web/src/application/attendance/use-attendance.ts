@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 
 type AttendanceItem = {
@@ -31,9 +31,11 @@ export function useDailyAttendance(date: string, batchId?: string, search?: stri
   const [data, setData] = useState<AttendancePage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cancelRef = useRef(0);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
+    const id = ++cancelRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -43,12 +45,14 @@ export function useDailyAttendance(date: string, batchId?: string, search?: stri
       const res = await fetch(`/api/attendance?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      if (id !== cancelRef.current) return;
       if (!res.ok) throw new Error((await res.json()).message);
       setData(await res.json());
     } catch (e) {
+      if (id !== cancelRef.current) return;
       setError(e instanceof Error ? e.message : 'Failed to load attendance');
     } finally {
-      setLoading(false);
+      if (id === cancelRef.current) setLoading(false);
     }
   }, [accessToken, date, batchId, search]);
 
@@ -93,8 +97,10 @@ export function useMonthlySummary(month: string, search?: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<MonthlySummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const cancelRef = useRef(0);
 
   const fetch_ = useCallback(async () => {
+    const id = ++cancelRef.current;
     setLoading(true);
     try {
       if (!accessToken) return;
@@ -103,12 +109,13 @@ export function useMonthlySummary(month: string, search?: string) {
       const res = await fetch(`/api/attendance?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      if (id !== cancelRef.current) return;
       if (res.ok) {
         const json = await res.json();
         setData(json.data ?? json.items ?? json ?? []);
       }
     } finally {
-      setLoading(false);
+      if (id === cancelRef.current) setLoading(false);
     }
   }, [accessToken, month, search]);
 

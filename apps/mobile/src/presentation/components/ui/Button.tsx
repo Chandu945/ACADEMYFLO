@@ -75,6 +75,7 @@ export function Button({
       onPressOut={handlePressOut}
       disabled={isDisabled}
       accessibilityRole="button"
+      accessibilityLabel={title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
     >
@@ -109,7 +110,7 @@ const makeStyles = (_colors: Colors) => StyleSheet.create({
   baseSm: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    minHeight: 36,
+    minHeight: 44,
     borderRadius: radius.md,
   },
   disabled: {

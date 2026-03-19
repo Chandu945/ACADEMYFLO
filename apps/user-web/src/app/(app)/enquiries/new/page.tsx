@@ -115,7 +115,7 @@ export default function NewEnquiryPage() {
 
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
             <Button type="button" variant="outline" onClick={() => router.push('/enquiries')}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={loading}>Create Enquiry</Button>
+            <Button type="submit" variant="primary" loading={loading} disabled={success}>Create Enquiry</Button>
           </div>
         </form>
       </Card>

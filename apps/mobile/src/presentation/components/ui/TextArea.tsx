@@ -39,6 +39,7 @@ export function TextArea({
         numberOfLines={4}
         maxLength={maxLength}
         textAlignVertical="top"
+        accessibilityLabel={label}
         testID={testID}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}

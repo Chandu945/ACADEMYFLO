@@ -51,8 +51,11 @@ let _initPromise: Promise<{ accessToken: string } | null> | null = null;
 function initAuth(): Promise<{ accessToken: string } | null> {
   if (_initPromise) return _initPromise;
   _initPromise = fetch('/api/auth/refresh', { method: 'POST' })
-    .then((res) => (res.ok ? (res.json() as Promise<{ accessToken: string }>) : null))
-    .catch(() => null);
+    .then((res) => {
+      if (!res.ok) { _initPromise = null; return null; }
+      return res.json() as Promise<{ accessToken: string }>;
+    })
+    .catch(() => { _initPromise = null; return null; });
   return _initPromise;
 }
 
@@ -60,7 +63,10 @@ function decodeUserFromToken(token: string): AuthUser | null {
   try {
     const payload = token.split('.')[1];
     if (!payload) return null;
-    const decoded = JSON.parse(atob(payload));
+    // Convert base64url to standard base64
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const decoded = JSON.parse(atob(padded));
     return {
       id: decoded.sub ?? decoded.userId,
       fullName: decoded.fullName ?? '',
@@ -184,6 +190,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({ ...state, login, signup, logout, refreshAuth }),
     [state, login, signup, logout, refreshAuth],
   );
+
+  // Periodically refresh the access token while authenticated
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    const interval = setInterval(() => { refreshAuth(); }, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [state.isAuthenticated, refreshAuth]);
 
   // Redirect to login when auth resolution completes but user is not authenticated.
   // This handles expired sessions where the cookie exists (middleware let us through)

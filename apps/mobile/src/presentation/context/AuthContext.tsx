@@ -15,6 +15,7 @@ import { authApi } from '../../infra/auth/auth-api';
 import { tokenStore } from '../../infra/auth/token-store';
 import { deviceIdStore } from '../../infra/auth/device-id';
 import { subscriptionApi } from '../../infra/subscription/subscription-api';
+import { pushTokenApi } from '../../infra/notification/push-token-api';
 import { accessTokenStore, getAccessToken, registerAuthFailureHandler } from '../../infra/http/api-client';
 import { isTokenExpiredOrExpiring } from '../../infra/auth/token-expiry';
 import { checkAppVersionUseCase } from '../../application/auth/use-cases/check-app-version.usecase';
@@ -72,6 +73,7 @@ const deps = {
   tokenStore,
   deviceId: deviceIdStore,
   accessToken: accessTokenStore,
+  pushTokenApi,
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -94,7 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const subResult = await getMySubscriptionUseCase({
       subscriptionApi,
-      accessToken: accessTokenStore,
     });
 
     if (!mountedRef.current) return;
@@ -102,8 +103,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!subResult.ok) {
       if (subResult.error.code === 'CONFLICT') {
         setState({ phase: 'needsAcademySetup', user, subscription: null, forceUpdate: null });
-      } else {
+      } else if (subResult.error.code === 'UNAUTHORIZED' || subResult.error.code === 'FORBIDDEN') {
         setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+      } else {
+        // Transient error — let user proceed, subscription will be rechecked later
+        setState({ phase: 'ready', user, subscription: null, forceUpdate: null });
       }
       return;
     }
@@ -173,19 +177,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (nextState === 'active' && state.phase === 'ready' && needsRefresh) {
         // Access token was lost or expired/expiring — silently restore
         restoreSessionUseCase(deps)
-          .then((result) => {
+          .then(async (result) => {
             if (!mountedRef.current) return;
             if (!result.ok) {
               setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+              return;
             }
             // Token is now refreshed in-memory via restoreSessionUseCase
+
+            // After token refresh succeeds, also recheck subscription
+            try {
+              const subResult = await getMySubscriptionUseCase({ subscriptionApi });
+              if (!mountedRef.current) return;
+              if (subResult.ok && !subResult.value.canAccessApp) {
+                setState(prev => ({ ...prev, phase: 'blocked' }));
+              }
+            } catch {
+              // Best effort — don't block on subscription check failure
+            }
           })
           .catch((err) => {
             console.warn(
               '[AuthContext] Background token refresh failed:',
               err instanceof Error ? err.message : 'unknown',
             );
-            // Token refresh failed — user will need to re-login on next API call
+            // Don't change phase — let the next API call trigger proper auth failure handling
+            // But clear the stale access token so api-client will attempt refresh
+            if (!mountedRef.current) return;
+            setState(prev => ({ ...prev, accessToken: null }));
           });
       }
     };

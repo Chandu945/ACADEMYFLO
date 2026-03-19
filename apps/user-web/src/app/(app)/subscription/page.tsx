@@ -5,6 +5,7 @@ import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
 type SubscriptionData = {
@@ -44,39 +45,41 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+  const [upgradeConfirm, setUpgradeConfirm] = useState<{ name: string; price: string } | null>(null);
 
-  useEffect(() => {
-    async function fetch_() {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/subscription', {
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-        });
-        if (res.ok) {
-          setSubscription(await res.json());
-        } else {
-          // Use defaults
-          setSubscription({
-            status: 'ACTIVE',
-            tier: 'Starter',
-            daysRemaining: 30,
-            studentCount: 0,
-            maxStudents: 25,
-            expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
-          });
-        }
-      } catch {
-        setError('Failed to load subscription data');
-      } finally {
-        setLoading(false);
+  const fetchSubscription = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/subscription', {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      });
+      if (res.ok) {
+        setSubscription(await res.json());
+      } else {
+        const body = await res.json().catch(() => null);
+        setError(body?.error || `Failed to load subscription (${res.status})`);
       }
+    } catch {
+      setError('Failed to load subscription data');
+    } finally {
+      setLoading(false);
     }
-    fetch_();
   }, [accessToken]);
 
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
+
   const handleUpgrade = useCallback(async (tier: string) => {
+    setUpgradeLoading(true);
+    setUpgradeError(null);
+    setUpgradeSuccess(false);
     try {
-      await fetch('/api/subscription/upgrade', {
+      const res = await fetch('/api/subscription/upgrade', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,10 +87,27 @@ export default function SubscriptionPage() {
         },
         body: JSON.stringify({ tier }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setUpgradeError(body?.error || `Failed to upgrade to ${tier}`);
+        setUpgradeLoading(false);
+        return;
+      }
+      setUpgradeSuccess(true);
+      setTimeout(() => setUpgradeSuccess(false), 5000);
+      fetchSubscription();
     } catch {
-      // Handle error
+      setUpgradeError('Network error. Please try again.');
+    } finally {
+      setUpgradeLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, fetchSubscription]);
+
+  const handleUpgradeConfirm = useCallback(async () => {
+    if (!upgradeConfirm) return;
+    await handleUpgrade(upgradeConfirm.name);
+    setUpgradeConfirm(null);
+  }, [upgradeConfirm, handleUpgrade]);
 
   if (loading) return <Spinner centered size="lg" />;
 
@@ -95,7 +115,9 @@ export default function SubscriptionPage() {
     <div className={styles.page}>
       <h1 className={styles.title}>Subscription</h1>
 
-      {error && <Alert variant="error" message={error} />}
+      {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: fetchSubscription }} />}
+      {upgradeError && <Alert variant="error" message={upgradeError} />}
+      {upgradeSuccess && <Alert variant="success" message="Subscription upgraded successfully!" />}
 
       {/* Current Plan */}
       {subscription && (
@@ -140,7 +162,14 @@ export default function SubscriptionPage() {
                   {isCurrent ? (
                     <Button variant="outline" size="sm" fullWidth disabled>Current Plan</Button>
                   ) : (
-                    <Button variant="primary" size="sm" fullWidth onClick={() => handleUpgrade(tier.name)}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      fullWidth
+                      loading={upgradeLoading && upgradeConfirm?.name === tier.name}
+                      disabled={upgradeLoading}
+                      onClick={() => setUpgradeConfirm({ name: tier.name, price: tier.price })}
+                    >
                       {tier.price === 'Free' ? 'Downgrade' : 'Upgrade'}
                     </Button>
                   )}
@@ -150,6 +179,17 @@ export default function SubscriptionPage() {
           })}
         </div>
       </div>
+
+      {/* Upgrade Confirmation */}
+      <ConfirmDialog
+        open={!!upgradeConfirm}
+        onClose={() => setUpgradeConfirm(null)}
+        onConfirm={handleUpgradeConfirm}
+        title={`${upgradeConfirm?.price === 'Free' ? 'Downgrade' : 'Upgrade'} Plan`}
+        message={`Upgrade to ${upgradeConfirm?.name} for ${upgradeConfirm?.price}?`}
+        confirmLabel={upgradeConfirm?.price === 'Free' ? 'Downgrade' : 'Upgrade'}
+        loading={upgradeLoading}
+      />
     </div>
   );
 }

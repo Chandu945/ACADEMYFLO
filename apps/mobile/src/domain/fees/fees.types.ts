@@ -1,7 +1,7 @@
 export type MonthKey = string; // YYYY-MM
 
 export type FeeDueStatus = 'UPCOMING' | 'DUE' | 'PAID';
-export type PaidSource = 'OWNER_DIRECT' | 'STAFF_APPROVED' | 'PARENT_ONLINE';
+export type PaidSource = 'OWNER_DIRECT' | 'STAFF_APPROVED' | 'PARENT_ONLINE' | 'MANUAL';
 export type PaymentLabel = 'CASH' | 'UPI' | 'CARD' | 'NET_BANKING' | 'ONLINE';
 
 export type FeeDueItem = {

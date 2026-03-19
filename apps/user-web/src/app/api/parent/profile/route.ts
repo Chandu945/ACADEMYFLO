@@ -4,13 +4,14 @@ import type { NextRequest } from 'next/server';
 import { apiGet, apiPut } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 export async function GET(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const result = await apiGet('/api/v1/parent/profile', { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }
 
@@ -19,18 +20,24 @@ export async function PUT(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (body.changePassword) {
     const result = await apiPut('/api/v1/parent/change-password', {
       currentPassword: body.currentPassword,
       newPassword: body.newPassword,
     }, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
-  const result = await apiPut('/api/v1/parent/profile', body, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  const { changePassword, currentPassword, newPassword, ...profileData } = body;
+  const result = await apiPut('/api/v1/parent/profile', profileData, { accessToken });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

@@ -59,8 +59,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     [colors, isDark, mode, setMode],
   );
 
-  // Don't render until preference is loaded to avoid flash
-  if (!loaded) return null;
-
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

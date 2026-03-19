@@ -41,6 +41,7 @@ export function Toggle({
         lightHaptic();
         onValueChange(!value);
       }}
+      hitSlop={{ top: 10, bottom: 10 }}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
       disabled={disabled}

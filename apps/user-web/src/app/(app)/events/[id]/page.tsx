@@ -25,18 +25,33 @@ export default function EventDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken } = useAuth();
-  const { data: event, loading } = useEventDetail(params.id);
+  const { data: event, loading, error, refetch } = useEventDetail(params.id);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = useCallback(async () => {
     setDeleting(true);
+    setDeleteError(null);
     const result = await deleteEvent(params.id, accessToken);
     setDeleting(false);
-    if (result.ok) router.push('/events');
+    if (!result.ok) {
+      setDeleteError(result.error || 'Failed to delete event');
+      return;
+    }
+    setDeleteOpen(false);
+    router.push('/events');
   }, [params.id, accessToken, router]);
 
   if (loading) return <Spinner centered size="lg" />;
+  if (error) return (
+    <div style={{ padding: 'var(--space-6)', maxWidth: '800px' }}>
+      <Alert variant="error" message={error} />
+      <div style={{ marginTop: 'var(--space-3)' }}>
+        <Button onClick={refetch}>Retry</Button>
+      </div>
+    </div>
+  );
   if (!event) return <Alert variant="error" message="Event not found" />;
 
   return (
@@ -60,7 +75,7 @@ export default function EventDetailPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="outline" onClick={() => router.push(`/events/new?edit=${params.id}`)}>Edit</Button>
+            <Button variant="outline" onClick={() => router.push(`/events/${params.id}/edit`)}>Edit</Button>
             <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>
           </div>
         </div>
@@ -102,14 +117,16 @@ export default function EventDetailPage() {
 
       <ConfirmDialog
         open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
+        onClose={() => { setDeleteOpen(false); setDeleteError(null); }}
         onConfirm={handleDelete}
         title="Delete Event"
         message={`Are you sure you want to delete "${event.title}"?`}
         confirmLabel="Delete"
         danger
         loading={deleting}
-      />
+      >
+        {deleteError && <Alert variant="error" message={deleteError} />}
+      </ConfirmDialog>
     </div>
   );
 }

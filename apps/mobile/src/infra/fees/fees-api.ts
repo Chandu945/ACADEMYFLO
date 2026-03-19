@@ -29,8 +29,9 @@ export function getStudentFees(
 export function markFeePaid(
   studentId: string,
   month: string,
+  paidSource?: string,
 ): Promise<Result<FeeDueItem, AppError>> {
-  return apiPut<FeeDueItem>(`/api/v1/fees/students/${studentId}/${month}/pay`);
+  return apiPut<FeeDueItem>(`/api/v1/fees/students/${studentId}/${month}/pay`, paidSource ? { paidSource } : undefined);
 }
 
 export const feesApi = { listUnpaidDues, listPaidDues, getStudentFees, markFeePaid };

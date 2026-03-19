@@ -21,6 +21,7 @@ import { isValidDate } from '../../../domain/common/date-utils';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'AddEnquiry'>;
 
@@ -37,6 +38,7 @@ export function AddEnquiryScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
+  const { showToast } = useToast();
   const [prospectName, setProspectName] = useState('');
   const [guardianName, setGuardianName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -86,6 +88,7 @@ export function AddEnquiryScreen() {
       if (data.warning) {
         Alert.alert('Note', data.warning);
       }
+      showToast('Enquiry created successfully');
       navigation.goBack();
     } else {
       Alert.alert('Error', result.error.message);

@@ -5,6 +5,7 @@ import { apiGet, apiPut } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { buildSafeParams } from '@/infra/http/query-sanitizer';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 export async function GET(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   if (type === 'daily-report') {
     const params = buildSafeParams({ date: searchParams.get('date') || undefined });
     const result = await apiGet(`/api/v1/attendance/reports/daily?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       search: searchParams.get('search') || undefined,
     });
     const result = await apiGet(`/api/v1/attendance/reports/monthly/summary?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
@@ -36,14 +37,14 @@ export async function GET(request: NextRequest) {
     const studentId = searchParams.get('studentId');
     const month = searchParams.get('month');
     const result = await apiGet(`/api/v1/attendance/reports/monthly/student/${encodeURIComponent(studentId || '')}?month=${encodeURIComponent(month || '')}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
   if (type === 'month-daily-counts') {
     const params = buildSafeParams({ month: searchParams.get('month') || undefined });
     const result = await apiGet(`/api/v1/attendance/reports/month-daily-counts?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
     search: searchParams.get('search') || undefined,
   });
   const result = await apiGet(`/api/v1/attendance/students?${params}`, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }
 
@@ -64,15 +65,20 @@ export async function PUT(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
 
   if (body.bulk) {
-    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${body.date}`, { updates: body.updates }, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(body.date)}`, { updates: body.updates }, { accessToken });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
   const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(body.studentId)}?date=${encodeURIComponent(body.date)}`, { status: body.status }, { accessToken });
-  if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+  if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

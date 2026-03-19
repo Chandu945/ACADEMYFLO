@@ -8,6 +8,8 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
 } from 'react-native';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
@@ -134,7 +136,7 @@ export function EnquiryDetailScreen() {
           {enquiry.nextFollowUpDate && (
             <InfoRow
               label="Next Follow-Up"
-              value={`${new Date(enquiry.nextFollowUpDate).toLocaleDateString('en-IN')}${isOverdue ? ' (OVERDUE)' : ''}`}
+              value={`${new Date(enquiry.nextFollowUpDate + 'T00:00:00').toLocaleDateString('en-IN')}${isOverdue ? ' (OVERDUE)' : ''}`}
               valueStyle={isOverdue ? styles.overdueValue : undefined}
             />
           )}
@@ -189,13 +191,13 @@ export function EnquiryDetailScreen() {
                   {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
                   <Icon name="calendar" size={14} color={colors.primary} />
                   <Text style={styles.followUpDate}>
-                    {new Date(f.date).toLocaleDateString('en-IN')}
+                    {new Date(f.date + 'T00:00:00').toLocaleDateString('en-IN')}
                   </Text>
                 </View>
                 <Text style={styles.followUpNotes}>{f.notes}</Text>
                 {f.nextFollowUpDate && (
                   <Text style={styles.followUpNext}>
-                    Next: {new Date(f.nextFollowUpDate).toLocaleDateString('en-IN')}
+                    Next: {new Date(f.nextFollowUpDate + 'T00:00:00').toLocaleDateString('en-IN')}
                   </Text>
                 )}
               </View>
@@ -322,7 +324,7 @@ function AddFollowUpModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Add Follow-Up</Text>
 
@@ -344,7 +346,7 @@ function AddFollowUpModal({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -475,7 +477,7 @@ function ConvertToStudentModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
         <ScrollView contentContainerStyle={styles.convertModalScroll}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Convert to Student</Text>
@@ -532,7 +534,7 @@ function ConvertToStudentModal({
             </View>
           </View>
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

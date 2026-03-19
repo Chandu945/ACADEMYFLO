@@ -53,7 +53,7 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
     if (!mountedRef.current) return;
 
     if (result.ok) {
-      setItems(result.value);
+      setItems(result.value.items);
     } else {
       setError(result.error);
     }

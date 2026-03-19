@@ -30,8 +30,9 @@ export function Chip({ label, selected, onPress, testID }: ChipProps) {
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
   chip: {
-    paddingVertical: 6,
+    paddingVertical: 10,
     paddingHorizontal: spacing.base,
+    minHeight: 44,
     borderRadius: radius.xl,
     backgroundColor: colors.border,
     marginRight: spacing.sm,

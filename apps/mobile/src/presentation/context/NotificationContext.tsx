@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useCallback } from 'react';
-import { Alert } from 'react-native';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 import {
   requestNotificationPermission,
   getFcmToken,
@@ -29,6 +29,7 @@ export function useNotifications(): NotificationContextValue {
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { phase, user } = useAuth();
+  const { showToast } = useToast();
   const registeredTokenRef = useRef<string | null>(null);
 
   const registerToken = useCallback(async (token: string) => {
@@ -40,13 +41,20 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const handleForegroundNotification = useCallback((notification: RemoteNotification) => {
-    // Show an in-app alert for foreground notifications
-    Alert.alert(notification.title, notification.body);
-  }, []);
+    // Show a non-blocking toast for foreground notifications
+    const text = notification.title
+      ? `${notification.title}${notification.body ? ` \u2014 ${notification.body}` : ''}`
+      : notification.body ?? 'New notification';
+    showToast(text, 'info');
+  }, [showToast]);
 
-  const handleNotificationTap = useCallback((_notification: RemoteNotification) => {
-    // Future: navigate to relevant screen based on notification.type / notification.data
-  }, []);
+  const handleNotificationTap = useCallback((notification: RemoteNotification) => {
+    // Provide user feedback that the notification tap was received.
+    // Full deep-link routing requires the linking config in App.tsx.
+    if (notification.title) {
+      showToast(notification.title, 'info');
+    }
+  }, [showToast]);
 
   // Register FCM token when user is authenticated
   useEffect(() => {
@@ -89,13 +97,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const unsubOpenedApp = onNotificationOpenedApp(handleNotificationTap);
 
     // Check if app was opened from a notification (cold start)
+    let cancelled = false;
     getInitialNotification().then((notification) => {
-      if (notification) {
-        handleNotificationTap(notification);
-      }
+      if (cancelled || !notification) return;
+      handleNotificationTap(notification);
     });
 
     return () => {
+      cancelled = true;
       unsubForeground();
       unsubOpenedApp();
     };

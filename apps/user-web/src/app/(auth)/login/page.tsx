@@ -4,12 +4,14 @@ import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import styles from './page.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -33,25 +35,11 @@ export default function LoginPage() {
 
       setLoading(true);
       try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            identifier: identifier.trim(),
-            password,
-          }),
-        });
+        const result = await login(identifier.trim(), password);
 
-        const data = await res.json();
-
-        if (!res.ok) {
-          setError(data.message ?? 'Login failed. Please try again.');
+        if (!result.ok) {
+          setError(result.error ?? 'Login failed. Please try again.');
           return;
-        }
-
-        // Store access token in memory (for SPA usage)
-        if (typeof window !== 'undefined' && data.accessToken) {
-          sessionStorage.setItem('accessToken', data.accessToken);
         }
 
         router.push('/');
@@ -61,7 +49,7 @@ export default function LoginPage() {
         setLoading(false);
       }
     },
-    [identifier, password, validate, router],
+    [identifier, password, validate, router, login],
   );
 
   return (
@@ -108,7 +96,10 @@ export default function LoginPage() {
               label="Email or Phone"
               type="text"
               value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              onChange={(e) => {
+                setIdentifier(e.target.value);
+                setFieldErrors((prev) => { const next = { ...prev }; delete next['identifier']; return next; });
+              }}
               error={fieldErrors['identifier']}
               placeholder="Enter email or phone"
               autoComplete="username"
@@ -120,7 +111,10 @@ export default function LoginPage() {
               label="Password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setFieldErrors((prev) => { const next = { ...prev }; delete next['password']; return next; });
+              }}
               error={fieldErrors['password']}
               placeholder="Enter password"
               autoComplete="current-password"

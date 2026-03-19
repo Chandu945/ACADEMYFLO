@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 
 type EnquiryListItem = { id: string; prospectName: string; mobileNumber: string; source: string | null; status: string; nextFollowUpDate: string | null; createdAt: string };
@@ -11,19 +11,22 @@ export function useEnquiries(filters: Record<string, string | undefined> = {}) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<EnquiryListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const cancelRef = useRef(0);
 
   const filtersKey = JSON.stringify(filters);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
+    const id = ++cancelRef.current;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       const currentFilters = JSON.parse(filtersKey) as Record<string, string | undefined>;
       Object.entries(currentFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
       const res = await fetch(`/api/enquiries?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (id !== cancelRef.current) return;
       if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
-    } finally { setLoading(false); }
+    } finally { if (id === cancelRef.current) setLoading(false); }
   }, [accessToken, filtersKey]);
 
   useEffect(() => { fetch_(); }, [fetch_]);
@@ -52,14 +55,19 @@ export function useEnquiryDetail(id: string | null) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<EnquiryDetail | null>(null);
   const [loading, setLoading] = useState(!!id);
+  const cancelRef = useRef(0);
+
+  useEffect(() => { setData(null); }, [id]);
 
   const fetch_ = useCallback(async () => {
     if (!id || !accessToken) return;
+    const reqId = ++cancelRef.current;
     setLoading(true);
     try {
       const res = await fetch(`/api/enquiries/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (reqId !== cancelRef.current) return;
       if (res.ok) setData(await res.json());
-    } finally { setLoading(false); }
+    } finally { if (reqId === cancelRef.current) setLoading(false); }
   }, [accessToken, id]);
 
   useEffect(() => { fetch_(); }, [fetch_]);

@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { apiPost } from '@/infra/http/api-client';
 import { setSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 type LoginResponse = {
   accessToken: string;
@@ -46,8 +47,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!result.ok) {
-    const status = result.error.code === 'UNAUTHORIZED' ? 401 : 400;
-    return NextResponse.json({ message: result.error.message }, { status });
+    return toErrorResponse(result.error);
   }
 
   const { accessToken, refreshToken, user } = result.data;

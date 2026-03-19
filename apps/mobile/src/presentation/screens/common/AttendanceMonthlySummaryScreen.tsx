@@ -144,7 +144,7 @@ export function AttendanceMonthlySummaryScreen() {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.monthLabel}>{month}</Text>
+      <Text style={styles.monthLabel}>{new Date(month + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</Text>
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}

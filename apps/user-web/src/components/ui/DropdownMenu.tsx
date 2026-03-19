@@ -46,16 +46,26 @@ export function DropdownMenu({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  // Close on Escape
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Close on Escape and return focus to trigger
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false);
+        triggerRef.current?.focus();
       }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
+  }, [open]);
+
+  // Focus first menuitem when menu opens
+  useEffect(() => {
+    if (!open || !panelRef.current) return;
+    const firstItem = panelRef.current.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])');
+    firstItem?.focus();
   }, [open]);
 
   const handleItemClick = useCallback(
@@ -65,12 +75,57 @@ export function DropdownMenu({
       item.onClick();
       setOpen(false);
     },
+    [items],
+  );
+
+  const handlePanelKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const menuItems = Array.from(
+        panel.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])'),
+      );
+      if (menuItems.length === 0) return;
+      const currentIndex = menuItems.indexOf(document.activeElement as HTMLElement);
+
+      switch (e.key) {
+        case 'ArrowDown': {
+          e.preventDefault();
+          const next = currentIndex + 1 >= menuItems.length ? 0 : currentIndex + 1;
+          menuItems[next].focus();
+          break;
+        }
+        case 'ArrowUp': {
+          e.preventDefault();
+          const prev = currentIndex - 1 < 0 ? menuItems.length - 1 : currentIndex - 1;
+          menuItems[prev].focus();
+          break;
+        }
+        case 'Home': {
+          e.preventDefault();
+          menuItems[0].focus();
+          break;
+        }
+        case 'End': {
+          e.preventDefault();
+          menuItems[menuItems.length - 1].focus();
+          break;
+        }
+        case 'Escape': {
+          e.preventDefault();
+          setOpen(false);
+          triggerRef.current?.focus();
+          break;
+        }
+      }
+    },
     [],
   );
 
   return (
     <div ref={wrapperRef} className={`${styles.wrapper} ${className ?? ''}`}>
       <button
+        ref={triggerRef}
         type="button"
         className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
         onClick={() => setOpen((v) => !v)}
@@ -85,6 +140,7 @@ export function DropdownMenu({
           ref={panelRef}
           className={`${styles.panel} ${align === 'left' ? styles.panelLeft : ''}`}
           role="menu"
+          onKeyDown={handlePanelKeyDown}
         >
           {items.map((item, idx) => {
             if (item.type === 'divider') {

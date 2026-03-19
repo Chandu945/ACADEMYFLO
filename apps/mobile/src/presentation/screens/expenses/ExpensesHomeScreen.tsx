@@ -157,6 +157,7 @@ export function ExpensesHomeScreen() {
     month,
     stableApi,
     categoryFilter,
+    debouncedSearch || undefined,
   );
 
   // Summary
@@ -200,7 +201,7 @@ export function ExpensesHomeScreen() {
     setDebouncedSearch('');
   }, []);
 
-  // Client-side filter by category name or notes
+  // Client-side filter by category name or notes (fallback — primary search is now server-side)
   const filteredItems = useMemo(() => {
     if (!debouncedSearch) return items;
     return items.filter(

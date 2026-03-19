@@ -19,9 +19,17 @@ export function AuthStack() {
     // @ts-expect-error @types/react version mismatch in monorepo
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="OwnerSignup" component={OwnerSignupScreen} />
+      <Stack.Screen
+        name="OwnerSignup"
+        component={OwnerSignupScreen}
+        options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Back', headerTransparent: true }}
+      />
       <Stack.Screen name="AcademySetup" component={AcademySetupScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Back', headerTransparent: true }}
+      />
     </Stack.Navigator>
   );
 }

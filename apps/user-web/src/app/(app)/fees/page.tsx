@@ -11,6 +11,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
 const PAYMENT_METHODS = [
@@ -35,14 +36,14 @@ function getMonthLabel(monthKey: string) {
 export default function FeesPage() {
   const { accessToken, user } = useAuth();
   const isOwner = user?.role === 'OWNER';
-  const now = useMemo(() => new Date(), []);
+  const now = new Date();
   const [monthOffset, setMonthOffset] = useState(0);
   const [activeTab, setActiveTab] = useState('unpaid');
 
   const month = useMemo(() => {
     const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, [now, monthOffset]);
+  }, [now.getFullYear(), now.getMonth(), monthOffset]);
 
   const monthLabel = getMonthLabel(month);
 
@@ -52,27 +53,52 @@ export default function FeesPage() {
 
   const [paymentMethods, setPaymentMethods] = useState<Record<string, string>>({});
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [markPaidError, setMarkPaidError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<{ id: string; action: string } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [paymentMethodError, setPaymentMethodError] = useState<string | null>(null);
+  const [rejectConfirm, setRejectConfirm] = useState<{ id: string; studentName: string } | null>(null);
 
   const handleMarkPaid = useCallback(async (studentId: string, monthKey: string) => {
     const method = paymentMethods[`${studentId}-${monthKey}`];
-    if (!method) return;
+    if (!method) {
+      setPaymentMethodError(`${studentId}-${monthKey}`);
+      return;
+    }
+    setPaymentMethodError(null);
+    setMarkPaidError(null);
     setMarkingPaid(`${studentId}-${monthKey}`);
     const result = await markFeePaid(studentId, monthKey, method, accessToken);
     setMarkingPaid(null);
-    if (result.ok) refetchDues();
+    if (!result.ok) {
+      setMarkPaidError(result.error || 'Failed to mark fee as paid');
+      return;
+    }
+    refetchDues();
   }, [paymentMethods, accessToken, refetchDues]);
 
   const handleRequest = useCallback(async (requestId: string, action: string) => {
-    setActionLoading(requestId);
-    await handlePaymentRequest(requestId, action, undefined, accessToken);
+    setActionLoading({ id: requestId, action });
+    setActionError(null);
+    const result = await handlePaymentRequest(requestId, action, undefined, accessToken);
     setActionLoading(null);
+    if (!result.ok) {
+      setActionError(result.error || `Failed to ${action.toLowerCase()} payment request`);
+      return;
+    }
     refetchRequests();
   }, [accessToken, refetchRequests]);
+
+  const handleRejectConfirm = useCallback(async () => {
+    if (!rejectConfirm) return;
+    await handleRequest(rejectConfirm.id, 'REJECT');
+    setRejectConfirm(null);
+  }, [rejectConfirm, handleRequest]);
 
   const unpaidTab = (
     <>
       {duesError && <Alert variant="error" message={duesError} action={{ label: 'Retry', onClick: refetchDues }} />}
+      {markPaidError && <Alert variant="error" message={markPaidError} />}
       {duesLoading ? (
         <Spinner centered size="lg" />
       ) : dues.filter((d) => d.status !== 'PAID').length === 0 ? (
@@ -102,19 +128,21 @@ export default function FeesPage() {
                     <Select
                       options={PAYMENT_METHODS}
                       value={paymentMethods[`${due.studentId}-${due.monthKey}`] ?? ''}
-                      onChange={(e) => setPaymentMethods((prev) => ({ ...prev, [`${due.studentId}-${due.monthKey}`]: e.target.value }))}
+                      onChange={(e) => { setPaymentMethods((prev) => ({ ...prev, [`${due.studentId}-${due.monthKey}`]: e.target.value })); setPaymentMethodError(null); }}
                       className={styles.paymentMethodSelect}
                     />
                     <Button
                       variant="primary"
                       size="sm"
                       loading={markingPaid === `${due.studentId}-${due.monthKey}`}
-                      disabled={!paymentMethods[`${due.studentId}-${due.monthKey}`]}
                       onClick={() => handleMarkPaid(due.studentId, due.monthKey)}
                     >
                       Mark Paid
                     </Button>
                   </div>
+                  {paymentMethodError === `${due.studentId}-${due.monthKey}` && (
+                    <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-xs)', marginTop: '4px', display: 'block' }}>Please select a payment method</span>
+                  )}
                 </Td>
               </Tr>
             ))}
@@ -159,6 +187,7 @@ export default function FeesPage() {
 
   const requestsTab = (
     <>
+      {actionError && <Alert variant="error" message={actionError} />}
       {requestsLoading ? (
         <Spinner centered size="lg" />
       ) : requests.length === 0 ? (
@@ -200,7 +229,8 @@ export default function FeesPage() {
                         <Button
                           variant="primary"
                           size="sm"
-                          loading={actionLoading === req.id}
+                          loading={actionLoading?.id === req.id && actionLoading?.action === 'APPROVE'}
+                          disabled={actionLoading?.id === req.id}
                           onClick={() => handleRequest(req.id, 'APPROVE')}
                         >
                           Approve
@@ -208,8 +238,9 @@ export default function FeesPage() {
                         <Button
                           variant="danger"
                           size="sm"
-                          loading={actionLoading === req.id}
-                          onClick={() => handleRequest(req.id, 'REJECT')}
+                          loading={actionLoading?.id === req.id && actionLoading?.action === 'REJECT'}
+                          disabled={actionLoading?.id === req.id}
+                          onClick={() => setRejectConfirm({ id: req.id, studentName: req.studentName ?? 'this request' })}
                         >
                           Reject
                         </Button>
@@ -251,6 +282,18 @@ export default function FeesPage() {
         ]}
         activeKey={activeTab}
         onChange={setActiveTab}
+      />
+
+      {/* Reject Confirmation */}
+      <ConfirmDialog
+        open={!!rejectConfirm}
+        onClose={() => setRejectConfirm(null)}
+        onConfirm={handleRejectConfirm}
+        title="Reject Payment Request"
+        message={`Are you sure you want to reject the payment request for ${rejectConfirm?.studentName ?? 'this student'}?`}
+        confirmLabel="Reject"
+        danger
+        loading={actionLoading?.action === 'REJECT'}
       />
     </div>
   );

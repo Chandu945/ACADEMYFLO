@@ -29,7 +29,9 @@ export default function SettingsPage() {
   const [savingInstitute, setSavingInstitute] = useState(false);
   const [academySuccess, setAcademySuccess] = useState(false);
   const [instituteSuccess, setInstituteSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [academyError, setAcademyError] = useState<string | null>(null);
+  const [instituteError, setInstituteError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [academy, setAcademy] = useState<AcademySettings>({
     dueDateDay: 1,
@@ -59,7 +61,7 @@ export default function SettingsPage() {
           if (data.institute) setInstitute(data.institute);
         }
       } catch {
-        // Use defaults
+        setFetchError('Failed to load settings');
       } finally {
         setLoading(false);
       }
@@ -70,7 +72,7 @@ export default function SettingsPage() {
   const saveAcademy = useCallback(async () => {
     setSavingAcademy(true);
     setAcademySuccess(false);
-    setError(null);
+    setAcademyError(null);
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
@@ -82,12 +84,13 @@ export default function SettingsPage() {
       });
       if (!res.ok) {
         const json = await res.json();
-        setError(json.message || 'Failed to save');
+        setAcademyError(json.message || 'Failed to save');
       } else {
         setAcademySuccess(true);
+        setTimeout(() => setAcademySuccess(false), 4000);
       }
     } catch {
-      setError('Network error');
+      setAcademyError('Network error');
     } finally {
       setSavingAcademy(false);
     }
@@ -96,7 +99,7 @@ export default function SettingsPage() {
   const saveInstitute = useCallback(async () => {
     setSavingInstitute(true);
     setInstituteSuccess(false);
-    setError(null);
+    setInstituteError(null);
     try {
       const res = await fetch('/api/settings', {
         method: 'PUT',
@@ -108,12 +111,13 @@ export default function SettingsPage() {
       });
       if (!res.ok) {
         const json = await res.json();
-        setError(json.message || 'Failed to save');
+        setInstituteError(json.message || 'Failed to save');
       } else {
         setInstituteSuccess(true);
+        setTimeout(() => setInstituteSuccess(false), 4000);
       }
     } catch {
-      setError('Network error');
+      setInstituteError('Network error');
     } finally {
       setSavingInstitute(false);
     }
@@ -125,16 +129,19 @@ export default function SettingsPage() {
     <div className={styles.page}>
       <h1 className={styles.title}>Settings</h1>
 
-      {error && <Alert variant="error" message={error} />}
+      {fetchError && <Alert variant="error" message={fetchError} />}
 
       {/* Academy Settings */}
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Academy Settings</h2>
         {academySuccess && <Alert variant="success" message="Academy settings saved successfully" />}
+        {academyError && <Alert variant="error" message={academyError} />}
         <div className={styles.form}>
           <Input
             label="Due Date Day"
             type="number"
+            min={1}
+            max={28}
             value={String(academy.dueDateDay)}
             onChange={(e) => setAcademy((p) => ({ ...p, dueDateDay: Number(e.target.value) }))}
             hint="Day of the month when fee is due (1-28)"
@@ -194,6 +201,7 @@ export default function SettingsPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Institute Information</h2>
         {instituteSuccess && <Alert variant="success" message="Institute info saved successfully" />}
+        {instituteError && <Alert variant="error" message={instituteError} />}
         <div className={styles.form}>
           <Input
             label="Bank Details"

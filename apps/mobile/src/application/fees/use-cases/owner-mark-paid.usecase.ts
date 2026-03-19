@@ -5,7 +5,7 @@ import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import { feeDueItemSchema } from '../../../domain/fees/fees.schemas';
 
 export type OwnerMarkPaidApiPort = {
-  markFeePaid(studentId: string, month: string): Promise<Result<FeeDueItem, AppError>>;
+  markFeePaid(studentId: string, month: string, paidSource?: string): Promise<Result<FeeDueItem, AppError>>;
 };
 
 export type OwnerMarkPaidDeps = {
@@ -16,8 +16,9 @@ export async function ownerMarkPaidUseCase(
   deps: OwnerMarkPaidDeps,
   studentId: string,
   month: string,
+  paidSource?: string,
 ): Promise<Result<FeeDueItem, AppError>> {
-  const result = await deps.feesApi.markFeePaid(studentId, month);
+  const result = await deps.feesApi.markFeePaid(studentId, month, paidSource);
 
   if (!result.ok) {
     return result;

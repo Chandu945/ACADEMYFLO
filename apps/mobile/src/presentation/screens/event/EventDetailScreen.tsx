@@ -233,7 +233,7 @@ export function EventDetailScreen() {
       {/* Action buttons */}
       <View style={styles.actions}>
         {canEdit && (
-          <Button title="Edit" variant="secondary" onPress={handleEdit} testID="edit-button" />
+          <Button title="Edit" variant="secondary" onPress={handleEdit} disabled={actionLoading} testID="edit-button" />
         )}
 
         {isOwner && showActions && (
@@ -244,6 +244,7 @@ export function EventDetailScreen() {
               variant="secondary"
               onPress={() => handleStatusChange('COMPLETED', 'Mark as Completed')}
               loading={actionLoading}
+              disabled={actionLoading}
               testID="complete-button"
             />
             <View style={styles.actionGap} />
@@ -252,6 +253,7 @@ export function EventDetailScreen() {
               variant="secondary"
               onPress={() => handleStatusChange('CANCELLED', 'Cancel Event')}
               loading={actionLoading}
+              disabled={actionLoading}
               testID="cancel-event-button"
             />
           </>
@@ -265,6 +267,7 @@ export function EventDetailScreen() {
               variant="secondary"
               onPress={() => handleStatusChange('UPCOMING', 'Reinstate Event')}
               loading={actionLoading}
+              disabled={actionLoading}
               testID="reinstate-button"
             />
           </>
@@ -278,6 +281,7 @@ export function EventDetailScreen() {
               variant="secondary"
               onPress={handleDelete}
               loading={actionLoading}
+              disabled={actionLoading}
               testID="delete-button"
             />
           </>

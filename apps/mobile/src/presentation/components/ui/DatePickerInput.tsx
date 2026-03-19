@@ -213,7 +213,7 @@ export function DatePickerInput({
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 
-const CELL_SIZE = 40;
+const CELL_SIZE = 44;
 
 const makeStyles = (colors: Colors) =>
   StyleSheet.create({

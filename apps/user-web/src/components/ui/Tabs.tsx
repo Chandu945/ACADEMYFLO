@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useId } from 'react';
+import React, { useState, useId, useRef, useCallback } from 'react';
 import styles from './Tabs.module.css';
 
 export interface TabItem {
@@ -23,6 +23,7 @@ export function Tabs({ items, defaultActiveKey, activeKey, onChange, className }
   const baseId = useId();
   const [internalKey, setInternalKey] = useState(defaultActiveKey ?? items[0]?.key ?? '');
   const currentKey = activeKey ?? internalKey;
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const handleSelect = (key: string) => {
     if (activeKey === undefined) {
@@ -31,12 +32,38 @@ export function Tabs({ items, defaultActiveKey, activeKey, onChange, className }
     onChange?.(key);
   };
 
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      const enabledIndices = items
+        .map((item, i) => (!item.disabled ? i : -1))
+        .filter((i) => i !== -1);
+      const posInEnabled = enabledIndices.indexOf(index);
+      let nextIndex: number | undefined;
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const next = posInEnabled + 1 >= enabledIndices.length ? 0 : posInEnabled + 1;
+        nextIndex = enabledIndices[next];
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const prev = posInEnabled - 1 < 0 ? enabledIndices.length - 1 : posInEnabled - 1;
+        nextIndex = enabledIndices[prev];
+      }
+
+      if (nextIndex !== undefined) {
+        tabRefs.current[nextIndex]?.focus();
+        handleSelect(items[nextIndex].key);
+      }
+    },
+    [items, handleSelect],
+  );
+
   const activeItem = items.find((item) => item.key === currentKey);
 
   return (
     <div className={`${styles.tabs} ${className ?? ''}`}>
       <div className={styles.tabList} role="tablist" aria-orientation="horizontal">
-        {items.map((item) => {
+        {items.map((item, idx) => {
           const isActive = item.key === currentKey;
           const tabClasses = [
             styles.tab,
@@ -49,6 +76,7 @@ export function Tabs({ items, defaultActiveKey, activeKey, onChange, className }
           return (
             <button
               key={item.key}
+              ref={(el) => { tabRefs.current[idx] = el; }}
               type="button"
               role="tab"
               id={`${baseId}-tab-${item.key}`}
@@ -58,6 +86,7 @@ export function Tabs({ items, defaultActiveKey, activeKey, onChange, className }
               tabIndex={isActive ? 0 : -1}
               className={tabClasses}
               onClick={() => !item.disabled && handleSelect(item.key)}
+              onKeyDown={(e) => handleTabKeyDown(e, idx)}
             >
               {item.label}
               {item.badge !== undefined && (

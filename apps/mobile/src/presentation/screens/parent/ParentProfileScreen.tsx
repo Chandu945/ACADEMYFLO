@@ -51,6 +51,10 @@ export function ParentProfileScreen() {
   }, [load]);
 
   const handleSave = useCallback(async () => {
+    if (!fullName.trim()) {
+      setError('Full name is required');
+      return;
+    }
     setSaving(true);
     setError(null);
     const result = await updateParentProfileUseCase(
