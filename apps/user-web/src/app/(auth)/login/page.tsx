@@ -4,14 +4,13 @@ import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { useAuth } from '@/application/auth/use-auth';
+import { resetInitAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import styles from './page.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -35,21 +34,27 @@ export default function LoginPage() {
 
       setLoading(true);
       try {
-        const result = await login(identifier.trim(), password);
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: identifier.trim(), password }),
+        });
+        const data = await res.json();
 
-        if (!result.ok) {
-          setError(result.error ?? 'Login failed. Please try again.');
+        if (!res.ok) {
+          setError(data.message ?? 'Login failed. Please try again.');
           return;
         }
 
-        router.push('/');
+        resetInitAuth();
+        router.push('/dashboard');
       } catch {
         setError('Something went wrong. Please try again.');
       } finally {
         setLoading(false);
       }
     },
-    [identifier, password, validate, router, login],
+    [identifier, password, validate, router],
   );
 
   return (

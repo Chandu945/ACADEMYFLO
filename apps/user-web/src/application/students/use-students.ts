@@ -61,8 +61,8 @@ export function useStudents(filters: StudentFilters = {}) {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (id !== cancelRef.current) return;
-      if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
       setData(json.data ?? json.items ?? []);
       setMeta(json.meta ?? null);
     } catch (e) {
@@ -97,8 +97,9 @@ export function useStudentDetail(id: string | null) {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (reqId !== cancelRef.current) return;
-      if (!res.ok) throw new Error((await res.json()).message);
-      setData(await res.json());
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      setData(json);
     } catch (e) {
       if (reqId !== cancelRef.current) return;
       setError(e instanceof Error ? e.message : 'Failed to load student');

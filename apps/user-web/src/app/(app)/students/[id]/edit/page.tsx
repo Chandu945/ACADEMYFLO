@@ -12,7 +12,11 @@ import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
 import { Spinner } from '@/components/ui/Spinner';
 
-const GENDERS = ['Male', 'Female', 'Other'] as const;
+const GENDERS = [
+  { value: 'MALE', label: 'Male' },
+  { value: 'FEMALE', label: 'Female' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
 
 export default function EditStudentPage() {
   const params = useParams<{ id: string }>();
@@ -27,27 +31,34 @@ export default function EditStudentPage() {
   const [form, setForm] = useState({
     fullName: '',
     dateOfBirth: '',
-    gender: 'Male',
+    gender: 'MALE',
     guardianName: '',
     guardianMobile: '',
     guardianEmail: '',
     joiningDate: '',
     monthlyFee: '',
-    address: '',
+    addressLine1: '',
+    addressCity: '',
+    addressState: '',
+    addressPincode: '',
   });
 
   useEffect(() => {
     if (student) {
+      const addr = typeof student.address === 'object' && student.address ? student.address : {};
       setForm({
         fullName: student.fullName ?? '',
         dateOfBirth: student.dateOfBirth ? student.dateOfBirth.split('T')[0] : '',
-        gender: student.gender ?? 'Male',
+        gender: (student.gender ?? 'MALE').toUpperCase(),
         guardianName: student.guardian?.name ?? '',
         guardianMobile: student.guardian?.mobile ?? '',
         guardianEmail: student.guardian?.email ?? '',
         joiningDate: student.joiningDate ? student.joiningDate.split('T')[0] : '',
         monthlyFee: String(student.monthlyFee ?? ''),
-        address: student.address ?? '',
+        addressLine1: addr.line1 ?? '',
+        addressCity: addr.city ?? '',
+        addressState: addr.state ?? '',
+        addressPincode: addr.pincode ?? '',
       });
     }
   }, [student]);
@@ -86,7 +97,12 @@ export default function EditStudentPage() {
         },
         joiningDate: form.joiningDate || undefined,
         monthlyFee: Number(form.monthlyFee),
-        address: form.address.trim() || undefined,
+        address: form.addressLine1.trim() ? {
+          line1: form.addressLine1.trim(),
+          city: form.addressCity.trim() || undefined,
+          state: form.addressState.trim() || undefined,
+          pincode: form.addressPincode.trim() || undefined,
+        } : undefined,
       },
       accessToken,
     );
@@ -125,7 +141,7 @@ export default function EditStudentPage() {
             <label style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: '8px', color: 'var(--color-text-medium)' }}>Gender</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               {GENDERS.map((g) => (
-                <Chip key={g} label={g} selected={form.gender === g} onSelect={() => set('gender', g)} />
+                <Chip key={g.value} label={g.label} selected={form.gender === g.value} onSelect={() => set('gender', g.value)} />
               ))}
             </div>
           </div>
@@ -147,7 +163,17 @@ export default function EditStudentPage() {
             </div>
           </div>
 
-          <Input label="Address" value={form.address} onChange={(e) => set('address', e.target.value)} />
+          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
+            <h4 style={{ marginBottom: 'var(--space-3)', color: 'var(--color-primary)' }}>Address (Optional)</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <Input label="Address Line" value={form.addressLine1} onChange={(e) => set('addressLine1', e.target.value)} placeholder="Street address" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                <Input label="City" value={form.addressCity} onChange={(e) => set('addressCity', e.target.value)} placeholder="City" />
+                <Input label="State" value={form.addressState} onChange={(e) => set('addressState', e.target.value)} placeholder="State" />
+              </div>
+              <Input label="Pincode" value={form.addressPincode} onChange={(e) => set('addressPincode', e.target.value)} placeholder="Pincode" maxLength={6} />
+            </div>
+          </div>
 
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
             <Button type="button" variant="outline" onClick={() => router.push(`/students/${params.id}`)}>Cancel</Button>

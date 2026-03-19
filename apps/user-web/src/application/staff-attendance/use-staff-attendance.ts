@@ -46,5 +46,6 @@ export function useMonthlyStaffSummary(month: string) {
 
 export async function markStaffAttendance(staffUserId: string, date: string, status: string, accessToken?: string | null) {
   const res = await fetch('/api/staff-attendance', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ staffUserId, date, status }) });
-  return res.ok ? { ok: true as const, data: await res.json() } : { ok: false as const, error: (await res.json()).message };
+  const json = await res.json();
+  return res.ok ? { ok: true as const, data: json } : { ok: false as const, error: json.message };
 }

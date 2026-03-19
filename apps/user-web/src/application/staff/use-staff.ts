@@ -32,8 +32,8 @@ export function useStaff() {
       const res = await fetch('/api/staff', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
       setData(json.data ?? json.items ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load staff');

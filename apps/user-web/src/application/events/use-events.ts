@@ -77,5 +77,6 @@ export async function updateEvent(id: string, body: Record<string, unknown>, acc
 
 export async function deleteEvent(id: string, accessToken?: string | null) {
   const res = await fetch(`/api/events/${id}`, { method: 'DELETE', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
-  return res.ok ? { ok: true as const } : { ok: false as const, error: (await res.json()).message };
+  if (!res.ok) { const json = await res.json(); return { ok: false as const, error: json.message }; }
+  return { ok: true as const };
 }

@@ -29,7 +29,7 @@ export default function BatchDetailPage() {
   const batch = batches.find((b) => b.id === params.id);
 
   const [studentSearch, setStudentSearch] = useState('');
-  const { data: students, loading: studentsLoading } = useStudents({ batchId: params.id, search: studentSearch || undefined, pageSize: 200 });
+  const { data: students, loading: studentsLoading } = useStudents({ batchId: params.id, search: studentSearch || undefined, pageSize: 100 });
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);

@@ -15,6 +15,10 @@ const sessionPayloadSchema = z.object({
   userId: z.string(),
   role: z.enum(['OWNER', 'STAFF', 'PARENT']),
   academyId: z.string().optional(),
+  fullName: z.string().optional(),
+  email: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  profilePhotoUrl: z.string().nullable().optional(),
 });
 
 export type SessionPayload = z.infer<typeof sessionPayloadSchema>;

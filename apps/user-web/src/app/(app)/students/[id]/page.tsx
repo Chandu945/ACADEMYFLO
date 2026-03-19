@@ -29,6 +29,17 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function titleCase(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+function formatAddress(addr: unknown): string | null {
+  if (!addr || typeof addr !== 'object') return typeof addr === 'string' ? addr : null;
+  const a = addr as Record<string, string | null>;
+  const parts = [a.line1, a.line2, a.city, a.state, a.pincode].filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -83,7 +94,7 @@ export default function StudentDetailPage() {
             <Badge variant={statusBadgeVariant(student.status)} dot>
               {student.status}
             </Badge>
-            <span>{student.gender}</span>
+            <span>{titleCase(student.gender)}</span>
             {student.mobileNumber && <span>{student.mobileNumber}</span>}
           </div>
         </div>
@@ -108,7 +119,7 @@ export default function StudentDetailPage() {
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Gender</span>
-            <span className={styles.infoValue}>{student.gender || '-'}</span>
+            <span className={styles.infoValue}>{student.gender ? titleCase(student.gender) : '-'}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Joining Date</span>
@@ -118,10 +129,10 @@ export default function StudentDetailPage() {
             <span className={styles.infoLabel}>Monthly Fee</span>
             <span className={styles.infoValue}>{formatCurrency(student.monthlyFee)}</span>
           </div>
-          {student.address && (
+          {formatAddress(student.address) && (
             <div className={styles.infoRow}>
               <span className={styles.infoLabel}>Address</span>
-              <span className={styles.infoValue}>{student.address}</span>
+              <span className={styles.infoValue}>{formatAddress(student.address)}</span>
             </div>
           )}
         </div>

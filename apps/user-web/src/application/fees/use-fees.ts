@@ -53,8 +53,8 @@ export function useFeeDues(month?: string, page = 1) {
       const res = await fetch(`/api/fees/dues?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
       setData(json.items ?? json.data ?? []);
       setMeta(json.meta ?? null);
     } catch (e) {
@@ -134,11 +134,11 @@ export async function markFeePaid(studentId: string, month: string, paymentLabel
     },
     body: JSON.stringify({ month, paymentLabel }),
   });
+  const json = await res.json();
   if (!res.ok) {
-    const json = await res.json();
     return { ok: false as const, error: json.message };
   }
-  return { ok: true as const, data: await res.json() };
+  return { ok: true as const, data: json };
 }
 
 export async function handlePaymentRequest(requestId: string, action: string, data?: Record<string, unknown>, accessToken?: string | null) {

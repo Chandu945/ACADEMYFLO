@@ -48,15 +48,22 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // the component mounts multiple times (React 18 strict mode, fast navigations).
 let _initPromise: Promise<{ accessToken: string } | null> | null = null;
 
-function initAuth(): Promise<{ accessToken: string } | null> {
+type AuthResponse = { accessToken: string; user?: AuthUser };
+
+function initAuth(): Promise<AuthResponse | null> {
   if (_initPromise) return _initPromise;
   _initPromise = fetch('/api/auth/refresh', { method: 'POST' })
     .then((res) => {
       if (!res.ok) { _initPromise = null; return null; }
-      return res.json() as Promise<{ accessToken: string }>;
+      return res.json() as Promise<AuthResponse>;
     })
     .catch(() => { _initPromise = null; return null; });
   return _initPromise;
+}
+
+/** Reset the singleton so next AuthProvider mount gets a fresh refresh. */
+export function resetInitAuth(): void {
+  _initPromise = null;
 }
 
 function decodeUserFromToken(token: string): AuthUser | null {
@@ -95,8 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
         return;
       }
-      const data = await res.json();
-      const user = decodeUserFromToken(data.accessToken);
+      const data: AuthResponse = await res.json();
+      const user = data.user ?? decodeUserFromToken(data.accessToken);
       setState({
         user,
         accessToken: data.accessToken,
@@ -113,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth().then((data) => {
       if (cancelled) return;
       if (data?.accessToken) {
-        const user = decodeUserFromToken(data.accessToken);
+        const user = data.user ?? decodeUserFromToken(data.accessToken);
         setState({
           user,
           accessToken: data.accessToken,
@@ -139,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: data.message || 'Login failed' };
       }
       _initPromise = null; // Reset so post-login navigation gets a fresh refresh
-      const user = decodeUserFromToken(data.accessToken);
+      const user = data.user ?? decodeUserFromToken(data.accessToken);
       setState({
         user,
         accessToken: data.accessToken,
@@ -163,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) {
         return { ok: false, error: data.message || 'Signup failed' };
       }
-      const user = decodeUserFromToken(data.accessToken);
+      const user = data.user ?? decodeUserFromToken(data.accessToken);
       setState({
         user,
         accessToken: data.accessToken,

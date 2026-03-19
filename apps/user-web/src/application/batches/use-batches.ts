@@ -36,8 +36,8 @@ export function useBatches(search?: string) {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (id !== cancelRef.current) return;
-      if (!res.ok) throw new Error((await res.json()).message);
       const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
       setData(json.data ?? json.items ?? []);
     } catch (e) {
       if (id !== cancelRef.current) return;

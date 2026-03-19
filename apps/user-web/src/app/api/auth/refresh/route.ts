@@ -36,5 +36,15 @@ export async function POST(request: NextRequest) {
     refreshToken: result.data.refreshToken ?? session.refreshToken,
   });
 
-  return NextResponse.json({ accessToken: result.data.accessToken });
+  return NextResponse.json({
+    accessToken: result.data.accessToken,
+    user: {
+      id: session.userId,
+      fullName: session.fullName ?? '',
+      email: session.email ?? '',
+      phoneNumber: session.phoneNumber ?? '',
+      role: session.role,
+      profilePhotoUrl: session.profilePhotoUrl ?? null,
+    },
+  });
 }

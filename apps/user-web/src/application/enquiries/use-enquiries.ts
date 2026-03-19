@@ -94,7 +94,8 @@ export async function addFollowUp(enquiryId: string, body: Record<string, unknow
 
 export async function closeEnquiry(id: string, reason: string, accessToken?: string | null) {
   const res = await fetch(`/api/enquiries/${id}/close`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ closureReason: reason }) });
-  return res.ok ? { ok: true as const } : { ok: false as const, error: (await res.json()).message };
+  if (!res.ok) { const json = await res.json(); return { ok: false as const, error: json.message }; }
+  return { ok: true as const };
 }
 
 export async function convertEnquiry(id: string, body: Record<string, unknown>, accessToken?: string | null) {

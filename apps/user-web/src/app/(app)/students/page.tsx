@@ -20,8 +20,8 @@ import styles from './page.module.css';
 const STATUS_FILTERS = ['All', 'Active', 'Inactive', 'Left'] as const;
 const FEE_FILTERS = [
   { value: '', label: 'All Fees' },
-  { value: 'due', label: 'Due' },
-  { value: 'paid', label: 'Paid' },
+  { value: 'DUE', label: 'Due' },
+  { value: 'PAID', label: 'Paid' },
 ];
 
 function statusBadgeVariant(status: string) {

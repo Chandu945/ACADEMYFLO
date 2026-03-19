@@ -39,15 +39,16 @@ export function useDailyAttendance(date: string, batchId?: string, search?: stri
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ date, pageSize: '200' });
+      const params = new URLSearchParams({ date, pageSize: '100' });
       if (batchId) params.set('batchId', batchId);
       if (search) params.set('search', search);
       const res = await fetch(`/api/attendance?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (id !== cancelRef.current) return;
-      if (!res.ok) throw new Error((await res.json()).message);
-      setData(await res.json());
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message);
+      setData(json);
     } catch (e) {
       if (id !== cancelRef.current) return;
       setError(e instanceof Error ? e.message : 'Failed to load attendance');
@@ -70,11 +71,11 @@ export async function markAttendance(studentId: string, date: string, status: st
     },
     body: JSON.stringify({ studentId, date, status }),
   });
+  const json = await res.json();
   if (!res.ok) {
-    const json = await res.json();
     return { ok: false as const, error: json.message };
   }
-  return { ok: true as const, data: await res.json() };
+  return { ok: true as const, data: json };
 }
 
 export async function markBulkAttendance(date: string, updates: { studentId: string; status: string }[], accessToken?: string | null) {
@@ -86,11 +87,11 @@ export async function markBulkAttendance(date: string, updates: { studentId: str
     },
     body: JSON.stringify({ bulk: true, date, updates }),
   });
+  const json = await res.json();
   if (!res.ok) {
-    const json = await res.json();
     return { ok: false as const, error: json.message };
   }
-  return { ok: true as const, data: await res.json() };
+  return { ok: true as const, data: json };
 }
 
 export function useMonthlySummary(month: string, search?: string) {
@@ -104,7 +105,7 @@ export function useMonthlySummary(month: string, search?: string) {
     setLoading(true);
     try {
       if (!accessToken) return;
-      const params = new URLSearchParams({ type: 'monthly-summary', month, pageSize: '200' });
+      const params = new URLSearchParams({ type: 'monthly-summary', month, pageSize: '100' });
       if (search) params.set('search', search);
       const res = await fetch(`/api/attendance?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },

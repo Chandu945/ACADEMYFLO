@@ -57,7 +57,21 @@ export async function POST(request: NextRequest) {
     deviceId,
     userId: user.id,
     role: user.role,
+    fullName: user.fullName,
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+    profilePhotoUrl: user.profilePhotoUrl ?? null,
   });
 
-  return NextResponse.json({ accessToken });
+  return NextResponse.json({
+    accessToken,
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      profilePhotoUrl: user.profilePhotoUrl ?? null,
+    },
+  });
 }

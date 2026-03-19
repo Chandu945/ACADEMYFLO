@@ -4,7 +4,7 @@ import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { useAuth } from '@/application/auth/use-auth';
+import { resetInitAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import styles from './page.module.css';
@@ -14,7 +14,6 @@ const E164_REGEX = /^\+[1-9]\d{6,14}$/;
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signup } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,26 +45,32 @@ export default function SignupPage() {
 
       setLoading(true);
       try {
-        const result = await signup({
-          fullName: fullName.trim(),
-          email: email.trim().toLowerCase(),
-          phoneNumber: phoneNumber.trim(),
-          password,
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: fullName.trim(),
+            email: email.trim().toLowerCase(),
+            phoneNumber: phoneNumber.trim(),
+            password,
+          }),
         });
+        const data = await res.json();
 
-        if (!result.ok) {
-          setError(result.error ?? 'Signup failed. Please try again.');
+        if (!res.ok) {
+          setError(data.message ?? 'Signup failed. Please try again.');
           return;
         }
 
-        router.push('/');
+        resetInitAuth();
+        router.push('/dashboard');
       } catch {
         setError('Something went wrong. Please try again.');
       } finally {
         setLoading(false);
       }
     },
-    [fullName, email, phoneNumber, password, validate, router, signup],
+    [fullName, email, phoneNumber, password, validate, router],
   );
 
   return (
