@@ -1,13 +1,15 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
+  Text,
   FlatList,
   StyleSheet,
   RefreshControl,
-  Alert,
   useWindowDimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,7 +25,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { GalleryThumbnail, AddPhotoTile } from '../../components/event/GalleryThumbnail';
-import { spacing, listDefaults } from '../../theme';
+import { spacing, fontSizes, fontWeights, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { env } from '../../../infra/env';
 
@@ -31,7 +33,7 @@ type GalleryRoute = RouteProp<MoreStackParamList, 'EventGallery'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EventGallery'>;
 
 const NUM_COLUMNS = 3;
-const GRID_GAP = 4;
+const GRID_GAP = 6;
 
 function resolveUrl(url: string): string {
   return url.startsWith('http') ? url : `${env.API_BASE_URL}${url}`;
@@ -67,16 +69,22 @@ export function EventGalleryScreen() {
       if (!isRefresh) setLoading(true);
       setError(null);
 
-      const result = await galleryApi.listGalleryPhotos(eventId);
-      if (!mountedRef.current) return;
+      try {
+        const result = await galleryApi.listGalleryPhotos(eventId);
+        if (!mountedRef.current) return;
 
-      if (result.ok) {
-        setPhotos(result.value);
-      } else {
-        setError(result.error.message);
+        if (result.ok) {
+          setPhotos(result.value);
+        } else {
+          setError(result.error.message);
+        }
+      } catch (err) {
+        if (__DEV__) console.error('[EventGalleryScreen] load failed:', err);
+        setError('Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-      setLoading(false);
-      setRefreshing(false);
     },
     [eventId],
   );
@@ -106,8 +114,31 @@ export function EventGalleryScreen() {
     load(true);
   }, [load]);
 
+  const openGalleryPicker = useCallback(() => {
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        maxWidth: 1920,
+        maxHeight: 1920,
+        quality: 0.8,
+        selectionLimit: 5,
+      },
+      (response) => {
+        if (response.assets && response.assets.length > 0) {
+          void handleBatchUpload(response.assets);
+        }
+      },
+    );
+  }, [handleBatchUpload]);
+
   const pickAndUpload = useCallback(() => {
-    Alert.alert('Add Photo', 'Choose an option', [
+    // On web, directly open file picker (no Camera option)
+    if (Platform.OS === 'web') {
+      openGalleryPicker();
+      return;
+    }
+
+    crossAlert('Add Photo', 'Choose an option', [
       {
         text: 'Camera',
         onPress: () => {
@@ -123,26 +154,11 @@ export function EventGalleryScreen() {
       },
       {
         text: 'Gallery',
-        onPress: () => {
-          launchImageLibrary(
-            {
-              mediaType: 'photo',
-              maxWidth: 1920,
-              maxHeight: 1920,
-              quality: 0.8,
-              selectionLimit: 5,
-            },
-            (response) => {
-              if (response.assets && response.assets.length > 0) {
-                void handleBatchUpload(response.assets);
-              }
-            },
-          );
-        },
+        onPress: () => openGalleryPicker(),
       },
       { text: 'Cancel', style: 'cancel' },
     ]);
-  }, [eventId]);
+  }, [eventId, openGalleryPicker, handleUpload]);
 
   const handleUpload = async (asset: {
     uri?: string;
@@ -152,21 +168,27 @@ export function EventGalleryScreen() {
     if (!asset.uri) return;
     setUploading(true);
 
-    const result = await galleryApi.uploadGalleryPhoto(
-      eventId,
-      asset.uri,
-      asset.fileName || 'photo.jpg',
-      asset.type || 'image/jpeg',
-    );
+    try {
+      const result = await galleryApi.uploadGalleryPhoto(
+        eventId,
+        asset.uri,
+        asset.fileName || 'photo.jpg',
+        asset.type || 'image/jpeg',
+      );
 
-    if (!mountedRef.current) return;
-    setUploading(false);
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      showToast('Photo uploaded');
-      load();
-    } else {
-      Alert.alert('Upload Failed', result.error.message);
+      if (result.ok) {
+        showToast('Photo uploaded');
+        load();
+      } else {
+        crossAlert('Upload Failed', result.error.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[EventGalleryScreen] handleUpload failed:', err);
+      crossAlert('Upload Failed', 'Something went wrong. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -174,37 +196,52 @@ export function EventGalleryScreen() {
     assets: { uri?: string; fileName?: string; type?: string }[],
   ) => {
     setUploading(true);
-    let successCount = 0;
-    let lastError = '';
 
-    for (const asset of assets) {
-      if (!asset.uri) continue;
-      const result = await galleryApi.uploadGalleryPhoto(
-        eventId,
-        asset.uri,
-        asset.fileName || 'photo.jpg',
-        asset.type || 'image/jpeg',
-      );
-      if (result.ok) {
-        successCount++;
-      } else {
-        lastError = result.error.message;
+    try {
+      const uploadPromises = assets
+        .filter((asset) => !!asset.uri)
+        .map((asset) =>
+          galleryApi.uploadGalleryPhoto(
+            eventId,
+            asset.uri!,
+            asset.fileName || 'photo.jpg',
+            asset.type || 'image/jpeg',
+          ),
+        );
+
+      const results = await Promise.allSettled(uploadPromises);
+
+      if (!mountedRef.current) return;
+
+      let successCount = 0;
+      let lastError = '';
+
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.ok) {
+          successCount++;
+        } else if (result.status === 'fulfilled' && !result.value.ok) {
+          lastError = result.value.error.message;
+        } else if (result.status === 'rejected') {
+          lastError = 'Something went wrong. Please try again.';
+        }
       }
-    }
 
-    if (!mountedRef.current) return;
-    setUploading(false);
-
-    if (successCount > 0) {
-      showToast(
-        successCount === 1
-          ? 'Photo uploaded'
-          : `${successCount} photos uploaded`,
-      );
-      load();
-    }
-    if (lastError) {
-      Alert.alert('Some Uploads Failed', lastError);
+      if (successCount > 0) {
+        showToast(
+          successCount === 1
+            ? 'Photo uploaded'
+            : `${successCount} photos uploaded`,
+        );
+        load();
+      }
+      if (lastError) {
+        crossAlert('Some Uploads Failed', lastError);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[EventGalleryScreen] handleBatchUpload failed:', err);
+      crossAlert('Upload Failed', 'Something went wrong. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -213,17 +250,23 @@ export function EventGalleryScreen() {
     setDeleting(true);
     setDeleteError(null);
 
-    const result = await galleryApi.deleteGalleryPhoto(eventId, deleteTarget.id);
+    try {
+      const result = await galleryApi.deleteGalleryPhoto(eventId, deleteTarget.id);
 
-    if (!mountedRef.current) return;
-    setDeleting(false);
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setDeleteTarget(null);
-      showToast('Photo deleted');
-      load();
-    } else {
-      setDeleteError(result.error.message);
+      if (result.ok) {
+        setDeleteTarget(null);
+        showToast('Photo deleted');
+        load();
+      } else {
+        setDeleteError(result.error.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[EventGalleryScreen] handleDelete failed:', err);
+      setDeleteError('Failed to delete photo. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   }, [deleteTarget, eventId, load, showToast]);
 
@@ -298,6 +341,7 @@ export function EventGalleryScreen() {
       {uploading && (
         <View style={styles.uploadingBanner}>
           <ActivityIndicator size="small" color={colors.white} />
+          <Text style={styles.uploadingText}>Uploading photos...</Text>
         </View>
       )}
 
@@ -359,16 +403,26 @@ const makeStyles = (colors: Colors) =>
       padding: spacing.base,
     },
     grid: {
-      paddingHorizontal: spacing.base,
+      paddingHorizontal: spacing.sm,
+      paddingTop: spacing.sm,
       paddingBottom: listDefaults.contentPaddingBottomNoFab,
     },
     row: {
-      gap: GRID_GAP,
-      marginBottom: GRID_GAP,
+      gap: GRID_GAP + 2,
+      marginBottom: GRID_GAP + 2,
     },
     uploadingBanner: {
+      flexDirection: 'row',
       backgroundColor: colors.primary,
-      paddingVertical: spacing.sm,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.base,
       alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+    },
+    uploadingText: {
+      color: colors.white,
+      fontSize: fontSizes.sm,
+      fontWeight: fontWeights.semibold,
     },
   });

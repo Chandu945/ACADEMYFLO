@@ -47,15 +47,20 @@ export function AddStudentToBatchScreen() {
 
   const fetchStudents = useCallback(
     async (page: number, searchQuery: string, append = false) => {
-      const result = await listStudents({ status: 'ACTIVE', search: searchQuery || undefined }, page, PAGE_SIZE);
+      try {
+        const result = await listStudents({ status: 'ACTIVE', search: searchQuery || undefined }, page, PAGE_SIZE);
 
-      if (result.ok) {
-        const data = result.value;
-        setStudents((prev) => (append ? [...prev, ...data.data] : data.data));
-        hasMoreRef.current = page < data.meta.totalPages;
-        setError(null);
-      } else {
-        setError(result.error.message);
+        if (result.ok) {
+          const data = result.value;
+          setStudents((prev) => (append ? [...prev, ...data.data] : data.data));
+          hasMoreRef.current = page < data.meta.totalPages;
+          setError(null);
+        } else {
+          setError(result.error.message);
+        }
+      } catch (err) {
+        if (__DEV__) console.error('[AddStudentToBatchScreen] fetchStudents failed:', err);
+        setError('Something went wrong. Please try again.');
       }
     },
     [],
@@ -65,8 +70,13 @@ export function AddStudentToBatchScreen() {
     async (searchQuery: string) => {
       setLoading(true);
       pageRef.current = 1;
-      await fetchStudents(1, searchQuery);
-      setLoading(false);
+      try {
+        await fetchStudents(1, searchQuery);
+      } catch (err) {
+        if (__DEV__) console.error('[AddStudentToBatchScreen] loadInitial failed:', err);
+      } finally {
+        setLoading(false);
+      }
     },
     [fetchStudents],
   );
@@ -100,20 +110,31 @@ export function AddStudentToBatchScreen() {
     setLoadingMore(true);
     const nextPage = pageRef.current + 1;
     pageRef.current = nextPage;
-    await fetchStudents(nextPage, search, true);
-    setLoadingMore(false);
+    try {
+      await fetchStudents(nextPage, search, true);
+    } catch (err) {
+      if (__DEV__) console.error('[AddStudentToBatchScreen] fetchMore failed:', err);
+    } finally {
+      setLoadingMore(false);
+    }
   }, [loadingMore, fetchStudents, search]);
 
   const handleAdd = useCallback(
     async (student: StudentListItem) => {
       setAddingId(student.id);
-      const result = await addStudentToBatch(batchId, student.id);
-      if (result.ok) {
-        setAddedIds((prev) => new Set(prev).add(student.id));
-      } else {
-        setError(result.error.message);
+      try {
+        const result = await addStudentToBatch(batchId, student.id);
+        if (result.ok) {
+          setAddedIds((prev) => new Set(prev).add(student.id));
+        } else {
+          setError(result.error.message);
+        }
+      } catch (err) {
+        if (__DEV__) console.error('[AddStudentToBatchScreen] handleAdd failed:', err);
+        setError('Failed to add student. Please try again.');
+      } finally {
+        setAddingId(null);
       }
-      setAddingId(null);
     },
     [batchId],
   );
@@ -129,7 +150,7 @@ export function AddStudentToBatchScreen() {
             <Text style={[styles.studentName, isAdded && styles.studentNameAdded]} numberOfLines={1}>
               {item.fullName}
             </Text>
-            <Text style={styles.studentFee}>{`\u20B9${item.monthlyFee}`}</Text>
+            <Text style={styles.studentFee}>{`\u20B9${item.monthlyFee?.toLocaleString('en-IN') ?? 0}`}</Text>
           </View>
           {isAdded ? (
             <Text style={styles.addedLabel}>Added</Text>
@@ -138,6 +159,8 @@ export function AddStudentToBatchScreen() {
               onPress={() => handleAdd(item)}
               disabled={isAdding}
               style={styles.addBtn}
+              accessibilityLabel={`Add ${item.fullName} to batch`}
+              accessibilityRole="button"
               testID={`add-student-${item.id}`}
             >
               {isAdding ? (
@@ -150,7 +173,7 @@ export function AddStudentToBatchScreen() {
         </AppCard>
       );
     },
-    [addedIds, addingId, handleAdd],
+    [addedIds, addingId, handleAdd, styles, colors],
   );
 
   const keyExtractor = useCallback((item: StudentListItem) => item.id, []);
@@ -175,6 +198,7 @@ export function AddStudentToBatchScreen() {
           onChangeText={handleSearchChange}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="Search students to add to batch"
           testID="search-input"
         />
       </View>

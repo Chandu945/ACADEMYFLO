@@ -22,11 +22,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  height: 32px;
-  padding: 0 6px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 var(--space-2);
   font-size: var(--text-sm);
-  font-weight: var(--weight-medium, 500);
+  font-weight: var(--weight-medium);
   color: var(--color-text-secondary);
   background: none;
   border: 1px solid transparent;
@@ -43,20 +43,25 @@
   color: var(--color-text);
 }
 
+.pageButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .pageButton:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .pageButtonActive {
   background-color: var(--color-primary);
-  color: var(--color-white, #fff);
+  color: var(--color-white);
   border-color: var(--color-primary);
 }
 
 .pageButtonActive:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
-  color: var(--color-white, #fff);
+  color: var(--color-white);
 }
 
 .navButton {
@@ -64,10 +69,10 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  height: 32px;
-  padding: 0 10px;
+  height: 36px;
+  padding: 0 var(--space-3);
   font-size: var(--text-sm);
-  font-weight: var(--weight-medium, 500);
+  font-weight: var(--weight-medium);
   color: var(--color-text-secondary);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -85,8 +90,13 @@
   color: var(--color-text);
 }
 
+.navButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .navButton:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -94,8 +104,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  height: 32px;
+  min-width: 36px;
+  height: 36px;
   font-size: var(--text-sm);
   color: var(--color-text-disabled);
   user-select: none;
@@ -115,7 +125,7 @@
 }
 
 .pageSizeSelect {
-  padding: 4px 24px 4px 8px;
+  padding: var(--space-1) var(--space-6) var(--space-1) var(--space-2);
   font-size: var(--text-sm);
   color: var(--color-text);
   background-color: var(--color-surface);
@@ -126,4 +136,25 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 6px center;
+}
+
+/* ── Mobile: larger touch targets ── */
+@media (max-width: 768px) {
+  .wrapper {
+    justify-content: center;
+  }
+
+  .pageButton {
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .navButton {
+    height: 44px;
+  }
+
+  .ellipsis {
+    min-width: 44px;
+    height: 44px;
+  }
 }

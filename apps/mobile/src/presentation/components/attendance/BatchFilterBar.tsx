@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { listBatches } from '../../../infra/batch/batch-api';
 import { fontSizes, fontWeights, radius, spacing } from '../../theme';
@@ -68,8 +68,8 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
           testID="batch-filter-all"
         >
           {allSelected && (
-            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-            <Icon name="check" size={14} color={colors.primary} />
+            
+            <AppIcon name="check" size={14} color={colors.primary} />
           )}
           <Text style={[styles.chipText, allSelected && styles.chipTextSelected]}>
             All Batches
@@ -93,8 +93,8 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
                 {batch.batchName}
               </Text>
               {isSelected && (
-                // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-                <Icon name="check" size={14} color={colors.primary} />
+                
+                <AppIcon name="check" size={14} color={colors.primary} />
               )}
             </Pressable>
           );

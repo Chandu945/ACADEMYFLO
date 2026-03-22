@@ -5,6 +5,7 @@ import { listStudentsUseCase, type StudentApiPort } from './use-cases/list-stude
 
 type UseStudentsResult = {
   items: StudentListItem[];
+  totalItems: number;
   loading: boolean;
   loadingMore: boolean;
   error: AppError | null;
@@ -20,6 +21,7 @@ export function useStudents(
   studentApi: StudentApiPort,
 ): UseStudentsResult {
   const [items, setItems] = useState<StudentListItem[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -28,6 +30,7 @@ export function useStudents(
   const mountedRef = useRef(true);
   // Monotonic counter to discard stale responses from superseded filter changes
   const requestIdRef = useRef(0);
+  const fetchingMoreRef = useRef(false);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -45,9 +48,10 @@ export function useStudents(
         result = await listStudentsUseCase({ studentApi }, filters, targetPage, PAGE_SIZE);
       } catch (e) {
         if (!mountedRef.current || requestId !== requestIdRef.current) return;
-        setError({ code: 'UNKNOWN', message: String(e) });
+        setError({ code: 'UNKNOWN', message: 'Failed to load students. Pull to retry.' });
         setLoading(false);
         setLoadingMore(false);
+        fetchingMoreRef.current = false;
         return;
       }
 
@@ -61,6 +65,7 @@ export function useStudents(
           setItems(result.value.items);
         }
         setPage(targetPage);
+        setTotalItems(result.value.meta.totalItems);
         setHasMore(targetPage < result.value.meta.totalPages);
       } else {
         setError(result.error);
@@ -68,6 +73,7 @@ export function useStudents(
 
       setLoading(false);
       setLoadingMore(false);
+      fetchingMoreRef.current = false;
     },
     [filters, studentApi],
   );
@@ -77,9 +83,9 @@ export function useStudents(
   }, [load]);
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true);
   }, [loading, loadingMore, hasMore, page, load]);
 
   useEffect(() => {
@@ -90,5 +96,5 @@ export function useStudents(
     };
   }, [load]);
 
-  return { items, loading, loadingMore, error, hasMore, refetch, fetchMore };
+  return { items, totalItems, loading, loadingMore, error, hasMore, refetch, fetchMore };
 }

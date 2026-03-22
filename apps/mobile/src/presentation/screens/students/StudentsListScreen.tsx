@@ -9,10 +9,11 @@ import {
   StyleSheet,
   ActivityIndicator,
   Animated,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { StudentsStackParamList } from '../../navigation/StudentsStack';
 import type {
   StudentStatus,
@@ -73,10 +74,10 @@ export function StudentsListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [actionMenuStudent, setActionMenuStudent] = useState<StudentListItem | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
   const fabScale = useRef(new Animated.Value(1)).current;
 
+  // Search debounce
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -84,7 +85,6 @@ export function StudentsListScreen() {
     }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
     };
   }, [searchText]);
 
@@ -99,7 +99,7 @@ export function StudentsListScreen() {
     [statusFilter, debouncedSearch, feeFilter, month, selectedBatchId],
   );
 
-  const { items, loading, loadingMore, error, refetch, fetchMore } = useStudents(
+  const { items, totalItems, loading, loadingMore, error, refetch, fetchMore } = useStudents(
     filters,
     studentsApi,
   );
@@ -171,8 +171,13 @@ export function StudentsListScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } catch {
+      // Error handled by the hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const handleRowPress = useCallback(
@@ -192,11 +197,12 @@ export function StudentsListScreen() {
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
-    if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
-    focusTimerRef.current = setTimeout(() => searchInputRef.current?.focus(), 100);
+    // Let React render the input, then focus it
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     setSearchActive(false);
     setSearchText('');
     setDebouncedSearch('');
@@ -206,8 +212,8 @@ export function StudentsListScreen() {
     ({ item }: { item: StudentListItem }) => (
       <StudentRow
         student={item}
-        onPress={() => handleRowPress(item)}
-        onLongPress={() => handleLongPress(item)}
+        onPress={handleRowPress}
+        onLongPress={handleLongPress}
       />
     ),
     [handleRowPress, handleLongPress],
@@ -237,9 +243,13 @@ export function StudentsListScreen() {
       <View style={styles.navbar}>
         {searchActive ? (
           <View style={styles.searchBar}>
-            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity
+              onPress={closeSearch}
+              style={styles.navBtn}
+              accessibilityLabel="Close search"
+              accessibilityRole="button"
+            >
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -248,13 +258,20 @@ export function StudentsListScreen() {
               placeholderTextColor={colors.textDisabled}
               value={searchText}
               onChangeText={setSearchText}
+              returnKeyType="search"
+              onSubmitEditing={() => Keyboard.dismiss()}
               autoFocus
+              accessibilityLabel="Search students by name"
               testID="search-input"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
+              <TouchableOpacity
+                onPress={() => setSearchText('')}
+                style={styles.navBtn}
+                accessibilityLabel="Clear search text"
+                accessibilityRole="button"
+              >
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -263,13 +280,12 @@ export function StudentsListScreen() {
             <View>
               <Text style={styles.navTitle}>Students</Text>
               <Text style={styles.navSubtitle}>
-                {items.length} Total Students found
+                {totalItems} {totalItems === 1 ? 'student' : 'students'} found
               </Text>
             </View>
             <View style={styles.navActions}>
-              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="magnify" size={22} color={colors.text} />
+              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search students" accessibilityRole="button">
+                <AppIcon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={toggleFilters}
@@ -278,8 +294,7 @@ export function StudentsListScreen() {
                 accessibilityLabel="Toggle filters"
                 accessibilityRole="button"
               >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon
+                <AppIcon
                   name={showFilters ? 'filter-variant-remove' : 'filter-variant'}
                   size={22}
                   color={showFilters ? colors.primary : colors.text}
@@ -304,8 +319,7 @@ export function StudentsListScreen() {
           {/* Status Filter */}
           <View style={styles.filterCard}>
             <View style={styles.filterCardHeader}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="account-check-outline" size={15} color={colors.textSecondary} />
+              <AppIcon name="account-check-outline" size={15} color={colors.textSecondary} />
               <Text style={styles.filterCardTitle}>Status</Text>
             </View>
             <View style={styles.chipRow}>
@@ -316,11 +330,13 @@ export function StudentsListScreen() {
                     key={opt.label}
                     style={[styles.chip, selected && styles.chipSelected]}
                     onPress={() => setStatusFilter(opt.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${opt.label} status filter`}
                     testID={`status-chip-${opt.label.toLowerCase()}`}
                   >
                     {selected && (
-                      // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-                      <Icon name="check" size={14} color={colors.primary} />
+                      <AppIcon name="check" size={14} color={colors.primary} />
                     )}
                     <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
                       {opt.label}
@@ -334,8 +350,7 @@ export function StudentsListScreen() {
           {/* Fee Status Filter */}
           <View style={styles.filterCard}>
             <View style={styles.filterCardHeader}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="currency-inr" size={15} color={colors.textSecondary} />
+              <AppIcon name="currency-inr" size={15} color={colors.textSecondary} />
               <Text style={styles.filterCardTitle}>Fee Status</Text>
             </View>
             <View style={styles.chipRow}>
@@ -346,11 +361,13 @@ export function StudentsListScreen() {
                     key={opt.label}
                     style={[styles.chip, selected && styles.chipSelected]}
                     onPress={() => setFeeFilter(opt.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${opt.label} fee filter`}
                     testID={`fee-chip-${opt.label.toLowerCase()}`}
                   >
                     {selected && (
-                      // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-                      <Icon name="check" size={14} color={colors.primary} />
+                      <AppIcon name="check" size={14} color={colors.primary} />
                     )}
                     <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
                       {opt.label}
@@ -364,8 +381,7 @@ export function StudentsListScreen() {
           {/* Batch Filter */}
           <View style={styles.filterCard}>
             <View style={styles.filterCardHeader}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="account-group-outline" size={15} color={colors.textSecondary} />
+              <AppIcon name="account-group-outline" size={15} color={colors.textSecondary} />
               <Text style={styles.filterCardTitle}>Batch</Text>
             </View>
             <BatchFilterBar selectedBatchId={selectedBatchId} onChange={handleBatchChange} />
@@ -374,8 +390,7 @@ export function StudentsListScreen() {
           {/* Clear All */}
           {activeFilterCount > 0 && (
             <TouchableOpacity style={styles.clearFilters} onPress={clearAllFilters}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="filter-remove-outline" size={16} color={colors.danger} />
+              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
               <Text style={styles.clearFiltersText}>Clear All Filters</Text>
             </TouchableOpacity>
           )}
@@ -427,10 +442,11 @@ export function StudentsListScreen() {
           onPressOut={handleFabPressOut}
           activeOpacity={0.8}
           style={styles.fabTouchable}
+          accessibilityLabel="Add new student"
+          accessibilityRole="button"
           testID="add-student-button"
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="plus" size={28} color={colors.white} />
+          <AppIcon name="plus" size={28} color={colors.white} />
         </TouchableOpacity>
       </Animated.View>
 

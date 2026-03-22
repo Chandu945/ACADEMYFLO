@@ -7,10 +7,11 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp, NavigationProp } from '@react-navigation/native';
 import type { ParentFeesStackParamList } from '../../navigation/ParentFeesStack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useFeePaymentFlow } from '../../../application/parent/use-fee-payment-flow';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -45,8 +46,8 @@ function StepIndicator({
         ]}
       >
         {isActive && (
-          // @ts-expect-error react-native-vector-icons types
-          <Icon name="check" size={12} color={colors.white} />
+          
+          <AppIcon name="check" size={12} color={colors.white} />
         )}
       </View>
       <Text style={[sStyles.label, isActive && { color: colors.primary }]}>{label}</Text>
@@ -101,7 +102,7 @@ export function FeePaymentScreen() {
     if (!isProcessing) return;
     const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: any } }) => {
       e.preventDefault();
-      Alert.alert(
+      crossAlert(
         'Payment in Progress',
         'A payment is being processed. Leaving now may result in missed confirmation. Are you sure?',
         [
@@ -124,8 +125,8 @@ export function FeePaymentScreen() {
       {/* Summary Card */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryIcon}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="receipt" size={24} color={colors.primary} />
+          
+          <AppIcon name="receipt" size={24} color={colors.primary} />
         </View>
         <View style={styles.summaryDetails}>
           <Text style={styles.summaryLabel}>Fee Payment</Text>
@@ -140,8 +141,8 @@ export function FeePaymentScreen() {
       {/* Late Fee Info Banner */}
       {lateFee > 0 && (
         <View style={styles.lateFeeInfoBanner}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="information-outline" size={18} color={colors.danger} />
+          
+          <AppIcon name="information-outline" size={18} color={colors.danger} />
           <Text style={styles.lateFeeInfoText}>
             A late fee of {formatCurrency(lateFee)} has been applied because this fee was not paid by the due date.
           </Text>
@@ -199,8 +200,8 @@ export function FeePaymentScreen() {
       {/* Error */}
       {error && (
         <View style={styles.statusCard}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="close-circle" size={48} color={colors.danger} />
+          
+          <AppIcon name="close-circle" size={48} color={colors.danger} />
           <Text style={styles.statusTitle}>Payment Failed</Text>
           <Text style={styles.statusMessage}>{error}</Text>
         </View>
@@ -209,8 +210,8 @@ export function FeePaymentScreen() {
       {/* Success */}
       {status === 'success' && (
         <View style={styles.statusCard}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="check-circle" size={48} color={colors.success} />
+          
+          <AppIcon name="check-circle" size={48} color={colors.success} />
           <Text style={[styles.statusTitle, { color: colors.success }]}>
             Payment Successful!
           </Text>
@@ -229,8 +230,8 @@ export function FeePaymentScreen() {
             onPress={() => startPayment(feeDueId)}
             disabled={isProcessing}
           >
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="shield-check-outline" size={20} color={colors.white} />
+            
+            <AppIcon name="shield-check-outline" size={20} color={colors.white} />
             <Text style={styles.payButtonText}>
               {status === 'failed' ? 'Retry Payment' : 'Pay Securely'}
             </Text>
@@ -244,8 +245,8 @@ export function FeePaymentScreen() {
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Receipt', { feeDueId })}
             >
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="receipt" size={20} color={colors.primary} />
+              
+              <AppIcon name="receipt" size={20} color={colors.primary} />
               <Text style={styles.receiptButtonText}>View Receipt</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.doneButton} onPress={() => { reset(); navigation.goBack(); }}>
@@ -258,8 +259,8 @@ export function FeePaymentScreen() {
       {/* Secure badge */}
       {!isProcessing && status !== 'success' && status !== 'failed' && (
         <View style={styles.secureBadge}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="lock-outline" size={14} color={colors.textDisabled} />
+          
+          <AppIcon name="lock-outline" size={14} color={colors.textDisabled} />
           <Text style={styles.secureText}>Secured by Cashfree</Text>
         </View>
       )}

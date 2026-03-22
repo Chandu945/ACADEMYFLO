@@ -12,6 +12,12 @@ import { Alert } from '@/components/ui/Alert';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+
 function statusBadgeVariant(status: string) {
   switch (status.toLowerCase()) {
     case 'active': return 'success' as const;
@@ -21,12 +27,12 @@ function statusBadgeVariant(status: string) {
   }
 }
 
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+/** Format a YYYY-MM-DD string without timezone shift. */
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-');
+  if (!y || !m || !d) return dateStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
 }
 
 function titleCase(str: string) {
@@ -36,18 +42,21 @@ function titleCase(str: string) {
 function formatAddress(addr: unknown): string | null {
   if (!addr || typeof addr !== 'object') return typeof addr === 'string' ? addr : null;
   const a = addr as Record<string, string | null>;
-  const parts = [a.line1, a.line2, a.city, a.state, a.pincode].filter(Boolean);
+  const parts = [a['line1'], a['line2'], a['city'], a['state'], a['pincode']].filter(Boolean);
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const { data: student, loading, error, refetch } = useStudentDetail(params.id);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const canEdit = user?.role === 'OWNER' || user?.role === 'STAFF';
+  const canDelete = user?.role === 'OWNER';
 
   const handleDelete = useCallback(async () => {
     if (!params.id) return;
@@ -65,20 +74,27 @@ export default function StudentDetailPage() {
 
   if (loading) return <Spinner centered size="lg" />;
   if (error) return (
-    <div>
+    <div className={styles.page}>
       <Alert variant="error" message={error} />
-      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+      <div className={styles.errorActions}>
         <Button onClick={refetch}>Retry</Button>
         <Button variant="secondary" onClick={() => router.push('/students')}>Back to Students</Button>
       </div>
     </div>
   );
-  if (!student) return <Alert variant="error" message="Student not found" />;
+  if (!student) return (
+    <div className={styles.page}>
+      <Alert variant="error" message="Student not found" />
+      <Button variant="secondary" onClick={() => router.push('/students')} style={{ marginTop: 16 }}>
+        Back to Students
+      </Button>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
       {/* Back */}
-      <button className={styles.backButton} onClick={() => router.push('/students')}>
+      <button type="button" className={styles.backButton} onClick={() => router.push('/students')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
         </svg>
@@ -99,12 +115,16 @@ export default function StudentDetailPage() {
           </div>
         </div>
         <div className={styles.profileActions}>
-          <Button variant="outline" onClick={() => router.push(`/students/${params.id}/edit`)}>
-            Edit
-          </Button>
-          <Button variant="danger" onClick={() => setDeleteOpen(true)}>
-            Delete
-          </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={() => router.push(`/students/${params.id}/edit`)}>
+              Edit
+            </Button>
+          )}
+          {canDelete && (
+            <Button variant="danger" onClick={() => setDeleteOpen(true)}>
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 
@@ -127,7 +147,7 @@ export default function StudentDetailPage() {
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Monthly Fee</span>
-            <span className={styles.infoValue}>{formatCurrency(student.monthlyFee)}</span>
+            <span className={styles.infoValue}>{currencyFormatter.format(student.monthlyFee)}</span>
           </div>
           {formatAddress(student.address) && (
             <div className={styles.infoRow}>

@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Alert,
+
   TextInput,
   Modal,
   ActivityIndicator,
@@ -12,6 +12,7 @@ import {
   Platform,
   StyleSheet,
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,13 +23,29 @@ import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { getTodayIST } from '../../../domain/common/date-utils';
 import { enquiryDetailSchema } from '../../../domain/enquiry/enquiry.schemas';
 import { useAuth } from '../../context/AuthContext';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { InlineError } from '../../components/ui/InlineError';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EnquiryDetail'>;
 type Route = RouteProp<MoreStackParamList, 'EnquiryDetail'>;
+
+/** Safely format a date string (handles ISO datetime, YYYY-MM-DD, or any parseable format) */
+function safeFormatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
+  try {
+    // Strip time portion if it's a full ISO datetime, then parse as local date
+    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0]! : dateStr;
+    const d = new Date(dateOnly + 'T00:00:00');
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
 
 export function EnquiryDetailScreen() {
   const { colors } = useTheme();
@@ -41,22 +58,34 @@ export function EnquiryDetailScreen() {
 
   const [enquiry, setEnquiry] = useState<EnquiryDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [showConvertModal, setShowConvertModal] = useState(false);
   const mountedRef = useRef(true);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
-    const result = await enquiryApi.getEnquiryDetail(enquiryId);
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      const parsed = enquiryDetailSchema.safeParse(result.value);
-      if (parsed.success) {
-        setEnquiry(parsed.data as EnquiryDetail);
+    setError(null);
+    try {
+      const result = await enquiryApi.getEnquiryDetail(enquiryId);
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        const parsed = enquiryDetailSchema.safeParse(result.value);
+        if (parsed.success) {
+          setEnquiry(parsed.data as EnquiryDetail);
+        } else {
+          setError('Invalid data received from server.');
+          if (__DEV__) console.error('[EnquiryDetailScreen] Zod parse failed:', parsed.error);
+        }
+      } else {
+        setError(result.error.message || 'Failed to load enquiry details.');
       }
+    } catch (err) {
+      if (__DEV__) console.error('[EnquiryDetailScreen] loadDetail failed:', err);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [enquiryId]);
 
   useEffect(() => {
@@ -82,12 +111,34 @@ export function EnquiryDetailScreen() {
     return enquiry.nextFollowUpDate < getTodayIST();
   })();
 
-  if (loading || !enquiry) {
+  if (loading) {
     return (
       <View style={styles.screen}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.center}>
+          <InlineError message={error} onRetry={loadDetail} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!enquiry) {
+    return (
+      <View style={styles.screen}>
+        <EmptyState
+          message="Enquiry not found"
+          subtitle="This enquiry may have been removed."
+          icon="file-document-outline"
+        />
       </View>
     );
   }
@@ -113,8 +164,8 @@ export function EnquiryDetailScreen() {
         {/* Contact Info */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="phone-outline" size={18} color={colors.primary} />
+            
+            <AppIcon name="phone-outline" size={18} color={colors.primary} />
             <Text style={styles.sectionTitle}>Contact</Text>
           </View>
           <InfoRow label="Mobile" value={enquiry.mobileNumber} />
@@ -127,16 +178,16 @@ export function EnquiryDetailScreen() {
         {/* Enquiry Info */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="information-outline" size={18} color={colors.primary} />
+            
+            <AppIcon name="information-outline" size={18} color={colors.primary} />
             <Text style={styles.sectionTitle}>Details</Text>
           </View>
           {enquiry.interestedIn && <InfoRow label="Interested In" value={enquiry.interestedIn} />}
-          {enquiry.source && <InfoRow label="Source" value={enquiry.source.replace('_', ' ')} />}
+          {enquiry.source && <InfoRow label="Source" value={enquiry.source.replace(/_/g, ' ')} />}
           {enquiry.nextFollowUpDate && (
             <InfoRow
               label="Next Follow-Up"
-              value={`${new Date(enquiry.nextFollowUpDate + 'T00:00:00').toLocaleDateString('en-IN')}${isOverdue ? ' (OVERDUE)' : ''}`}
+              value={`${safeFormatDate(enquiry.nextFollowUpDate)}${isOverdue ? ' (OVERDUE)' : ''}`}
               valueStyle={isOverdue ? styles.overdueValue : undefined}
             />
           )}
@@ -146,8 +197,8 @@ export function EnquiryDetailScreen() {
         {enquiry.notes && (
           <View style={styles.section}>
             <View style={styles.sectionTitleRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="note-text-outline" size={18} color={colors.primary} />
+              
+              <AppIcon name="note-text-outline" size={18} color={colors.primary} />
               <Text style={styles.sectionTitle}>Notes</Text>
             </View>
             <Text style={styles.notesText}>{enquiry.notes}</Text>
@@ -158,11 +209,11 @@ export function EnquiryDetailScreen() {
         {enquiry.closureReason && (
           <View style={styles.section}>
             <View style={styles.sectionTitleRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="close-circle-outline" size={18} color={colors.danger} />
+              
+              <AppIcon name="close-circle-outline" size={18} color={colors.danger} />
               <Text style={styles.sectionTitle}>Closure</Text>
             </View>
-            <InfoRow label="Reason" value={enquiry.closureReason.replace('_', ' ')} />
+            <InfoRow label="Reason" value={enquiry.closureReason.replace(/_/g, ' ')} />
           </View>
         )}
 
@@ -170,14 +221,14 @@ export function EnquiryDetailScreen() {
         <View style={styles.section}>
           <View style={styles.followUpHeader}>
             <View style={styles.sectionTitleRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="history" size={18} color={colors.primary} />
+              
+              <AppIcon name="history" size={18} color={colors.primary} />
               <Text style={styles.sectionTitle}>Follow-Up History ({enquiry.followUps.length})</Text>
             </View>
             {enquiry.status === 'ACTIVE' && (
               <TouchableOpacity onPress={() => setShowFollowUpModal(true)} style={styles.addFollowUpBtn} testID="add-followup-btn">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="plus" size={16} color={colors.primary} />
+                
+                <AppIcon name="plus" size={16} color={colors.primary} />
                 <Text style={styles.addFollowUpLink}>Add</Text>
               </TouchableOpacity>
             )}
@@ -188,16 +239,16 @@ export function EnquiryDetailScreen() {
             [...enquiry.followUps].reverse().map((f) => (
               <View key={f.id} style={styles.followUpCard}>
                 <View style={styles.followUpDateRow}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="calendar" size={14} color={colors.primary} />
+                  
+                  <AppIcon name="calendar" size={14} color={colors.primary} />
                   <Text style={styles.followUpDate}>
-                    {new Date(f.date + 'T00:00:00').toLocaleDateString('en-IN')}
+                    {safeFormatDate(f.date)}
                   </Text>
                 </View>
                 <Text style={styles.followUpNotes}>{f.notes}</Text>
                 {f.nextFollowUpDate && (
                   <Text style={styles.followUpNext}>
-                    Next: {new Date(f.nextFollowUpDate + 'T00:00:00').toLocaleDateString('en-IN')}
+                    Next: {safeFormatDate(f.nextFollowUpDate)}
                   </Text>
                 )}
               </View>
@@ -213,8 +264,8 @@ export function EnquiryDetailScreen() {
               onPress={() => navigation.navigate('EditEnquiry', { enquiry })}
               testID="edit-enquiry-btn"
             >
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="pencil-outline" size={18} color={colors.primary} />
+              
+              <AppIcon name="pencil-outline" size={18} color={colors.primary} />
               <Text style={styles.editButtonText}>Edit Enquiry</Text>
             </TouchableOpacity>
             <View style={styles.actionsRow}>
@@ -223,8 +274,8 @@ export function EnquiryDetailScreen() {
                 onPress={() => setShowFollowUpModal(true)}
                 testID="add-followup-action"
               >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="phone-forward-outline" size={18} color={colors.white} />
+                
+                <AppIcon name="phone-forward-outline" size={18} color={colors.white} />
                 <Text style={styles.followUpButtonText}>Follow-Up</Text>
               </TouchableOpacity>
               {isOwner && (
@@ -233,22 +284,13 @@ export function EnquiryDetailScreen() {
                   onPress={() => setShowCloseModal(true)}
                   testID="close-enquiry-btn"
                 >
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="close-circle-outline" size={18} color={colors.danger} />
+                  
+                  <AppIcon name="close-circle-outline" size={18} color={colors.danger} />
                   <Text style={styles.closeButtonText}>Close</Text>
                 </TouchableOpacity>
               )}
-              {isOwner && (
-                <TouchableOpacity
-                  style={styles.convertButton}
-                  onPress={() => setShowConvertModal(true)}
-                  testID="convert-to-student-btn"
-                >
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="account-convert-outline" size={18} color={colors.success} />
-                  <Text style={styles.convertButtonText}>Convert</Text>
-                </TouchableOpacity>
-              )}
+
+
             </View>
           </View>
         )}
@@ -270,13 +312,6 @@ export function EnquiryDetailScreen() {
         onClosed={() => { setShowCloseModal(false); loadDetail(); }}
       />
 
-      {/* Convert to Student Modal */}
-      <ConvertToStudentModal
-        visible={showConvertModal}
-        enquiryId={enquiryId}
-        onClose={() => setShowConvertModal(false)}
-        onConverted={() => { setShowConvertModal(false); loadDetail(); }}
-      />
     </View>
   );
 }
@@ -302,23 +337,37 @@ function AddFollowUpModal({
   const [nextDate, setNextDate] = useState('');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (visible) {
+      setDate(getTodayIST());
+      setNotes('');
+      setNextDate('');
+    }
+  }, [visible]);
+
   const handleSave = async () => {
-    if (!date || !notes.trim()) {
-      Alert.alert('Validation', 'Date and notes are required');
+    if (!notes.trim()) {
+      crossAlert('Validation', 'Notes are required');
       return;
     }
     setSaving(true);
-    const result = await enquiryApi.addFollowUp(enquiryId, {
-      date,
-      notes: notes.trim(),
-      nextFollowUpDate: nextDate || undefined,
-    });
-    setSaving(false);
-    if (result.ok) {
-      setDate(''); setNotes(''); setNextDate('');
-      onSaved();
-    } else {
-      Alert.alert('Error', result.error.message);
+    try {
+      const result = await enquiryApi.addFollowUp(enquiryId, {
+        date,
+        notes: notes.trim(),
+        nextFollowUpDate: nextDate || undefined,
+      });
+      if (result.ok) {
+        setDate(''); setNotes(''); setNextDate('');
+        onSaved();
+      } else {
+        crossAlert('Error', result.error.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[EnquiryDetailScreen] handleSave failed:', err);
+      crossAlert('Error', 'Failed to save follow-up. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -328,14 +377,11 @@ function AddFollowUpModal({
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Add Follow-Up</Text>
 
-          <Text style={styles.label}>Date *</Text>
-          <DatePickerInput value={date} onChange={setDate} placeholder="Select follow-up date" testID="followup-date" />
-
           <Text style={styles.label}>Notes *</Text>
           <TextInput style={[styles.input, styles.notesInput]} value={notes} onChangeText={setNotes} placeholder="What was discussed?" multiline testID="followup-notes" />
 
-          <Text style={styles.label}>Next Follow-Up Date</Text>
-          <DatePickerInput value={nextDate} onChange={setNextDate} placeholder="Select next follow-up" testID="followup-next-date" />
+          <Text style={styles.label}>Schedule Next Follow-Up</Text>
+          <DatePickerInput value={nextDate} onChange={setNextDate} placeholder="Select next follow-up date" testID="followup-next-date" />
 
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="followup-cancel">
@@ -359,6 +405,12 @@ function CloseEnquiryModal({
   const [reason, setReason] = useState<ClosureReason | ''>('');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (visible) {
+      setReason('');
+    }
+  }, [visible]);
+
   const reasons: { value: ClosureReason; label: string }[] = [
     { value: 'CONVERTED', label: 'Converted to Student' },
     { value: 'NOT_INTERESTED', label: 'Not Interested' },
@@ -367,17 +419,23 @@ function CloseEnquiryModal({
 
   const handleClose = async () => {
     if (!reason) {
-      Alert.alert('Validation', 'Please select a closure reason');
+      crossAlert('Validation', 'Please select a closure reason');
       return;
     }
     setSaving(true);
-    const result = await enquiryApi.closeEnquiry(enquiryId, { closureReason: reason });
-    setSaving(false);
-    if (result.ok) {
-      setReason('');
-      onClosed();
-    } else {
-      Alert.alert('Error', result.error.message);
+    try {
+      const result = await enquiryApi.closeEnquiry(enquiryId, { closureReason: reason });
+      if (result.ok) {
+        setReason('');
+        onClosed();
+      } else {
+        crossAlert('Error', result.error.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[EnquiryDetailScreen] handleClose failed:', err);
+      crossAlert('Error', 'Failed to close enquiry. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -443,35 +501,41 @@ function ConvertToStudentModal({
 
   const handleConvert = async () => {
     if (!joiningDate || !monthlyFee || !dateOfBirth || !gender || !addressLine1 || !city || !state || !pincode) {
-      Alert.alert('Validation', 'All fields are required');
+      crossAlert('Validation', 'All fields are required');
       return;
     }
     const fee = parseFloat(monthlyFee);
     if (isNaN(fee) || fee <= 0) {
-      Alert.alert('Validation', 'Monthly fee must be a positive number');
+      crossAlert('Validation', 'Monthly fee must be a positive number');
       return;
     }
 
     setSaving(true);
-    const result = await enquiryApi.convertToStudent(enquiryId, {
-      joiningDate,
-      monthlyFee: fee,
-      dateOfBirth,
-      gender,
-      addressLine1,
-      city,
-      state,
-      pincode,
-    });
-    setSaving(false);
+    try {
+      const result = await enquiryApi.convertToStudent(enquiryId, {
+        joiningDate,
+        monthlyFee: fee,
+        dateOfBirth,
+        gender,
+        addressLine1,
+        city,
+        state,
+        pincode,
+      });
 
-    if (result.ok) {
-      Alert.alert('Success', 'Enquiry converted to student successfully');
-      setJoiningDate(''); setMonthlyFee(''); setDateOfBirth(''); setGender('');
-      setAddressLine1(''); setCity(''); setState(''); setPincode('');
-      onConverted();
-    } else {
-      Alert.alert('Error', result.error.message);
+      if (result.ok) {
+        crossAlert('Success', 'Enquiry converted to student successfully');
+        setJoiningDate(''); setMonthlyFee(''); setDateOfBirth(''); setGender('');
+        setAddressLine1(''); setCity(''); setState(''); setPincode('');
+        onConverted();
+      } else {
+        crossAlert('Error', result.error.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[EnquiryDetailScreen] handleConvert failed:', err);
+      crossAlert('Error', 'Failed to convert enquiry. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 

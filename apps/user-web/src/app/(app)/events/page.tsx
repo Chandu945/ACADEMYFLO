@@ -7,8 +7,16 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import styles from './page.module.css';
+
+function formatDate(dateStr: string) {
+  const [y, m, d] = dateStr.split('-');
+  if (!y || !m || !d) return dateStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+}
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -42,7 +50,7 @@ export default function EventsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
-  const { data: events, loading } = useEvents({
+  const { data: events, loading, error, refetch } = useEvents({
     status: statusFilter || undefined,
     eventType: typeFilter || undefined,
   });
@@ -58,6 +66,8 @@ export default function EventsPage() {
         <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} />
         <Select options={TYPE_OPTIONS} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} />
       </div>
+
+      {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: refetch }} />}
 
       {loading ? (
         <Spinner centered size="lg" />
@@ -91,8 +101,8 @@ export default function EventsPage() {
                 <div className={styles.eventMetaRow}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
                   <span>
-                    {new Date(event.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {event.endDate && event.endDate !== event.startDate && ` - ${new Date(event.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                    {formatDate(event.startDate)}
+                    {event.endDate && event.endDate !== event.startDate && ` - ${formatDate(event.endDate)}`}
                   </span>
                 </div>
                 {event.location && (

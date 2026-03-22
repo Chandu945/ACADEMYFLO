@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
+import { ScrollView, View, Text, TextInput, StyleSheet, Pressable, Keyboard } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
@@ -18,7 +18,7 @@ import { createStaff, updateStaff, getStaffPhotoUploadPath } from '../../../infr
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import type { CreateStaffInput, UpdateStaffInput } from '../../../domain/staff/staff.types';
 import type { SalaryFrequency } from '../../../domain/staff/staff.types';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -26,9 +26,10 @@ import { useToast } from '../../context/ToastContext';
 
 type FormRoute = RouteProp<StaffStackParamList, 'StaffForm'>;
 
-const GENDER_OPTIONS: { label: string; value: 'MALE' | 'FEMALE' }[] = [
+const GENDER_OPTIONS: { label: string; value: 'MALE' | 'FEMALE' | 'OTHER' }[] = [
   { label: 'Male', value: 'MALE' },
   { label: 'Female', value: 'FEMALE' },
+  { label: 'Other', value: 'OTHER' },
 ];
 
 const SALARY_FREQ_OPTIONS: { label: string; value: SalaryFrequency }[] = [
@@ -51,13 +52,13 @@ export function StaffFormScreen() {
   // Basic fields
   const [fullName, setFullName] = useState(staff?.fullName ?? '');
   const [email, setEmail] = useState(staff?.email ?? '');
-  const [phoneNumber, setPhoneNumber] = useState(staff?.phoneNumber ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(staff?.phoneNumber ?? (mode === 'create' ? '+91' : ''));
   const [password, setPassword] = useState('');
 
   // Extended fields
   const [startDate, setStartDate] = useState(staff?.startDate ?? '');
   const [gender, setGender] = useState(staff?.gender ?? '');
-  const [whatsappNumber, setWhatsappNumber] = useState(staff?.whatsappNumber ?? '');
+  const [whatsappNumber, setWhatsappNumber] = useState(staff?.whatsappNumber ?? (mode === 'create' ? '+91' : ''));
   const [mobileNumber, setMobileNumber] = useState(staff?.mobileNumber ?? '');
   const [address, setAddress] = useState(staff?.address ?? '');
   const [qualification, setQualification] = useState(staff?.qualificationInfo?.qualification ?? '');
@@ -74,10 +75,25 @@ export function StaffFormScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const initialRef = useRef({ fullName, email, phoneNumber });
+  const initialRef = useRef({
+    fullName, email, phoneNumber, startDate, gender,
+    whatsappNumber, mobileNumber, address, qualification, position,
+    salaryAmount, salaryFrequency, password, photoUrl,
+  });
   const isDirty = fullName !== initialRef.current.fullName ||
     email !== initialRef.current.email ||
-    phoneNumber !== initialRef.current.phoneNumber;
+    phoneNumber !== initialRef.current.phoneNumber ||
+    startDate !== initialRef.current.startDate ||
+    gender !== initialRef.current.gender ||
+    whatsappNumber !== initialRef.current.whatsappNumber ||
+    mobileNumber !== initialRef.current.mobileNumber ||
+    address !== initialRef.current.address ||
+    qualification !== initialRef.current.qualification ||
+    position !== initialRef.current.position ||
+    salaryAmount !== initialRef.current.salaryAmount ||
+    salaryFrequency !== initialRef.current.salaryFrequency ||
+    password !== initialRef.current.password ||
+    photoUrl !== initialRef.current.photoUrl;
   useUnsavedChangesWarning(isDirty && !submitting);
 
   const handleSubmit = useCallback(async () => {
@@ -93,6 +109,7 @@ export function StaffFormScreen() {
     setServerError(null);
     setSubmitting(true);
 
+    try {
     let result;
     if (mode === 'create') {
       const input: CreateStaffInput = {
@@ -102,7 +119,7 @@ export function StaffFormScreen() {
         password,
       };
       if (startDate.trim()) input.startDate = startDate.trim();
-      if (gender === 'MALE' || gender === 'FEMALE') input.gender = gender;
+      if (gender === 'MALE' || gender === 'FEMALE' || gender === 'OTHER') input.gender = gender;
       if (whatsappNumber.trim()) input.whatsappNumber = whatsappNumber.trim();
       if (mobileNumber.trim()) input.mobileNumber = mobileNumber.trim();
       if (address.trim()) input.address = address.trim();
@@ -131,7 +148,7 @@ export function StaffFormScreen() {
       const newStartDate = startDate.trim() || null;
       if (newStartDate !== (staff?.startDate ?? null)) patch.startDate = newStartDate;
 
-      const newGender = gender === 'MALE' || gender === 'FEMALE' ? gender : null;
+      const newGender = gender === 'MALE' || gender === 'FEMALE' || gender === 'OTHER' ? gender : null;
       if (newGender !== (staff?.gender ?? null)) patch.gender = newGender;
 
       const newWhatsapp = whatsappNumber.trim() || null;
@@ -164,13 +181,24 @@ export function StaffFormScreen() {
       result = await updateStaffUseCase({ staffApi: updateApi }, staff!.id, patch);
     }
 
-    setSubmitting(false);
-
     if (result.ok) {
       showToast(mode === 'create' ? 'Staff created' : 'Staff updated');
-      navigation.goBack();
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        (navigation as any).navigate('StaffList');
+      }
     } else {
+      if (result.error.fieldErrors) {
+        setFieldErrors(result.error.fieldErrors);
+      }
       setServerError(result.error.message);
+    }
+    } catch (e) {
+      if (__DEV__) console.error('[StaffFormScreen] Submit failed:', e);
+      setServerError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   }, [
     fullName, email, phoneNumber, password, startDate, gender,
@@ -183,6 +211,7 @@ export function StaffFormScreen() {
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {serverError && <InlineError message={serverError} />}
 
@@ -197,9 +226,9 @@ export function StaffFormScreen() {
 
       {/* Basic Information */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="account-outline" size={18} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Basic Information</Text>
+        
+        <AppIcon name="account-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Basic Information</Text>
       </View>
       <View style={styles.formCard}>
         <Input
@@ -249,9 +278,9 @@ export function StaffFormScreen() {
 
       {/* Personal Details */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="card-account-details-outline" size={18} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Personal Details</Text>
+        
+        <AppIcon name="card-account-details-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Personal Details</Text>
       </View>
       <View style={styles.formCard}>
         <Text style={styles.pickerLabel}>Gender</Text>
@@ -261,6 +290,9 @@ export function StaffFormScreen() {
               key={opt.value}
               style={[styles.chip, gender === opt.value && styles.chipActive]}
               onPress={() => setGender(gender === opt.value ? '' : opt.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: gender === opt.value }}
+              accessibilityLabel={`Gender: ${opt.label}`}
               testID={`gender-${opt.value.toLowerCase()}`}
             >
               <Text style={[styles.chipText, gender === opt.value && styles.chipTextActive]}>
@@ -281,9 +313,9 @@ export function StaffFormScreen() {
 
       {/* Contact Information */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="phone-outline" size={18} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Contact Information</Text>
+        
+        <AppIcon name="phone-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
       </View>
       <View style={styles.formCard}>
         <Input
@@ -296,15 +328,6 @@ export function StaffFormScreen() {
           testID="input-whatsappNumber"
         />
 
-        <Input
-          label="Mobile Number"
-          value={mobileNumber}
-          onChangeText={setMobileNumber}
-          placeholder="e.g. +919876543210"
-          keyboardType="phone-pad"
-          maxLength={16}
-          testID="input-mobileNumber"
-        />
 
         <Input
           label="Address"
@@ -318,9 +341,9 @@ export function StaffFormScreen() {
 
       {/* Qualification & Position */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="school-outline" size={18} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Qualification & Position</Text>
+        
+        <AppIcon name="school-outline" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Qualification & Position</Text>
       </View>
       <View style={styles.formCard}>
         <Input
@@ -344,9 +367,9 @@ export function StaffFormScreen() {
 
       {/* Salary Configuration */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="currency-inr" size={18} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Salary Configuration</Text>
+        
+        <AppIcon name="currency-inr" size={18} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Salary Configuration</Text>
       </View>
       <View style={styles.formCard}>
         <Input
@@ -366,6 +389,9 @@ export function StaffFormScreen() {
               key={opt.value}
               style={[styles.chip, salaryFrequency === opt.value && styles.chipActive]}
               onPress={() => setSalaryFrequency(opt.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: salaryFrequency === opt.value }}
+              accessibilityLabel={`Salary frequency: ${opt.label}`}
               testID={`freq-${opt.value.toLowerCase()}`}
             >
               <Text style={[styles.chipText, salaryFrequency === opt.value && styles.chipTextActive]}>

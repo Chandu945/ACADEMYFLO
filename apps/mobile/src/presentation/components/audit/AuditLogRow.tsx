@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { fontSizes, fontWeights, radius, shadows, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import type { AuditLogItem } from '../../../domain/audit/audit.types';
@@ -94,16 +94,16 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
     <View style={styles.card} testID={testID}>
       <View style={styles.topRow}>
         <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name={getActionIcon(item.action)} size={18} color={iconColor} />
+          
+          <AppIcon name={getActionIcon(item.action)} size={18} color={iconColor} />
         </View>
         <View style={styles.headerInfo}>
           <Text style={styles.actionLabel} testID={testID ? `${testID}-action` : undefined} numberOfLines={1}>
             {ACTION_LABELS[item.action] ?? item.action.replace(/_/g, ' ')}
           </Text>
           <View style={styles.metaRow}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="clock-outline" size={12} color={colors.textSecondary} />
+            
+            <AppIcon name="clock-outline" size={12} color={colors.textSecondary} />
             <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
           </View>
         </View>
@@ -111,15 +111,15 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
 
       <View style={styles.detailRow}>
         <View style={styles.detailItem}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="shape-outline" size={13} color={colors.textSecondary} />
+          
+          <AppIcon name="shape-outline" size={13} color={colors.textSecondary} />
           <Text style={styles.detailText}>
             {item.entityType}{item.entityId ? ` #${item.entityId.slice(0, 8)}` : ''}
           </Text>
         </View>
         <View style={styles.detailItem}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="account-outline" size={13} color={colors.textSecondary} />
+          
+          <AppIcon name="account-outline" size={13} color={colors.textSecondary} />
           <Text style={styles.detailText}>{item.actorName ?? item.actorUserId.slice(0, 8)}</Text>
         </View>
       </View>

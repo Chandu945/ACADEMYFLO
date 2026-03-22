@@ -19,6 +19,8 @@ import { pushTokenApi } from '../../infra/notification/push-token-api';
 import { accessTokenStore, getAccessToken, registerAuthFailureHandler } from '../../infra/http/api-client';
 import { isTokenExpiredOrExpiring } from '../../infra/auth/token-expiry';
 import { checkAppVersionUseCase } from '../../application/auth/use-cases/check-app-version.usecase';
+import { clearAttendanceSummaryCache } from '../components/dashboard/AttendanceSummaryWidget';
+import { clearMonthlyChartCache } from '../components/dashboard/MonthlyChartWidget';
 
 export type AuthPhase =
   | 'initializing'
@@ -68,6 +70,8 @@ export function useAuth(): AuthContextValue {
   return useContext(AuthContext);
 }
 
+// Module-scope singletons — acceptable because these are stateless adapters.
+// For testability, inject via AuthProvider props in test harness.
 const deps = {
   authApi,
   tokenStore,
@@ -85,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const mountedRef = useRef(true);
 
+  // Deps are empty: mountedRef/setState are stable; subscriptionApi is a module-scope singleton.
   const resolvePhase = useCallback(async (user: AuthUser): Promise<void> => {
     // Parents skip subscription check — go directly to ready
     if (user.role === 'PARENT') {
@@ -121,7 +126,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const doLogout = useCallback(async () => {
-    await logoutUseCase(deps);
+    try {
+      await logoutUseCase(deps);
+    } catch (e) {
+      if (__DEV__) console.warn('[AuthContext] Logout use case failed (proceeding anyway):', e);
+    }
+    // Clear cached dashboard data to prevent cross-user data leak
+    try { clearAttendanceSummaryCache(); } catch { /* ignore */ }
+    try { clearMonthlyChartCache(); } catch { /* ignore */ }
+    // Always transition to unauthenticated regardless of errors above
     if (mountedRef.current) {
       setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
     }
@@ -197,14 +210,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           })
           .catch((err) => {
-            console.warn(
+            if (__DEV__) console.warn(
               '[AuthContext] Background token refresh failed:',
               err instanceof Error ? err.message : 'unknown',
             );
             // Don't change phase — let the next API call trigger proper auth failure handling
             // But clear the stale access token so api-client will attempt refresh
             if (!mountedRef.current) return;
-            setState(prev => ({ ...prev, accessToken: null }));
+            accessTokenStore.set(null);
           });
       }
     };

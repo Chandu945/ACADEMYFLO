@@ -47,13 +47,14 @@ export async function PUT(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  let body: unknown;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await request.json() as Record<string, unknown>;
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
-  const result = await apiPut(`/api/v1/staff-attendance/${encodeURIComponent(body.staffUserId)}?date=${encodeURIComponent(body.date)}`, { status: body.status }, { accessToken });
+  const staffId = String(body['staffUserId'] ?? body['staffId'] ?? '');
+  const result = await apiPut(`/api/v1/staff-attendance/${encodeURIComponent(staffId)}?date=${encodeURIComponent(String(body['date']))}`, { status: body['status'] }, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

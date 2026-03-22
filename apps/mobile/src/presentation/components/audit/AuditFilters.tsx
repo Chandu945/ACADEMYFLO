@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@playconnect/contracts';
 import type { AuditFilters as AuditFiltersType } from '../../../application/audit/use-audit-logs';
 import { Button } from '../ui/Button';
@@ -45,8 +45,8 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
     <View style={styles.container} testID="audit-filters">
       {/* ── Date Range ──────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="calendar-range" size={16} color={colors.textSecondary} />
+        
+        <AppIcon name="calendar-range" size={16} color={colors.textSecondary} />
         <Text style={styles.sectionTitle}>Date Range</Text>
       </View>
       <View style={styles.dateRow}>
@@ -72,8 +72,8 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
 
       {!rangeValid && (
         <View style={styles.errorRow}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="alert-circle-outline" size={14} color={colors.danger} />
+          
+          <AppIcon name="alert-circle-outline" size={14} color={colors.danger} />
           <Text style={styles.errorHint} testID="filter-range-error">
             From must be before To
           </Text>
@@ -82,8 +82,8 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
 
       {/* ── Action Type ─────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="lightning-bolt-outline" size={16} color={colors.textSecondary} />
+        
+        <AppIcon name="lightning-bolt-outline" size={16} color={colors.textSecondary} />
         <Text style={styles.sectionTitle}>Action Type</Text>
       </View>
       <ScrollView
@@ -103,8 +103,8 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
               activeOpacity={0.7}
             >
               {active && (
-                // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-                <Icon name="check-circle" size={14} color={colors.white} />
+                
+                <AppIcon name="check-circle" size={14} color={colors.white} />
               )}
               <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
                 {opt.label}
@@ -116,8 +116,8 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
 
       {/* ── Entity Type ─────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="shape-outline" size={16} color={colors.textSecondary} />
+        
+        <AppIcon name="shape-outline" size={16} color={colors.textSecondary} />
         <Text style={styles.sectionTitle}>Entity Type</Text>
       </View>
       <ScrollView
@@ -137,8 +137,8 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
               activeOpacity={0.7}
             >
               {active && (
-                // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-                <Icon name="check-circle" size={14} color={colors.white} />
+                
+                <AppIcon name="check-circle" size={14} color={colors.white} />
               )}
               <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
                 {opt.label}

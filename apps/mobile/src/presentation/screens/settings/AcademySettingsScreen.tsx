@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademySettings } from '../../../application/settings/use-academy-settings';
 import { settingsApi } from '../../../infra/settings/settings-api';
 import { SettingsForm } from '../../components/settings/SettingsForm';
 import { Screen } from '../../components/ui/Screen';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { fontSizes, fontWeights, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,16 +33,32 @@ export function AcademySettingsScreen() {
       <Screen>
         <View style={styles.center} testID="settings-error">
           <Text style={styles.errorText}>{error.message}</Text>
-          <Text style={styles.retryLink} onPress={refetch} testID="settings-retry">
-            Tap to retry
-          </Text>
+          <TouchableOpacity
+            onPress={refetch}
+            style={styles.retryButton}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading settings"
+            testID="settings-retry"
+          >
+            <Text style={styles.retryButtonText}>Tap to retry</Text>
+          </TouchableOpacity>
         </View>
       </Screen>
     );
   }
 
   if (!settings) {
-    return null;
+    return (
+      <Screen>
+        <EmptyState
+          message="No settings available"
+          subtitle="Settings could not be loaded. Please try again."
+          icon="cog-off-outline"
+          onAction={refetch}
+          actionLabel="Retry"
+        />
+      </Screen>
+    );
   }
 
   return (
@@ -75,7 +92,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.md,
   },
-  retryLink: {
+  retryButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 8,
+    backgroundColor: colors.primarySoft,
+  },
+  retryButtonText: {
     fontSize: fontSizes.base,
     color: colors.primary,
     fontWeight: fontWeights.semibold,

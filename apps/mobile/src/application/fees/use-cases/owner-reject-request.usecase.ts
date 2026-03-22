@@ -36,7 +36,8 @@ export async function ownerRejectRequestUseCase(
 
   const parsed = paymentRequestItemSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[ownerRejectRequestUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Something went wrong. Please try again.' });
   }
 
   return ok(parsed.data);

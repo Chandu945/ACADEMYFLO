@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { useAuth } from '../../context/AuthContext';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
@@ -106,8 +106,8 @@ function AddNewModalComponent({ visible, onClose, onSelect }: AddNewModalProps) 
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Add New</Text>
             <Pressable onPress={onClose} hitSlop={12} testID="add-new-close">
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="close" size={24} color={colors.textSecondary} />
+              
+              <AppIcon name="close" size={24} color={colors.textSecondary} />
             </Pressable>
           </View>
 
@@ -120,15 +120,15 @@ function AddNewModalComponent({ visible, onClose, onSelect }: AddNewModalProps) 
                 testID={`add-new-${item.key.toLowerCase()}`}
               >
                 <View style={styles.iconContainer}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name={item.icon} size={24} color={colors.primary} />
+                  
+                  <AppIcon name={item.icon} size={24} color={colors.primary} />
                 </View>
                 <View style={styles.menuTextContainer}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                 </View>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="chevron-right" size={20} color={colors.textDisabled} />
+                
+                <AppIcon name="chevron-right" size={20} color={colors.textDisabled} />
               </Pressable>
             ))}
           </ScrollView>

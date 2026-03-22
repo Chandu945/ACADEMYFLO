@@ -37,7 +37,7 @@ export function UnpaidDuesScreen({
   error,
   onRetry,
   onRowPress,
-  isOwner,
+  isOwner: _isOwner,
   month,
   onMarkPaidSuccess,
   studentNameMap,
@@ -54,8 +54,13 @@ export function UnpaidDuesScreen({
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await onRetry();
-    setRefreshing(false);
+    try {
+      await onRetry();
+    } catch {
+      // Error handled by parent hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [onRetry]);
 
   const handleMarkPaid = useCallback(async () => {
@@ -63,20 +68,25 @@ export function UnpaidDuesScreen({
     setMarking(true);
     setMarkError(null);
 
-    const result = await ownerMarkPaidUseCase(
-      { feesApi: markPaidApi },
-      confirmItem.studentId,
-      confirmItem.monthKey,
-    );
+    try {
+      const result = await ownerMarkPaidUseCase(
+        { feesApi: markPaidApi },
+        confirmItem.studentId,
+        confirmItem.monthKey,
+      );
 
-    setMarking(false);
-
-    if (result.ok) {
-      setConfirmItem(null);
-      onMarkPaidSuccess();
-      showToast('Fee marked as paid');
-    } else {
-      setMarkError(result.error.message);
+      if (result.ok) {
+        setConfirmItem(null);
+        onMarkPaidSuccess();
+        showToast('Fee marked as paid');
+      } else {
+        setMarkError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[UnpaidDuesScreen] Mark paid failed:', e);
+      setMarkError('Something went wrong. Please try again.');
+    } finally {
+      setMarking(false);
     }
   }, [confirmItem, onMarkPaidSuccess, showToast]);
 
@@ -86,13 +96,13 @@ export function UnpaidDuesScreen({
       return (
         <FeeDueRow
           item={item}
-          onPress={() => (isOwner ? setConfirmItem(item) : onRowPress(item.studentId))}
+          onPress={() => onRowPress(item.studentId)}
           showStudentName
           studentName={name}
         />
       );
     },
-    [isOwner, onRowPress, studentNameMap],
+    [onRowPress, studentNameMap],
   );
 
   const keyExtractor = useCallback((item: FeeDueItem) => item.id, []);

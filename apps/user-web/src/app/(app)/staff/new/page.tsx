@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createStaff } from '@/application/staff/use-staff';
 import { useAuth } from '@/application/auth/use-auth';
@@ -11,13 +11,22 @@ import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
+import styles from './page.module.css';
 
-const GENDERS = ['Male', 'Female', 'Other'] as const;
+const GENDERS = [
+  { value: 'MALE', label: 'Male' },
+  { value: 'FEMALE', label: 'Female' },
+] as const;
+
 const SALARY_FREQUENCIES = [
   { value: 'MONTHLY', label: 'Monthly' },
   { value: 'WEEKLY', label: 'Weekly' },
   { value: 'DAILY', label: 'Daily' },
 ];
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const E164_RE = /^\+[1-9]\d{6,14}$/;
+const STRONG_PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 
 export default function NewStaffPage() {
   const router = useRouter();
@@ -26,55 +35,82 @@ export default function NewStaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const redirectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    phoneNumber: '',
-    password: '',
-    startDate: new Date().toISOString().split('T')[0],
-    gender: 'Male',
-    qualification: '',
-    position: '',
-    salaryAmount: '',
-    salaryFrequency: 'MONTHLY',
+  const initialForm = useRef({
+    fullName: '', email: '', phoneNumber: '', password: '',
+    startDate: new Date().toISOString().split('T')[0]!,
+    gender: '', qualification: '', position: '',
+    salaryAmount: '', salaryFrequency: 'MONTHLY',
   });
+  const [form, setForm] = useState({ ...initialForm.current });
 
-  const set = (field: string, value: string) => {
+  useEffect(() => {
+    return () => { if (redirectTimer.current) clearTimeout(redirectTimer.current); };
+  }, []);
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm.current);
+
+  useEffect(() => {
+    if (!isDirty || success) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty, success]);
+
+  const set = useCallback((field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
-  };
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const n = { ...prev }; delete n[field]; return n;
+    });
+  }, []);
 
-  const validate = (): boolean => {
+  const validate = useCallback((): boolean => {
     const errors: Record<string, string> = {};
-    if (!form.fullName.trim()) errors.fullName = 'Full name is required';
-    if (!form.email.trim()) errors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors['email'] = 'Invalid email format';
-    if (!form.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
-    else if (!/^\+?[0-9]{7,15}$/.test(form.phoneNumber.trim())) errors['phoneNumber'] = 'Invalid phone number';
-    if (!form.password || form.password.length < 6) errors.password = 'Password must be at least 6 characters';
+    if (!form.fullName.trim()) errors['fullName'] = 'Full name is required';
+    if (!form.email.trim()) {
+      errors['email'] = 'Email is required';
+    } else if (!EMAIL_RE.test(form.email.trim())) {
+      errors['email'] = 'Invalid email format';
+    }
+    if (!form.phoneNumber.trim()) {
+      errors['phoneNumber'] = 'Phone number is required';
+    } else if (!E164_RE.test(form.phoneNumber.trim())) {
+      errors['phoneNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (!form.password) {
+      errors['password'] = 'Password is required';
+    } else if (form.password.length < 8) {
+      errors['password'] = 'Password must be at least 8 characters';
+    } else if (!STRONG_PASSWORD_RE.test(form.password)) {
+      errors['password'] = 'Must include uppercase, lowercase, number, and special character';
+    }
+    if (form.salaryAmount && Number(form.salaryAmount) < 0) {
+      errors['salaryAmount'] = 'Salary must be a positive number';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [form]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     if (!validate()) return;
 
     setLoading(true);
     const result = await createStaff(
       {
         fullName: form.fullName.trim(),
-        email: form.email.trim(),
+        email: form.email.trim().toLowerCase(),
         phoneNumber: form.phoneNumber.trim(),
         password: form.password,
         startDate: form.startDate || undefined,
-        gender: form.gender,
-        qualificationInfo: {
-          qualification: form.qualification.trim() || undefined,
-          position: form.position.trim() || undefined,
-        },
+        gender: form.gender || undefined,
+        qualificationInfo: (form.qualification.trim() || form.position.trim())
+          ? { qualification: form.qualification.trim() || null, position: form.position.trim() || null }
+          : undefined,
         salaryConfig: form.salaryAmount
           ? { amount: Number(form.salaryAmount), frequency: form.salaryFrequency }
           : undefined,
@@ -85,19 +121,17 @@ export default function NewStaffPage() {
 
     if (!result.ok) {
       setError(result.error);
+      if (result.fieldErrors) setFieldErrors(result.fieldErrors);
       return;
     }
 
     setSuccess(true);
-    setTimeout(() => router.push('/staff'), 1200);
-  }, [form, accessToken, router]);
+    redirectTimer.current = setTimeout(() => router.push('/staff'), 1200);
+  }, [form, accessToken, router, validate]);
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '680px' }}>
-      <button
-        onClick={() => router.push('/staff')}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-secondary)', cursor: 'pointer', background: 'none', border: 'none', marginBottom: '24px' }}
-      >
+    <div className={styles.page}>
+      <button type="button" onClick={() => router.push('/staff')} className={styles.backButton}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Back to Staff
       </button>
@@ -106,40 +140,39 @@ export default function NewStaffPage() {
         {success && <Alert variant="success" message="Staff member created successfully! Redirecting..." />}
         {error && <Alert variant="error" message={error} />}
 
-        <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-          <Input label="Full Name" required value={form.fullName} onChange={(e) => set('fullName', e.target.value)} error={fieldErrors.fullName} placeholder="Staff member's full name" />
-          <Input label="Email" required type="email" value={form.email} onChange={(e) => set('email', e.target.value)} error={fieldErrors.email} placeholder="Email address" />
-          <Input label="Phone Number" required type="tel" value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)} error={fieldErrors.phoneNumber} placeholder="10-digit phone number" />
-          <Input label="Password" required type="password" value={form.password} onChange={(e) => set('password', e.target.value)} error={fieldErrors.password} placeholder="Min 6 characters" />
-
+        <form onSubmit={handleSubmit} noValidate className={styles.form}>
+          <Input label="Full Name" required value={form.fullName} onChange={(e) => set('fullName', e.target.value)} error={fieldErrors['fullName']} placeholder="Staff member's full name" />
+          <Input label="Email" required type="email" value={form.email} onChange={(e) => set('email', e.target.value)} error={fieldErrors['email']} placeholder="Email address" />
+          <Input label="Phone Number" required type="tel" value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)} error={fieldErrors['phoneNumber']} placeholder="+919876543210" hint="E.164 format with country code" />
+          <Input label="Password" required type="password" value={form.password} onChange={(e) => set('password', e.target.value)} error={fieldErrors['password']} placeholder="Min 8 characters" hint="Must include uppercase, lowercase, number, and special character" />
           <DatePicker label="Start Date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
 
           <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: '8px', color: 'var(--color-text-medium)' }}>Gender</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <label className={styles.fieldLabel}>Gender</label>
+            <div className={styles.chipGroup}>
               {GENDERS.map((g) => (
-                <Chip key={g} label={g} selected={form.gender === g} onSelect={() => set('gender', g)} />
+                <Chip key={g.value} label={g.label} selected={form.gender === g.value} onSelect={() => set('gender', g.value)} />
               ))}
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-            <h4 style={{ marginBottom: 'var(--space-3)', color: 'var(--color-primary)' }}>Qualification & Position</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Qualification & Position</h4>
+            <div className={styles.sectionFields}>
               <Input label="Qualification" value={form.qualification} onChange={(e) => set('qualification', e.target.value)} placeholder="e.g. B.Ed, M.Sc (optional)" />
               <Input label="Position" value={form.position} onChange={(e) => set('position', e.target.value)} placeholder="e.g. Coach, Teacher (optional)" />
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-            <h4 style={{ marginBottom: 'var(--space-3)', color: 'var(--color-primary)' }}>Salary Details</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-              <Input label="Salary Amount" type="number" value={form.salaryAmount} onChange={(e) => set('salaryAmount', e.target.value)} placeholder="Amount (optional)" />
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Salary Details</h4>
+            <div className={styles.gridRow}>
+              <Input label="Salary Amount" type="number" value={form.salaryAmount} onChange={(e) => set('salaryAmount', e.target.value)} error={fieldErrors['salaryAmount']} placeholder="Amount (optional)" min={0} />
               <Select label="Frequency" options={SALARY_FREQUENCIES} value={form.salaryFrequency} onChange={(e) => set('salaryFrequency', e.target.value)} />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
+          <div className={styles.actions}>
             <Button type="button" variant="outline" onClick={() => router.push('/staff')}>Cancel</Button>
             <Button type="submit" variant="primary" loading={loading} disabled={success}>Create Staff</Button>
           </div>

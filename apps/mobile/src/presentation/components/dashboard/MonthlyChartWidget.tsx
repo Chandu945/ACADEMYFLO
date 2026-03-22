@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Pressable,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { MonthlyChartPoint } from '../../../domain/dashboard/dashboard.types';
 import { getMonthlyChart } from '../../../infra/dashboard/dashboard-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
@@ -16,6 +16,11 @@ import { useTheme } from '../../context/ThemeContext';
 
 // Client-side cache for past years (data won't change)
 const chartCache = new Map<number, MonthlyChartPoint[]>();
+
+/** Clear cached data (call on logout to prevent cross-user data leak) */
+export function clearMonthlyChartCache(): void {
+  chartCache.clear();
+}
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_SHORT = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
@@ -102,13 +107,13 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
           <View style={styles.iconCircle}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="chart-bar" size={18} color={colors.primary} />
+            
+            <AppIcon name="chart-bar" size={18} color={colors.primary} />
           </View>
           <Text style={styles.title}>Monthly Summary</Text>
           {onPress && (
-            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-            <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+            
+            <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
           )}
         </TouchableOpacity>
         <View style={styles.yearNav}>
@@ -118,8 +123,8 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityLabel="Previous year"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="chevron-left" size={20} color={colors.textSecondary} />
+            
+            <AppIcon name="chevron-left" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={styles.yearText}>{year}</Text>
           <TouchableOpacity
@@ -129,8 +134,8 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityLabel="Next year"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon
+            
+            <AppIcon
               name="chevron-right"
               size={20}
               color={year >= currentYear ? colors.textDisabled : colors.textSecondary}
@@ -230,8 +235,8 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
       <View style={styles.chartContainer}>
         {/* Gridlines */}
         <View style={styles.gridlines}>
-          {gridValues.reverse().map((val) => (
-            <View key={val} style={styles.gridlineRow}>
+          {[...gridValues].reverse().map((val, idx) => (
+            <View key={`grid-${idx}`} style={styles.gridlineRow}>
               <Text style={styles.gridlineLabel}>{formatCurrency(val)}</Text>
               <View style={styles.gridline} />
             </View>

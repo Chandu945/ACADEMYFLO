@@ -30,18 +30,27 @@ export function useReports(api: ReportsApiDeps) {
       setLoading(true);
       setError(null);
 
-      const revResult = await getMonthlyRevenueUseCase({ reportsApi: api }, targetMonth);
+      try {
+        const revResult = await getMonthlyRevenueUseCase({ reportsApi: api }, targetMonth);
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (!revResult.ok) {
-        setError(revResult.error);
-        setLoading(false);
-        return;
+        if (!revResult.ok) {
+          setError(revResult.error);
+          return;
+        }
+
+        setRevenue(revResult.value);
+      } catch (e) {
+        if (__DEV__) console.error('[useReports] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
-
-      setRevenue(revResult.value);
-      setLoading(false);
     },
     [api],
   );

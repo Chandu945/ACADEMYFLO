@@ -8,8 +8,8 @@ import {
   Linking,
   TouchableOpacity,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { StudentsStackParamList } from '../../navigation/StudentsStack';
@@ -17,12 +17,15 @@ import type { StudentListItem } from '../../../domain/student/student.types';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { getStudentPhotoUploadPath, getStudent } from '../../../infra/student/student-api';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { InlineError } from '../../components/ui/InlineError';
+import { useToast } from '../../context/ToastContext';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<StudentsStackParamList, 'StudentDetail'>;
-type Route = RouteProp<StudentsStackParamList, 'StudentDetail'>;
+type DetailRoute = RouteProp<StudentsStackParamList, 'StudentDetail'>;
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
@@ -34,8 +37,7 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const { colors } = useTheme();
+function StatusBadge({ status, colors }: { status: string; colors: Colors }) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const bgColor =
     status === 'ACTIVE' ? colors.successBg : status === 'INACTIVE' ? colors.warningBg : colors.dangerBg;
@@ -43,39 +45,35 @@ function StatusBadge({ status }: { status: string }) {
     status === 'ACTIVE' ? colors.successText : status === 'INACTIVE' ? colors.warningText : colors.dangerText;
 
   return (
-    <View style={[styles.badge, { backgroundColor: bgColor }]}>
+    <View style={[styles.badge, { backgroundColor: bgColor }]} accessibilityLabel={`Status: ${status}`}>
       <Text style={[styles.badgeText, { color: textColor }]}>{status}</Text>
     </View>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+function InfoRow({ label, value, styles: s }: { label: string; value: string | null | undefined; styles: ReturnType<typeof makeStyles> }) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value || '—'}</Text>
+    <View style={s.infoRow} accessibilityLabel={`${label}: ${value || 'not provided'}`}>
+      <Text style={s.infoLabel}>{label}</Text>
+      <Text style={s.infoValue}>{value || '—'}</Text>
     </View>
   );
-}
-
-function SectionTitle({ title }: { title: string }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
 export function StudentDetailScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
+  const route = useRoute<DetailRoute>();
   const paramStudent = route.params?.student;
+  const studentId = paramStudent?.id;
+
   const [student, setStudent] = useState<StudentListItem>(
     paramStudent ?? ({ id: '', fullName: '', status: 'ACTIVE' } as StudentListItem),
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
   const mountedRef = useRef(true);
 
@@ -85,38 +83,77 @@ export function StudentDetailScreen() {
   }, []);
 
   const refetchStudent = useCallback(async () => {
-    if (!paramStudent?.id) return;
-    const result = await getStudent(student.id);
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setStudent(result.value);
+    if (!studentId) return;
+    setError(null);
+    try {
+      const result = await getStudent(studentId);
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setStudent(result.value);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[StudentDetailScreen] Refetch failed:', e);
+      if (mountedRef.current) {
+        setError('Failed to load student data.');
+      }
     }
-  }, [student.id, paramStudent?.id]);
+  }, [studentId]);
+
+  // Auto-refetch when screen gains focus (e.g., returning from edit)
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      refetchStudent();
+    }, [refetchStudent]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetchStudent();
-    setRefreshing(false);
+    try {
+      await refetchStudent();
+    } catch {
+      // Handled inside refetchStudent
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetchStudent]);
 
   const handleCall = useCallback((number: string) => {
-    Linking.openURL(`tel:${number}`);
-  }, []);
+    Linking.openURL(`tel:${number}`).catch(() => {
+      showToast('Unable to open phone dialer', 'error');
+    });
+  }, [showToast]);
 
   const handleWhatsApp = useCallback((number: string) => {
     const cleaned = number.replace(/\D/g, '');
-    Linking.openURL(`whatsapp://send?phone=${cleaned}`);
-  }, []);
+    // If already has country code (11+ digits starting with country code), use as-is.
+    // Otherwise assume India (+91).
+    const formatted = cleaned.length > 10 ? cleaned : `91${cleaned}`;
+    Linking.openURL(`https://wa.me/${formatted}`).catch(() => {
+      showToast('Unable to open WhatsApp', 'error');
+    });
+  }, [showToast]);
 
   const handlePhotoUploaded = useCallback((url: string) => {
     setStudent((prev) => ({ ...prev, profilePhotoUrl: url }));
   }, []);
 
   // Guard against missing route params — all hooks are above
-  if (!paramStudent?.id) {
+  if (!studentId) {
     return (
       <View style={styles.screen}>
-        <Text style={{ textAlign: 'center', marginTop: 40 }}>Student data unavailable</Text>
+        <EmptyState
+          variant="empty"
+          icon="account-alert-outline"
+          message="Student data unavailable"
+          subtitle="Please go back and try again."
+        />
       </View>
     );
   }
@@ -127,6 +164,8 @@ export function StudentDetailScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
       >
+        {error && <InlineError message={error} onRetry={refetchStudent} />}
+
         {/* Header */}
         <View style={styles.headerCard}>
           <ProfilePhotoUploader
@@ -136,8 +175,8 @@ export function StudentDetailScreen() {
             size={90}
             testID="student-detail-photo"
           />
-          <Text style={styles.studentName}>{student.fullName}</Text>
-          <StatusBadge status={student.status} />
+          <Text style={styles.studentName} accessibilityRole="header">{student.fullName}</Text>
+          <StatusBadge status={student.status} colors={colors} />
         </View>
 
         {/* Summary Card */}
@@ -145,7 +184,7 @@ export function StudentDetailScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Monthly Fee</Text>
-              <Text style={styles.summaryValue}>{`\u20B9${student.monthlyFee}`}</Text>
+              <Text style={styles.summaryValue}>{`\u20B9${student.monthlyFee?.toLocaleString('en-IN') ?? '—'}`}</Text>
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Joined</Text>
@@ -163,48 +202,48 @@ export function StudentDetailScreen() {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('StudentForm', { mode: 'edit', student })}
+            accessibilityLabel="Edit student"
+            accessibilityRole="button"
             testID="edit-student-button"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="pencil-outline" size={18} color={colors.white} />
+            <AppIcon name="pencil-outline" size={18} color={colors.white} />
             <Text style={styles.actionButtonText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonSecondary]}
             onPress={() => setActionMenuVisible(true)}
+            accessibilityLabel="More actions for this student"
+            accessibilityRole="button"
             testID="more-actions-button"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="dots-horizontal" size={18} color={colors.primary} />
+            <AppIcon name="dots-horizontal" size={18} color={colors.primary} />
             <Text style={styles.actionButtonSecondaryText}>More</Text>
           </TouchableOpacity>
         </View>
 
         {/* Personal Information */}
         <View style={styles.card}>
-          <SectionTitle title="Personal Information" />
-          <InfoRow label="Father Name" value={student.fatherName} />
-          <InfoRow label="Mother Name" value={student.motherName} />
-          <InfoRow label="Date of Birth" value={formatDate(student.dateOfBirth)} />
-          <InfoRow label="Gender" value={student.gender} />
+          <Text style={styles.sectionTitle} accessibilityRole="header">Personal Information</Text>
+          <InfoRow label="Father Name" value={student.fatherName} styles={styles} />
+          <InfoRow label="Mother Name" value={student.motherName} styles={styles} />
+          <InfoRow label="Date of Birth" value={formatDate(student.dateOfBirth)} styles={styles} />
+          <InfoRow label="Gender" value={student.gender} styles={styles} />
         </View>
 
         {/* Contact Information */}
         <View style={styles.card}>
           <View style={styles.contactSectionHeader}>
             <View style={[styles.contactSectionIcon, { backgroundColor: colors.primarySoft }]}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="card-account-phone-outline" size={18} color={colors.primary} />
+              <AppIcon name="card-account-phone-outline" size={18} color={colors.primary} />
             </View>
-            <Text style={styles.sectionTitle}>Contact Information</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
           </View>
 
-          {/* ── Phone & WhatsApp tiles ──────────────── */}
+          {/* Phone tile */}
           {student.guardian?.mobile && (
             <View style={styles.contactTile}>
               <View style={[styles.contactTileIcon, { backgroundColor: colors.primarySoft }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="phone-outline" size={20} color={colors.primary} />
+                <AppIcon name="phone-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.contactTileInfo}>
                 <Text style={styles.contactTileLabel}>Mobile</Text>
@@ -214,21 +253,21 @@ export function StudentDetailScreen() {
                 <TouchableOpacity
                   style={styles.callCircle}
                   onPress={() => handleCall(student.guardian!.mobile)}
+                  accessibilityLabel={`Call guardian at ${student.guardian!.mobile}`}
+                  accessibilityRole="button"
                   testID="call-guardian"
-                  accessibilityLabel="Call"
                 >
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="phone" size={18} color={colors.white} />
+                  <AppIcon name="phone" size={18} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
+          {/* WhatsApp tile */}
           {student.whatsappNumber && (
             <View style={styles.contactTile}>
-              <View style={[styles.contactTileIcon, { backgroundColor: '#dcfce7' }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="whatsapp" size={20} color="#25D366" />
+              <View style={[styles.contactTileIcon, { backgroundColor: colors.successBg }]}>
+                <AppIcon name="whatsapp" size={20} color="#25D366" />
               </View>
               <View style={styles.contactTileInfo}>
                 <Text style={styles.contactTileLabel}>WhatsApp</Text>
@@ -238,21 +277,20 @@ export function StudentDetailScreen() {
                 <TouchableOpacity
                   style={styles.whatsappCircle}
                   onPress={() => handleWhatsApp(student.whatsappNumber!)}
+                  accessibilityLabel={`Open WhatsApp chat with ${student.fullName}`}
+                  accessibilityRole="button"
                   testID="whatsapp-student"
-                  accessibilityLabel="Open WhatsApp chat"
                 >
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="message-text-outline" size={18} color={colors.white} />
+                  <AppIcon name="message-text-outline" size={18} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
-          {/* ── Contact details ────────────────────── */}
+          {/* Contact details */}
           {student.guardian?.name ? (
             <View style={styles.contactDetailRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="account-outline" size={18} color={colors.textSecondary} />
+              <AppIcon name="account-outline" size={18} color={colors.textSecondary} />
               <View style={styles.contactDetailInfo}>
                 <Text style={styles.contactDetailLabel}>Guardian Name</Text>
                 <Text style={styles.contactDetailValue}>{student.guardian.name}</Text>
@@ -262,8 +300,7 @@ export function StudentDetailScreen() {
 
           {(student.email || student.guardian?.email) ? (
             <View style={styles.contactDetailRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="email-outline" size={18} color={colors.textSecondary} />
+              <AppIcon name="email-outline" size={18} color={colors.textSecondary} />
               <View style={styles.contactDetailInfo}>
                 <Text style={styles.contactDetailLabel}>Email</Text>
                 <Text style={styles.contactDetailValue}>{student.email || student.guardian?.email}</Text>
@@ -273,8 +310,7 @@ export function StudentDetailScreen() {
 
           {student.addressText ? (
             <View style={styles.contactDetailRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="map-marker-outline" size={18} color={colors.textSecondary} />
+              <AppIcon name="map-marker-outline" size={18} color={colors.textSecondary} />
               <View style={styles.contactDetailInfo}>
                 <Text style={styles.contactDetailLabel}>Address</Text>
                 <Text style={styles.contactDetailValue}>{student.addressText}</Text>

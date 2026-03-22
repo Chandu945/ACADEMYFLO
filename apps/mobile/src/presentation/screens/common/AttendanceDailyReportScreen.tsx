@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import type { AttendanceStackParamList } from '../../navigation/AttendanceStack';
@@ -9,6 +9,7 @@ import { getDailyReportUseCase } from '../../../application/attendance/use-cases
 import { getDailyReport } from '../../../infra/attendance/attendance-api';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -32,17 +33,24 @@ export function AttendanceDailyReportScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    try {
+      const result = await getDailyReportUseCase({ attendanceApi: reportApi }, date);
 
-    const result = await getDailyReportUseCase({ attendanceApi: reportApi }, date);
+      if (!mountedRef.current) return;
 
-    if (!mountedRef.current) return;
-
-    if (result.ok) {
-      setReport(result.value);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setReport(result.value);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[AttendanceDailyReport] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, [date]);
 
   useEffect(() => {
@@ -55,17 +63,41 @@ export function AttendanceDailyReportScreen() {
 
   const renderAbsentItem = useCallback(
     ({ item }: { item: { studentId: string; fullName: string } }) => (
-      <View style={styles.absentRow} testID={`absent-${item.studentId}`}>
+      <View style={styles.absentRow} testID={`absent-${item.studentId}`} accessibilityLabel={`${item.fullName}, absent`}>
         <Text style={styles.absentName}>{item.fullName}</Text>
         <Badge label="ABSENT" variant="danger" />
       </View>
     ),
-    [],
+    [styles],
   );
 
   const keyExtractor = useCallback((item: { studentId: string }) => item.studentId, []);
 
-  if (loading) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } catch {
+      // Handled inside load
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
+
+  // Guard: no date param
+  if (!date) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.content}>
+          <EmptyState message="No date specified" subtitle="Please go back and select a date." />
+        </View>
+      </View>
+    );
+  }
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.screen}>
         <View style={styles.content}>
@@ -76,7 +108,7 @@ export function AttendanceDailyReportScreen() {
     );
   }
 
-  if (error) {
+  if (error && !report) {
     return (
       <View style={styles.screen}>
         <View style={styles.content}>
@@ -86,44 +118,57 @@ export function AttendanceDailyReportScreen() {
     );
   }
 
-  if (!report) return null;
+  if (!report) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.content}>
+          <EmptyState message="No report available" subtitle="No attendance data found for this date." />
+        </View>
+      </View>
+    );
+  }
+
+  const totalStudents = report.presentCount + report.absentCount;
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.content}>
-        <Text style={styles.dateLabel}>{new Date(report.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      {error && <InlineError message={error.message} onRetry={load} />}
 
-        {report.isHoliday && (
-          <View style={styles.holidayBadge}>
-            <Badge label="HOLIDAY" variant="warning" />
-          </View>
-        )}
+      <Text style={styles.dateLabel}>{new Date(report.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
 
-        <View style={styles.countsRow}>
-          <View style={styles.countBox}>
-            <Text style={styles.countNumber}>{report.presentCount}</Text>
-            <Text style={styles.countLabel}>Present</Text>
-          </View>
-          <View style={styles.countBox}>
-            <Text style={[styles.countNumber, styles.absentCount]}>{report.absentCount}</Text>
-            <Text style={styles.countLabel}>Absent</Text>
-          </View>
+      {report.isHoliday && (
+        <View style={styles.holidayBadge}>
+          <Badge label="HOLIDAY" variant="warning" />
         </View>
+      )}
 
-        {report.absentStudents.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Absent Students</Text>
-            <FlatList
-              data={report.absentStudents}
-              renderItem={renderAbsentItem}
-              keyExtractor={keyExtractor}
-              scrollEnabled={false}
-              testID="absent-list"
-            />
-          </>
-        )}
+      <View style={styles.countsRow}>
+        <View style={styles.countBox} accessibilityLabel={`${report.presentCount} students present out of ${totalStudents}`}>
+          <Text style={styles.countNumber}>{report.presentCount}</Text>
+          <Text style={styles.countLabel}>Present</Text>
+        </View>
+        <View style={styles.countBox} accessibilityLabel={`${report.absentCount} students absent out of ${totalStudents}`}>
+          <Text style={[styles.countNumber, styles.absentCount]}>{report.absentCount}</Text>
+          <Text style={styles.countLabel}>Absent</Text>
+        </View>
       </View>
-    </View>
+
+      {!report.isHoliday && report.absentStudents.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Absent Students ({report.absentStudents.length})</Text>
+          {report.absentStudents.map((item) => (
+            <View key={item.studentId} style={styles.absentRow} accessibilityLabel={`${item.fullName}, absent`} testID={`absent-${item.studentId}`}>
+              <Text style={styles.absentName}>{item.fullName}</Text>
+              <Badge label="ABSENT" variant="danger" />
+            </View>
+          ))}
+        </>
+      )}
+    </ScrollView>
   );
 }
 

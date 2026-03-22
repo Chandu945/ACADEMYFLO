@@ -35,16 +35,26 @@ export function useInstituteInfo(api: InstituteInfoApiCombined): UseInstituteInf
     setLoading(true);
     setError(null);
 
-    const result = await getInstituteInfoUseCase({ api });
+    try {
+      const result = await getInstituteInfoUseCase({ api });
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setInfo(result.value);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setInfo(result.value);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[useInstituteInfo] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-    setLoading(false);
   }, [api]);
 
   const refetch = useCallback(() => {
@@ -56,19 +66,24 @@ export function useInstituteInfo(api: InstituteInfoApiCombined): UseInstituteInf
       setSaving(true);
       setError(null);
 
-      const result = await updateInstituteInfoUseCase({ api }, req);
+      try {
+        const result = await updateInstituteInfoUseCase({ api }, req);
 
-      if (!mountedRef.current) return null;
+        if (!mountedRef.current) return null;
 
-      setSaving(false);
+        if (result.ok) {
+          setInfo(result.value);
+          return null;
+        }
 
-      if (result.ok) {
-        setInfo(result.value);
-        return null;
+        setError(result.error);
+        return result.error;
+      } catch (e) {
+        if (__DEV__) console.error('[useInstituteInfo] Save failed:', e);
+        return { code: 'UNKNOWN', message: 'Something went wrong.' };
+      } finally {
+        if (mountedRef.current) setSaving(false);
       }
-
-      setError(result.error);
-      return result.error;
     },
     [api],
   );

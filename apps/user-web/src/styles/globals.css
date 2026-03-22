@@ -3,8 +3,7 @@
    Design system aligned with the mobile app's cyan-based theme.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Google Font ─────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* ── Font loaded via next/font in app/layout.tsx ─────────────────────────── */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    1. Design Tokens (CSS Custom Properties)
@@ -19,6 +18,7 @@
   /* ── Surfaces & Backgrounds ──────────────────────────────────────────── */
   --color-bg:             #f0fbff;
   --color-bg-subtle:      #e8f4f8;
+  --color-bg-hover:       #dceef4;
   --color-surface:        #ffffff;
 
   /* ── Text ────────────────────────────────────────────────────────────── */
@@ -49,6 +49,7 @@
 
   /* ── Semantic — Danger / Error ───────────────────────────────────────── */
   --color-danger:         #dc2626;
+  --color-danger-hover:   #b91c1c;
   --color-danger-bg:      #fef2f2;
   --color-danger-border:  #fecaca;
   --color-danger-text:    #991b1b;
@@ -86,7 +87,7 @@
   --space-16:  64px;
 
   /* ── Typography — Font Family ────────────────────────────────────────── */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  --font-family: var(--font-inter, 'Inter'), -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
 
   /* ── Typography — Font Sizes ─────────────────────────────────────────── */
@@ -299,9 +300,8 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-/* Next.js root */
-#__next {
-  min-height: 100vh;
+/* App root — isolation for stacking context */
+body {
   display: flex;
   flex-direction: column;
   isolation: isolate;

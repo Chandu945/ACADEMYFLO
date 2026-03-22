@@ -41,17 +41,27 @@ export function MyPaymentRequestsScreen() {
     if (!isRefresh) setLoading(true);
     setError(null);
 
-    const result = await listPaymentRequestsUseCase({ paymentRequestsApi: requestsApi });
+    try {
+      const result = await listPaymentRequestsUseCase({ paymentRequestsApi: requestsApi });
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setItems(result.value.items);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setItems(result.value.items);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[MyPaymentRequestsScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Failed to load requests.' });
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -67,19 +77,24 @@ export function MyPaymentRequestsScreen() {
     setCancelling(true);
     setCancelError(null);
 
-    const result = await staffCancelPaymentRequestUseCase(
-      { paymentRequestsApi: requestsApi },
-      cancelTarget.id,
-    );
+    try {
+      const result = await staffCancelPaymentRequestUseCase(
+        { paymentRequestsApi: requestsApi },
+        cancelTarget.id,
+      );
 
-    setCancelling(false);
-
-    if (result.ok) {
-      setCancelTarget(null);
-      load();
-      showToast('Request cancelled');
-    } else {
-      setCancelError(result.error.message);
+      if (result.ok) {
+        setCancelTarget(null);
+        load();
+        showToast('Request cancelled');
+      } else {
+        setCancelError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[MyPaymentRequestsScreen] Cancel failed:', e);
+      setCancelError('Something went wrong. Please try again.');
+    } finally {
+      setCancelling(false);
     }
   }, [cancelTarget, load, showToast]);
 

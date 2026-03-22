@@ -1,8 +1,10 @@
+import { Platform } from 'react-native';
 import type { GalleryPhoto } from '../../domain/event/event-gallery.types';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
 import { ok, err } from '../../domain/common/result';
 import { apiGet, apiDelete, getAccessToken } from '../http/api-client';
+import { mapHttpError } from '../http/error-mapper';
 import { generateRequestId } from '../http/request-id';
 import { env } from '../env';
 
@@ -20,11 +22,18 @@ export async function uploadGalleryPhoto(
   caption?: string,
 ): Promise<Result<GalleryPhoto, AppError>> {
   const formData = new FormData();
-  formData.append('file', {
-    uri,
-    name: fileName,
-    type: mimeType,
-  } as unknown as Blob);
+  if (Platform.OS === 'web') {
+    // On web, convert data URI to proper File object
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    formData.append('file', new File([blob], fileName, { type: mimeType }));
+  } else {
+    formData.append('file', {
+      uri,
+      name: fileName,
+      type: mimeType,
+    } as unknown as Blob);
+  }
   if (caption) {
     formData.append('caption', caption);
   }
@@ -45,10 +54,7 @@ export async function uploadGalleryPhoto(
 
     if (!res.ok) {
       const json = await res.json().catch(() => null);
-      return err({
-        code: 'UNKNOWN',
-        message: json?.error || 'Upload failed',
-      });
+      return err(mapHttpError(res.status, json));
     }
 
     const json = (await res.json()) as { data: GalleryPhoto };

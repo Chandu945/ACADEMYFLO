@@ -14,15 +14,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { requestId } = await params;
-  let body: unknown;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await request.json() as Record<string, unknown>;
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
   const { action, ...data } = body;
 
-  if (!['approve', 'reject', 'cancel'].includes(action)) {
+  if (!['approve', 'reject', 'cancel'].includes(String(action))) {
     return NextResponse.json({ message: 'Invalid action' }, { status: 400 });
   }
 

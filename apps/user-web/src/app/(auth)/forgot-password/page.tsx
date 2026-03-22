@@ -9,6 +9,10 @@ import styles from './page.module.css';
 
 type Step = 'request' | 'confirm' | 'done';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?\d{10,15}$/;
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+
 const STEPS = [
   { key: 'request', label: 'Email' },
   { key: 'confirm', label: 'Verify & Reset' },
@@ -58,6 +62,14 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
+async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>('request');
   const [identifier, setIdentifier] = useState('');
@@ -91,6 +103,15 @@ export default function ForgotPasswordPage() {
     };
   }, [cooldown]);
 
+  const clearFieldError = useCallback((field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
   const stepConfig = {
     request: {
       icon: (
@@ -123,7 +144,12 @@ export default function ForgotPasswordPage() {
 
   const validateRequest = useCallback((): boolean => {
     const errors: Record<string, string> = {};
-    if (!identifier.trim()) errors['identifier'] = 'Email or phone is required';
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+      errors['identifier'] = 'Email or phone is required';
+    } else if (!EMAIL_RE.test(trimmed) && !PHONE_RE.test(trimmed)) {
+      errors['identifier'] = 'Enter a valid email address or phone number';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }, [identifier]);
@@ -132,8 +158,13 @@ export default function ForgotPasswordPage() {
     const errors: Record<string, string> = {};
     if (!otp.trim()) errors['otp'] = 'Verification code is required';
     else if (!/^\d{4,6}$/.test(otp.trim())) errors['otp'] = 'Code must be 4-6 digits';
-    if (!newPassword) errors['newPassword'] = 'New password is required';
-    else if (newPassword.length < 8) errors['newPassword'] = 'Password must be at least 8 characters';
+    if (!newPassword) {
+      errors['newPassword'] = 'New password is required';
+    } else if (newPassword.length < 8) {
+      errors['newPassword'] = 'Password must be at least 8 characters';
+    } else if (!STRONG_PASSWORD_REGEX.test(newPassword)) {
+      errors['newPassword'] = 'Must include uppercase, lowercase, number, and special character';
+    }
     if (!confirmPassword) errors['confirmPassword'] = 'Please confirm your password';
     else if (newPassword !== confirmPassword) errors['confirmPassword'] = 'Passwords do not match';
     setFieldErrors(errors);
@@ -145,6 +176,7 @@ export default function ForgotPasswordPage() {
       e.preventDefault();
       setError(null);
       setSuccessMessage(null);
+      setFieldErrors({});
       if (!validateRequest()) return;
 
       setLoading(true);
@@ -156,21 +188,32 @@ export default function ForgotPasswordPage() {
             action: 'request',
             identifier: identifier.trim().toLowerCase(),
           }),
+          signal: AbortSignal.timeout(15000),
         });
 
-        const data = await res.json();
+        const data = await safeJson(res);
+        if (!data) {
+          setError('Server returned an unexpected response. Please try again.');
+          return;
+        }
 
         if (!res.ok) {
-          setError(data.message ?? 'Failed to send reset code.');
+          if (data['fieldErrors'] && typeof data['fieldErrors'] === 'object') {
+            setFieldErrors(data['fieldErrors'] as Record<string, string>);
+          }
+          setError((data['message'] as string) ?? 'Failed to send reset code.');
           return;
         }
 
         setSuccessMessage('Reset code sent! Check your email.');
         setCooldown(60);
         setStep('confirm');
-        setFieldErrors({});
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'TimeoutError') {
+          setError('Request timed out. Please check your connection and try again.');
+        } else {
+          setError('Something went wrong. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
@@ -183,6 +226,7 @@ export default function ForgotPasswordPage() {
       e.preventDefault();
       setError(null);
       setSuccessMessage(null);
+      setFieldErrors({});
       if (!validateConfirm()) return;
 
       setLoading(true);
@@ -196,18 +240,30 @@ export default function ForgotPasswordPage() {
             otp: otp.trim(),
             newPassword,
           }),
+          signal: AbortSignal.timeout(15000),
         });
 
-        const data = await res.json();
+        const data = await safeJson(res);
+        if (!data) {
+          setError('Server returned an unexpected response. Please try again.');
+          return;
+        }
 
         if (!res.ok) {
-          setError(data.message ?? 'Failed to reset password.');
+          if (data['fieldErrors'] && typeof data['fieldErrors'] === 'object') {
+            setFieldErrors(data['fieldErrors'] as Record<string, string>);
+          }
+          setError((data['message'] as string) ?? 'Failed to reset password.');
           return;
         }
 
         setStep('done');
-      } catch {
-        setError('Something went wrong. Please try again.');
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'TimeoutError') {
+          setError('Request timed out. Please check your connection and try again.');
+        } else {
+          setError('Something went wrong. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
@@ -219,6 +275,7 @@ export default function ForgotPasswordPage() {
     if (cooldown > 0) return;
     setError(null);
     setSuccessMessage(null);
+    setLoading(true);
 
     try {
       const res = await fetch('/api/auth/forgot-password', {
@@ -228,17 +285,21 @@ export default function ForgotPasswordPage() {
           action: 'request',
           identifier: identifier.trim().toLowerCase(),
         }),
+        signal: AbortSignal.timeout(15000),
       });
+
+      const data = await safeJson(res);
 
       if (res.ok) {
         setSuccessMessage('Reset code resent!');
         setCooldown(60);
       } else {
-        const data = await res.json();
-        setError(data.message ?? 'Failed to resend code.');
+        setError((data?.['message'] as string) ?? 'Failed to resend code.');
       }
     } catch {
       setError('Something went wrong.');
+    } finally {
+      setLoading(false);
     }
   }, [identifier, cooldown]);
 
@@ -310,7 +371,7 @@ export default function ForgotPasswordPage() {
                 value={identifier}
                 onChange={(e) => {
                   setIdentifier(e.target.value);
-                  setFieldErrors((prev) => { const next = { ...prev }; delete next['identifier']; return next; });
+                  clearFieldError('identifier');
                 }}
                 error={fieldErrors['identifier']}
                 placeholder="Enter your email or phone"
@@ -341,7 +402,7 @@ export default function ForgotPasswordPage() {
                 value={otp}
                 onChange={(e) => {
                   setOtp(e.target.value);
-                  setFieldErrors((prev) => { const next = { ...prev }; delete next['otp']; return next; });
+                  clearFieldError('otp');
                 }}
                 error={fieldErrors['otp']}
                 placeholder="Enter 6-digit code"
@@ -357,10 +418,11 @@ export default function ForgotPasswordPage() {
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
-                  setFieldErrors((prev) => { const next = { ...prev }; delete next['newPassword']; return next; });
+                  clearFieldError('newPassword');
                 }}
                 error={fieldErrors['newPassword']}
                 placeholder="Enter new password"
+                hint="Must include uppercase, lowercase, number, and special character"
                 autoComplete="new-password"
                 maxLength={64}
                 required
@@ -372,7 +434,7 @@ export default function ForgotPasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
-                  setFieldErrors((prev) => { const next = { ...prev }; delete next['confirmPassword']; return next; });
+                  clearFieldError('confirmPassword');
                 }}
                 error={fieldErrors['confirmPassword']}
                 placeholder="Confirm new password"
@@ -398,7 +460,7 @@ export default function ForgotPasswordPage() {
                   type="button"
                   className={styles.resendButton}
                   onClick={handleResend}
-                  disabled={cooldown > 0}
+                  disabled={cooldown > 0 || loading}
                 >
                   {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
                 </button>

@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { crossAlert } from '../../utils/crossPlatformAlert';
+import { AppIcon } from '../ui/AppIcon';
 import RNFS from 'react-native-fs';
 import RNShare from 'react-native-share';
 import type { StudentListItem, StudentStatus } from '../../../domain/student/student.types';
@@ -55,7 +56,7 @@ export function StudentActionMenu({
 
   const handleDelete = () => {
     onClose();
-    Alert.alert(
+    crossAlert(
       'Delete Student',
       `Are you sure you want to delete ${student.fullName}? This action cannot be undone.`,
       [
@@ -68,7 +69,7 @@ export function StudentActionMenu({
             if (result.ok) {
               onDeleted();
             } else {
-              Alert.alert('Error', result.error.message);
+              crossAlert('Error', result.error.message);
             }
           },
         },
@@ -86,13 +87,13 @@ export function StudentActionMenu({
         // User cancelled share
       }
     } else {
-      Alert.alert('Error', result.error.message);
+      crossAlert('Error', result.error.message);
     }
   };
 
   const handleInviteParent = () => {
     onClose();
-    Alert.alert(
+    crossAlert(
       'Invite Parent',
       `This will create a parent login for ${student.fullName}'s guardian. The guardian must have an email and mobile number set.\n\nContinue?`,
       [
@@ -104,12 +105,12 @@ export function StudentActionMenu({
             if (result.ok) {
               const { parentEmail, tempPassword, isExistingUser } = result.value;
               if (isExistingUser) {
-                Alert.alert(
+                crossAlert(
                   'Parent Linked',
                   `${parentEmail} already has an account and has been linked to ${student.fullName}. They can log in with their existing password.`,
                 );
               } else {
-                Alert.alert(
+                crossAlert(
                   'Parent Invited',
                   `A parent account has been created.\n\nLogin ID: ${parentEmail}\nTemporary Password: ${tempPassword}\n\nPlease share these credentials with the guardian.`,
                   [
@@ -130,7 +131,7 @@ export function StudentActionMenu({
                 );
               }
             } else {
-              Alert.alert('Error', result.error.message);
+              crossAlert('Error', result.error.message);
             }
           },
         },
@@ -142,7 +143,7 @@ export function StudentActionMenu({
     onClose();
     const token = getAccessToken();
     if (!token) {
-      Alert.alert('Error', 'Session expired. Please log in again.');
+      crossAlert('Error', 'Session expired. Please log in again.');
       return;
     }
     setGenerating(label);
@@ -171,12 +172,12 @@ export function StudentActionMenu({
         // Clean up temp file after share dialog closes
         RNFS.unlink(destPath).catch(() => {});
       } else if (response.statusCode === 401) {
-        Alert.alert('Error', 'Session expired. Please log in again.');
+        crossAlert('Error', 'Session expired. Please log in again.');
       } else {
-        Alert.alert('Error', 'Failed to generate document. Please try again.');
+        crossAlert('Error', 'Failed to generate document. Please try again.');
       }
     } catch {
-      Alert.alert('Error', 'Failed to generate document. Check your connection and try again.');
+      crossAlert('Error', 'Failed to generate document. Check your connection and try again.');
     } finally {
       setGenerating(null);
     }
@@ -285,8 +286,8 @@ export function StudentActionMenu({
                   testID={`action-${action.key}`}
                 >
                   <View style={[styles.iconContainer, { backgroundColor: action.iconColor + '20' }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name={action.iconName} size={22} color={action.iconColor} />
+                    
+                    <AppIcon name={action.iconName} size={22} color={action.iconColor} />
                   </View>
                   <View style={styles.actionText}>
                     <Text style={styles.actionTitle}>{action.title}</Text>
@@ -336,7 +337,7 @@ function StatusChangeModal({
 
   const handleConfirm = async () => {
     if (!selectedStatus) {
-      Alert.alert('Validation', 'Please select a status');
+      crossAlert('Validation', 'Please select a status');
       return;
     }
     setSaving(true);
@@ -350,7 +351,7 @@ function StatusChangeModal({
       setReason('');
       onChanged();
     } else {
-      Alert.alert('Error', result.error.message);
+      crossAlert('Error', result.error.message);
     }
   };
 

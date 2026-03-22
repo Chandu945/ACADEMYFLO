@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { fontSizes, fontWeights, radius, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,8 +18,8 @@ export function HolidayBanner({ isOwner, onRemoveHoliday, removing }: HolidayBan
     <View style={styles.container} testID="holiday-banner">
       <View style={styles.content}>
         <View style={styles.iconWrap}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="calendar-star" size={20} color={colors.warning} />
+          
+          <AppIcon name="calendar-star" size={20} color={colors.warning} />
         </View>
         <View style={styles.textWrap}>
           <Text style={styles.title}>Holiday Declared</Text>

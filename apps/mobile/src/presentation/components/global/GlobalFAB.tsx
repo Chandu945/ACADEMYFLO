@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Pressable, StyleSheet, Animated, View, Text } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { useNavigation } from '@react-navigation/native';
 import type { AddNewOption } from './AddNewModal';
 import { useFAB } from '../../context/FABContext';
@@ -206,8 +206,8 @@ export function GlobalFAB() {
               >
                 <Text style={styles.menuLabel}>{item.label}</Text>
                 <View style={styles.menuIcon}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name={item.icon} size={22} color={colors.primary} />
+                  
+                  <AppIcon name={item.icon} size={22} color={colors.primary} />
                 </View>
               </Pressable>
             </Animated.View>
@@ -223,8 +223,8 @@ export function GlobalFAB() {
         accessibilityRole="button"
       >
         <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="plus" size={28} color={colors.white} />
+          
+          <AppIcon name="plus" size={28} color={colors.white} />
         </Animated.View>
       </Pressable>
     </>

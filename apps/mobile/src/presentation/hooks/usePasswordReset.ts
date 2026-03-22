@@ -7,56 +7,89 @@ export function usePasswordReset() {
   const [step, setStep] = useState<PasswordResetStep>('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Cooldown timer — uses setTimeout chain instead of recreating intervals
   useEffect(() => {
-    if (cooldownRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setCooldownRemaining((prev) => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    if (cooldownRemaining <= 0) return;
+    const id = setTimeout(() => {
+      setCooldownRemaining((prev) => prev - 1);
+    }, 1000);
+    return () => clearTimeout(id);
   }, [cooldownRemaining]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const clearFieldError = useCallback((field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
 
   const requestOtp = useCallback(async (email: string) => {
     setError(null);
+    setFieldErrors({});
     setLoading(true);
-    const result = await authApi.requestPasswordReset({ email });
-    setLoading(false);
+    try {
+      const result = await authApi.requestPasswordReset({ email });
 
-    if (!result.ok) {
-      setError(result.error.message);
-      return;
+      if (!result.ok) {
+        if (result.error.fieldErrors) {
+          setFieldErrors(result.error.fieldErrors);
+        }
+        setError(result.error.message);
+        return;
+      }
+
+      setCooldownRemaining(60);
+      setStep('otp');
+    } catch {
+      if (__DEV__) console.error('[usePasswordReset] requestOtp failed');
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setCooldownRemaining(60);
-    setStep('otp');
   }, []);
 
   const confirmReset = useCallback(
-    async (email: string, otp: string, newPassword: string) => {
+    async (email: string, otp: string, newPassword: string): Promise<boolean> => {
       setError(null);
+      setFieldErrors({});
       setLoading(true);
-      const result = await authApi.confirmPasswordReset({ email, otp, newPassword });
-      setLoading(false);
+      try {
+        const result = await authApi.confirmPasswordReset({ email, otp, newPassword });
 
-      if (!result.ok) {
-        setError(result.error.message);
+        if (!result.ok) {
+          if (result.error.fieldErrors) {
+            setFieldErrors(result.error.fieldErrors);
+          }
+          setError(result.error.message);
+
+          // If the error is OTP-related, route back to OTP step.
+          // Use field error key (stable) rather than message string matching (brittle).
+          if (result.error.fieldErrors?.['otp'] || result.error.code === 'FORBIDDEN') {
+            setStep('otp');
+          }
+
+          return false;
+        }
+
+        setSuccessMessage(result.value.message);
+        return true;
+      } catch {
+        if (__DEV__) console.error('[usePasswordReset] confirmReset failed');
+        setError('Something went wrong. Please try again.');
         return false;
+      } finally {
+        setLoading(false);
       }
-
-      setSuccessMessage(result.value.message);
-      return true;
     },
     [],
   );
@@ -71,14 +104,26 @@ export function usePasswordReset() {
 
   const goBack = useCallback(() => {
     setError(null);
+    setFieldErrors({});
+    setSuccessMessage(null);
     if (step === 'otp') setStep('email');
     else if (step === 'newPassword') setStep('otp');
   }, [step]);
+
+  const reset = useCallback(() => {
+    setStep('email');
+    setLoading(false);
+    setError(null);
+    setFieldErrors({});
+    setCooldownRemaining(0);
+    setSuccessMessage(null);
+  }, []);
 
   return {
     step,
     loading,
     error,
+    fieldErrors,
     cooldownRemaining,
     successMessage,
     requestOtp,
@@ -86,5 +131,8 @@ export function usePasswordReset() {
     resendOtp,
     goBack,
     setStep,
+    clearError,
+    clearFieldError,
+    reset,
   };
 }

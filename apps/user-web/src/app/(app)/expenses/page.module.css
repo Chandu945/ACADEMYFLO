@@ -43,8 +43,8 @@
 }
 
 .monthNavBtn {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -60,6 +60,16 @@
   background: var(--color-primary-soft);
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+.monthNavBtn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.expenseAmount {
+  font-weight: var(--weight-semibold);
+  color: var(--color-danger);
 }
 
 /* ── Summary Section ──────────────────────────────────────────────────── */

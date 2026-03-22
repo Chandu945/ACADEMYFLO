@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, forwardRef } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, type TextInputProps } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from './AppIcon';
 
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
@@ -15,13 +15,16 @@ type InputProps = {
   secureTextEntry?: boolean;
   keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
+  autoComplete?: TextInputProps['autoComplete'];
+  textContentType?: TextInputProps['textContentType'];
   maxLength?: number;
   editable?: boolean;
   returnKeyType?: TextInputProps['returnKeyType'];
+  onSubmitEditing?: () => void;
   testID?: string;
 };
 
-export function Input({
+export const Input = forwardRef<TextInput, InputProps>(function Input({
   label,
   value,
   onChangeText,
@@ -30,11 +33,14 @@ export function Input({
   secureTextEntry,
   keyboardType,
   autoCapitalize = 'none',
+  autoComplete,
+  textContentType,
   maxLength,
   editable,
   returnKeyType,
+  onSubmitEditing,
   testID,
-}: InputProps) {
+}, ref) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -46,6 +52,7 @@ export function Input({
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.inputWrapper, error ? styles.inputWrapperError : undefined]}>
         <TextInput
+          ref={ref}
           style={[styles.input, isPassword ? styles.inputWithToggle : undefined]}
           value={value}
           onChangeText={onChangeText}
@@ -54,9 +61,12 @@ export function Input({
           secureTextEntry={isPassword && !passwordVisible}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
+          autoComplete={autoComplete}
+          textContentType={textContentType}
           maxLength={maxLength}
           editable={editable}
           returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
           accessibilityLabel={label}
           accessibilityState={{ disabled: editable === false }}
           accessibilityHint={error || undefined}
@@ -71,8 +81,7 @@ export function Input({
             accessibilityRole="button"
             testID={testID ? `${testID}-toggle` : 'password-toggle'}
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon
+            <AppIcon
               name={passwordVisible ? 'eye-off-outline' : 'eye-outline'}
               size={20}
               color={colors.textSecondary}
@@ -80,10 +89,10 @@ export function Input({
           </Pressable>
         ) : null}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={styles.error} accessibilityLiveRegion="polite" accessibilityRole="alert">{error}</Text> : null}
     </View>
   );
-}
+});
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {

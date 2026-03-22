@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, FlatList, TextInput, Text, StyleSheet, RefreshControl } from 'react-native';
+import { View, FlatList, TextInput, Text, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { AppError } from '../../../domain/common/errors';
 import type { PaymentRequestItem } from '../../../domain/fees/payment-requests.types';
@@ -48,17 +48,27 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
     if (!isRefresh) setLoading(true);
     setError(null);
 
-    const result = await listPaymentRequestsUseCase({ paymentRequestsApi: requestsApi }, 'PENDING');
+    try {
+      const result = await listPaymentRequestsUseCase({ paymentRequestsApi: requestsApi }, 'PENDING');
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setItems(result.value.items);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setItems(result.value.items);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[PendingApprovalsScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Failed to load pending approvals.' });
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -86,33 +96,46 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
     setActing(true);
     setActionError(null);
 
-    let result;
-    if (actionTarget.action === 'approve') {
-      result = await ownerApproveRequestUseCase(
-        { paymentRequestsApi: requestsApi },
-        actionTarget.item.id,
-      );
-    } else {
-      const reason = rejectionReason.trim() || 'Rejected by owner';
-      result = await ownerRejectRequestUseCase(
-        { paymentRequestsApi: requestsApi },
-        actionTarget.item.id,
-        reason,
-      );
-    }
+    try {
+      let result;
+      if (actionTarget.action === 'approve') {
+        result = await ownerApproveRequestUseCase(
+          { paymentRequestsApi: requestsApi },
+          actionTarget.item.id,
+        );
+      } else {
+        if (rejectionReason.trim().length < 3) {
+          Alert.alert('Rejection Reason Required', 'Please provide a rejection reason (at least 3 characters).');
+          setActing(false);
+          return;
+        }
+        const reason = rejectionReason.trim();
+        result = await ownerRejectRequestUseCase(
+          { paymentRequestsApi: requestsApi },
+          actionTarget.item.id,
+          reason,
+        );
+      }
 
-    if (!mountedRef.current) return;
-    setActing(false);
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      const wasApprove = actionTarget.action === 'approve';
-      setActionTarget(null);
-      setRejectionReason('');
-      load();
-      onActionComplete();
-      showToast(wasApprove ? 'Request approved' : 'Request rejected');
-    } else {
-      setActionError(result.error.message);
+      if (result.ok) {
+        const wasApprove = actionTarget.action === 'approve';
+        setActionTarget(null);
+        setRejectionReason('');
+        load();
+        onActionComplete();
+        showToast(wasApprove ? 'Request approved' : 'Request rejected');
+      } else {
+        setActionError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[PendingApprovalsScreen] Action failed:', e);
+      if (mountedRef.current) {
+        setActionError('Something went wrong. Please try again.');
+      }
+    } finally {
+      if (mountedRef.current) setActing(false);
     }
   }, [actionTarget, rejectionReason, load, onActionComplete, showToast]);
 
@@ -177,6 +200,8 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
             multiline
             numberOfLines={3}
             maxLength={300}
+            accessibilityLabel="Reason for rejecting this payment request"
+            placeholderTextColor={colors.textDisabled}
             testID="rejection-reason-input"
           />
         </View>

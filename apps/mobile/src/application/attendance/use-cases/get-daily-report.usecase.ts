@@ -27,7 +27,8 @@ export async function getDailyReportUseCase(
 
   const parsed = dailyReportResponseSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[getDailyReportUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Failed to load report. Please try again.' });
   }
 
   return ok(parsed.data);

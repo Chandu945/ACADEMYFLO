@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Text,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { BatchesStackParamList } from '../../navigation/BatchesStack';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { useBatches } from '../../../application/batch/use-batches';
@@ -66,8 +67,13 @@ export function BatchesListScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } catch {
+      // Handled by hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const handleRowPress = useCallback(
@@ -83,10 +89,11 @@ export function BatchesListScreen() {
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     setSearchActive(false);
     setSearchText('');
     setDebouncedSearch('');
@@ -94,7 +101,7 @@ export function BatchesListScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: BatchListItem }) => (
-      <BatchRow batch={item} onPress={() => handleRowPress(item)} />
+      <BatchRow batch={item} onPress={handleRowPress} />
     ),
     [handleRowPress],
   );
@@ -116,9 +123,13 @@ export function BatchesListScreen() {
       <View style={styles.navbar}>
         {searchActive ? (
           <View style={styles.searchBar}>
-            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity
+              onPress={closeSearch}
+              style={styles.navBtn}
+              accessibilityLabel="Close search"
+              accessibilityRole="button"
+            >
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -127,29 +138,39 @@ export function BatchesListScreen() {
               placeholderTextColor={colors.textDisabled}
               value={searchText}
               onChangeText={setSearchText}
+              returnKeyType="search"
+              onSubmitEditing={() => Keyboard.dismiss()}
               autoFocus
+              accessibilityLabel="Search batches by name"
               testID="batches-search-input"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
+              <TouchableOpacity
+                onPress={() => setSearchText('')}
+                style={styles.navBtn}
+                accessibilityLabel="Clear search text"
+                accessibilityRole="button"
+              >
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
         ) : (
           <View style={styles.titleBar}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.navBtn}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+            >
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.titleWrap}>
               <Text style={styles.navTitle}>Batches</Text>
             </View>
             <View style={styles.navActions}>
-              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="magnify" size={22} color={colors.text} />
+              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search batches" accessibilityRole="button">
+                <AppIcon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
           </View>
@@ -167,8 +188,7 @@ export function BatchesListScreen() {
       ) : !loading && items.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="account-group-outline" size={48} color={colors.primary} />
+            <AppIcon name="account-group-outline" size={48} color={colors.primary} />
           </View>
           <Text style={styles.emptyTitle}>No batches found</Text>
           <Text style={styles.emptySubtitle}>
@@ -191,8 +211,14 @@ export function BatchesListScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={handleAdd} testID="add-batch-button">
-        <Text style={styles.fabText}>+</Text>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleAdd}
+        accessibilityLabel="Create new batch"
+        accessibilityRole="button"
+        testID="add-batch-button"
+      >
+        <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
     </View>
   );
@@ -309,14 +335,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  fabText: {
-    fontSize: fontSizes['3xl'],
-    color: colors.white,
-    lineHeight: 28,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });

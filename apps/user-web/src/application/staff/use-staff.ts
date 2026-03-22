@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 
 type StaffListItem = {
@@ -13,78 +13,185 @@ type StaffListItem = {
   startDate: string | null;
   gender: string | null;
   profilePhotoUrl: string | null;
+  whatsappNumber: string | null;
+  mobileNumber: string | null;
+  address: string | null;
   qualificationInfo: { qualification: string | null; position: string | null } | null;
   salaryConfig: { amount: number | null; frequency: string } | null;
   createdAt: string;
 };
 
+async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export function useStaff() {
   const { accessToken } = useAuth();
   const [data, setData] = useState<StaffListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/staff', {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
-      setData(json.data ?? json.items ?? []);
+      if (controller.signal.aborted) return;
+
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+
+      if (!res.ok || !json) {
+        throw new Error((json?.['message'] as string) || 'Failed to load staff');
+      }
+      setData((json['data'] ?? json['items'] ?? []) as StaffListItem[]);
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
       setError(e instanceof Error ? e.message : 'Failed to load staff');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [accessToken]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    fetch_();
+    return () => { abortRef.current?.abort(); };
+  }, [fetch_]);
+
+  return { data, loading, error, refetch: fetch_ };
+}
+
+export function useStaffDetail(id: string | null) {
+  const { accessToken } = useAuth();
+  const [data, setData] = useState<StaffListItem | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => { setData(null); }, [id]);
+
+  const fetch_ = useCallback(async () => {
+    if (!id || !accessToken) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/staff/${id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      });
+      if (controller.signal.aborted) return;
+
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+
+      if (!res.ok || !json) {
+        throw new Error((json?.['message'] as string) || 'Failed to load staff member');
+      }
+      setData(json as unknown as StaffListItem);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load staff member');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [accessToken, id]);
+
+  useEffect(() => {
+    fetch_();
+    return () => { abortRef.current?.abort(); };
+  }, [fetch_]);
 
   return { data, loading, error, refetch: fetch_ };
 }
 
 export async function createStaff(body: Record<string, unknown>, accessToken?: string | null) {
-  const res = await fetch('/api/staff', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (!res.ok) return { ok: false as const, error: json.message };
-  return { ok: true as const, data: json };
+  try {
+    const res = await fetch('/api/staff', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) {
+      return {
+        ok: false as const,
+        error: (json?.['message'] as string) || 'Failed to create staff',
+        fieldErrors: json?.['fieldErrors'] as Record<string, string> | undefined,
+      };
+    }
+    return { ok: true as const, data: json };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
 }
 
 export async function updateStaff(id: string, body: Record<string, unknown>, accessToken?: string | null) {
-  const res = await fetch(`/api/staff/${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (!res.ok) return { ok: false as const, error: json.message };
-  return { ok: true as const, data: json };
+  try {
+    const res = await fetch(`/api/staff/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) {
+      return {
+        ok: false as const,
+        error: (json?.['message'] as string) || 'Failed to update staff',
+        fieldErrors: json?.['fieldErrors'] as Record<string, string> | undefined,
+      };
+    }
+    return { ok: true as const, data: json };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
 }
 
 export async function toggleStaffStatus(id: string, status: string, accessToken?: string | null) {
-  const res = await fetch(`/api/staff/${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify({ statusChange: true, status }),
-  });
-  const json = await res.json();
-  if (!res.ok) return { ok: false as const, error: json.message };
-  return { ok: true as const, data: json };
+  try {
+    const res = await fetch(`/api/staff/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ statusChange: true, status }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) {
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to update status' };
+    }
+    return { ok: true as const, data: json };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
 }

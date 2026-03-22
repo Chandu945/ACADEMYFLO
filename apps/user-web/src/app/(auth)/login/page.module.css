@@ -44,7 +44,7 @@
 }
 
 .brandName {
-  font-size: 32px;
+  font-size: var(--text-4xl);
   font-weight: var(--weight-bold);
   color: var(--color-text);
   letter-spacing: -0.5px;
@@ -84,6 +84,16 @@
   gap: var(--space-4);
 }
 
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+
 /* ── Error Banner ──────────────────────────────────────────────────────── */
 .errorBanner {
   display: flex;
@@ -94,6 +104,7 @@
   border: 1px solid var(--color-danger-border);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-2);
+  outline: none;
 }
 
 .errorBanner svg {
@@ -102,9 +113,27 @@
 }
 
 .errorText {
+  flex: 1;
   font-size: var(--text-sm);
   color: var(--color-danger-text);
   line-height: var(--leading-sm);
+}
+
+.errorDismiss {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--color-danger-text);
+  cursor: pointer;
+  transition: color var(--transition-base), background-color var(--transition-base);
+}
+
+.errorDismiss:hover {
+  background-color: var(--color-danger-border);
+  color: var(--color-danger);
 }
 
 /* ── Forgot Link ───────────────────────────────────────────────────────── */
@@ -160,6 +189,12 @@
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
+@media (min-width: 481px) and (max-width: 768px) {
+  .wrapper {
+    max-width: 460px;
+  }
+}
+
 @media (max-width: 480px) {
   .page {
     padding: var(--space-4);
@@ -182,9 +217,5 @@
   .logoBadge svg {
     width: 30px;
     height: 30px;
-  }
-
-  .brandName {
-    font-size: 28px;
   }
 }

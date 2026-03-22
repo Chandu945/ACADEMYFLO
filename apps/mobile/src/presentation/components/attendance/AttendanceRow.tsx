@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Toggle } from '../ui/Toggle';
 import { fontSizes, fontWeights, spacing, radius } from '../../theme';
@@ -8,7 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 type AttendanceRowProps = {
   item: DailyAttendanceItem;
-  onToggle: () => void;
+  onToggle: (studentId: string) => void;
   disabled: boolean;
 };
 
@@ -27,6 +27,10 @@ function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPresent = item.status === 'PRESENT';
   const isHoliday = item.status === 'HOLIDAY';
+
+  const handleToggle = useCallback(() => {
+    onToggle(item.studentId);
+  }, [onToggle, item.studentId]);
 
   return (
     <View style={styles.card} testID={`attendance-row-${item.studentId}`}>
@@ -48,7 +52,7 @@ function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps
 
       <Toggle
         value={isPresent}
-        onValueChange={onToggle}
+        onValueChange={handleToggle}
         disabled={disabled}
         accessibilityLabel={`${item.fullName} attendance toggle`}
         testID={`toggle-${item.studentId}`}

@@ -31,7 +31,8 @@ export async function getStudentMonthlyDetailUseCase(
 
   const parsed = studentMonthlyDetailResponseSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[getStudentMonthlyDetailUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Failed to load attendance data. Please try again.' });
   }
 
   return ok(parsed.data);

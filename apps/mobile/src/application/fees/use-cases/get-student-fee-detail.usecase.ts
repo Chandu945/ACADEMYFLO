@@ -33,7 +33,8 @@ export async function getStudentFeeDetailUseCase(
 
   const parsed = feeDueListResponseSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[getStudentFeeDetailUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Failed to load fee details. Please try again.' });
   }
 
   return ok(parsed.data);

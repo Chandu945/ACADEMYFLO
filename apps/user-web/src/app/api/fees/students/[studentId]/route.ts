@@ -30,14 +30,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { studentId } = await params;
-  let body: unknown;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await request.json() as Record<string, unknown>;
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
   const { month, ...payData } = body;
-  const result = await apiPut(`/api/v1/fees/students/${encodeURIComponent(studentId)}/${encodeURIComponent(month)}/pay`, payData, { accessToken });
+  const result = await apiPut(`/api/v1/fees/students/${encodeURIComponent(studentId)}/${encodeURIComponent(String(month))}/pay`, payData, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

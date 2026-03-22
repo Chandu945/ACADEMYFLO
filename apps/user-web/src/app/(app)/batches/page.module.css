@@ -27,7 +27,7 @@
 /* ── Card Grid ────────────────────────────────────────────────────────── */
 .cardGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 420px));
   gap: var(--space-4);
 }
 
@@ -57,6 +57,9 @@
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .batchMeta {

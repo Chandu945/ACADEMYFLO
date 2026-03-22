@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { fontSizes, fontWeights, spacing, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -28,13 +28,13 @@ function DatePickerRowComponent({ date, onPrevious, onNext, onToday, isToday }: 
   return (
     <View style={styles.container}>
       <Pressable onPress={onPrevious} style={styles.arrow} testID="date-prev">
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="chevron-left" size={20} color={colors.primary} />
+        
+        <AppIcon name="chevron-left" size={20} color={colors.primary} />
       </Pressable>
 
       <Pressable onPress={onToday} style={styles.dateContainer} testID="date-display">
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="calendar" size={16} color={colors.primary} style={styles.calIcon} />
+        
+        <AppIcon name="calendar" size={16} color={colors.primary} style={styles.calIcon} />
         <Text style={styles.dateText}>{formatDate(date)}</Text>
         {!isToday && (
           <View style={styles.todayChip}>
@@ -49,8 +49,8 @@ function DatePickerRowComponent({ date, onPrevious, onNext, onToday, isToday }: 
         disabled={isToday}
         testID="date-next"
       >
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="chevron-right" size={20} color={isToday ? colors.textDisabled : colors.primary} />
+        
+        <AppIcon name="chevron-right" size={20} color={isToday ? colors.textDisabled : colors.primary} />
       </Pressable>
     </View>
   );

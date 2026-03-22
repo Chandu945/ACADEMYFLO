@@ -54,30 +54,39 @@ export function useStaffAttendance(
       }
       setError(null);
 
-      const result = await getDailyStaffAttendanceUseCase(
-        { staffAttendanceApi },
-        date,
-        targetPage,
-        PAGE_SIZE,
-      );
+      try {
+        const result = await getDailyStaffAttendanceUseCase(
+          { staffAttendanceApi },
+          date,
+          targetPage,
+          PAGE_SIZE,
+        );
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.ok) {
-        if (append) {
-          setItems((prev) => [...prev, ...result.value.items]);
+        if (result.ok) {
+          if (append) {
+            setItems((prev) => [...prev, ...result.value.items]);
+          } else {
+            setItems(result.value.items);
+            setIsHoliday(result.value.isHoliday);
+          }
+          setPage(targetPage);
+          setHasMore(targetPage < result.value.meta.totalPages);
         } else {
-          setItems(result.value.items);
-          setIsHoliday(result.value.isHoliday);
+          setError(result.error);
         }
-        setPage(targetPage);
-        setHasMore(targetPage < result.value.meta.totalPages);
-      } else {
-        setError(result.error);
+      } catch (e) {
+        if (__DEV__) console.error('[useStaffAttendance] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-
-      setLoading(false);
-      setLoadingMore(false);
     },
     [date, staffAttendanceApi],
   );

@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, RefreshControl, StyleSheet, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { View, Text, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { OwnerTabParamList } from '../../navigation/OwnerTabs';
 import { useOwnerDashboard } from '../../../application/dashboard/use-owner-dashboard';
 import { getOwnerDashboard } from '../../../infra/dashboard/dashboard-api';
 import { useFAB } from '../../context/FABContext';
@@ -19,10 +21,12 @@ import { useTheme } from '../../context/ThemeContext';
 const DEFAULT_RANGE = { mode: 'preset' as const, preset: 'THIS_MONTH' as const };
 const dashboardApi = { getOwnerDashboard };
 
+type DashboardNav = BottomTabNavigationProp<OwnerTabParamList, 'Dashboard'>;
+
 export function DashboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<DashboardNav>();
   const { data, loading, error, refetch } = useOwnerDashboard(DEFAULT_RANGE, dashboardApi);
   const { showFAB, hideFAB } = useFAB();
 
@@ -40,121 +44,161 @@ export function DashboardScreen() {
   );
 
   const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  };
+    try {
+      await refetch();
+    } catch {
+      // Error handled by the hook
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+
+  const isEmpty = data && data.totalActiveStudents === 0 && data.newAdmissions === 0 && data.inactiveStudents === 0;
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-      showsVerticalScrollIndicator={false}
-      testID="dashboard-scroll"
-    >
-      {error && <InlineError message={error.message} onRetry={refetch} />}
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
+        showsVerticalScrollIndicator={false}
+        testID="dashboard-scroll"
+      >
+        {error && (
+          <InlineError
+            message={data ? 'Could not refresh data. Showing last known values.' : error.message}
+            onRetry={refetch}
+          />
+        )}
 
-      {loading && !refreshing ? (
-        <View testID="skeleton-container">
-          <View style={styles.row}>
+        {loading && !refreshing ? (
+          <View testID="skeleton-container">
             <SkeletonTile />
-            <SkeletonTile />
-          </View>
-          <View style={styles.row}>
-            <SkeletonTile />
-            <SkeletonTile />
-          </View>
-        </View>
-      ) : data ? (
-        <View testID="kpi-container">
-          {/* ── Students Overview ─────────────────────────── */}
-          <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('Students')} accessibilityLabel="Students overview. Tap to view students" accessibilityRole="button">
-            <View style={styles.cardHeader}>
-              <View style={styles.cardHeaderIcon}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="school-outline" size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.cardTitle}>Students Overview</Text>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+            <View style={styles.row}>
+              <SkeletonTile />
+              <SkeletonTile />
             </View>
-            <View style={styles.overviewGrid}>
-              <View style={styles.overviewItem}>
-                <Text style={styles.overviewValue}>{data.totalActiveStudents}</Text>
-                <Text style={styles.overviewLabel}>Active</Text>
-              </View>
-              <View style={styles.overviewDivider} />
-              <View style={styles.overviewItem}>
-                <Text style={styles.overviewValue}>{data.newAdmissions}</Text>
-                <Text style={styles.overviewLabel}>New</Text>
-              </View>
-              <View style={styles.overviewDivider} />
-              <View style={styles.overviewItem}>
-                <Text style={styles.overviewValue}>{data.inactiveStudents}</Text>
-                <Text style={styles.overviewLabel}>Inactive</Text>
-              </View>
-              <View style={styles.overviewDivider} />
-              <View style={styles.overviewItem}>
-                <Text style={styles.overviewValue}>{data.dueStudentsCount}</Text>
-                <Text style={styles.overviewLabel}>Due</Text>
-              </View>
+            <SkeletonTile />
+            <View style={styles.row}>
+              <SkeletonTile />
+              <SkeletonTile />
             </View>
-          </TouchableOpacity>
-
-          {/* ── Pending Requests ──────────────────────────── */}
-          {data.pendingPaymentRequests > 0 && (
-            <TouchableOpacity style={styles.pendingBanner} activeOpacity={0.7} onPress={() => navigation.navigate('Fees')} accessibilityLabel={`${data.pendingPaymentRequests} pending payment requests. Tap to review`} accessibilityRole="button">
-              <View style={styles.pendingLeft}>
+          </View>
+        ) : data ? (
+          <View testID="kpi-container">
+            {/* ── Empty State for New Academies ──────────── */}
+            {isEmpty && (
+              <TouchableOpacity
+                style={styles.onboardingCard}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('Students')}
+                accessibilityLabel="Get started by adding your first student"
+                accessibilityRole="button"
+              >
                 <View style={styles.cardHeaderIcon}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="file-document-outline" size={18} color={colors.primary} />
+                  <AppIcon name="rocket-launch-outline" size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.pendingText}>Pending Requests</Text>
+                <View style={styles.onboardingText}>
+                  <Text style={styles.onboardingTitle}>Get Started</Text>
+                  <Text style={styles.onboardingSubtitle}>Add your first student to begin managing your academy</Text>
+                </View>
+                <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+
+            {/* ── Students Overview ─────────────────────────── */}
+            <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('Students')} accessibilityLabel="Students overview. Tap to view students" accessibilityRole="button">
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderIcon}>
+                  <AppIcon name="school-outline" size={18} color={colors.primary} />
+                </View>
+                <Text style={styles.cardTitle}>Students Overview</Text>
+                <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
-              <View style={styles.pendingRight}>
-                <View style={styles.pendingBadge}>
-                  <Text style={styles.pendingBadgeText}>{data.pendingPaymentRequests}</Text>
+              <View style={styles.overviewGrid}>
+                <View style={styles.overviewItem} accessibilityLabel={`${data.totalActiveStudents.toLocaleString()} active students`}>
+                  <Text style={styles.overviewValue}>{data.totalActiveStudents.toLocaleString()}</Text>
+                  <Text style={styles.overviewLabel}>Active</Text>
                 </View>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+                <View style={styles.overviewDivider} />
+                <View style={styles.overviewItem} accessibilityLabel={`${data.newAdmissions.toLocaleString()} new admissions`}>
+                  <Text style={styles.overviewValue}>{data.newAdmissions.toLocaleString()}</Text>
+                  <Text style={styles.overviewLabel}>New</Text>
+                </View>
+                <View style={styles.overviewDivider} />
+                <View style={styles.overviewItem} accessibilityLabel={`${data.inactiveStudents.toLocaleString()} inactive students`}>
+                  <Text style={styles.overviewValue}>{data.inactiveStudents.toLocaleString()}</Text>
+                  <Text style={styles.overviewLabel}>Inactive</Text>
+                </View>
+                <View style={styles.overviewDivider} />
+                <View style={styles.overviewItem} accessibilityLabel={`${data.dueStudentsCount.toLocaleString()} students with dues`}>
+                  <Text style={styles.overviewValue}>{data.dueStudentsCount.toLocaleString()}</Text>
+                  <Text style={styles.overviewLabel}>Due</Text>
+                </View>
               </View>
             </TouchableOpacity>
-          )}
 
-          <FinancialOverviewWidget
-            onCollectedPress={() => navigation.navigate('Fees')}
-            onPendingPress={() => navigation.navigate('Fees')}
-            onExpensesPress={() => navigation.navigate('More', { screen: 'ExpensesHome' })}
-            initialData={data ? {
-              collected: data.collectedAmount,
-              pending: data.totalPendingAmount,
-              expenses: data.totalExpenses,
-            } : null}
-          />
-          <AttendanceSummaryWidget
-            onPress={() => navigation.navigate('Attendance')}
-          />
-          <AttendanceMarkingCards
-            onStudentPress={() => navigation.navigate('Attendance')}
-            onStaffPress={() => navigation.navigate('More', { screen: 'StaffAttendance' })}
-            initialStudentData={data ? {
-              present: data.todayPresentCount,
-              total: data.todayPresentCount + data.todayAbsentCount,
-            } : null}
-          />
-          <MonthlyChartWidget
-            onPress={() => navigation.navigate('More', { screen: 'ReportsHome' })}
-          />
-          <BirthdayWidget />
-        </View>
-      ) : null}
-    </ScrollView>
+            {/* ── Pending Requests ──────────────────────────── */}
+            {data.pendingPaymentRequests > 0 && (
+              <TouchableOpacity style={styles.pendingBanner} activeOpacity={0.7} onPress={() => navigation.navigate('Fees')} accessibilityLabel={`${data.pendingPaymentRequests} pending payment requests. Tap to review`} accessibilityRole="button">
+                <View style={styles.pendingLeft}>
+                  <View style={styles.cardHeaderIcon}>
+                    <AppIcon name="file-document-outline" size={18} color={colors.primary} />
+                  </View>
+                  <Text style={styles.pendingText}>Pending Requests</Text>
+                </View>
+                <View style={styles.pendingRight}>
+                  <View style={styles.pendingBadge}>
+                    <Text style={styles.pendingBadgeText}>{data.pendingPaymentRequests}</Text>
+                  </View>
+                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
+                  <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <FinancialOverviewWidget
+              onCollectedPress={() => navigation.navigate('Fees')}
+              onPendingPress={() => navigation.navigate('Fees')}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation requires composite types (TODO)
+              onExpensesPress={() => navigation.navigate('More', { screen: 'ExpensesHome' } as any)}
+              initialData={data ? {
+                collected: data.collectedAmount,
+                pending: data.totalPendingAmount,
+                expenses: data.totalExpenses,
+              } : null}
+            />
+            <AttendanceSummaryWidget
+              onPress={() => navigation.navigate('Attendance')}
+            />
+            <AttendanceMarkingCards
+              onStudentPress={() => navigation.navigate('Attendance')}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation
+              onStaffPress={() => navigation.navigate('More', { screen: 'StaffAttendance' } as any)}
+              initialStudentData={data ? {
+                present: data.todayPresentCount,
+                total: data.todayPresentCount + data.todayAbsentCount,
+              } : null}
+            />
+            <MonthlyChartWidget
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation
+              onPress={() => navigation.navigate('More', { screen: 'ReportsHome' } as any)}
+            />
+            <BirthdayWidget />
+          </View>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -166,6 +210,32 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     marginBottom: spacing.xs,
+  },
+
+  /* ── Onboarding ────────────────────────────────── */
+  onboardingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    gap: spacing.sm,
+  },
+  onboardingText: {
+    flex: 1,
+  },
+  onboardingTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    marginBottom: 2,
+  },
+  onboardingSubtitle: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
   },
 
   /* ── Cards ───────────────────────────────────────── */

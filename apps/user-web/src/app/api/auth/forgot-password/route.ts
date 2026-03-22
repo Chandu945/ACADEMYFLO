@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 
 import { apiPost } from '@/infra/http/api-client';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) {
@@ -17,25 +18,36 @@ export async function POST(request: NextRequest) {
   }
 
   const { action } = body;
+  const identifier = body.identifier?.trim();
+
+  if (!identifier) {
+    return NextResponse.json({ message: 'Email or phone is required' }, { status: 400 });
+  }
 
   if (action === 'request') {
     const result = await apiPost('/api/v1/auth/password-reset/request', {
-      identifier: body.identifier,
+      identifier,
     });
     if (!result.ok) {
-      return NextResponse.json({ message: result.error.message }, { status: 400 });
+      return toErrorResponse(result.error);
     }
     return NextResponse.json({ ok: true });
   }
 
   if (action === 'confirm') {
+    const otp = body.otp?.trim();
+    const newPassword = body.newPassword;
+    if (!otp || !newPassword) {
+      return NextResponse.json({ message: 'Verification code and new password are required' }, { status: 400 });
+    }
+
     const result = await apiPost('/api/v1/auth/password-reset/confirm', {
-      identifier: body.identifier,
-      otp: body.otp,
-      newPassword: body.newPassword,
+      identifier,
+      otp,
+      newPassword,
     });
     if (!result.ok) {
-      return NextResponse.json({ message: result.error.message }, { status: 400 });
+      return toErrorResponse(result.error);
     }
     return NextResponse.json({ ok: true });
   }

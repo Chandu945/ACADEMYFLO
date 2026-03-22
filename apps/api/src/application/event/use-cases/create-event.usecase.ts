@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { Types } from 'mongoose';
 import type { Result } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
@@ -96,7 +96,7 @@ export class CreateEventUseCase {
     const status = deriveEventStatus(startDate, endDate);
 
     const event = CalendarEvent.create({
-      id: randomUUID(),
+      id: new Types.ObjectId().toString(),
       academyId: actor.academyId,
       title: input.title.trim(),
       description: input.description?.trim().slice(0, 2000) ?? null,

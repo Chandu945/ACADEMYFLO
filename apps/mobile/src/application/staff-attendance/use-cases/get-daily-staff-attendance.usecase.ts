@@ -33,7 +33,7 @@ export async function getDailyStaffAttendanceUseCase(
 
   const parsed = dailyStaffAttendanceResponseSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response: ' + parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ') });
   }
 
   return ok({

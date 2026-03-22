@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from './AppIcon';
 
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
@@ -18,15 +18,13 @@ export function InlineError({ message, onRetry }: InlineErrorProps) {
     <View style={styles.container} accessibilityRole="alert">
       <View style={styles.row}>
         <View style={styles.iconCircle}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="alert-circle-outline" size={18} color={colors.danger} />
+          <AppIcon name="alert-circle-outline" size={18} color={colors.danger} />
         </View>
-        <Text style={styles.text} numberOfLines={3}>{message}</Text>
+        <Text style={styles.text}>{message}</Text>
       </View>
       {onRetry ? (
         <TouchableOpacity style={styles.retryButton} onPress={onRetry} testID="retry-button">
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="refresh" size={14} color={colors.primary} />
+          <AppIcon name="refresh" size={14} color={colors.primary} />
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       ) : null}

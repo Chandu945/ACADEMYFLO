@@ -32,7 +32,8 @@ export async function listPaymentRequestsUseCase(
 
   const parsed = paymentRequestListResponseSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[listPaymentRequestsUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Something went wrong. Please try again.' });
   }
 
   return ok({ items: parsed.data.data, meta: parsed.data.meta });

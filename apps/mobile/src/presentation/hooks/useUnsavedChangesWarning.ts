@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Alert } from 'react-native';
+import { crossAlert } from '../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 
 /**
@@ -14,7 +15,7 @@ export function useUnsavedChangesWarning(hasUnsavedChanges: boolean) {
 
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       e.preventDefault();
-      Alert.alert(
+      crossAlert(
         'Discard changes?',
         'You have unsaved changes. Are you sure you want to leave?',
         [

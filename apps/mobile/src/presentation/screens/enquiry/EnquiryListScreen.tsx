@@ -8,11 +8,12 @@ import {
   RefreshControl,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EnquiryListItem, EnquiryStatus } from '../../../domain/enquiry/enquiry.types';
 import { useEnquiries } from '../../../application/enquiry/use-enquiries';
@@ -84,27 +85,46 @@ export function EnquiryListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } catch {
+      // Handled by hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     setSearchActive(false);
     setSearchText('');
     setDebouncedSearch('');
   }, []);
 
-  const isOverdue = useCallback((dateStr: string | null): boolean => {
-    if (!dateStr) return false;
-    return dateStr < getTodayIST();
+  const extractDate = useCallback((dateStr: string): string => {
+    return dateStr.includes('T') ? dateStr.split('T')[0]! : dateStr;
   }, []);
 
-  const _activeFilterCount = activeTab !== 'ALL' ? 1 : 0;
+  const isOverdue = useCallback((dateStr: string | null): boolean => {
+    if (!dateStr) return false;
+    return extractDate(dateStr) < getTodayIST();
+  }, [extractDate]);
+
+  const formatDate = useCallback((dateStr: string): string => {
+    try {
+      const dateOnly = extractDate(dateStr);
+      const d = new Date(dateOnly + 'T00:00:00');
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-IN');
+    } catch {
+      return dateStr;
+    }
+  }, [extractDate]);
 
   const renderItem = ({ item }: { item: EnquiryListItem }) => (
     <TouchableOpacity
@@ -126,14 +146,14 @@ export function EnquiryListScreen() {
             </View>
           </View>
           <View style={styles.phoneRow}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="phone-outline" size={14} color={colors.textSecondary} />
+            
+            <AppIcon name="phone-outline" size={14} color={colors.textSecondary} />
             <Text style={styles.mobileNumber}>{item.mobileNumber}</Text>
           </View>
           {item.interestedIn && (
             <View style={styles.interestRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="target" size={14} color={colors.textLight} />
+              
+              <AppIcon name="target" size={14} color={colors.textLight} />
               <Text style={styles.interestedIn}>{item.interestedIn}</Text>
             </View>
           )}
@@ -142,15 +162,15 @@ export function EnquiryListScreen() {
       <View style={styles.cardFooter}>
         {item.source && (
           <View style={styles.sourceBadge}>
-            <Text style={styles.sourceText}>{item.source.replace('_', ' ')}</Text>
+            <Text style={styles.sourceText}>{item.source.replace(/_/g, ' ')}</Text>
           </View>
         )}
         {item.nextFollowUpDate && (
           <View style={styles.followUpRow}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="calendar-clock" size={14} color={isOverdue(item.nextFollowUpDate) ? colors.danger : colors.textSecondary} />
+            
+            <AppIcon name="calendar-clock" size={14} color={isOverdue(item.nextFollowUpDate) ? colors.danger : colors.textSecondary} />
             <Text style={[styles.followUpDate, isOverdue(item.nextFollowUpDate) && styles.overdueText]}>
-              {new Date(item.nextFollowUpDate + 'T00:00:00').toLocaleDateString('en-IN')}
+              {formatDate(item.nextFollowUpDate)}
               {isOverdue(item.nextFollowUpDate) ? ' (Overdue)' : ''}
             </Text>
           </View>
@@ -165,9 +185,9 @@ export function EnquiryListScreen() {
       <View style={styles.navbar}>
         {searchActive ? (
           <View style={styles.searchBar}>
-            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity onPress={closeSearch} style={styles.navBtn} accessibilityLabel="Close search" accessibilityRole="button">
+
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -180,17 +200,17 @@ export function EnquiryListScreen() {
               testID="enquiry-search"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
+              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn} accessibilityLabel="Clear search" accessibilityRole="button">
+
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
         ) : (
           <View style={styles.titleBar}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+              
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.titleWrap}>
               <Text style={styles.navTitle}>Enquiries</Text>
@@ -202,8 +222,8 @@ export function EnquiryListScreen() {
             </View>
             <View style={styles.navActions}>
               <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="magnify" size={22} color={colors.text} />
+                
+                <AppIcon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowFilters((v) => !v)}
@@ -212,8 +232,7 @@ export function EnquiryListScreen() {
                 accessibilityLabel="Toggle filters"
                 accessibilityRole="button"
               >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon
+                <AppIcon
                   name={showFilters ? 'filter-variant-remove' : 'filter-variant'}
                   size={22}
                   color={showFilters ? colors.primary : colors.text}
@@ -249,8 +268,8 @@ export function EnquiryListScreen() {
           </View>
           {activeTab !== 'ALL' && (
             <TouchableOpacity style={styles.clearFilters} onPress={() => setActiveTab('ALL')}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="filter-remove-outline" size={16} color={colors.danger} />
+              
+              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
               <Text style={styles.clearFiltersText}>Clear Filter</Text>
             </TouchableOpacity>
           )}
@@ -261,14 +280,14 @@ export function EnquiryListScreen() {
       {!showFilters && activeTab !== 'ALL' && (
         <View style={styles.activeFilterBar}>
           <View style={styles.activeFilterPill}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="filter-variant" size={14} color={colors.primary} />
+            
+            <AppIcon name="filter-variant" size={14} color={colors.primary} />
             <Text style={styles.activeFilterText}>
               {FILTER_TABS.find((t) => t.key === activeTab)?.label}
             </Text>
             <TouchableOpacity onPress={() => setActiveTab('ALL')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="close-circle" size={16} color={colors.textSecondary} />
+              
+              <AppIcon name="close-circle" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -285,8 +304,8 @@ export function EnquiryListScreen() {
           !loading ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="account-question-outline" size={48} color={colors.primary} />
+                
+                <AppIcon name="account-question-outline" size={48} color={colors.primary} />
               </View>
               <Text style={styles.emptyTitle}>No enquiries found</Text>
               <Text style={styles.emptySubtitle}>
@@ -308,6 +327,8 @@ export function EnquiryListScreen() {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('AddEnquiry')}
+        accessibilityLabel="Add new enquiry"
+        accessibilityRole="button"
         testID="add-enquiry-fab"
       >
         <Text style={styles.fabText}>+</Text>

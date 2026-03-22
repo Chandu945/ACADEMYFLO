@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from '
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import type { AppError } from '../../../domain/common/errors';
 import type { MonthlyStaffSummaryItem } from '../../../domain/staff-attendance/staff-attendance.types';
@@ -101,6 +101,7 @@ export function StaffAttendanceMonthlySummaryScreen() {
   const [error, setError] = useState<AppError | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -111,37 +112,47 @@ export function StaffAttendanceMonthlySummaryScreen() {
       }
       setError(null);
 
-      const result = await getStaffMonthlySummaryUseCase(
-        { staffAttendanceApi: summaryApi },
-        month,
-        targetPage,
-        PAGE_SIZE,
-      );
+      try {
+        const result = await getStaffMonthlySummaryUseCase(
+          { staffAttendanceApi: summaryApi },
+          month,
+          targetPage,
+          PAGE_SIZE,
+        );
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.ok) {
-        if (append) {
-          setItems((prev) => [...prev, ...result.value.items]);
+        if (result.ok) {
+          if (append) {
+            setItems((prev) => [...prev, ...result.value.items]);
+          } else {
+            setItems(result.value.items);
+          }
+          setPage(targetPage);
+          setHasMore(targetPage < result.value.meta.totalPages);
         } else {
-          setItems(result.value.items);
+          setError(result.error);
         }
-        setPage(targetPage);
-        setHasMore(targetPage < result.value.meta.totalPages);
-      } else {
-        setError(result.error);
+      } catch (e) {
+        if (__DEV__) console.error('[StaffAttendanceMonthlySummary] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          fetchingMoreRef.current = false;
+        }
       }
-
-      setLoading(false);
-      setLoadingMore(false);
     },
     [month],
   );
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true);
   }, [loading, loadingMore, hasMore, page, load]);
 
   useEffect(() => {
@@ -154,8 +165,13 @@ export function StaffAttendanceMonthlySummaryScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load(1, false);
-    setRefreshing(false);
+    try {
+      await load(1, false);
+    } catch {
+      // Handled by load
+    } finally {
+      setRefreshing(false);
+    }
   }, [load]);
 
   const renderItem = useCallback(
@@ -198,8 +214,8 @@ export function StaffAttendanceMonthlySummaryScreen() {
       <>
         {/* Month Header */}
         <View style={styles.monthHeader}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="calendar-month" size={20} color={colors.primary} />
+          
+          <AppIcon name="calendar-month" size={20} color={colors.primary} />
           <Text style={styles.monthLabel}>{formatMonth(month)}</Text>
         </View>
 
@@ -228,8 +244,8 @@ export function StaffAttendanceMonthlySummaryScreen() {
         {/* Section Title */}
         {items.length > 0 && (
           <View style={styles.sectionHeader}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="account-multiple-outline" size={18} color={colors.textSecondary} />
+            
+            <AppIcon name="account-multiple-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.sectionTitle}>Staff Members ({items.length})</Text>
           </View>
         )}

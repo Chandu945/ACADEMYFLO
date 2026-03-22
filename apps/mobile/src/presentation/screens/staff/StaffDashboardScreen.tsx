@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -169,9 +169,9 @@ export function StaffDashboardScreen() {
               activeOpacity={0.7}
               testID="stat-attendance"
             >
-              <View style={[styles.statIcon, { backgroundColor: '#ecfdf5' }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="calendar-check-outline" size={22} color={colors.success} />
+              <View style={[styles.statIcon, { backgroundColor: colors.successBg }]}>
+                
+                <AppIcon name="calendar-check-outline" size={22} color={colors.success} />
               </View>
               <Text style={styles.statValue}>
                 {attendance ? attendance.presentCount : '–'}
@@ -193,8 +193,8 @@ export function StaffDashboardScreen() {
               testID="stat-pending-requests"
             >
               <View style={[styles.statIcon, { backgroundColor: colors.primarySoft }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="file-document-outline" size={22} color={colors.primary} />
+                
+                <AppIcon name="file-document-outline" size={22} color={colors.primary} />
               </View>
               <Text style={styles.statValue}>
                 {pendingRequests.length}
@@ -217,17 +217,17 @@ export function StaffDashboardScreen() {
               activeOpacity={0.7}
               testID="stat-events"
             >
-              <View style={[styles.statIcon, { backgroundColor: '#f0f0ff' }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="calendar-star" size={22} color="#6366f1" />
+              <View style={[styles.statIcon, { backgroundColor: colors.infoBg }]}>
+                
+                <AppIcon name="calendar-star" size={22} color={colors.info} />
               </View>
               <Text style={styles.statValue}>
                 {eventSummary ? eventSummary.thisMonth.upcoming : '–'}
               </Text>
               <Text style={styles.statLabel}>Upcoming Events</Text>
               {eventSummary && eventSummary.thisMonth.total > 0 && (
-                <View style={[styles.statSub, { backgroundColor: '#f0f0ff' }]}>
-                  <Text style={[styles.statSubText, { color: '#6366f1' }]}>
+                <View style={[styles.statSub, { backgroundColor: colors.infoBg }]}>
+                  <Text style={[styles.statSubText, { color: colors.info }]}>
                     {eventSummary.thisMonth.total} this month
                   </Text>
                 </View>
@@ -240,17 +240,17 @@ export function StaffDashboardScreen() {
               activeOpacity={0.7}
               testID="stat-enquiries"
             >
-              <View style={[styles.statIcon, { backgroundColor: '#fef3e7' }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="account-question-outline" size={22} color="#e67e22" />
+              <View style={[styles.statIcon, { backgroundColor: colors.warningBg }]}>
+                
+                <AppIcon name="account-question-outline" size={22} color={colors.warning} />
               </View>
               <Text style={styles.statValue}>
                 {enquirySummary ? enquirySummary.todayFollowUp : '–'}
               </Text>
               <Text style={styles.statLabel}>Follow-ups Today</Text>
               {enquirySummary && enquirySummary.active > 0 && (
-                <View style={[styles.statSub, { backgroundColor: '#fef3e7' }]}>
-                  <Text style={[styles.statSubText, { color: '#e67e22' }]}>
+                <View style={[styles.statSub, { backgroundColor: colors.warningBg }]}>
+                  <Text style={[styles.statSubText, { color: colors.warning }]}>
                     {enquirySummary.active} active
                   </Text>
                 </View>
@@ -267,9 +267,9 @@ export function StaffDashboardScreen() {
                 onPress={() => navigation.navigate('Attendance' as never)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#ecfdf5' }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="calendar-check-outline" size={20} color={colors.success} />
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.successBg }]}>
+                  
+                  <AppIcon name="calendar-check-outline" size={20} color={colors.success} />
                 </View>
                 <Text style={styles.quickActionLabel}>Mark{'\n'}Attendance</Text>
               </TouchableOpacity>
@@ -280,8 +280,8 @@ export function StaffDashboardScreen() {
                 activeOpacity={0.7}
               >
                 <View style={[styles.quickActionIcon, { backgroundColor: colors.primarySoft }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="account-plus-outline" size={20} color={colors.primary} />
+                  
+                  <AppIcon name="account-plus-outline" size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.quickActionLabel}>Add{'\n'}Student</Text>
               </TouchableOpacity>
@@ -291,9 +291,9 @@ export function StaffDashboardScreen() {
                 onPress={() => navigation.navigate('Fees' as never)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#f0f0ff' }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="cash-plus" size={20} color="#6366f1" />
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.infoBg }]}>
+                  
+                  <AppIcon name="cash-plus" size={20} color={colors.info} />
                 </View>
                 <Text style={styles.quickActionLabel}>Fee{'\n'}Request</Text>
               </TouchableOpacity>
@@ -303,9 +303,9 @@ export function StaffDashboardScreen() {
                 onPress={() => navigation.navigate('More', { screen: 'AddEnquiry' } as never)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#fef3e7' }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="account-question-outline" size={20} color="#e67e22" />
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.warningBg }]}>
+                  
+                  <AppIcon name="account-question-outline" size={20} color={colors.warning} />
                 </View>
                 <Text style={styles.quickActionLabel}>New{'\n'}Enquiry</Text>
               </TouchableOpacity>
@@ -321,14 +321,14 @@ export function StaffDashboardScreen() {
             >
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
-                  <View style={[styles.cardHeaderIcon, { backgroundColor: '#ecfdf5' }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="calendar-check-outline" size={18} color={colors.success} />
+                  <View style={[styles.cardHeaderIcon, { backgroundColor: colors.successBg }]}>
+                    
+                    <AppIcon name="calendar-check-outline" size={18} color={colors.success} />
                   </View>
                   <Text style={styles.cardTitle}>Today's Attendance</Text>
                 </View>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+                
+                <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
 
               <View style={styles.attendanceStats}>
@@ -395,8 +395,8 @@ export function StaffDashboardScreen() {
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
                   <View style={[styles.cardHeaderIcon, { backgroundColor: colors.primarySoft }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="file-document-outline" size={18} color={colors.primary} />
+                    
+                    <AppIcon name="file-document-outline" size={18} color={colors.primary} />
                   </View>
                   <Text style={styles.cardTitle}>My Pending Requests</Text>
                 </View>
@@ -429,8 +429,8 @@ export function StaffDashboardScreen() {
                   <Text style={styles.viewAllText}>
                     View all {pendingRequests.length} requests
                   </Text>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-right" size={16} color={colors.primary} />
+                  
+                  <AppIcon name="chevron-right" size={16} color={colors.primary} />
                 </View>
               )}
             </TouchableOpacity>
@@ -445,19 +445,19 @@ export function StaffDashboardScreen() {
             >
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
-                  <View style={[styles.cardHeaderIcon, { backgroundColor: '#fef3e7' }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="account-question-outline" size={18} color="#e67e22" />
+                  <View style={[styles.cardHeaderIcon, { backgroundColor: colors.warningBg }]}>
+                    
+                    <AppIcon name="account-question-outline" size={18} color={colors.warning} />
                   </View>
                   <Text style={styles.cardTitle}>Enquiries</Text>
                 </View>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+                
+                <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
 
               <View style={styles.enquiryStats}>
                 <View style={styles.enquiryStat}>
-                  <Text style={[styles.enquiryStatValue, { color: '#e67e22' }]}>
+                  <Text style={[styles.enquiryStatValue, { color: colors.warning }]}>
                     {enquirySummary.active}
                   </Text>
                   <Text style={styles.enquiryStatLabel}>Active</Text>
@@ -536,7 +536,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   statSub: {
     marginTop: spacing.sm,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: colors.successBg,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -767,7 +767,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: 1,
   },
   requestStatusBadge: {
-    backgroundColor: '#fef3e7',
+    backgroundColor: colors.warningBg,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -775,7 +775,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   requestStatusText: {
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.semibold,
-    color: '#e67e22',
+    color: colors.warning,
   },
 
   /* ── Enquiry Card ───────────────────────────────── */

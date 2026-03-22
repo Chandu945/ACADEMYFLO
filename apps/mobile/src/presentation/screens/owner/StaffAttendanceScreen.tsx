@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, memo } from 'react';
 import { View, Text, FlatList, Pressable, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import type { DailyStaffAttendanceItem } from '../../../domain/staff-attendance/staff-attendance.types';
 import { useStaffAttendance } from '../../../application/staff-attendance/use-staff-attendance';
@@ -110,8 +110,8 @@ function SummaryBar({ items }: SummaryBarProps) {
     <View style={styles.summaryBar}>
       <View style={styles.summaryLeft}>
         <View style={styles.summaryIconCircle}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="account-group" size={18} color={colors.primary} />
+          
+          <AppIcon name="account-group" size={18} color={colors.primary} />
         </View>
         <View>
           <Text style={styles.summaryTitle}>
@@ -143,13 +143,18 @@ export function StaffAttendanceScreen() {
   const { items, loading, loadingMore, error, isHoliday, refetch, fetchMore, toggleStatus } =
     useStaffAttendance(selectedDate, staffAttendanceApi);
 
-  const today = useMemo(() => getTodayIST(), []);
+  const today = getTodayIST();
   const isToday = selectedDate === today;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } catch {
+      // Handled by hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const goToPrev = useCallback(() => {
@@ -215,12 +220,12 @@ export function StaffAttendanceScreen() {
             testID="staff-daily-report-button"
           >
             <View style={[styles.actionIconCircle, { backgroundColor: colors.infoBg }]}>
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="file-chart-outline" size={20} color={colors.info} />
+              
+              <AppIcon name="file-chart-outline" size={20} color={colors.info} />
             </View>
             <Text style={styles.actionCardLabel}>Daily Report</Text>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="chevron-right" size={18} color={colors.textDisabled} />
+            
+            <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
           </Pressable>
 
           <Pressable
@@ -231,12 +236,12 @@ export function StaffAttendanceScreen() {
             testID="staff-monthly-summary-button"
           >
             <View style={[styles.actionIconCircle, { backgroundColor: colors.primarySoft }]}>
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="calendar-month-outline" size={20} color={colors.primary} />
+              
+              <AppIcon name="calendar-month-outline" size={20} color={colors.primary} />
             </View>
             <Text style={styles.actionCardLabel}>Monthly Summary</Text>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="chevron-right" size={18} color={colors.textDisabled} />
+            
+            <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
           </Pressable>
         </View>
       </>

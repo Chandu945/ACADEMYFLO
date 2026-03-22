@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Screen } from '../../components/ui/Screen';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { getAcademyInfoUseCase } from '../../../application/parent/use-cases/get-academy-info.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import type { AcademyInfo } from '../../../domain/parent/parent.types';
@@ -15,8 +15,8 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   return (
     <View style={rowStyles.row}>
       <View style={rowStyles.iconContainer}>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name={icon} size={20} color={colors.primary} />
+        
+        <AppIcon name={icon} size={20} color={colors.primary} />
       </View>
       <View style={rowStyles.content}>
         <Text style={rowStyles.label}>{label}</Text>
@@ -70,14 +70,22 @@ export function AcademyInfoScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    const result = await getAcademyInfoUseCase({ parentApi });
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setInfo(result.value);
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await getAcademyInfoUseCase({ parentApi });
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setInfo(result.value);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[AcademyInfoScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError('Failed to load academy information.');
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -101,8 +109,8 @@ export function AcademyInfoScreen() {
     return (
       <Screen>
         <View style={styles.center}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+          
+          <AppIcon name="alert-circle-outline" size={48} color={colors.danger} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={load}>
             <Text style={styles.retryText}>Try Again</Text>
@@ -129,8 +137,8 @@ export function AcademyInfoScreen() {
       {/* Header */}
       <View style={styles.headerCard}>
         <View style={styles.headerIcon}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="school-outline" size={32} color={colors.primary} />
+          
+          <AppIcon name="school-outline" size={32} color={colors.primary} />
         </View>
         <Text style={styles.academyName}>{info.academyName}</Text>
       </View>
@@ -141,8 +149,8 @@ export function AcademyInfoScreen() {
         <InfoRow icon="map-marker-outline" label="Address" value={fullAddress} />
         <View style={[rowStyles.row, { borderBottomWidth: 0 }]}>
           <View style={rowStyles.iconContainer}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="city-variant-outline" size={20} color={colors.primary} />
+            
+            <AppIcon name="city-variant-outline" size={20} color={colors.primary} />
           </View>
           <View style={rowStyles.content}>
             <Text style={rowStyles.label}>City</Text>

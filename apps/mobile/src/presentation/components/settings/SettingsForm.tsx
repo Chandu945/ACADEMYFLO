@@ -1,11 +1,14 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TextInput, Switch, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Switch, TouchableOpacity, StyleSheet } from 'react-native';
 import type { AcademySettings, UpdateAcademySettingsRequest } from '../../../domain/settings/academy-settings.types';
 import type { AppError } from '../../../domain/common/errors';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 type SettingsFormProps = {
   settings: AcademySettings;
@@ -20,6 +23,7 @@ const REPEAT_INTERVALS = [1, 3, 5] as const;
 export function SettingsForm({ settings, editable, saving, error, onSave }: SettingsFormProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
   const [receiptPrefix, setReceiptPrefix] = useState(settings.receiptPrefix);
   const [dueDateDay, setDueDateDay] = useState(String(settings.defaultDueDateDay));
   const [lateFeeEnabled, setLateFeeEnabled] = useState(settings.lateFeeEnabled);
@@ -34,6 +38,8 @@ export function SettingsForm({ settings, editable, saving, error, onSave }: Sett
     gracePeriodDays !== String(settings.gracePeriodDays) ||
     lateFeeAmount !== String(settings.lateFeeAmountInr) ||
     repeatInterval !== settings.lateFeeRepeatIntervalDays;
+
+  useUnsavedChangesWarning(isDirty && !saving);
 
   const dayNum = parseInt(dueDateDay, 10);
   const dayValid = !isNaN(dayNum) && dayNum >= 1 && dayNum <= 28;
@@ -67,44 +73,34 @@ export function SettingsForm({ settings, editable, saving, error, onSave }: Sett
 
     const saveError = await onSave(req);
     if (!saveError) {
-      Alert.alert('Saved', 'Settings updated successfully.');
+      showToast('Settings updated successfully');
     }
-  }, [receiptPrefix, dueDateDay, lateFeeEnabled, gracePeriodDays, lateFeeAmount, repeatInterval, settings, onSave]);
+  }, [receiptPrefix, dueDateDay, lateFeeEnabled, gracePeriodDays, lateFeeAmount, repeatInterval, settings, onSave, showToast]);
 
   return (
     <View testID="settings-form">
-      <Text style={styles.label}>Receipt Prefix</Text>
-      <TextInput
-        style={[styles.input, !editable && styles.inputDisabled]}
+      <Input
+        label="Receipt Prefix"
         value={receiptPrefix}
         onChangeText={setReceiptPrefix}
         editable={editable}
         maxLength={20}
         placeholder="e.g. PC"
+        error={editable && !prefixValid && receiptPrefix.length === 0 ? 'Required' : undefined}
         testID="input-receipt-prefix"
       />
-      {editable && !prefixValid && receiptPrefix.length === 0 && (
-        <Text style={styles.hint} testID="prefix-error">
-          Required
-        </Text>
-      )}
 
-      <Text style={styles.label}>Default Due Date Day (1–28)</Text>
-      <TextInput
-        style={[styles.input, !editable && styles.inputDisabled]}
+      <Input
+        label="Default Due Date Day (1–28)"
         value={dueDateDay}
         onChangeText={setDueDateDay}
         editable={editable}
         keyboardType="number-pad"
         maxLength={2}
         placeholder="e.g. 5"
+        error={editable && !dayValid && dueDateDay.length > 0 ? 'Must be 1–28' : undefined}
         testID="input-due-date-day"
       />
-      {editable && !dayValid && dueDateDay.length > 0 && (
-        <Text style={styles.hint} testID="day-error">
-          Must be 1–28
-        </Text>
-      )}
 
       {/* Late Fee Section */}
       <View style={styles.sectionDivider} />
@@ -124,35 +120,29 @@ export function SettingsForm({ settings, editable, saving, error, onSave }: Sett
 
       {lateFeeEnabled && (
         <>
-          <Text style={styles.label}>Grace Period (days, 0–30)</Text>
-          <TextInput
-            style={[styles.input, !editable && styles.inputDisabled]}
+          <Input
+            label="Grace Period (days, 0–30)"
             value={gracePeriodDays}
             onChangeText={setGracePeriodDays}
             editable={editable}
             keyboardType="number-pad"
             maxLength={2}
             placeholder="e.g. 5"
+            error={editable && !graceValid && gracePeriodDays.length > 0 ? 'Must be 0–30' : undefined}
             testID="input-grace-period"
           />
-          {editable && !graceValid && gracePeriodDays.length > 0 && (
-            <Text style={styles.hint}>Must be 0–30</Text>
-          )}
 
-          <Text style={styles.label}>Late Fee Amount (INR)</Text>
-          <TextInput
-            style={[styles.input, !editable && styles.inputDisabled]}
+          <Input
+            label="Late Fee Amount (INR)"
             value={lateFeeAmount}
             onChangeText={setLateFeeAmount}
             editable={editable}
             keyboardType="number-pad"
             maxLength={5}
             placeholder="e.g. 50"
+            error={editable && !feeAmtValid && lateFeeAmount.length > 0 ? 'Must be 0–10000' : undefined}
             testID="input-late-fee-amount"
           />
-          {editable && !feeAmtValid && lateFeeAmount.length > 0 && (
-            <Text style={styles.hint}>Must be 0–10000</Text>
-          )}
 
           <Text style={styles.label}>Repeat Every (days)</Text>
           <View style={styles.intervalRow}>
@@ -215,24 +205,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textMedium,
     marginBottom: 6,
     marginTop: spacing.base,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    fontSize: fontSizes.lg,
-    color: colors.text,
-  },
-  inputDisabled: {
-    backgroundColor: colors.bgSubtle,
-    color: colors.textSecondary,
-  },
-  hint: {
-    fontSize: fontSizes.sm,
-    color: colors.danger,
-    marginTop: spacing.xs,
   },
   errorText: {
     fontSize: fontSizes.base,

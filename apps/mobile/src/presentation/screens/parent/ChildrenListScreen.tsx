@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { ParentHomeStackParamList } from '../../navigation/ParentHomeStack';
 import type { ChildSummary } from '../../../domain/parent/parent.types';
 import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-my-children.usecase';
@@ -95,15 +95,25 @@ export function ChildrenListScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    const result = await getMyChildrenUseCase({ parentApi });
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setChildren(result.value);
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await getMyChildrenUseCase({ parentApi });
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setChildren(result.value);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ChildrenListScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError('Failed to load children. Pull to retry.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -123,9 +133,13 @@ export function ChildrenListScreen() {
     }, [load]),
   );
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    load();
+    try {
+      await load();
+    } catch {
+      // Handled inside load
+    }
   }, [load]);
 
   const renderHeader = useCallback(
@@ -136,8 +150,8 @@ export function ChildrenListScreen() {
           <Text style={styles.parentName}>{user?.fullName ?? 'Parent'}</Text>
         </View>
         <View style={styles.headerBadge}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="account-child-outline" size={28} color={colors.primary} />
+          
+          <AppIcon name="account-child-outline" size={28} color={colors.primary} />
         </View>
       </View>
     ),
@@ -176,8 +190,8 @@ export function ChildrenListScreen() {
               />
             </View>
             <View style={styles.detailRow}>
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="currency-inr" size={14} color={colors.textSecondary} />
+              
+              <AppIcon name="currency-inr" size={14} color={colors.textSecondary} />
               <Text style={styles.feeText}>
                 {formatCurrency(item.monthlyFee)}
                 <Text style={styles.feeLabel}> / month</Text>
@@ -188,8 +202,8 @@ export function ChildrenListScreen() {
         </View>
         <View style={styles.cardAction}>
           <Text style={styles.cardActionText}>View Details</Text>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="chevron-right" size={18} color={colors.primary} />
+          
+          <AppIcon name="chevron-right" size={18} color={colors.primary} />
         </View>
       </TouchableOpacity>
     ),
@@ -208,8 +222,8 @@ export function ChildrenListScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+        
+        <AppIcon name="alert-circle-outline" size={48} color={colors.danger} />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={load}>
           <Text style={styles.retryText}>Try Again</Text>

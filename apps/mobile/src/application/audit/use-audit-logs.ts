@@ -69,35 +69,44 @@ export function useAuditLogs(auditApi: AuditApiPort): UseAuditLogsResult {
       }
       setError(null);
 
-      const result = await listAuditLogsUseCase(
-        { auditApi },
-        {
-          page: targetPage,
-          pageSize: PAGE_SIZE,
-          from: activeFilters.from || undefined,
-          to: activeFilters.to || undefined,
-          action: activeFilters.action || undefined,
-          entityType: activeFilters.entityType || undefined,
-        },
-      );
+      try {
+        const result = await listAuditLogsUseCase(
+          { auditApi },
+          {
+            page: targetPage,
+            pageSize: PAGE_SIZE,
+            from: activeFilters.from || undefined,
+            to: activeFilters.to || undefined,
+            action: activeFilters.action || undefined,
+            entityType: activeFilters.entityType || undefined,
+          },
+        );
 
-      // Discard stale responses from superseded requests
-      if (!mountedRef.current || currentLoadId !== loadIdRef.current) return;
+        // Discard stale responses from superseded requests
+        if (!mountedRef.current || currentLoadId !== loadIdRef.current) return;
 
-      if (result.ok) {
-        if (append) {
-          setItems((prev) => [...prev, ...result.value.items]);
+        if (result.ok) {
+          if (append) {
+            setItems((prev) => [...prev, ...result.value.items]);
+          } else {
+            setItems(result.value.items);
+          }
+          setPage(targetPage);
+          setHasMore(targetPage < result.value.meta.totalPages);
         } else {
-          setItems(result.value.items);
+          setError(result.error);
         }
-        setPage(targetPage);
-        setHasMore(targetPage < result.value.meta.totalPages);
-      } else {
-        setError(result.error);
+      } catch (e) {
+        if (__DEV__) console.error('[useAuditLogs] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-
-      setLoading(false);
-      setLoadingMore(false);
     },
     [auditApi],
   );

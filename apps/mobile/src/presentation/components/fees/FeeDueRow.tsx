@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import { Badge } from '../ui/Badge';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
@@ -57,8 +57,8 @@ function FeeDueRowComponent({
       testID={`fee-row-${item.id}`}
     >
       <View style={[styles.iconCircle, { backgroundColor: statusInfo?.bg ?? colors.dangerBg }]}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name={statusInfo?.name ?? 'alert-circle-outline'} size={20} color={statusInfo?.color ?? colors.danger} />
+        
+        <AppIcon name={statusInfo?.name ?? 'alert-circle-outline'} size={20} color={statusInfo?.color ?? colors.danger} />
       </View>
 
       <View style={styles.info}>
@@ -83,8 +83,8 @@ function FeeDueRowComponent({
         <Badge label={item.status} variant={STATUS_VARIANT[item.status] ?? 'neutral'} />
       </View>
 
-      {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-      <Icon name="chevron-right" size={18} color={colors.textDisabled} style={styles.chevron} />
+      
+      <AppIcon name="chevron-right" size={18} color={colors.textDisabled} style={styles.chevron} />
     </TouchableOpacity>
   );
 }

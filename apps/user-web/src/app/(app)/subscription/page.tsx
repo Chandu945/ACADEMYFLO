@@ -158,7 +158,7 @@ export default function SubscriptionPage() {
                     <li key={i}>{f}</li>
                   ))}
                 </ul>
-                <div style={{ marginTop: 'var(--space-4)' }}>
+                <div className={styles.tierAction}>
                   {isCurrent ? (
                     <Button variant="outline" size="sm" fullWidth disabled>Current Plan</Button>
                   ) : (

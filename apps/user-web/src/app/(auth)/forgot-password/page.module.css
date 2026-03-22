@@ -326,6 +326,12 @@
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
+@media (min-width: 481px) and (max-width: 768px) {
+  .wrapper {
+    max-width: 460px;
+  }
+}
+
 @media (max-width: 480px) {
   .page {
     padding: var(--space-4);

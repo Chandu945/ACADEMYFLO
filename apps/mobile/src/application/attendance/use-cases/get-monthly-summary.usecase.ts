@@ -35,7 +35,8 @@ export async function getMonthlySummaryUseCase(
 
   const parsed = monthlySummaryResponseSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[getMonthlySummaryUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Failed to load summary. Please try again.' });
   }
 
   return ok({

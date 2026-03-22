@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useAuth } from '../../context/AuthContext';
 import { useAuditLogs } from '../../../application/audit/use-audit-logs';
 import { auditApi } from '../../../infra/audit/audit-api';
@@ -32,8 +32,8 @@ export function AuditLogsScreen() {
   if (!isOwner) {
     return (
       <View style={styles.center} testID="audit-forbidden">
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="shield-lock-outline" size={48} color={colors.danger} />
+        
+        <AppIcon name="shield-lock-outline" size={48} color={colors.danger} />
         <Text style={styles.forbiddenText}>Only the owner can view audit logs.</Text>
       </View>
     );
@@ -118,8 +118,13 @@ function AuditLogsContent() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } catch {
+      // Handled by hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const renderItem = useCallback(
@@ -140,8 +145,8 @@ function AuditLogsContent() {
     if (hasMore && items.length > 0) {
       return (
         <TouchableOpacity style={styles.loadMoreBtn} onPress={fetchMore} testID="load-more-btn">
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="chevron-down-circle-outline" size={18} color={colors.primary} />
+          
+          <AppIcon name="chevron-down-circle-outline" size={18} color={colors.primary} />
           <Text style={styles.loadMoreText}>Load More</Text>
         </TouchableOpacity>
       );
@@ -160,8 +165,8 @@ function AuditLogsContent() {
           accessibilityRole="button"
           accessibilityLabel="Toggle filters"
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon
+          
+          <AppIcon
             name={showFilters ? 'filter-off-outline' : 'filter-variant'}
             size={22}
             color={showFilters ? colors.primary : colors.textSecondary}
@@ -195,13 +200,13 @@ function AuditLogsContent() {
       {error && (
         <View style={styles.errorCard} testID="audit-error">
           <View style={styles.errorIconCircle}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="alert-circle-outline" size={20} color={colors.danger} />
+            
+            <AppIcon name="alert-circle-outline" size={20} color={colors.danger} />
           </View>
           <Text style={styles.errorText}>{error.message}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={refetch} testID="audit-retry">
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="refresh" size={16} color={colors.primary} />
+            
+            <AppIcon name="refresh" size={16} color={colors.primary} />
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -232,8 +237,8 @@ function AuditLogsContent() {
           ListHeaderComponent={
             items.length > 0 ? (
               <View style={styles.listSectionHeader}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="clipboard-text-clock-outline" size={18} color={colors.textSecondary} />
+                
+                <AppIcon name="clipboard-text-clock-outline" size={18} color={colors.textSecondary} />
                 <Text style={styles.listSectionTitle}>Activity Log</Text>
                 <Text style={styles.listSectionCount}>{items.length}</Text>
               </View>

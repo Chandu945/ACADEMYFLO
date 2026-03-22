@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Image,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { ChildSummary, PaymentHistoryItem } from '../../../domain/parent/parent.types';
 import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-my-children.usecase';
@@ -47,23 +47,33 @@ export function ParentDashboardScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    const [childrenRes, paymentsRes] = await Promise.all([
-      getMyChildrenUseCase({ parentApi }),
-      getPaymentHistoryUseCase({ parentApi }),
-    ]);
-    if (!mountedRef.current) return;
+    try {
+      const [childrenRes, paymentsRes] = await Promise.all([
+        getMyChildrenUseCase({ parentApi }),
+        getPaymentHistoryUseCase({ parentApi }),
+      ]);
+      if (!mountedRef.current) return;
 
-    if (childrenRes.ok) {
-      setData((prev) => ({
-        ...prev,
-        children: childrenRes.value,
-        payments: paymentsRes.ok ? paymentsRes.value : prev.payments,
-      }));
-    } else {
-      setError(childrenRes.error.message);
+      if (childrenRes.ok) {
+        setData((prev) => ({
+          ...prev,
+          children: childrenRes.value,
+          payments: paymentsRes.ok ? paymentsRes.value : prev.payments,
+        }));
+      } else {
+        setError(childrenRes.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ParentDashboardScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError('Failed to load dashboard. Pull to retry.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -85,7 +95,11 @@ export function ParentDashboardScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
+    try {
+      await load();
+    } catch {
+      // Handled inside load
+    }
   }, [load]);
 
   const { children, payments } = data;
@@ -130,8 +144,8 @@ export function ParentDashboardScreen() {
           {user?.profilePhotoUrl ? (
             <Image source={{ uri: user.profilePhotoUrl }} style={styles.profileImage} />
           ) : (
-            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-            <Icon name="account-circle-outline" size={28} color={colors.primary} />
+            
+            <AppIcon name="account-circle-outline" size={28} color={colors.primary} />
           )}
         </TouchableOpacity>
       </View>
@@ -158,17 +172,17 @@ export function ParentDashboardScreen() {
               activeOpacity={0.7}
             >
               <View style={[styles.statIconCircle, { backgroundColor: colors.primarySoft }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="account-child" size={20} color={colors.primary} />
+                
+                <AppIcon name="account-child" size={20} color={colors.primary} />
               </View>
               <Text style={styles.statValue}>{children.length}</Text>
               <Text style={styles.statLabel}>Children</Text>
             </TouchableOpacity>
 
             <View style={styles.statCard}>
-              <View style={[styles.statIconCircle, { backgroundColor: '#ecfdf5' }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="calendar-check-outline" size={20} color={colors.success} />
+              <View style={[styles.statIconCircle, { backgroundColor: colors.successBg }]}>
+                
+                <AppIcon name="calendar-check-outline" size={20} color={colors.success} />
               </View>
               <Text style={styles.statValue}>
                 {avgAttendance != null ? `${avgAttendance}%` : '--'}
@@ -177,9 +191,9 @@ export function ParentDashboardScreen() {
             </View>
 
             <View style={styles.statCard}>
-              <View style={[styles.statIconCircle, { backgroundColor: '#f0f0ff' }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="currency-inr" size={20} color="#6366f1" />
+              <View style={[styles.statIconCircle, { backgroundColor: colors.infoBg }]}>
+                
+                <AppIcon name="currency-inr" size={20} color={colors.info} />
               </View>
               <Text style={styles.statValue}>{formatCurrency(totalMonthlyFee)}</Text>
               <Text style={styles.statLabel}>Monthly Fee</Text>
@@ -194,10 +208,12 @@ export function ParentDashboardScreen() {
                 style={styles.quickAction}
                 onPress={() => navigation.navigate('Children')}
                 activeOpacity={0.7}
+                accessibilityLabel="My Children"
+                accessibilityRole="button"
               >
                 <View style={[styles.quickActionIcon, { backgroundColor: colors.primarySoft }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="account-child" size={20} color={colors.primary} />
+
+                  <AppIcon name="account-child" size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.quickActionLabel}>My{'\n'}Children</Text>
               </TouchableOpacity>
@@ -206,10 +222,12 @@ export function ParentDashboardScreen() {
                 style={styles.quickAction}
                 onPress={() => navigation.navigate('Payments')}
                 activeOpacity={0.7}
+                accessibilityLabel="Payment History"
+                accessibilityRole="button"
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#ecfdf5' }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="credit-card-outline" size={20} color={colors.success} />
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.successBg }]}>
+
+                  <AppIcon name="credit-card-outline" size={20} color={colors.success} />
                 </View>
                 <Text style={styles.quickActionLabel}>Payment{'\n'}History</Text>
               </TouchableOpacity>
@@ -218,10 +236,12 @@ export function ParentDashboardScreen() {
                 style={styles.quickAction}
                 onPress={() => navigation.navigate('More', { screen: 'AcademyInfo' })}
                 activeOpacity={0.7}
+                accessibilityLabel="Academy Info"
+                accessibilityRole="button"
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#f0f0ff' }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="school-outline" size={20} color="#6366f1" />
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.infoBg }]}>
+
+                  <AppIcon name="school-outline" size={20} color={colors.info} />
                 </View>
                 <Text style={styles.quickActionLabel}>Academy{'\n'}Info</Text>
               </TouchableOpacity>
@@ -230,10 +250,12 @@ export function ParentDashboardScreen() {
                 style={styles.quickAction}
                 onPress={() => navigation.navigate('More', { screen: 'ParentProfile' })}
                 activeOpacity={0.7}
+                accessibilityLabel="My Profile"
+                accessibilityRole="button"
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: '#fef3e7' }]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="account-edit-outline" size={20} color="#e67e22" />
+                <View style={[styles.quickActionIcon, { backgroundColor: colors.warningBg }]}>
+
+                  <AppIcon name="account-edit-outline" size={20} color={colors.warning} />
                 </View>
                 <Text style={styles.quickActionLabel}>My{'\n'}Profile</Text>
               </TouchableOpacity>
@@ -246,8 +268,8 @@ export function ParentDashboardScreen() {
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLeft}>
                   <View style={[styles.sectionHeaderIcon, { backgroundColor: colors.primarySoft }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="account-child" size={18} color={colors.primary} />
+                    
+                    <AppIcon name="account-child" size={18} color={colors.primary} />
                   </View>
                   <Text style={styles.sectionTitle}>My Children</Text>
                 </View>
@@ -306,8 +328,8 @@ export function ParentDashboardScreen() {
                       </Text>
                       <Text style={styles.childAttendanceLabel}>Attendance</Text>
                     </View>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="chevron-right" size={18} color={colors.textDisabled} />
+                    
+                    <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
                   </TouchableOpacity>
                 );
               })}
@@ -319,9 +341,9 @@ export function ParentDashboardScreen() {
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.sectionHeaderIcon, { backgroundColor: '#ecfdf5' }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="credit-card-check-outline" size={18} color={colors.success} />
+                  <View style={[styles.sectionHeaderIcon, { backgroundColor: colors.successBg }]}>
+                    
+                    <AppIcon name="credit-card-check-outline" size={18} color={colors.success} />
                   </View>
                   <Text style={styles.sectionTitle}>Recent Payments</Text>
                 </View>
@@ -335,8 +357,8 @@ export function ParentDashboardScreen() {
 
               {/* Total paid summary */}
               <View style={styles.totalPaidBanner}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="check-decagram" size={20} color={colors.success} />
+                
+                <AppIcon name="check-decagram" size={20} color={colors.success} />
                 <View style={styles.totalPaidInfo}>
                   <Text style={styles.totalPaidLabel}>Paid This Month</Text>
                   <Text style={styles.totalPaidValue}>{formatCurrency(totalPaid)}</Text>
@@ -361,8 +383,8 @@ export function ParentDashboardScreen() {
                   }
                 >
                   <View style={styles.paymentAvatar}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="receipt" size={16} color={colors.success} />
+                    
+                    <AppIcon name="receipt" size={16} color={colors.success} />
                   </View>
                   <View style={styles.paymentInfo}>
                     <Text style={styles.paymentName} numberOfLines={1}>
@@ -385,17 +407,17 @@ export function ParentDashboardScreen() {
             onPress={() => navigation.navigate('More', { screen: 'AcademyInfo' })}
           >
             <View style={styles.sectionHeaderLeft}>
-              <View style={[styles.sectionHeaderIcon, { backgroundColor: '#f0f0ff' }]}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="school-outline" size={18} color="#6366f1" />
+              <View style={[styles.sectionHeaderIcon, { backgroundColor: colors.infoBg }]}>
+                
+                <AppIcon name="school-outline" size={18} color={colors.info} />
               </View>
               <View>
                 <Text style={styles.sectionTitle}>Academy Information</Text>
                 <Text style={styles.academySubtitle}>View academy details and contact info</Text>
               </View>
             </View>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+            
+            <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       )}
@@ -676,7 +698,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: '#ecfdf5',
+    backgroundColor: colors.successBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,

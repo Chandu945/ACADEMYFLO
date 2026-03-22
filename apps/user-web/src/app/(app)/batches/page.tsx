@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBatches } from '@/application/batches/use-batches';
+import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Badge } from '@/components/ui/Badge';
@@ -13,6 +14,8 @@ import styles from './page.module.css';
 
 export default function BatchesPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const canManage = user?.role === 'OWNER' || user?.role === 'STAFF';
   const [search, setSearch] = useState('');
   const { data: batches, loading, error, refetch } = useBatches(search || undefined);
 
@@ -21,9 +24,11 @@ export default function BatchesPage() {
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Batches</h1>
-        <Button variant="primary" onClick={() => router.push('/batches/new')}>
-          Add Batch
-        </Button>
+        {canManage && (
+          <Button variant="primary" onClick={() => router.push('/batches/new')}>
+            Add Batch
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -43,7 +48,7 @@ export default function BatchesPage() {
         <EmptyState
           message="No batches found"
           subtitle={search ? 'Try a different search term' : 'Create your first batch to organize students'}
-          action={!search ? <Button variant="primary" onClick={() => router.push('/batches/new')}>Add Batch</Button> : undefined}
+          action={!search && canManage ? <Button variant="primary" onClick={() => router.push('/batches/new')}>Add Batch</Button> : undefined}
         />
       ) : (
         <div className={styles.cardGrid}>

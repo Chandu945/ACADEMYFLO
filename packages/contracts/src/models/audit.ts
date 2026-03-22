@@ -26,6 +26,8 @@ export const AUDIT_ACTION_TYPES = [
   'EVENT_CREATED',
   'EVENT_UPDATED',
   'EVENT_DELETED',
+  'GALLERY_PHOTO_UPLOADED',
+  'GALLERY_PHOTO_DELETED',
 ] as const;
 export type AuditActionType = (typeof AUDIT_ACTION_TYPES)[number];
 
@@ -40,5 +42,6 @@ export const AUDIT_ENTITY_TYPES = [
   'FEE_PAYMENT',
   'SUBSCRIPTION_PAYMENT',
   'EVENT',
+  'GALLERY_PHOTO',
 ] as const;
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];

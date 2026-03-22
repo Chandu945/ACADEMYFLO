@@ -8,10 +8,12 @@ import {
   RefreshControl,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { AttendanceStackParamList } from '../../navigation/AttendanceStack';
 import type { DailyAttendanceItem } from '../../../domain/attendance/attendance.types';
 import { useAttendance, getTodayIST } from '../../../application/attendance/use-attendance';
@@ -20,6 +22,7 @@ import { declareHoliday, removeHoliday } from '../../../infra/attendance/holiday
 import { declareHolidayUseCase } from '../../../application/attendance/use-cases/declare-holiday.usecase';
 import { removeHolidayUseCase } from '../../../application/attendance/use-cases/remove-holiday.usecase';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { DatePickerRow } from '../../components/attendance/DatePickerRow';
@@ -59,6 +62,7 @@ export function AttendanceScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isOwner = user?.role === 'OWNER';
 
   const [selectedDate, setSelectedDate] = useState(getTodayIST);
@@ -87,13 +91,27 @@ export function AttendanceScreen() {
   const { items, loading, loadingMore, error, isHoliday, refetch, fetchMore, toggleStatus } =
     useAttendance(selectedDate, attendanceApi, selectedBatchId, debouncedSearch || null);
 
-  const today = getTodayIST();
-  const isToday = selectedDate === today;
+  // Refetch when screen regains focus (e.g., returning from daily report)
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      refetch();
+    }, [refetch]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } catch {
+      // Handled by the hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const goToPrev = useCallback(() => {
@@ -101,28 +119,72 @@ export function AttendanceScreen() {
   }, []);
 
   const goToNext = useCallback(() => {
-    if (!isToday) {
-      setSelectedDate((d) => addDays(d, 1));
-    }
-  }, [isToday]);
+    setSelectedDate((d) => {
+      const next = addDays(d, 1);
+      return next > getTodayIST() ? d : next;
+    });
+  }, []);
 
   const goToToday = useCallback(() => {
     setSelectedDate(getTodayIST());
   }, []);
 
-  const handleDeclareHoliday = useCallback(async () => {
-    setDeclaringHoliday(true);
-    await declareHolidayUseCase({ holidaysApi: holidaysApiRef }, selectedDate);
-    setDeclaringHoliday(false);
-    refetch();
-  }, [selectedDate, refetch]);
+  const handleDeclareHoliday = useCallback(() => {
+    crossAlert(
+      'Declare Holiday',
+      'This will mark this date as a holiday for all students. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Declare',
+          onPress: async () => {
+            setDeclaringHoliday(true);
+            try {
+              const result = await declareHolidayUseCase({ holidaysApi: holidaysApiRef }, selectedDate);
+              if (!result.ok) {
+                showToast(result.error.message, 'error');
+              }
+              refetch();
+            } catch (e) {
+              if (__DEV__) console.error('[AttendanceScreen] Declare holiday failed:', e);
+              showToast('Failed to declare holiday', 'error');
+            } finally {
+              setDeclaringHoliday(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [selectedDate, refetch, showToast]);
 
-  const handleRemoveHoliday = useCallback(async () => {
-    setRemovingHoliday(true);
-    await removeHolidayUseCase({ holidaysApi: holidaysApiRef }, selectedDate);
-    setRemovingHoliday(false);
-    refetch();
-  }, [selectedDate, refetch]);
+  const handleRemoveHoliday = useCallback(() => {
+    crossAlert(
+      'Remove Holiday',
+      'This will remove the holiday status for this date and restore attendance. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setRemovingHoliday(true);
+            try {
+              const result = await removeHolidayUseCase({ holidaysApi: holidaysApiRef }, selectedDate);
+              if (!result.ok) {
+                showToast(result.error.message, 'error');
+              }
+              refetch();
+            } catch (e) {
+              if (__DEV__) console.error('[AttendanceScreen] Remove holiday failed:', e);
+              showToast('Failed to remove holiday', 'error');
+            } finally {
+              setRemovingHoliday(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [selectedDate, refetch, showToast]);
 
   const handleDailyReport = useCallback(() => {
     navigation.navigate('DailyReport', { date: selectedDate });
@@ -134,10 +196,11 @@ export function AttendanceScreen() {
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     setSearchActive(false);
     setSearchText('');
     setDebouncedSearch('');
@@ -147,7 +210,7 @@ export function AttendanceScreen() {
     ({ item }: { item: DailyAttendanceItem }) => (
       <AttendanceRow
         item={item}
-        onToggle={() => toggleStatus(item.studentId)}
+        onToggle={toggleStatus}
         disabled={isHoliday}
       />
     ),
@@ -165,15 +228,21 @@ export function AttendanceScreen() {
     );
   }, [loadingMore, colors, styles]);
 
+  const isToday = selectedDate === getTodayIST();
+
   return (
     <View style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (
           <View style={styles.searchBar}>
-            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity
+              onPress={closeSearch}
+              style={styles.navBtn}
+              accessibilityLabel="Close search"
+              accessibilityRole="button"
+            >
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -182,13 +251,20 @@ export function AttendanceScreen() {
               placeholderTextColor={colors.textDisabled}
               value={searchText}
               onChangeText={setSearchText}
+              returnKeyType="search"
+              onSubmitEditing={() => Keyboard.dismiss()}
               autoFocus
+              accessibilityLabel="Search students by name"
               testID="attendance-search-input"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
+              <TouchableOpacity
+                onPress={() => setSearchText('')}
+                style={styles.navBtn}
+                accessibilityLabel="Clear search text"
+                accessibilityRole="button"
+              >
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -199,9 +275,8 @@ export function AttendanceScreen() {
               <Text style={styles.navSubtitle}>{formatDateLabel(selectedDate)}</Text>
             </View>
             <View style={styles.navActions}>
-              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="magnify" size={22} color={colors.text} />
+              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search students" accessibilityRole="button">
+                <AppIcon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowFilters((v) => !v)}
@@ -210,8 +285,7 @@ export function AttendanceScreen() {
                 accessibilityLabel="Toggle filters"
                 accessibilityRole="button"
               >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="filter-variant" size={22} color={colors.text} />
+                <AppIcon name="filter-variant" size={22} color={colors.text} />
                 {selectedBatchId !== null && (
                   <View style={styles.filterBadge}>
                     <Text style={styles.filterBadgeText}>1</Text>
@@ -288,8 +362,7 @@ export function AttendanceScreen() {
       ) : !loading && items.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="calendar-check-outline" size={48} color={colors.primary} />
+            <AppIcon name="calendar-check-outline" size={48} color={colors.primary} />
           </View>
           <Text style={styles.emptyTitle}>No students found</Text>
           <Text style={styles.emptySubtitle}>

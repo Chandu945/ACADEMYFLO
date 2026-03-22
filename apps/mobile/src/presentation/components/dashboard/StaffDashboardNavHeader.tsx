@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { StaffTabParamList } from '../../navigation/StaffTabs';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { useAuth } from '../../context/AuthContext';
@@ -92,8 +92,8 @@ export function StaffDashboardHeaderRight() {
       accessibilityLabel="Settings"
       accessibilityRole="button"
     >
-      {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-      <Icon name="cog-outline" size={22} color={colors.textLight} />
+      
+      <AppIcon name="cog-outline" size={22} color={colors.textLight} />
     </TouchableOpacity>
   );
 }

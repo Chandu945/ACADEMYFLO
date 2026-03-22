@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import Share from 'react-native-share';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { ReceiptInfo } from '../../../domain/parent/parent.types';
 import { getReceiptUseCase } from '../../../application/parent/use-cases/get-receipt.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
@@ -34,8 +35,8 @@ function ReceiptRow({
   return (
     <View style={rowStyles.row}>
       <View style={rowStyles.labelRow}>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name={icon} size={16} color={colors.textDisabled} />
+        
+        <AppIcon name={icon} size={16} color={colors.textDisabled} />
         <Text style={rowStyles.label}>{label}</Text>
       </View>
       <Text
@@ -94,14 +95,22 @@ export function ReceiptScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await getReceiptUseCase({ parentApi }, feeDueId);
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setReceipt(result.value);
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await getReceiptUseCase({ parentApi }, feeDueId);
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setReceipt(result.value);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ReceiptScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError('Failed to load receipt.');
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, [feeDueId]);
 
   useEffect(() => {
@@ -135,7 +144,7 @@ export function ReceiptScreen() {
     } catch (e: any) {
       // User cancelled share - ignore
       if (e?.message !== 'User did not share') {
-        Alert.alert('Error', 'Could not share receipt. Please try again.');
+        crossAlert('Error', 'Could not share receipt. Please try again.');
       }
     }
   }, [receipt]);
@@ -152,8 +161,8 @@ export function ReceiptScreen() {
   if (error || !receipt) {
     return (
       <View style={styles.center}>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name="file-document-remove-outline" size={48} color={colors.danger} />
+        
+        <AppIcon name="file-document-remove-outline" size={48} color={colors.danger} />
         <Text style={styles.errorText}>{error ?? 'Receipt not found'}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={load}>
           <Text style={styles.retryText}>Try Again</Text>
@@ -167,8 +176,8 @@ export function ReceiptScreen() {
       <View style={styles.card}>
         {/* Success Badge */}
         <View style={styles.successBadge}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="check-circle" size={40} color={colors.success} />
+          
+          <AppIcon name="check-circle" size={40} color={colors.success} />
         </View>
 
         <Text style={styles.receiptTitle}>Payment Receipt</Text>
@@ -202,8 +211,8 @@ export function ReceiptScreen() {
         <ReceiptRow icon="calendar-check-outline" label="Paid On" value={formatDateLong(receipt.paidAt)} />
         <View style={[rowStyles.row, { borderBottomWidth: 0 }]}>
           <View style={rowStyles.labelRow}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="credit-card-outline" size={16} color={colors.textDisabled} />
+            
+            <AppIcon name="credit-card-outline" size={16} color={colors.textDisabled} />
             <Text style={rowStyles.label}>Method</Text>
           </View>
           <Text style={rowStyles.value}>{receipt.paymentMethod}</Text>
@@ -212,8 +221,8 @@ export function ReceiptScreen() {
 
       {/* Share Button */}
       <TouchableOpacity style={styles.shareButton} activeOpacity={0.8} onPress={handleShare}>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name="share-variant-outline" size={20} color={colors.white} />
+        
+        <AppIcon name="share-variant-outline" size={20} color={colors.white} />
         <Text style={styles.shareButtonText}>Share Receipt</Text>
       </TouchableOpacity>
     </View>

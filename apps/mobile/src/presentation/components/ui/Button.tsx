@@ -60,6 +60,7 @@ export function Button({
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
+    if (isDisabled) return;
     lightHaptic();
     Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
   };

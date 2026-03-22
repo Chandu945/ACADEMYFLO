@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from './AppIcon';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,8 +32,8 @@ export function ActiveFilterBar({ filters, onClearAll }: Props) {
       >
         {filters.map((f) => (
           <View key={f.key} style={styles.pill}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="check-circle" size={14} color={colors.primary} />
+            
+            <AppIcon name="check-circle" size={14} color={colors.primary} />
             <Text style={styles.pillText} numberOfLines={1}>
               <Text style={styles.pillLabel}>{f.label}: </Text>
               {f.value}
@@ -45,15 +45,15 @@ export function ActiveFilterBar({ filters, onClearAll }: Props) {
               accessibilityRole="button"
               accessibilityLabel={`Remove ${f.label}: ${f.value} filter`}
             >
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="close-circle" size={15} color={colors.textSecondary} />
+              
+              <AppIcon name="close-circle" size={15} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         ))}
         {filters.length > 1 && (
           <TouchableOpacity style={styles.clearAllBtn} onPress={onClearAll} accessibilityRole="button" accessibilityLabel="Clear all filters">
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="filter-remove-outline" size={14} color={colors.danger} />
+            
+            <AppIcon name="filter-remove-outline" size={14} color={colors.danger} />
             <Text style={styles.clearAllText}>Clear all</Text>
           </TouchableOpacity>
         )}

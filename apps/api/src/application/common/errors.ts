@@ -205,3 +205,11 @@ export const AdminErrors = {
   notSuperAdmin: () => AppError.forbidden('Only super admins can perform this action'),
   invalidDates: () => AppError.validation('paidStartAt must be before paidEndAt'),
 } as const;
+
+export const GalleryErrors = {
+  eventNotFound: () => AppError.notFound('Event'),
+  photoNotFound: () => AppError.notFound('Gallery photo'),
+  notAllowed: () => AppError.forbidden('You do not have permission for this gallery action'),
+  uploadFailed: () => new AppError('UPLOAD_FAILED', 'Failed to upload photo. Please try again.'),
+  maxPhotosReached: () => AppError.validation('Maximum number of photos (50) reached for this event'),
+} as const;

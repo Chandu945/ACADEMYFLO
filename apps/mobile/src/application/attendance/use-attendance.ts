@@ -47,9 +47,9 @@ export function useAttendance(
   const [error, setError] = useState<AppError | null>(null);
   const [isHoliday, setIsHoliday] = useState(false);
   const mountedRef = useRef(true);
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
   const pendingTogglesRef = useRef(new Set<string>());
+  const fetchingMoreRef = useRef(false);
+  const loadRef = useRef<(targetPage: number, append: boolean) => Promise<void>>();
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -60,44 +60,57 @@ export function useAttendance(
       }
       setError(null);
 
-      const result = await getDailyAttendanceUseCase(
-        { attendanceApi },
-        date,
-        targetPage,
-        PAGE_SIZE,
-        batchId ?? undefined,
-        search ?? undefined,
-      );
+      try {
+        const result = await getDailyAttendanceUseCase(
+          { attendanceApi },
+          date,
+          targetPage,
+          PAGE_SIZE,
+          batchId ?? undefined,
+          search ?? undefined,
+        );
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.ok) {
-        if (append) {
-          setItems((prev) => [...prev, ...result.value.items]);
+        if (result.ok) {
+          if (append) {
+            setItems((prev) => [...prev, ...result.value.items]);
+          } else {
+            setItems(result.value.items);
+            setIsHoliday(result.value.isHoliday);
+          }
+          setPage(targetPage);
+          setHasMore(targetPage < result.value.meta.totalPages);
         } else {
-          setItems(result.value.items);
-          setIsHoliday(result.value.isHoliday);
+          setError(result.error);
         }
-        setPage(targetPage);
-        setHasMore(targetPage < result.value.meta.totalPages);
-      } else {
-        setError(result.error);
+      } catch (e) {
+        if (__DEV__) console.error('[useAttendance] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Failed to load attendance. Pull to retry.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          fetchingMoreRef.current = false;
+        }
       }
-
-      setLoading(false);
-      setLoadingMore(false);
     },
     [date, attendanceApi, batchId, search],
   );
 
+  // Keep ref in sync so refetch identity stays stable
+  loadRef.current = load;
+
   const refetch = useCallback(() => {
-    load(1, false);
-  }, [load]);
+    loadRef.current?.(1, false);
+  }, []);
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true);
   }, [loading, loadingMore, hasMore, page, load]);
 
   const toggleStatus = useCallback(
@@ -107,32 +120,55 @@ export function useAttendance(
 
       pendingTogglesRef.current.add(studentId);
 
-      setItems((prev) =>
-        prev.map((item) => {
-          if (item.studentId !== studentId) return item;
-          const newStatus: AttendanceStatus = item.status === 'ABSENT' ? 'PRESENT' : 'ABSENT';
-          return { ...item, status: newStatus };
-        }),
-      );
+      // Capture the current status and compute new status inside the updater
+      // to avoid stale ref issues with rapid toggles
+      let previousStatus: AttendanceStatus | null = null;
+      let newStatus: AttendanceStatus | null = null;
 
-      const currentItem = itemsRef.current.find((i) => i.studentId === studentId);
-      if (!currentItem) {
+      setItems((prev) => {
+        const current = prev.find((i) => i.studentId === studentId);
+        if (!current || current.status === 'HOLIDAY') {
+          pendingTogglesRef.current.delete(studentId);
+          return prev;
+        }
+        previousStatus = current.status as AttendanceStatus;
+        newStatus = previousStatus === 'ABSENT' ? 'PRESENT' : 'ABSENT';
+        return prev.map((item) =>
+          item.studentId === studentId ? { ...item, status: newStatus! } : item,
+        );
+      });
+
+      if (!newStatus || !previousStatus) {
         pendingTogglesRef.current.delete(studentId);
         return;
       }
 
-      const newStatus: AttendanceStatus = currentItem.status === 'ABSENT' ? 'PRESENT' : 'ABSENT';
+      const capturedPrevious = previousStatus;
+      const capturedNew = newStatus;
 
-      markAttendanceUseCase({ attendanceApi }, studentId, date, newStatus)
+      markAttendanceUseCase({ attendanceApi }, studentId, date, capturedNew)
         .then((result) => {
           if (!mountedRef.current) return;
           if (!result.ok) {
+            // Revert optimistic update
             setItems((prev) =>
               prev.map((item) =>
-                item.studentId === studentId ? { ...item, status: currentItem.status } : item,
+                item.studentId === studentId ? { ...item, status: capturedPrevious } : item,
               ),
             );
             setError(result.error);
+          }
+        })
+        .catch((e) => {
+          if (__DEV__) console.error('[useAttendance] Toggle failed:', e);
+          if (mountedRef.current) {
+            // Revert optimistic update
+            setItems((prev) =>
+              prev.map((item) =>
+                item.studentId === studentId ? { ...item, status: capturedPrevious } : item,
+              ),
+            );
+            setError({ code: 'NETWORK', message: 'Failed to save attendance change.' });
           }
         })
         .finally(() => {

@@ -3,12 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   Linking,
   Image,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { BirthdayStudent } from '../../../domain/dashboard/dashboard.types';
 import { getBirthdays } from '../../../infra/dashboard/dashboard-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
@@ -74,8 +73,8 @@ function BirthdayRow({ student, isToday, testID }: BirthdayRowProps) {
         )}
         {isToday && (
           <View style={styles.partyHat}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="party-popper" size={10} color={BIRTHDAY_ORANGE} />
+            
+            <AppIcon name="party-popper" size={10} color={BIRTHDAY_ORANGE} />
           </View>
         )}
       </View>
@@ -95,8 +94,8 @@ function BirthdayRow({ student, isToday, testID }: BirthdayRowProps) {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={`Call guardian of ${student.fullName}`}
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="phone-outline" size={16} color={colors.primary} />
+          
+          <AppIcon name="phone-outline" size={16} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionBtn, styles.whatsappBtn]}
@@ -104,8 +103,8 @@ function BirthdayRow({ student, isToday, testID }: BirthdayRowProps) {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={`Send WhatsApp birthday wish for ${student.fullName}`}
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="whatsapp" size={16} color={WHATSAPP_GREEN} />
+          
+          <AppIcon name="whatsapp" size={16} color={WHATSAPP_GREEN} />
         </TouchableOpacity>
       </View>
     </View>
@@ -180,8 +179,8 @@ export function BirthdayWidget({ students: prefetchedStudents }: BirthdayWidgetP
     <View style={styles.container} testID="birthday-widget">
       <View style={styles.header}>
         <View style={styles.iconCircle}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="cake-variant-outline" size={18} color={BIRTHDAY_ORANGE} />
+          
+          <AppIcon name="cake-variant-outline" size={18} color={BIRTHDAY_ORANGE} />
         </View>
         <Text style={styles.title}>Birthdays</Text>
         {hasToday && (
@@ -194,15 +193,15 @@ export function BirthdayWidget({ students: prefetchedStudents }: BirthdayWidgetP
       {hasToday && (
         <View style={styles.todaySection}>
           <View style={styles.todayBanner}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="party-popper" size={16} color={BIRTHDAY_ORANGE} />
+            
+            <AppIcon name="party-popper" size={16} color={BIRTHDAY_ORANGE} />
             <Text style={styles.todayBannerText}>
               {todayBirthdays.length === 1
                 ? `${todayBirthdays[0]!.fullName}'s birthday today!`
                 : `${todayBirthdays.length} birthdays today!`}
             </Text>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="party-popper" size={16} color={BIRTHDAY_ORANGE} />
+            
+            <AppIcon name="party-popper" size={16} color={BIRTHDAY_ORANGE} />
           </View>
           {todayBirthdays.map((s) => (
             <BirthdayRow key={s.id} student={s} isToday testID={`today-birthday-${s.id}`} />
@@ -215,14 +214,9 @@ export function BirthdayWidget({ students: prefetchedStudents }: BirthdayWidgetP
           <Text style={styles.sectionTitle}>
             Upcoming This Month ({upcomingBirthdays.length})
           </Text>
-          <FlatList
-            data={upcomingBirthdays}
-            scrollEnabled={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <BirthdayRow student={item} isToday={false} testID={`month-birthday-${item.id}`} />
-            )}
-          />
+          {upcomingBirthdays.map((item) => (
+            <BirthdayRow key={item.id} student={item} isToday={false} testID={`month-birthday-${item.id}`} />
+          ))}
         </View>
       )}
     </View>

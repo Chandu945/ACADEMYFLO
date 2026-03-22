@@ -15,9 +15,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-}
+const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+function formatCurrency(amount: number) { return currencyFormatter.format(amount); }
 
 function getMonthLabel(monthKey: string) {
   const [year, month] = monthKey.split('-');
@@ -27,13 +26,13 @@ function getMonthLabel(monthKey: string) {
 
 export default function ExpensesPage() {
   const { accessToken } = useAuth();
-  const now = new Date();
   const [monthOffset, setMonthOffset] = useState(0);
 
   const month = useMemo(() => {
+    const now = new Date();
     const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, [now.getFullYear(), now.getMonth(), monthOffset]);
+  }, [monthOffset]);
 
   const { data: expenses, loading, refetch } = useExpenses(month);
   const { data: summary, loading: summaryLoading } = useExpenseSummary(month);
@@ -166,7 +165,7 @@ export default function ExpensesPage() {
               <Tr key={expense.id}>
                 <Td>{new Date(expense.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Td>
                 <Td>{expense.categoryName}</Td>
-                <Td style={{ fontWeight: 600, color: 'var(--color-danger)' }}>{formatCurrency(expense.amount)}</Td>
+                <Td className={styles.expenseAmount}>{formatCurrency(expense.amount)}</Td>
                 <Td>{expense.notes ?? '-'}</Td>
                 <Td>
                   <div className={styles.tableActions}>

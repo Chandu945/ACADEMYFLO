@@ -14,15 +14,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  let body: unknown;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await request.json() as Record<string, unknown>;
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (body.statusChange) {
-    const result = await apiPatch(`/api/v1/staff/${encodeURIComponent(id)}/status`, { status: body.status }, { accessToken });
+  if (body['statusChange']) {
+    const result = await apiPatch(`/api/v1/staff/${encodeURIComponent(id)}/status`, { status: body['status'] }, { accessToken });
     if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }

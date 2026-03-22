@@ -1,0 +1,368 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
+import { useNavigation } from '@react-navigation/native';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AppIcon } from '../../components/ui/AppIcon';
+import type { MoreStackParamList } from '../../navigation/MoreStack';
+import type { EnquirySource, EnquiryDetail } from '../../../domain/enquiry/enquiry.types';
+import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
+import { Input } from '../../components/ui/Input';
+import { TextArea } from '../../components/ui/TextArea';
+import { DatePickerInput } from '../../components/ui/DatePickerInput';
+import { isValidDate } from '../../../domain/common/date-utils';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
+
+type Nav = NativeStackNavigationProp<MoreStackParamList>;
+
+export const SOURCES: { value: EnquirySource; label: string; icon: string }[] = [
+  { value: 'WALK_IN', label: 'Walk-in', icon: 'walk' },
+  { value: 'PHONE', label: 'Phone', icon: 'phone-outline' },
+  { value: 'REFERRAL', label: 'Referral', icon: 'account-arrow-right-outline' },
+  { value: 'SOCIAL_MEDIA', label: 'Social Media', icon: 'share-variant-outline' },
+  { value: 'WEBSITE', label: 'Website', icon: 'web' },
+  { value: 'OTHER', label: 'Other', icon: 'dots-horizontal' },
+];
+
+export type EnquiryFormProps = {
+  mode: 'create' | 'edit';
+  enquiry?: EnquiryDetail;
+};
+
+export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
+  const isEdit = mode === 'edit';
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation<Nav>();
+  const { showToast } = useToast();
+
+  const [prospectName, setProspectName] = useState(enquiry?.prospectName ?? '');
+  const [guardianName, setGuardianName] = useState(enquiry?.guardianName ?? '');
+  const [mobileNumber, setMobileNumber] = useState(enquiry?.mobileNumber ?? (isEdit ? '' : '+91'));
+  const [whatsappNumber, setWhatsappNumber] = useState(enquiry?.whatsappNumber ?? '');
+  const [email, setEmail] = useState(enquiry?.email ?? '');
+  const [address, setAddress] = useState(enquiry?.address ?? '');
+  const [interestedIn, setInterestedIn] = useState(enquiry?.interestedIn ?? '');
+  const [source, setSource] = useState<EnquirySource | undefined>(
+    enquiry?.source ? (enquiry.source as EnquirySource) : undefined,
+  );
+  const [notes, setNotes] = useState(enquiry?.notes ?? '');
+  const [nextFollowUpDate, setNextFollowUpDate] = useState(enquiry?.nextFollowUpDate ?? '');
+  const [saving, setSaving] = useState(false);
+
+  // In edit mode, track whether any field changed from its initial value.
+  // In create mode, consider the form dirty if the two required fields have content.
+  const hasChanges = isEdit
+    ? prospectName !== (enquiry?.prospectName ?? '') ||
+      guardianName !== (enquiry?.guardianName ?? '') ||
+      mobileNumber !== (enquiry?.mobileNumber ?? '') ||
+      whatsappNumber !== (enquiry?.whatsappNumber ?? '') ||
+      email !== (enquiry?.email ?? '') ||
+      address !== (enquiry?.address ?? '') ||
+      interestedIn !== (enquiry?.interestedIn ?? '') ||
+      (source ?? null) !== ((enquiry?.source as EnquirySource | null) ?? null) ||
+      notes !== (enquiry?.notes ?? '') ||
+      nextFollowUpDate !== (enquiry?.nextFollowUpDate ?? '')
+    : !!(prospectName || mobileNumber);
+
+  useUnsavedChangesWarning(hasChanges && !saving);
+
+  const testIdPrefix = isEdit ? 'edit-' : '';
+
+  const handleSave = async () => {
+    if (!prospectName.trim()) {
+      crossAlert('Validation', 'Prospect name is required');
+      return;
+    }
+    if (!mobileNumber.trim() || !/^\+?\d{10,15}$/.test(mobileNumber.trim())) {
+      crossAlert('Validation', 'Valid mobile number is required (e.g. +919876543210)');
+      return;
+    }
+    if (nextFollowUpDate.trim() && !isValidDate(nextFollowUpDate.trim())) {
+      crossAlert('Validation', 'Follow-up date must be a valid date (YYYY-MM-DD)');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (isEdit && enquiry) {
+        const result = await enquiryApi.updateEnquiry(enquiry.id, {
+          prospectName: prospectName.trim(),
+          guardianName: guardianName.trim() || null,
+          mobileNumber: mobileNumber.trim().replace(/^\+/, ''),
+          whatsappNumber: whatsappNumber.trim() || null,
+          email: email.trim() || null,
+          address: address.trim() || null,
+          interestedIn: interestedIn.trim() || null,
+          source: source ?? null,
+          notes: notes.trim() || null,
+          nextFollowUpDate: nextFollowUpDate.trim() || null,
+        });
+
+        if (result.ok) {
+          showToast('Enquiry updated');
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            (navigation as any).navigate('EnquiryList');
+          }
+        } else {
+          crossAlert('Error', result.error.message);
+        }
+      } else {
+        const result = await enquiryApi.createEnquiry({
+          prospectName: prospectName.trim(),
+          guardianName: guardianName.trim() || undefined,
+          mobileNumber: mobileNumber.trim().replace(/^\+/, ''),
+          whatsappNumber: whatsappNumber.trim() || undefined,
+          email: email.trim() || undefined,
+          address: address.trim() || undefined,
+          interestedIn: interestedIn.trim() || undefined,
+          source,
+          notes: notes.trim() || undefined,
+          nextFollowUpDate: nextFollowUpDate.trim() || undefined,
+        });
+
+        if (result.ok) {
+          const data = result.value as { warning?: string; id: string };
+          if (data.warning) {
+            crossAlert('Note', data.warning);
+          }
+          showToast('Enquiry created successfully');
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            (navigation as any).navigate('EnquiryList');
+          }
+        } else {
+          crossAlert('Error', result.error.message);
+        }
+      }
+    } catch (e) {
+      if (__DEV__) console.error(`[EnquiryForm:${mode}] Save failed:`, e);
+      crossAlert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isSaveDisabled = isEdit ? saving || !hasChanges : saving;
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* ── Prospect Information ──────────────────────── */}
+      <View style={styles.sectionHeader}>
+
+        <AppIcon name="account-outline" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Prospect Information</Text>
+      </View>
+      <View style={styles.card}>
+        <Input
+          label="Prospect Name *"
+          value={prospectName}
+          onChangeText={setProspectName}
+          placeholder="Full name"
+          maxLength={100}
+          testID={`${testIdPrefix}prospect-name`}
+        />
+        <Input
+          label="Mobile Number *"
+          value={mobileNumber}
+          onChangeText={setMobileNumber}
+          placeholder="10-15 digits"
+          keyboardType="phone-pad"
+          maxLength={15}
+          testID={`${testIdPrefix}mobile-number`}
+        />
+      </View>
+
+      {/* ── Enquiry Details ───────────────────────────── */}
+      <View style={styles.sectionHeader}>
+
+        <AppIcon name="clipboard-text-outline" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Enquiry Details</Text>
+      </View>
+      <View style={styles.card}>
+        <Input
+          label="Interested In"
+          value={interestedIn}
+          onChangeText={setInterestedIn}
+          placeholder="e.g. Cricket Coaching - Morning Batch"
+          maxLength={200}
+          testID={`${testIdPrefix}interested-in`}
+        />
+
+        <Text style={styles.chipLabel}>SOURCE</Text>
+        <View style={styles.sourceRow}>
+          {SOURCES.map((s) => (
+            <TouchableOpacity
+              key={s.value}
+              style={[styles.sourceChip, source === s.value && styles.sourceChipActive]}
+              onPress={() => setSource(source === s.value ? undefined : s.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: source === s.value }}
+              accessibilityLabel={s.label}
+              testID={`${testIdPrefix}source-${s.value}`}
+            >
+
+              <AppIcon
+                name={s.icon}
+                size={14}
+                color={source === s.value ? colors.white : colors.textSecondary}
+              />
+              <Text style={[styles.sourceChipText, source === s.value && styles.sourceChipTextActive]}>
+                {s.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TextArea
+          label="Notes"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder={isEdit ? 'Notes about the enquiry' : 'Initial notes about the enquiry'}
+          testID={`${testIdPrefix}notes`}
+        />
+      </View>
+
+      {/* ── Follow-Up ─────────────────────────────────── */}
+      <View style={styles.sectionHeader}>
+
+        <AppIcon name="calendar-clock" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle}>Follow-Up</Text>
+      </View>
+      <View style={styles.card}>
+        <DatePickerInput
+          label="Next Follow-Up Date"
+          value={nextFollowUpDate}
+          onChange={setNextFollowUpDate}
+          placeholder="Select follow-up date"
+          testID={`${testIdPrefix}next-followup-date`}
+        />
+      </View>
+
+      {/* ── Save Button ───────────────────────────────── */}
+      <TouchableOpacity
+        style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={isSaveDisabled}
+        testID={isEdit ? 'save-enquiry-edit' : 'save-enquiry'}
+      >
+        {!saving && (
+
+          <AppIcon name="content-save-outline" size={20} color={colors.white} />
+        )}
+        <Text style={styles.saveButtonText}>
+          {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Save Enquiry'}
+        </Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+const makeStyles = (colors: Colors) => StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  content: {
+    padding: spacing.base,
+    paddingBottom: spacing['3xl'],
+  },
+
+  /* ── Section Header ─────────────────────────────── */
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
+
+  /* ── Card ────────────────────────────────────────── */
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    ...shadows.sm,
+  },
+
+  /* ── Source Chips ────────────────────────────────── */
+  chipLabel: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  sourceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  sourceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  sourceChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  sourceChipText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+  },
+  sourceChipTextActive: {
+    color: colors.white,
+  },
+
+  /* ── Save Button ────────────────────────────────── */
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginTop: spacing.xl,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.semibold,
+    color: colors.white,
+  },
+});

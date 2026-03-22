@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createEnquiry } from '@/application/enquiries/use-enquiries';
 import { useAuth } from '@/application/auth/use-auth';
@@ -10,8 +10,9 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import styles from './page.module.css';
 
-const SOURCE_OPTIONS = [
+const SOURCES = [
   { value: '', label: 'Select Source' },
   { value: 'WALK_IN', label: 'Walk-in' },
   { value: 'PHONE', label: 'Phone' },
@@ -21,6 +22,8 @@ const SOURCE_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+const MOBILE_RE = /^\d{10,15}$/;
+
 export default function NewEnquiryPage() {
   const router = useRouter();
   const { accessToken } = useAuth();
@@ -28,6 +31,7 @@ export default function NewEnquiryPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const redirectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const [form, setForm] = useState({
     prospectName: '',
@@ -42,22 +46,43 @@ export default function NewEnquiryPage() {
     nextFollowUpDate: '',
   });
 
-  const set = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
-  };
+  useEffect(() => {
+    return () => { if (redirectTimer.current) clearTimeout(redirectTimer.current); };
+  }, []);
 
-  const validate = (): boolean => {
+  const isDirty = form.prospectName || form.mobileNumber;
+
+  useEffect(() => {
+    if (!isDirty || success) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty, success]);
+
+  const set = useCallback((field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const n = { ...prev }; delete n[field]; return n;
+    });
+  }, []);
+
+  const validate = useCallback((): boolean => {
     const errors: Record<string, string> = {};
-    if (!form.prospectName.trim()) errors.prospectName = 'Name is required';
-    if (!form.mobileNumber.trim()) errors.mobileNumber = 'Mobile number is required';
+    if (!form.prospectName.trim()) errors['prospectName'] = 'Prospect name is required';
+    if (!form.mobileNumber.trim()) {
+      errors['mobileNumber'] = 'Mobile number is required';
+    } else if (!MOBILE_RE.test(form.mobileNumber.trim())) {
+      errors['mobileNumber'] = 'Must be 10-15 digits';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [form]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     if (!validate()) return;
 
     setLoading(true);
@@ -80,19 +105,17 @@ export default function NewEnquiryPage() {
 
     if (!result.ok) {
       setError(result.error);
+      if (result.fieldErrors) setFieldErrors(result.fieldErrors);
       return;
     }
 
     setSuccess(true);
-    setTimeout(() => router.push('/enquiries'), 1200);
-  }, [form, accessToken, router]);
+    redirectTimer.current = setTimeout(() => router.push('/enquiries'), 1200);
+  }, [form, accessToken, router, validate]);
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '680px' }}>
-      <button
-        onClick={() => router.push('/enquiries')}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-secondary)', cursor: 'pointer', background: 'none', border: 'none', marginBottom: '24px' }}
-      >
+    <div className={styles.page}>
+      <button type="button" onClick={() => router.push('/enquiries')} className={styles.backButton}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Back to Enquiries
       </button>
@@ -101,19 +124,19 @@ export default function NewEnquiryPage() {
         {success && <Alert variant="success" message="Enquiry created successfully! Redirecting..." />}
         {error && <Alert variant="error" message={error} />}
 
-        <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-          <Input label="Prospect Name" required value={form.prospectName} onChange={(e) => set('prospectName', e.target.value)} error={fieldErrors.prospectName} placeholder="Full name" />
-          <Input label="Mobile Number" required type="tel" value={form.mobileNumber} onChange={(e) => set('mobileNumber', e.target.value)} error={fieldErrors.mobileNumber} placeholder="10-digit mobile" />
-          <Input label="Guardian Name" value={form.guardianName} onChange={(e) => set('guardianName', e.target.value)} placeholder="Optional" />
-          <Input label="WhatsApp Number" type="tel" value={form.whatsappNumber} onChange={(e) => set('whatsappNumber', e.target.value)} placeholder="Optional" />
-          <Input label="Email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="Optional" />
-          <Input label="Address" value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Optional" />
-          <Select label="Source" options={SOURCE_OPTIONS} value={form.source} onChange={(e) => set('source', e.target.value)} />
-          <Input label="Interested In" value={form.interestedIn} onChange={(e) => set('interestedIn', e.target.value)} placeholder="e.g. Cricket coaching, Badminton" />
-          <Input label="Notes" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Additional notes" />
-          <DatePicker label="Next Follow-up Date" value={form.nextFollowUpDate} onChange={(e) => set('nextFollowUpDate', e.target.value)} />
+        <form onSubmit={handleSubmit} noValidate className={styles.form}>
+          <Input label="Prospect Name" required value={form.prospectName} onChange={(e) => set('prospectName', e.target.value)} error={fieldErrors['prospectName']} placeholder="Full name" />
+          <Input label="Mobile Number" required type="tel" value={form.mobileNumber} onChange={(e) => set('mobileNumber', e.target.value)} error={fieldErrors['mobileNumber']} placeholder="10-15 digits" />
+          <Input label="Guardian Name" value={form.guardianName} onChange={(e) => set('guardianName', e.target.value)} placeholder="Parent/Guardian name" />
+          <Input label="WhatsApp Number" type="tel" value={form.whatsappNumber} onChange={(e) => set('whatsappNumber', e.target.value)} placeholder="If different from mobile" />
+          <Input label="Email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="Email address" />
+          <Input label="Address" value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Address" />
+          <Select label="Source" options={SOURCES} value={form.source} onChange={(e) => set('source', e.target.value)} />
+          <Input label="Interested In" value={form.interestedIn} onChange={(e) => set('interestedIn', e.target.value)} placeholder="e.g. Cricket Coaching" />
+          <Input label="Notes" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Initial notes" />
+          <DatePicker label="Next Follow-Up Date" value={form.nextFollowUpDate} onChange={(e) => set('nextFollowUpDate', e.target.value)} />
 
-          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
+          <div className={styles.actions}>
             <Button type="button" variant="outline" onClick={() => router.push('/enquiries')}>Cancel</Button>
             <Button type="submit" variant="primary" loading={loading} disabled={success}>Create Enquiry</Button>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Keyboard } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { FeesStackParamList } from '../../navigation/FeesStack';
@@ -21,6 +21,10 @@ type Route = RouteProp<FeesStackParamList, 'PaymentRequestForm'>;
 
 const requestsApi = { createPaymentRequest, editPaymentRequest };
 
+function formatCurrency(n: number): string {
+  return `\u20B9${n.toLocaleString('en-IN')}`;
+}
+
 export function PaymentRequestFormScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -39,7 +43,20 @@ export function PaymentRequestFormScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const handleNotesChange = useCallback((text: string) => {
+    setStaffNotes(text);
+    if (fieldErrors['staffNotes']) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next['staffNotes'];
+        return next;
+      });
+    }
+    if (serverError) setServerError(null);
+  }, [fieldErrors, serverError]);
+
   const handleSubmit = useCallback(async () => {
+    Keyboard.dismiss();
     const errors = validatePaymentRequestForm({ staffNotes });
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -49,32 +66,41 @@ export function PaymentRequestFormScreen() {
     setServerError(null);
     setSubmitting(true);
 
-    const result = isEditMode
-      ? await staffEditPaymentRequestUseCase(
-          { paymentRequestsApi: requestsApi },
-          requestId,
-          { staffNotes: staffNotes.trim() },
-        )
-      : await staffCreatePaymentRequestUseCase(
-          { paymentRequestsApi: requestsApi },
-          { studentId, monthKey, staffNotes: staffNotes.trim() },
-        );
+    try {
+      const result = isEditMode
+        ? await staffEditPaymentRequestUseCase(
+            { paymentRequestsApi: requestsApi },
+            requestId,
+            { staffNotes: staffNotes.trim() },
+          )
+        : await staffCreatePaymentRequestUseCase(
+            { paymentRequestsApi: requestsApi },
+            { studentId, monthKey, staffNotes: staffNotes.trim() },
+          );
 
-    setSubmitting(false);
-
-    if (result.ok) {
-      showToast(isEditMode ? 'Request updated successfully' : 'Request submitted successfully');
-      navigation.goBack();
-    } else {
-      setServerError(result.error.message);
+      if (result.ok) {
+        showToast(isEditMode ? 'Request updated successfully' : 'Request submitted successfully');
+        navigation.goBack();
+      } else {
+        if (result.error.fieldErrors) {
+          setFieldErrors(result.error.fieldErrors);
+        }
+        setServerError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[PaymentRequestFormScreen] Submit failed:', e);
+      setServerError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-  }, [staffNotes, studentId, monthKey, navigation, isEditMode, requestId]);
+  }, [staffNotes, studentId, monthKey, navigation, isEditMode, requestId, showToast]);
 
   return (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {serverError && <InlineError message={serverError} />}
 
@@ -85,13 +111,13 @@ export function PaymentRequestFormScreen() {
 
       <View style={styles.infoRow}>
         <Text style={styles.label}>Amount</Text>
-        <Text style={styles.value}>{`\u20B9${amount}`}</Text>
+        <Text style={styles.value}>{formatCurrency(amount)}</Text>
       </View>
 
       <TextArea
         label="Collection Notes (how was fee collected?)"
         value={staffNotes}
-        onChangeText={setStaffNotes}
+        onChangeText={handleNotesChange}
         placeholder="e.g. Collected cash from guardian at academy"
         error={fieldErrors['staffNotes']}
         testID="input-staffNotes"
@@ -99,7 +125,7 @@ export function PaymentRequestFormScreen() {
 
       <View style={styles.submitContainer}>
         <Button
-          title={isEditMode ? 'Update Request' : 'Submit Request'}
+          title={submitting ? (isEditMode ? 'Updating...' : 'Submitting...') : (isEditMode ? 'Update Request' : 'Submit Request')}
           onPress={handleSubmit}
           loading={submitting}
           testID="submit-button"

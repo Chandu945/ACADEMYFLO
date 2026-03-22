@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { View, Text, FlatList, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { EmptyState } from '../../components/ui/EmptyState';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import type { AppError } from '../../../domain/common/errors';
 import type { DailyStaffReportResult } from '../../../domain/staff-attendance/staff-attendance.types';
@@ -54,17 +55,24 @@ export function StaffAttendanceDailyReportScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    try {
+      const result = await getStaffDailyReportUseCase({ staffAttendanceApi: reportApi }, date);
 
-    const result = await getStaffDailyReportUseCase({ staffAttendanceApi: reportApi }, date);
+      if (!mountedRef.current) return;
 
-    if (!mountedRef.current) return;
-
-    if (result.ok) {
-      setReport(result.value);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setReport(result.value);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[StaffAttendanceDailyReport] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, [date]);
 
   useEffect(() => {
@@ -77,8 +85,11 @@ export function StaffAttendanceDailyReportScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
-    setRefreshing(false);
+    try {
+      await load();
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
+    }
   }, [load]);
 
   const renderAbsentItem = useCallback(
@@ -119,7 +130,15 @@ export function StaffAttendanceDailyReportScreen() {
     );
   }
 
-  if (!report) return null;
+  if (!report) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.content}>
+          <EmptyState message="No report available" subtitle="No staff attendance data found for this date." />
+        </View>
+      </View>
+    );
+  }
 
   const totalCount = report.presentCount + report.absentCount;
   const percentage = totalCount > 0 ? Math.round((report.presentCount / totalCount) * 100) : 0;
@@ -150,18 +169,16 @@ export function StaffAttendanceDailyReportScreen() {
 
       {/* Count Cards */}
       <View style={styles.countsRow}>
-        <View style={styles.countBox}>
+        <View style={styles.countBox} accessibilityLabel={`${report.presentCount} staff present`}>
           <View style={[styles.countIconCircle, { backgroundColor: colors.successBg }]}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="check-circle-outline" size={22} color={colors.success} />
+            <AppIcon name="check-circle-outline" size={22} color={colors.success} />
           </View>
           <Text style={[styles.countNumber, { color: colors.success }]}>{report.presentCount}</Text>
           <Text style={styles.countLabel}>Present</Text>
         </View>
-        <View style={styles.countBox}>
+        <View style={styles.countBox} accessibilityLabel={`${report.absentCount} staff absent`}>
           <View style={[styles.countIconCircle, { backgroundColor: colors.dangerBg }]}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="close-circle-outline" size={22} color={colors.danger} />
+            <AppIcon name="close-circle-outline" size={22} color={colors.danger} />
           </View>
           <Text style={[styles.countNumber, { color: colors.danger }]}>{report.absentCount}</Text>
           <Text style={styles.countLabel}>Absent</Text>
@@ -172,8 +189,8 @@ export function StaffAttendanceDailyReportScreen() {
       {report.absentStaff.length > 0 && (
         <>
           <View style={styles.sectionHeader}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="account-alert-outline" size={18} color={colors.danger} />
+            
+            <AppIcon name="account-alert-outline" size={18} color={colors.danger} />
             <Text style={styles.sectionTitle}>Absent Staff ({report.absentStaff.length})</Text>
           </View>
           <FlatList
@@ -188,8 +205,8 @@ export function StaffAttendanceDailyReportScreen() {
 
       {report.absentStaff.length === 0 && (
         <View style={styles.allPresentCard}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="party-popper" size={32} color={colors.success} />
+          
+          <AppIcon name="party-popper" size={32} color={colors.success} />
           <Text style={styles.allPresentTitle}>Everyone Present!</Text>
           <Text style={styles.allPresentSubtitle}>All staff members are present today</Text>
         </View>

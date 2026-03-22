@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
@@ -48,8 +49,13 @@ export function StaffListScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
+    try {
+      await refetch();
+    } catch {
+      // Handled by hook
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch]);
 
   const handleToggleStatus = useCallback(async () => {
@@ -57,20 +63,25 @@ export function StaffListScreen() {
     setToggling(true);
     setToggleError(null);
 
-    const newStatus: StaffStatus = toggleTarget.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    const result = await setStaffStatusUseCase(
-      { staffApi: statusApiRef },
-      toggleTarget.id,
-      newStatus,
-    );
+    try {
+      const newStatus: StaffStatus = toggleTarget.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      const result = await setStaffStatusUseCase(
+        { staffApi: statusApiRef },
+        toggleTarget.id,
+        newStatus,
+      );
 
-    setToggling(false);
-
-    if (result.ok) {
-      setToggleTarget(null);
-      refetch();
-    } else {
-      setToggleError(result.error.message);
+      if (result.ok) {
+        setToggleTarget(null);
+        refetch();
+      } else {
+        setToggleError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[StaffListScreen] Toggle status failed:', e);
+      setToggleError('Something went wrong. Please try again.');
+    } finally {
+      setToggling(false);
     }
   }, [toggleTarget, refetch]);
 
@@ -137,8 +148,14 @@ export function StaffListScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={handleAdd} testID="add-staff-fab">
-        <Text style={styles.fabText}>+</Text>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleAdd}
+        accessibilityLabel="Add new staff member"
+        accessibilityRole="button"
+        testID="add-staff-fab"
+      >
+        <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
 
       <ConfirmSheet
@@ -200,10 +217,5 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-  },
-  fabText: {
-    fontSize: fontSizes['3xl'],
-    color: colors.white,
-    lineHeight: 28,
   },
 });

@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, View, Text } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 
-import { radius, fontSizes, fontWeights, spacing } from '../../theme';
+import { radius, fontSizes, fontWeights, spacing, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -30,7 +30,11 @@ export function GalleryThumbnail({
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
-      style={[styles.container, { width: size, height: size }]}
+      style={({ pressed }) => [
+        styles.container,
+        { width: size, height: size },
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel="View photo"
       testID={testID}
@@ -42,10 +46,11 @@ export function GalleryThumbnail({
       />
       {selected && (
         <View style={styles.selectedOverlay}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="check-circle" size={28} color={colors.white} />
+          <AppIcon name="check-circle" size={28} color={colors.white} />
         </View>
       )}
+      {/* Subtle inner shadow for depth */}
+      <View style={styles.innerShadow} />
     </Pressable>
   );
 }
@@ -65,13 +70,18 @@ export function AddPhotoTile({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.addTile, { width: size, height: size }]}
+      style={({ pressed }) => [
+        styles.addTile,
+        { width: size, height: size },
+        pressed && styles.addTilePressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel="Add photo"
       testID={testID}
     >
-      {/* @ts-expect-error react-native-vector-icons types */}
-      <Icon name="camera-plus-outline" size={32} color={colors.textDisabled} />
+      <View style={styles.addIconCircle}>
+        <AppIcon name="camera-plus-outline" size={28} color={colors.primary} />
+      </View>
       <Text style={styles.addLabel}>Add Photo</Text>
     </Pressable>
   );
@@ -80,34 +90,57 @@ export function AddPhotoTile({
 const makeStyles = (colors: Colors) =>
   StyleSheet.create({
     container: {
-      borderRadius: radius.md,
+      borderRadius: radius.lg,
       overflow: 'hidden',
-      margin: 2,
+      backgroundColor: colors.surface,
+      ...shadows.sm,
+    },
+    pressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.97 }],
     },
     image: {
-      borderRadius: radius.md,
+      borderRadius: radius.lg,
+    },
+    innerShadow: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: 'rgba(0,0,0,0.08)',
     },
     selectedOverlay: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0,0,0,0.4)',
-      borderRadius: radius.md,
+      borderRadius: radius.lg,
       alignItems: 'center',
       justifyContent: 'center',
     },
     addTile: {
-      borderRadius: radius.md,
-      margin: 2,
+      borderRadius: radius.lg,
       borderWidth: 2,
-      borderColor: colors.borderStrong,
+      borderColor: colors.primary + '40',
       borderStyle: 'dashed',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.bgSubtle,
+      backgroundColor: colors.primarySoft,
+    },
+    addTilePressed: {
+      backgroundColor: colors.primary + '20',
+      borderColor: colors.primary,
+    },
+    addIconCircle: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+      ...shadows.sm,
     },
     addLabel: {
-      fontSize: fontSizes.xs,
-      fontWeight: fontWeights.medium,
-      color: colors.textDisabled,
-      marginTop: spacing.xs,
+      fontSize: fontSizes.sm,
+      fontWeight: fontWeights.semibold,
+      color: colors.primary,
     },
   });

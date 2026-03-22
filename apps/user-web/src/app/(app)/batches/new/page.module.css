@@ -1,0 +1,15 @@
+.page { padding: var(--space-6); max-width: 680px; }
+.backButton { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--color-text-secondary); cursor: pointer; background: none; border: none; margin-bottom: var(--space-6); padding: var(--space-1) var(--space-2); border-radius: var(--radius-md); transition: color var(--transition-base), background-color var(--transition-base); }
+.backButton:hover { color: var(--color-text); background-color: var(--color-bg-subtle); }
+.form { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-4); }
+.fieldLabel { display: block; font-size: var(--text-sm); font-weight: var(--weight-medium); margin-bottom: var(--space-2); color: var(--color-text-medium); }
+.required { color: var(--color-danger); margin-left: 2px; }
+.daysGrid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.dayButton { display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--color-text-secondary); transition: all 0.2s ease; }
+.dayButton:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.dayButtonSelected { border-color: var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
+.dayButton:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.fieldError { display: block; font-size: var(--text-sm); color: var(--color-danger); margin-top: 4px; }
+.gridRow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.actions { display: flex; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-4); }
+@media (max-width: 768px) { .page { padding: var(--space-4); } .gridRow { grid-template-columns: 1fr; } .actions { flex-direction: column-reverse; } .actions > * { width: 100%; } }

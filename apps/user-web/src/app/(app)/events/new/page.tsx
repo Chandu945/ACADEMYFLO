@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createEvent } from '@/application/events/use-events';
 import { useAuth } from '@/application/auth/use-auth';
@@ -10,13 +10,16 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
+import styles from './page.module.css';
 
 const EVENT_TYPES = [
   { value: '', label: 'Select Type' },
-  { value: 'EVENT', label: 'Event' },
-  { value: 'HOLIDAY', label: 'Holiday' },
-  { value: 'EXAM', label: 'Exam' },
+  { value: 'TOURNAMENT', label: 'Tournament' },
   { value: 'MEETING', label: 'Meeting' },
+  { value: 'DEMO_CLASS', label: 'Demo Class' },
+  { value: 'HOLIDAY', label: 'Holiday' },
+  { value: 'ANNUAL_DAY', label: 'Annual Day' },
+  { value: 'TRAINING_CAMP', label: 'Training Camp' },
   { value: 'OTHER', label: 'Other' },
 ];
 
@@ -27,12 +30,13 @@ export default function NewEventPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const redirectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const [form, setForm] = useState({
     title: '',
     description: '',
     eventType: '',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0]!,
     endDate: '',
     startTime: '',
     endTime: '',
@@ -40,27 +44,44 @@ export default function NewEventPage() {
     location: '',
   });
 
-  const set = (field: string, value: string | boolean) => {
+  useEffect(() => {
+    return () => { if (redirectTimer.current) clearTimeout(redirectTimer.current); };
+  }, []);
+
+  const isDirty = form.title || form.description || form.eventType || form.endDate || form.startTime || form.endTime || form.location;
+
+  useEffect(() => {
+    if (!isDirty || success) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty, success]);
+
+  const set = useCallback((field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (typeof value === 'string') {
-      setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+      setFieldErrors((prev) => {
+        if (!prev[field]) return prev;
+        const n = { ...prev }; delete n[field]; return n;
+      });
     }
-  };
+  }, []);
 
-  const validate = (): boolean => {
+  const validate = useCallback((): boolean => {
     const errors: Record<string, string> = {};
-    if (!form.title.trim()) errors.title = 'Title is required';
-    if (!form.startDate) errors.startDate = 'Start date is required';
+    if (!form.title.trim()) errors['title'] = 'Title is required';
+    if (!form.startDate) errors['startDate'] = 'Start date is required';
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       errors['endDate'] = 'End date must be after start date';
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [form]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     if (!validate()) return;
 
     setLoading(true);
@@ -82,19 +103,17 @@ export default function NewEventPage() {
 
     if (!result.ok) {
       setError(result.error);
+      if (result.fieldErrors) setFieldErrors(result.fieldErrors);
       return;
     }
 
     setSuccess(true);
-    setTimeout(() => router.push('/events'), 1200);
-  }, [form, accessToken, router]);
+    redirectTimer.current = setTimeout(() => router.push('/events'), 1200);
+  }, [form, accessToken, router, validate]);
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '680px' }}>
-      <button
-        onClick={() => router.push('/events')}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-secondary)', cursor: 'pointer', background: 'none', border: 'none', marginBottom: '24px' }}
-      >
+    <div className={styles.page}>
+      <button type="button" onClick={() => router.push('/events')} className={styles.backButton}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Back to Events
       </button>
@@ -103,23 +122,23 @@ export default function NewEventPage() {
         {success && <Alert variant="success" message="Event created successfully! Redirecting..." />}
         {error && <Alert variant="error" message={error} />}
 
-        <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-          <Input label="Title" required value={form.title} onChange={(e) => set('title', e.target.value)} error={fieldErrors.title} placeholder="Event title" />
+        <form onSubmit={handleSubmit} noValidate className={styles.form}>
+          <Input label="Title" required value={form.title} onChange={(e) => set('title', e.target.value)} error={fieldErrors['title']} placeholder="Event title" />
           <Input label="Description" value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Event description (optional)" />
           <Select label="Event Type" options={EVENT_TYPES} value={form.eventType} onChange={(e) => set('eventType', e.target.value)} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <DatePicker label="Start Date" required value={form.startDate} onChange={(e) => set('startDate', e.target.value)} error={fieldErrors.startDate} />
-            <DatePicker label="End Date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} error={fieldErrors.endDate} />
+          <div className={styles.gridRow}>
+            <DatePicker label="Start Date" required value={form.startDate} onChange={(e) => set('startDate', e.target.value)} error={fieldErrors['startDate']} />
+            <DatePicker label="End Date" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} error={fieldErrors['endDate']} />
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-base)', fontWeight: 500 }}>
-            <input type="checkbox" checked={form.isAllDay} onChange={(e) => set('isAllDay', e.target.checked)} style={{ accentColor: 'var(--color-primary)', width: '18px', height: '18px' }} />
+          <label className={styles.checkboxLabel}>
+            <input type="checkbox" checked={form.isAllDay} onChange={(e) => set('isAllDay', e.target.checked)} className={styles.checkbox} />
             All Day Event
           </label>
 
           {!form.isAllDay && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div className={styles.gridRow}>
               <Input label="Start Time" type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} />
               <Input label="End Time" type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} />
             </div>
@@ -127,7 +146,7 @@ export default function NewEventPage() {
 
           <Input label="Location" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Event location (optional)" />
 
-          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
+          <div className={styles.actions}>
             <Button type="button" variant="outline" onClick={() => router.push('/events')}>Cancel</Button>
             <Button type="submit" variant="primary" loading={loading} disabled={success}>Create Event</Button>
           </div>

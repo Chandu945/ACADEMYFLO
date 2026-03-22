@@ -70,6 +70,16 @@
   gap: var(--space-4);
 }
 
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+
 /* ── Error Banner ──────────────────────────────────────────────────────── */
 .errorBanner {
   display: flex;
@@ -80,6 +90,7 @@
   border: 1px solid var(--color-danger-border);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-2);
+  outline: none;
 }
 
 .errorBanner svg {
@@ -88,9 +99,177 @@
 }
 
 .errorText {
+  flex: 1;
   font-size: var(--text-sm);
   color: var(--color-danger-text);
   line-height: var(--leading-sm);
+}
+
+.errorDismiss {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--color-danger-text);
+  cursor: pointer;
+  transition: color var(--transition-base), background-color var(--transition-base);
+}
+
+.errorDismiss:hover {
+  background-color: var(--color-danger-border);
+  color: var(--color-danger);
+}
+
+/* ── Phone Number Field ───────────────────────────────────────────────── */
+.phoneFieldWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.phoneLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  line-height: var(--leading-base);
+}
+
+.phoneRequired {
+  color: var(--color-danger);
+  margin-left: 2px;
+}
+
+.phoneInputRow {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
+  overflow: hidden;
+}
+
+.phoneInputRow:hover:not(:has(input:disabled)) {
+  border-color: var(--color-border-strong);
+}
+
+.phoneInputRow:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.phoneInputRowError {
+  border-color: var(--color-danger);
+}
+
+.phoneInputRowError:focus-within {
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+
+.phonePrefix {
+  display: flex;
+  align-items: center;
+  padding: 8px 8px 8px 12px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-medium);
+  user-select: none;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border);
+}
+
+.phoneInput {
+  flex: 1;
+  padding: 8px 12px 8px 10px;
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  outline: none;
+  line-height: var(--leading-base);
+  min-width: 0;
+}
+
+/* Override global focus styles — the parent .phoneInputRow handles the ring */
+.phoneInput:focus,
+.phoneInput:focus-visible {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.phoneInput::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.phoneInput:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+.phoneError {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  line-height: var(--leading-xs);
+  margin-top: 2px;
+}
+
+.phoneHint {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-xs);
+  margin-top: 2px;
+}
+
+/* ── Terms of Service ─────────────────────────────────────────────────── */
+.tosWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tosLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.tosCheckbox {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.tosText {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-base);
+}
+
+.tosLink {
+  color: var(--color-primary);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition: color var(--transition-base);
+}
+
+.tosLink:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.tosError {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  line-height: var(--leading-xs);
 }
 
 /* ── Submit ────────────────────────────────────────────────────────────── */
@@ -126,6 +305,12 @@
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
+@media (min-width: 481px) and (max-width: 768px) {
+  .wrapper {
+    max-width: 460px;
+  }
+}
+
 @media (max-width: 480px) {
   .page {
     padding: var(--space-4);

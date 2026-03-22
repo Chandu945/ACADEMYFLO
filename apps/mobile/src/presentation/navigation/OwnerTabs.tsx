@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../components/ui/AppIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardScreen } from '../screens/owner/DashboardScreen';
 import { DashboardHeaderLeft, DashboardHeaderRight } from '../components/dashboard/DashboardNavHeader';
@@ -44,8 +44,8 @@ function OwnerTabsInner() {
         screenOptions={({ route }) => ({
           ...makeTabScreenOptions(colors, insets.bottom),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-            <Icon name={TAB_ICONS[route.name] ?? 'circle'} size={size} color={color} />
+            
+            <AppIcon name={TAB_ICONS[route.name] ?? 'circle'} size={size} color={color} />
           ),
         })}
       >

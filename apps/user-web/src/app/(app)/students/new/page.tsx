@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createStudent } from '@/application/students/use-students';
 import { useAuth } from '@/application/auth/use-auth';
@@ -10,12 +10,17 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
+import styles from './page.module.css';
 
 const GENDERS = [
   { value: 'MALE', label: 'Male' },
   { value: 'FEMALE', label: 'Female' },
   { value: 'OTHER', label: 'Other' },
 ] as const;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const E164_RE = /^\+[1-9]\d{6,14}$/;
+const PINCODE_RE = /^\d{5,6}$/;
 
 export default function NewStudentPage() {
   const router = useRouter();
@@ -24,15 +29,15 @@ export default function NewStudentPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const [form, setForm] = useState({
+  const redirectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const formRef = useRef({
     fullName: '',
     dateOfBirth: '',
-    gender: 'MALE',
+    gender: '',
     guardianName: '',
     guardianMobile: '',
     guardianEmail: '',
-    joiningDate: new Date().toISOString().split('T')[0],
+    joiningDate: new Date().toISOString().split('T')[0]!,
     monthlyFee: '',
     addressLine1: '',
     addressCity: '',
@@ -40,25 +45,65 @@ export default function NewStudentPage() {
     addressPincode: '',
   });
 
-  const set = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
-  };
+  const [form, setForm] = useState({ ...formRef.current });
 
-  const validate = (): boolean => {
+  // Cleanup redirect timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, []);
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(formRef.current);
+
+  // Warn on unsaved changes
+  useEffect(() => {
+    if (!isDirty || success) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty, success]);
+
+  const set = useCallback((field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const n = { ...prev };
+      delete n[field];
+      return n;
+    });
+  }, []);
+
+  const validate = useCallback((): boolean => {
     const errors: Record<string, string> = {};
-    if (!form.fullName.trim()) errors.fullName = 'Full name is required';
-    if (!form.guardianName.trim()) errors.guardianName = 'Guardian name is required';
-    if (!form.guardianMobile.trim()) errors.guardianMobile = 'Guardian mobile is required';
-    if (!form.monthlyFee || Number(form.monthlyFee) <= 0) errors.monthlyFee = 'Valid monthly fee is required';
-    if (!form.joiningDate) errors.joiningDate = 'Joining date is required';
+    if (!form.fullName.trim()) errors['fullName'] = 'Full name is required';
+    if (!form.gender) errors['gender'] = 'Gender is required';
+    if (!form.guardianName.trim()) errors['guardianName'] = 'Guardian name is required';
+    if (!form.guardianMobile.trim()) {
+      errors['guardianMobile'] = 'Guardian mobile is required';
+    } else if (!E164_RE.test(form.guardianMobile.trim())) {
+      errors['guardianMobile'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (form.guardianEmail.trim() && !EMAIL_RE.test(form.guardianEmail.trim())) {
+      errors['guardianEmail'] = 'Invalid email format';
+    }
+    if (!form.joiningDate) errors['joiningDate'] = 'Joining date is required';
+    if (!form.monthlyFee || Number(form.monthlyFee) <= 0) {
+      errors['monthlyFee'] = 'Monthly fee must be greater than 0';
+    }
+    if (form.addressPincode.trim() && !PINCODE_RE.test(form.addressPincode.trim())) {
+      errors['addressPincode'] = 'Pincode must be 5-6 digits';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [form]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     if (!validate()) return;
 
     setLoading(true);
@@ -66,7 +111,7 @@ export default function NewStudentPage() {
       {
         fullName: form.fullName.trim(),
         dateOfBirth: form.dateOfBirth || undefined,
-        gender: form.gender,
+        gender: form.gender || undefined,
         guardian: {
           name: form.guardianName.trim(),
           mobile: form.guardianMobile.trim(),
@@ -92,14 +137,15 @@ export default function NewStudentPage() {
     }
 
     setSuccess(true);
-    setTimeout(() => router.push('/students'), 1200);
-  }, [form, accessToken, router]);
+    redirectTimer.current = setTimeout(() => router.push('/students'), 1200);
+  }, [form, accessToken, router, validate]);
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '680px' }}>
+    <div className={styles.page}>
       <button
+        type="button"
         onClick={() => router.push('/students')}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-secondary)', cursor: 'pointer', background: 'none', border: 'none', marginBottom: '24px' }}
+        className={styles.backButton}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Back to Students
@@ -109,13 +155,14 @@ export default function NewStudentPage() {
         {success && <Alert variant="success" message="Student created successfully! Redirecting..." />}
         {error && <Alert variant="error" message={error} />}
 
-        <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+        <form onSubmit={handleSubmit} noValidate className={styles.form}>
+          {/* Student Information */}
           <Input
             label="Full Name"
             required
             value={form.fullName}
             onChange={(e) => set('fullName', e.target.value)}
-            error={fieldErrors.fullName}
+            error={fieldErrors['fullName']}
             placeholder="Enter student's full name"
           />
 
@@ -126,23 +173,29 @@ export default function NewStudentPage() {
           />
 
           <div>
-            <label style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: '8px', color: 'var(--color-text-medium)' }}>Gender</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <label className={styles.fieldLabel}>
+              Gender <span className={styles.required}>*</span>
+            </label>
+            <div className={styles.chipGroup}>
               {GENDERS.map((g) => (
                 <Chip key={g.value} label={g.label} selected={form.gender === g.value} onSelect={() => set('gender', g.value)} />
               ))}
             </div>
+            {fieldErrors['gender'] && (
+              <span className={styles.fieldError} role="alert">{fieldErrors['gender']}</span>
+            )}
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-            <h4 style={{ marginBottom: 'var(--space-3)', color: 'var(--color-primary)' }}>Guardian Information</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {/* Guardian Information */}
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Guardian Information</h4>
+            <div className={styles.sectionFields}>
               <Input
                 label="Guardian Name"
                 required
                 value={form.guardianName}
                 onChange={(e) => set('guardianName', e.target.value)}
-                error={fieldErrors.guardianName}
+                error={fieldErrors['guardianName']}
                 placeholder="Guardian's full name"
               />
               <Input
@@ -151,28 +204,31 @@ export default function NewStudentPage() {
                 type="tel"
                 value={form.guardianMobile}
                 onChange={(e) => set('guardianMobile', e.target.value)}
-                error={fieldErrors.guardianMobile}
-                placeholder="10-digit mobile number"
+                error={fieldErrors['guardianMobile']}
+                placeholder="+919876543210"
+                hint="E.164 format with country code"
               />
               <Input
                 label="Guardian Email"
                 type="email"
                 value={form.guardianEmail}
                 onChange={(e) => set('guardianEmail', e.target.value)}
+                error={fieldErrors['guardianEmail']}
                 placeholder="Guardian's email (optional)"
               />
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-            <h4 style={{ marginBottom: 'var(--space-3)', color: 'var(--color-primary)' }}>Academy Details</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {/* Academy Details */}
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Academy Details</h4>
+            <div className={styles.sectionFields}>
               <DatePicker
                 label="Joining Date"
                 required
                 value={form.joiningDate}
                 onChange={(e) => set('joiningDate', e.target.value)}
-                error={fieldErrors.joiningDate}
+                error={fieldErrors['joiningDate']}
               />
               <Input
                 label="Monthly Fee"
@@ -180,22 +236,24 @@ export default function NewStudentPage() {
                 type="number"
                 value={form.monthlyFee}
                 onChange={(e) => set('monthlyFee', e.target.value)}
-                error={fieldErrors.monthlyFee}
+                error={fieldErrors['monthlyFee']}
                 placeholder="e.g. 2000"
+                min={1}
               />
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-            <h4 style={{ marginBottom: 'var(--space-3)', color: 'var(--color-primary)' }}>Address (Optional)</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {/* Address */}
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Address (Optional)</h4>
+            <div className={styles.sectionFields}>
               <Input
                 label="Address Line"
                 value={form.addressLine1}
                 onChange={(e) => set('addressLine1', e.target.value)}
                 placeholder="Street address"
               />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+              <div className={styles.gridRow}>
                 <Input
                   label="City"
                   value={form.addressCity}
@@ -213,13 +271,15 @@ export default function NewStudentPage() {
                 label="Pincode"
                 value={form.addressPincode}
                 onChange={(e) => set('addressPincode', e.target.value)}
+                error={fieldErrors['addressPincode']}
                 placeholder="Pincode"
                 maxLength={6}
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-4)' }}>
+          {/* Actions */}
+          <div className={styles.actions}>
             <Button type="button" variant="outline" onClick={() => router.push('/students')}>
               Cancel
             </Button>

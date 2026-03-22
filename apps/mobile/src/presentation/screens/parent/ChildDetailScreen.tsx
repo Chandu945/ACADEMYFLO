@@ -11,7 +11,7 @@ import {
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { ParentHomeStackParamList } from '../../navigation/ParentHomeStack';
 import type { ChildAttendanceSummary, ChildFeeDue } from '../../../domain/parent/parent.types';
 import { getChildAttendanceUseCase } from '../../../application/parent/use-cases/get-child-attendance.usecase';
@@ -65,8 +65,8 @@ function AttendanceBar({
   return (
     <View style={bStyles.row}>
       <View style={bStyles.labelRow}>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name={icon} size={16} color={color} />
+        
+        <AppIcon name={icon} size={16} color={color} />
         <Text style={bStyles.label}>{label}</Text>
       </View>
       <View style={bStyles.barOuter}>
@@ -117,15 +117,15 @@ const makeBarStyles = (colors: Colors) => StyleSheet.create({
 function FeeStatusIcon({ status }: { status: string }) {
   const { colors } = useTheme();
   if (status === 'PAID') {
-    // @ts-expect-error react-native-vector-icons types
-    return <Icon name="check-circle" size={20} color={colors.success} />;
+    
+    return <AppIcon name="check-circle" size={20} color={colors.success} />;
   }
   if (status === 'DUE') {
-    // @ts-expect-error react-native-vector-icons types
-    return <Icon name="alert-circle" size={20} color={colors.danger} />;
+    
+    return <AppIcon name="alert-circle" size={20} color={colors.danger} />;
   }
-  // @ts-expect-error react-native-vector-icons types
-  return <Icon name="clock-outline" size={20} color={colors.textDisabled} />;
+  
+  return <AppIcon name="clock-outline" size={20} color={colors.textDisabled} />;
 }
 
 export function ChildDetailScreen() {
@@ -148,20 +148,30 @@ export function ChildDetailScreen() {
     const month = getCurrentMonth();
     const { from, to } = getMonthRange();
 
-    const [attResult, feesResult] = await Promise.all([
-      getChildAttendanceUseCase({ parentApi }, studentId, month),
-      getChildFeesUseCase({ parentApi }, studentId, from, to),
-    ]);
+    try {
+      const [attResult, feesResult] = await Promise.all([
+        getChildAttendanceUseCase({ parentApi }, studentId, month),
+        getChildFeesUseCase({ parentApi }, studentId, from, to),
+      ]);
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (attResult.ok) setAttendance(attResult.value);
-    if (feesResult.ok) setFees(feesResult.value);
-    if (!attResult.ok && !feesResult.ok) {
-      setError('Failed to load details. Pull down to retry.');
+      if (attResult.ok) setAttendance(attResult.value);
+      if (feesResult.ok) setFees(feesResult.value);
+      if (!attResult.ok && !feesResult.ok) {
+        setError('Failed to load details. Pull down to retry.');
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ChildDetailScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError('Something went wrong. Pull down to retry.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    setLoading(false);
-    setRefreshing(false);
   }, [studentId]);
 
   useEffect(() => {
@@ -181,9 +191,13 @@ export function ChildDetailScreen() {
     }, [load]),
   );
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    load();
+    try {
+      await load();
+    } catch {
+      // Handled inside load
+    }
   }, [load]);
 
   if (loading) {
@@ -242,8 +256,8 @@ export function ChildDetailScreen() {
       {/* Attendance Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="calendar-check-outline" size={20} color={colors.primary} />
+          
+          <AppIcon name="calendar-check-outline" size={20} color={colors.primary} />
           <Text style={styles.sectionTitle}>
             Attendance — {formatMonthKey(getCurrentMonth())}
           </Text>
@@ -283,8 +297,8 @@ export function ChildDetailScreen() {
       {/* Fee History Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="receipt" size={20} color={colors.primary} />
+          
+          <AppIcon name="receipt" size={20} color={colors.primary} />
           <Text style={styles.sectionTitle}>Fee History</Text>
         </View>
         {fees.map((fee) => (
@@ -334,15 +348,15 @@ export function ChildDetailScreen() {
                 style={styles.receiptButton}
                 onPress={() => navigation.navigate('Receipt', { feeDueId: fee.id })}
               >
-                {/* @ts-expect-error react-native-vector-icons types */}
-                <Icon name="file-document-outline" size={16} color={colors.successText} />
+                
+                <AppIcon name="file-document-outline" size={16} color={colors.successText} />
                 <Text style={styles.receiptButtonText}>View Receipt</Text>
               </TouchableOpacity>
             )}
             {fee.status === 'DUE' && fee.lateFee > 0 && (
               <View style={styles.lateFeeNotice}>
-                {/* @ts-expect-error react-native-vector-icons types */}
-                <Icon name="alert-circle-outline" size={14} color={colors.danger} />
+                
+                <AppIcon name="alert-circle-outline" size={14} color={colors.danger} />
                 <Text style={styles.lateFeeNoticeText}>
                   Late fee of {formatCurrency(fee.lateFee)} applied
                 </Text>
@@ -355,8 +369,8 @@ export function ChildDetailScreen() {
               const daysPastDue = Math.floor((todayMs - dueDateMs) / dayMs);
               return daysPastDue > 0 ? (
                 <View style={styles.graceNotice}>
-                  {/* @ts-expect-error react-native-vector-icons types */}
-                  <Icon name="clock-alert-outline" size={14} color={colors.warning} />
+                  
+                  <AppIcon name="clock-alert-outline" size={14} color={colors.warning} />
                   <Text style={styles.graceNoticeText}>
                     Pay soon to avoid late fees
                   </Text>
@@ -375,8 +389,8 @@ export function ChildDetailScreen() {
                   })
                 }
               >
-                {/* @ts-expect-error react-native-vector-icons types */}
-                <Icon name="credit-card-outline" size={16} color={colors.white} />
+                
+                <AppIcon name="credit-card-outline" size={16} color={colors.white} />
                 <Text style={styles.payButtonText}>
                   {fee.lateFee > 0
                     ? `Pay ${formatCurrency(fee.amount + fee.lateFee)}`

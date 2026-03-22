@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { Text, Animated, StyleSheet } from 'react-native';
+import { View, Text, Animated, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../theme';
+import { AppIcon } from '../components/ui/AppIcon';
+import { spacing, fontSizes, fontWeights, radius } from '../theme';
 import type { Colors } from '../theme';
 import { useTheme } from './ThemeContext';
 
@@ -13,6 +14,7 @@ type ToastItem = {
 };
 
 const MAX_QUEUE_SIZE = 3;
+const TOAST_DURATION = 2800;
 
 type ToastContextValue = {
   showToast: (message: string, type?: ToastType) => void;
@@ -26,60 +28,69 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
+const ICON_MAP: Record<ToastType, string> = {
+  success: 'check-circle',
+  error: 'alert-circle',
+  info: 'information',
+};
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
   const [queue, setQueue] = useState<ToastItem[]>([]);
-  const translateY = useRef(new Animated.Value(-100)).current;
+  const translateY = useRef(new Animated.Value(100)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dismissAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const isShowingRef = useRef(false);
-
-  const dismissCurrent = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (dismissAnimRef.current) dismissAnimRef.current.stop();
-    dismissAnimRef.current = null;
-    timerRef.current = null;
-  }, []);
 
   const showNext = useCallback(() => {
     setQueue((prev) => {
       if (prev.length <= 1) {
-        // No more items after current; clear everything
         isShowingRef.current = false;
         return [];
       }
-      // Remove the first item (current) and the next will be displayed via the effect
       return prev.slice(1);
     });
   }, []);
 
   const presentToast = useCallback(() => {
     isShowingRef.current = true;
-    translateY.setValue(-100);
-    Animated.spring(translateY, {
-      toValue: 0,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
+    translateY.setValue(80);
+    opacity.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(translateY, {
+        toValue: 0,
+        friction: 9,
+        tension: 65,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
     timerRef.current = setTimeout(() => {
-      const anim = Animated.timing(translateY, {
-        toValue: -100,
-        duration: 250,
-        useNativeDriver: true,
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 80,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) showNext();
       });
-      dismissAnimRef.current = anim;
-      anim.start(({ finished }) => {
-        if (finished) {
-          showNext();
-        }
-      });
-    }, 3000);
-  }, [translateY, showNext]);
+    }, TOAST_DURATION);
+  }, [translateY, opacity, showNext]);
 
-  // When queue changes and we're not currently showing, present the first item
   useEffect(() => {
     if (queue.length > 0 && !isShowingRef.current) {
       presentToast();
@@ -89,16 +100,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
     setQueue((prev) => {
       const newItem: ToastItem = { message, type };
-      // If already showing, dismiss current animation timers so the new queue kicks in
-      if (prev.length === 0) {
-        // Queue is empty, just add — effect will present it
-        return [newItem];
-      }
-      // Already showing; push to queue
+      if (prev.length === 0) return [newItem];
       let next = [...prev, newItem];
-      // Enforce max queue size (drop oldest queued, but keep the currently-showing first item)
       if (next.length > MAX_QUEUE_SIZE) {
-        // Keep first (currently showing) + last (MAX_QUEUE_SIZE - 1) items
         next = [next[0]!, ...next.slice(next.length - (MAX_QUEUE_SIZE - 1))];
       }
       return next;
@@ -107,49 +111,48 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     return () => {
-      dismissCurrent();
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [dismissCurrent]);
+  }, []);
 
   const value = useMemo(() => ({ showToast }), [showToast]);
-
   const currentToast = queue.length > 0 ? queue[0]! : null;
 
-  const bgColor = currentToast
-    ? currentToast.type === 'success'
-      ? colors.successBg
-      : currentToast.type === 'error'
-        ? colors.dangerBg
-        : colors.infoBg
-    : colors.infoBg;
+  const getToastColors = (type: ToastType) => {
+    switch (type) {
+      case 'success':
+        return {
+          bg: isDark ? '#065f46' : '#059669',
+          icon: '#ffffff',
+          text: '#ffffff',
+        };
+      case 'error':
+        return {
+          bg: isDark ? '#7f1d1d' : '#dc2626',
+          icon: '#ffffff',
+          text: '#ffffff',
+        };
+      case 'info':
+        return {
+          bg: isDark ? '#1e3a5f' : '#2563eb',
+          icon: '#ffffff',
+          text: '#ffffff',
+        };
+    }
+  };
 
-  const textColor = currentToast
-    ? currentToast.type === 'success'
-      ? colors.successText
-      : currentToast.type === 'error'
-        ? colors.dangerText
-        : colors.infoText
-    : colors.infoText;
-
-  const borderColor = currentToast
-    ? currentToast.type === 'success'
-      ? colors.successBorder
-      : currentToast.type === 'error'
-        ? colors.dangerBorder
-        : colors.primary
-    : colors.primary;
+  const toastColors = currentToast ? getToastColors(currentToast.type) : null;
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {currentToast && (
+      {currentToast && toastColors && (
         <Animated.View
           style={[
-            styles.toast,
+            styles.toastContainer,
             {
-              top: insets.top + spacing.sm,
-              backgroundColor: bgColor,
-              borderColor,
+              bottom: Math.max(insets.bottom, spacing.base) + 60,
+              opacity,
               transform: [{ translateY }],
             },
           ]}
@@ -157,30 +160,66 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           accessibilityRole="alert"
           accessibilityLiveRegion="assertive"
         >
-          <Text style={[styles.toastText, { color: textColor }]} numberOfLines={3}>
-            {currentToast.message}
-          </Text>
+          <View style={[styles.toast, { backgroundColor: toastColors.bg }]}>
+            <View style={styles.iconContainer}>
+              <AppIcon name={ICON_MAP[currentToast.type]} size={20} color={toastColors.icon} />
+            </View>
+            <Text style={[styles.toastText, { color: toastColors.text }]} numberOfLines={2}>
+              {currentToast.message}
+            </Text>
+          </View>
         </Animated.View>
       )}
     </ToastContext.Provider>
   );
 }
 
-const makeStyles = (_colors: Colors) => StyleSheet.create({
-  toast: {
+const makeStyles = (colors: Colors, isDark: boolean) => StyleSheet.create({
+  toastContainer: {
     position: 'absolute',
-    left: spacing.base,
-    right: spacing.base,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.base,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    ...shadows.md,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
     zIndex: 9999,
+  },
+  toast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.full,
+    maxWidth: '85%',
+    minWidth: 200,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+      },
+    }),
+  },
+  iconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
   },
   toastText: {
     fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
-    textAlign: 'center',
+    fontWeight: fontWeights.semibold,
+    flexShrink: 1,
   },
 });

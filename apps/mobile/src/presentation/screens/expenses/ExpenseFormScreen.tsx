@@ -6,17 +6,17 @@ import {
   TouchableOpacity,
   Pressable,
   ScrollView,
-  Alert,
   Modal,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import type { ExpenseCategory } from '../../../domain/expense/expense.types';
@@ -83,10 +83,11 @@ export function ExpenseFormScreen() {
   const [addingCategory, setAddingCategory] = useState(false);
   const mountedRef = useRef(true);
 
-  const initialRef = useRef({ amount, date, categoryId });
+  const initialRef = useRef({ amount, date, categoryId, notes });
   const isDirty = amount !== initialRef.current.amount ||
     date !== initialRef.current.date ||
-    categoryId !== initialRef.current.categoryId;
+    categoryId !== initialRef.current.categoryId ||
+    notes !== initialRef.current.notes;
   useUnsavedChangesWarning(isDirty && !saving);
 
   const loadCategories = useCallback(async () => {
@@ -109,79 +110,96 @@ export function ExpenseFormScreen() {
   const handleAddCategory = async () => {
     const trimmed = newCategoryName.trim();
     if (!trimmed) {
-      Alert.alert('Validation', 'Category name is required');
+      crossAlert('Validation', 'Category name is required');
       return;
     }
     setAddingCategory(true);
-    const result = await expenseApi.createCategory(trimmed);
-    setAddingCategory(false);
-    if (result.ok) {
-      setCategoryId(result.value.id);
-      setNewCategoryName('');
-      setShowAddCategory(false);
-      loadCategories();
-    } else {
-      Alert.alert('Error', result.error.message);
+    try {
+      const result = await expenseApi.createCategory(trimmed);
+      if (result.ok) {
+        setCategoryId(result.value.id);
+        setNewCategoryName('');
+        setShowAddCategory(false);
+        loadCategories();
+      } else {
+        crossAlert('Error', result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ExpenseFormScreen] Add category failed:', e);
+      crossAlert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setAddingCategory(false);
     }
   };
 
   const handleSave = async () => {
     if (!categoryId) {
-      Alert.alert('Validation', 'Please select a category');
+      crossAlert('Validation', 'Please select a category');
       return;
     }
     const parsedAmount = parseFloat(amount);
     if (!isValidDate(date)) {
-      Alert.alert('Validation', 'Enter a valid date (YYYY-MM-DD)');
+      crossAlert('Validation', 'Enter a valid date (YYYY-MM-DD)');
       return;
     }
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Validation', 'Amount must be greater than zero');
+      crossAlert('Validation', 'Amount must be greater than zero');
       return;
     }
     if (new Date(date + 'T00:00:00') > new Date()) {
-      Alert.alert('Validation', 'Expense date cannot be in the future');
+      crossAlert('Validation', 'Expense date cannot be in the future');
       return;
     }
 
     setSaving(true);
-    const result = await saveExpenseUseCase(
-      { expenseApi },
-      mode === 'create'
-        ? { mode: 'create', categoryId, date, amount: parsedAmount, notes: notes || undefined }
-        : {
-            mode: 'edit',
-            id: existing!.id,
-            categoryId,
-            date,
-            amount: parsedAmount,
-            notes: notes || undefined,
-          },
-    );
-    setSaving(false);
+    try {
+      const result = await saveExpenseUseCase(
+        { expenseApi },
+        mode === 'create'
+          ? { mode: 'create', categoryId, date, amount: parsedAmount, notes: notes || undefined }
+          : {
+              mode: 'edit',
+              id: existing!.id,
+              categoryId,
+              date,
+              amount: parsedAmount,
+              notes: notes || undefined,
+            },
+      );
 
-    if (result.ok) {
-      showToast(mode === 'create' ? 'Expense added' : 'Expense updated');
-      navigation.goBack();
-    } else {
-      Alert.alert('Error', result.error.message);
+      if (result.ok) {
+        showToast(mode === 'create' ? 'Expense added' : 'Expense updated');
+        navigation.goBack();
+      } else {
+        crossAlert('Error', result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ExpenseFormScreen] Save failed:', e);
+      crossAlert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = () => {
     if (!existing) return;
-    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense?', [
+    crossAlert('Delete Expense', 'Are you sure you want to delete this expense?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const result = await deleteExpenseUseCase({ expenseApi }, existing.id);
-          if (result.ok) {
-            showToast('Expense deleted');
-            navigation.goBack();
-          } else {
-            Alert.alert('Error', result.error.message);
+          try {
+            const result = await deleteExpenseUseCase({ expenseApi }, existing.id);
+            if (result.ok) {
+              showToast('Expense deleted');
+              navigation.goBack();
+            } else {
+              crossAlert('Error', result.error.message);
+            }
+          } catch (e) {
+            if (__DEV__) console.error('[ExpenseFormScreen] Delete failed:', e);
+            crossAlert('Error', 'Something went wrong. Please try again.');
           }
         },
       },
@@ -193,11 +211,12 @@ export function ExpenseFormScreen() {
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {/* ── Category ─────────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="tag-outline" size={20} color={colors.primary} />
+        
+        <AppIcon name="tag-outline" size={20} color={colors.primary} />
         <Text style={styles.sectionTitle}>Category</Text>
       </View>
       <View style={styles.card}>
@@ -209,8 +228,7 @@ export function ExpenseFormScreen() {
               onPress={() => setCategoryId(cat.id)}
               testID={`category-${cat.id}`}
             >
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon
+              <AppIcon
                 name={getCategoryIcon(cat.name)}
                 size={14}
                 color={categoryId === cat.id ? colors.white : colors.textSecondary}
@@ -230,8 +248,8 @@ export function ExpenseFormScreen() {
             onPress={() => setShowAddCategory(true)}
             testID="add-category-button"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="plus" size={14} color={colors.primary} />
+            
+            <AppIcon name="plus" size={14} color={colors.primary} />
             <Text style={styles.addCategoryText}>Add</Text>
           </TouchableOpacity>
         </View>
@@ -239,8 +257,8 @@ export function ExpenseFormScreen() {
 
       {/* ── Date & Amount ────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="calendar-outline" size={20} color={colors.primary} />
+        
+        <AppIcon name="calendar-outline" size={20} color={colors.primary} />
         <Text style={styles.sectionTitle}>Date & Amount</Text>
       </View>
       <View style={styles.card}>
@@ -273,8 +291,8 @@ export function ExpenseFormScreen() {
 
       {/* ── Notes ────────────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="note-text-outline" size={20} color={colors.primary} />
+        
+        <AppIcon name="note-text-outline" size={20} color={colors.primary} />
         <Text style={styles.sectionTitle}>Notes</Text>
       </View>
       <View style={styles.card}>
@@ -295,8 +313,8 @@ export function ExpenseFormScreen() {
             onPress={handleDelete}
             testID="expense-delete-button"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="trash-can-outline" size={20} color={colors.danger} />
+            
+            <AppIcon name="trash-can-outline" size={20} color={colors.danger} />
             <Text style={styles.deleteButtonText}>Delete</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -306,8 +324,8 @@ export function ExpenseFormScreen() {
             testID="expense-save-button"
           >
             {!saving && (
-              // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-              <Icon name="content-save-outline" size={20} color={colors.white} />
+              
+              <AppIcon name="content-save-outline" size={20} color={colors.white} />
             )}
             <Text style={styles.saveButtonText}>
               {saving ? 'Saving...' : 'Save'}
@@ -322,8 +340,8 @@ export function ExpenseFormScreen() {
           testID="expense-save-button"
         >
           {!saving && (
-            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-            <Icon name="content-save-outline" size={20} color={colors.white} />
+            
+            <AppIcon name="content-save-outline" size={20} color={colors.white} />
           )}
           <Text style={styles.saveButtonText}>
             {saving ? 'Saving...' : 'Add Expense'}
@@ -343,8 +361,8 @@ export function ExpenseFormScreen() {
             <Pressable style={styles.modalContent} onPress={() => {}}>
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleRow}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="shape-outline" size={22} color={colors.primary} />
+                  
+                  <AppIcon name="shape-outline" size={22} color={colors.primary} />
                   <Text style={styles.modalTitle}>New Category</Text>
                 </View>
                 <TouchableOpacity
@@ -352,15 +370,15 @@ export function ExpenseFormScreen() {
                   style={styles.modalCloseBtn}
                   testID="close-add-category"
                 >
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="close" size={20} color={colors.textSecondary} />
+                  
+                  <AppIcon name="close" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.modalFieldLabel}>CATEGORY NAME</Text>
               <View style={styles.modalInputWrap}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="tag-outline" size={18} color={colors.textDisabled} />
+                
+                <AppIcon name="tag-outline" size={18} color={colors.textDisabled} />
                 <TextInput
                   style={styles.modalInput}
                   value={newCategoryName}
@@ -386,8 +404,8 @@ export function ExpenseFormScreen() {
                   disabled={addingCategory}
                   testID="save-category-button"
                 >
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="plus" size={18} color={colors.white} />
+                  
+                  <AppIcon name="plus" size={18} color={colors.white} />
                   <Text style={styles.modalSaveText}>
                     {addingCategory ? 'Adding...' : 'Add'}
                   </Text>
@@ -576,16 +594,19 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   /* ── Modal ───────────────────────────────────────── */
   modalOverlay: {
     flex: 1,
-    backgroundColor: colors.overlay,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     borderRadius: radius.xl,
     padding: spacing.xl,
-    width: 320,
+    width: 340,
     maxWidth: '92%',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.lg,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -604,12 +625,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
   },
   modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   modalFieldLabel: {
     fontSize: fontSizes.sm,
@@ -628,6 +651,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
     marginBottom: spacing.lg,
+    backgroundColor: colors.surface,
   },
   modalInput: {
     flex: 1,

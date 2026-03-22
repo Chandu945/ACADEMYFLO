@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { getStaffDailyReport } from '../../../infra/staff-attendance/staff-attendance-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -36,8 +36,8 @@ function MarkingCard({
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
       <View style={styles.cardIconCircle}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name={icon} size={20} color={colors.primary} />
+        
+        <AppIcon name={icon} size={20} color={colors.primary} />
       </View>
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardSubtitle}>Marking Attendance</Text>
@@ -53,7 +53,7 @@ function MarkingCard({
         <View
           style={[
             styles.progressFill,
-            { width: `${pct}%` as unknown as number },
+            { width: `${pct}%` as any },
           ]}
         />
       </View>
@@ -151,6 +151,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   pctText: {
     fontSize: fontSizes.xl,
     fontWeight: fontWeights.bold,
+    color: colors.text,
   },
   countText: {
     fontSize: fontSizes.base,

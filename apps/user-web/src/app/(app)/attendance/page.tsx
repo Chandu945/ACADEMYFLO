@@ -14,8 +14,21 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 function formatDateLabel(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatShortDate(dateStr: string) {
+  const [, m, d] = dateStr.split('-');
+  if (!m || !d) return dateStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return `${dayNames[dayOfWeek]}, ${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]}`;
 }
 
 function toISODate(d: Date) {
@@ -56,11 +69,13 @@ export default function AttendancePage() {
     }
   }, [attendance]);
 
-  const navigateDate = (delta: number) => {
-    const d = new Date(selectedDate + 'T00:00:00');
-    d.setDate(d.getDate() + delta);
-    setSelectedDate(toISODate(d));
-  };
+  const navigateDate = useCallback((delta: number) => {
+    setSelectedDate((prev) => {
+      const d = new Date(prev + 'T00:00:00');
+      d.setDate(d.getDate() + delta);
+      return toISODate(d);
+    });
+  }, []);
 
   const handleStatusChange = useCallback(async (studentId: string, status: string) => {
     const previousStatus = localStatuses[studentId];
@@ -180,6 +195,8 @@ export default function AttendancePage() {
                       type="button"
                       className={`${styles.statusBtn} ${localStatuses[item.studentId] === 'PRESENT' ? styles.present : ''}`}
                       onClick={() => handleStatusChange(item.studentId, 'PRESENT')}
+                      aria-pressed={localStatuses[item.studentId] === 'PRESENT'}
+                      aria-label={`Mark ${item.fullName} as present`}
                     >
                       Present
                     </button>
@@ -187,6 +204,8 @@ export default function AttendancePage() {
                       type="button"
                       className={`${styles.statusBtn} ${localStatuses[item.studentId] === 'ABSENT' ? styles.absent : ''}`}
                       onClick={() => handleStatusChange(item.studentId, 'ABSENT')}
+                      aria-pressed={localStatuses[item.studentId] === 'ABSENT'}
+                      aria-label={`Mark ${item.fullName} as absent`}
                     >
                       Absent
                     </button>
@@ -219,7 +238,7 @@ export default function AttendancePage() {
           <Tbody>
             {dailyCounts.map((day) => (
               <Tr key={day.date}>
-                <Td>{new Date(day.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })}</Td>
+                <Td>{formatShortDate(day.date)}</Td>
                 <Td style={{ color: 'var(--color-success)' }}>{day.presentCount}</Td>
                 <Td style={{ color: 'var(--color-danger)' }}>{day.absentCount}</Td>
                 <Td>{day.isHoliday ? 'Yes' : '-'}</Td>
@@ -275,7 +294,7 @@ export default function AttendancePage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
         <span className={styles.dateLabel}>{formatDateLabel(selectedDate)}</span>
-        <button type="button" className={styles.dateNavBtn} disabled={selectedDate >= today} style={selectedDate >= today ? { opacity: 0.4, cursor: 'not-allowed' } : undefined} onClick={() => navigateDate(1)}>
+        <button type="button" className={styles.dateNavBtn} disabled={selectedDate >= today} onClick={() => navigateDate(1)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
         </button>
         <Button variant="outline" size="sm" onClick={() => setSelectedDate(today)}>Today</Button>

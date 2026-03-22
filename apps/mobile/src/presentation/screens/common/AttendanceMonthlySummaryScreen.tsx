@@ -37,6 +37,7 @@ export function AttendanceMonthlySummaryScreen() {
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -58,38 +59,48 @@ export function AttendanceMonthlySummaryScreen() {
       }
       setError(null);
 
-      const result = await getMonthlySummaryUseCase(
-        { attendanceApi: summaryApi },
-        month,
-        targetPage,
-        PAGE_SIZE,
-        debouncedSearch || undefined,
-      );
+      try {
+        const result = await getMonthlySummaryUseCase(
+          { attendanceApi: summaryApi },
+          month,
+          targetPage,
+          PAGE_SIZE,
+          debouncedSearch || undefined,
+        );
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.ok) {
-        if (append) {
-          setItems((prev) => [...prev, ...result.value.items]);
+        if (result.ok) {
+          if (append) {
+            setItems((prev) => [...prev, ...result.value.items]);
+          } else {
+            setItems(result.value.items);
+          }
+          setPage(targetPage);
+          setHasMore(targetPage < result.value.meta.totalPages);
         } else {
-          setItems(result.value.items);
+          setError(result.error);
         }
-        setPage(targetPage);
-        setHasMore(targetPage < result.value.meta.totalPages);
-      } else {
-        setError(result.error);
+      } catch (e) {
+        if (__DEV__) console.error('[AttendanceMonthlySummary] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          fetchingMoreRef.current = false;
+        }
       }
-
-      setLoading(false);
-      setLoadingMore(false);
     },
     [month, debouncedSearch],
   );
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true);
   }, [loading, loadingMore, hasMore, page, load]);
 
   useEffect(() => {
@@ -116,6 +127,8 @@ export function AttendanceMonthlySummaryScreen() {
       <Pressable
         style={styles.row}
         onPress={() => handleRowPress(item)}
+        accessibilityLabel={`${item.fullName}: ${item.presentCount} present, ${item.absentCount} absent, ${item.holidayCount} holidays. Tap for details.`}
+        accessibilityRole="button"
         testID={`summary-row-${item.studentId}`}
       >
         <Text style={styles.name} numberOfLines={1}>
@@ -128,7 +141,7 @@ export function AttendanceMonthlySummaryScreen() {
         </View>
       </Pressable>
     ),
-    [handleRowPress],
+    [handleRowPress, styles],
   );
 
   const keyExtractor = useCallback((item: MonthlySummaryItem) => item.studentId, []);
@@ -152,6 +165,7 @@ export function AttendanceMonthlySummaryScreen() {
           placeholderTextColor={colors.textDisabled}
           value={searchText}
           onChangeText={setSearchText}
+          accessibilityLabel="Search students by name"
           testID="monthly-summary-search-input"
         />
       </View>

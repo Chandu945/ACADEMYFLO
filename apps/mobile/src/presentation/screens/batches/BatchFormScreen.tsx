@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { ScrollView, View, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { ScrollView, View, StyleSheet, Keyboard } from 'react-native';
+import type { TextInput } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { BatchesStackParamList } from '../../navigation/BatchesStack';
@@ -19,6 +20,7 @@ import { spacing, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 type FormRoute = RouteProp<BatchesStackParamList, 'BatchForm'>;
 
@@ -45,14 +47,59 @@ export function BatchFormScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const maxStudentsRef = useRef<TextInput>(null);
+  const submittingRef = useRef(false);
+
+  const isDirty = !!(batchName !== (batch?.batchName ?? '') ||
+    notes !== (batch?.notes ?? '') ||
+    startTime !== (batch?.startTime ?? '') ||
+    endTime !== (batch?.endTime ?? '') ||
+    maxStudents !== (batch?.maxStudents != null ? String(batch.maxStudents) : '') ||
+    JSON.stringify(days) !== JSON.stringify(batch?.days ?? []));
+  useUnsavedChangesWarning(isDirty && !submitting);
+
+  // Ref snapshot for handleSubmit — avoids massive dependency array for 6 fields.
+  const formRef = useRef({ batchName, days, notes, startTime, endTime, maxStudents });
+  formRef.current = { batchName, days, notes, startTime, endTime, maxStudents };
+
+  // --- Field error clearing ---
+  const clearFieldError = useCallback((field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    if (serverError) setServerError(null);
+  }, [serverError]);
+
+  const handleBatchNameChange = useCallback((text: string) => {
+    setBatchName(text);
+    clearFieldError('batchName');
+  }, [clearFieldError]);
+
+  const handleMaxStudentsChange = useCallback((text: string) => {
+    setMaxStudents(text);
+    clearFieldError('maxStudents');
+  }, [clearFieldError]);
+
+  const handleDaysChange = useCallback((newDays: Weekday[]) => {
+    setDays(newDays);
+    clearFieldError('days');
+  }, [clearFieldError]);
+
   const handleSubmit = useCallback(async () => {
+    if (submittingRef.current) return;
+    Keyboard.dismiss();
+
+    const f = formRef.current;
     const fields: Record<string, string> = {
-      batchName,
-      days: days.join(','),
-      notes,
-      startTime,
-      endTime,
-      maxStudents,
+      batchName: f.batchName,
+      days: f.days.join(','),
+      notes: f.notes,
+      startTime: f.startTime,
+      endTime: f.endTime,
+      maxStudents: f.maxStudents,
     };
 
     const errors = validateBatchForm(fields);
@@ -63,34 +110,45 @@ export function BatchFormScreen() {
     setFieldErrors({});
 
     const data: CreateBatchRequest = {
-      batchName: batchName.trim(),
-      days: days.length > 0 ? days : undefined,
-      notes: notes.trim() || null,
-      startTime: startTime.trim() || null,
-      endTime: endTime.trim() || null,
-      maxStudents: maxStudents.trim() ? parseInt(maxStudents.trim(), 10) : null,
+      batchName: f.batchName.trim(),
+      days: f.days.length > 0 ? f.days : undefined,
+      notes: f.notes.trim() || null,
+      startTime: f.startTime.trim() || null,
+      endTime: f.endTime.trim() || null,
+      maxStudents: f.maxStudents.trim() ? parseInt(f.maxStudents.trim(), 10) : null,
     };
 
+    submittingRef.current = true;
     setSubmitting(true);
     setServerError(null);
 
-    const result = await saveBatchUseCase({ saveApi }, mode, batch?.id, data);
+    try {
+      const result = await saveBatchUseCase({ saveApi }, mode, batch?.id, data);
 
-    setSubmitting(false);
-
-    if (result.ok) {
-      showToast(mode === 'create' ? 'Batch created' : 'Batch updated');
-      navigation.goBack();
-    } else {
-      setServerError(result.error.message);
+      if (result.ok) {
+        showToast(mode === 'create' ? 'Batch created' : 'Batch updated');
+        navigation.goBack();
+      } else {
+        if (result.error.fieldErrors) {
+          setFieldErrors(result.error.fieldErrors);
+        }
+        setServerError(result.error.message);
+      }
+    } catch {
+      if (__DEV__) console.error('[BatchFormScreen] Submit failed');
+      setServerError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+      submittingRef.current = false;
     }
-  }, [batchName, days, notes, startTime, endTime, maxStudents, mode, batch?.id, navigation, showToast]);
+  }, [mode, batch?.id, navigation, showToast]);
 
   return (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {serverError && <InlineError message={serverError} />}
 
@@ -98,15 +156,17 @@ export function BatchFormScreen() {
         <Input
           label="Batch Name"
           value={batchName}
-          onChangeText={setBatchName}
+          onChangeText={handleBatchNameChange}
           error={fieldErrors['batchName']}
           maxLength={50}
+          returnKeyType="next"
+          onSubmitEditing={() => maxStudentsRef.current?.focus()}
           testID="input-batchName"
         />
 
         <DaysPicker
           selected={days}
-          onChange={setDays}
+          onChange={handleDaysChange}
           error={fieldErrors['days']}
         />
 
@@ -129,12 +189,15 @@ export function BatchFormScreen() {
         />
 
         <Input
+          ref={maxStudentsRef}
           label="Max Students (optional)"
           value={maxStudents}
-          onChangeText={setMaxStudents}
+          onChangeText={handleMaxStudentsChange}
           error={fieldErrors['maxStudents']}
           placeholder="e.g. 30, leave empty for unlimited"
           keyboardType="numeric"
+          returnKeyType="done"
+          onSubmitEditing={() => Keyboard.dismiss()}
           testID="input-maxStudents"
         />
 
@@ -149,7 +212,7 @@ export function BatchFormScreen() {
 
       <View style={styles.submitContainer}>
         <Button
-          title={mode === 'create' ? 'Create Batch' : 'Save Changes'}
+          title={submitting ? (mode === 'create' ? 'Creating...' : 'Saving...') : (mode === 'create' ? 'Create Batch' : 'Save Changes')}
           onPress={handleSubmit}
           loading={submitting}
           testID="submit-button"

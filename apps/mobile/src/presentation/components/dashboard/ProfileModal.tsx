@@ -6,11 +6,12 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { AuthUser } from '../../../domain/auth/auth.types';
 import type { SubscriptionInfo, TierKey } from '../../../domain/subscription/subscription.types';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -21,18 +22,6 @@ type Props = {
   onClose: () => void;
   onViewSubscription: () => void;
   onLogout: () => void;
-};
-
-const TIER_LABELS: Record<TierKey, string> = {
-  TIER_0_50: 'Starter',
-  TIER_51_100: 'Growth',
-  TIER_101_PLUS: 'Professional',
-};
-
-const TIER_STUDENT_LIMITS: Record<TierKey, string> = {
-  TIER_0_50: 'Up to 50 students',
-  TIER_51_100: '51-100 students',
-  TIER_101_PLUS: '101+ students',
 };
 
 function getStatusLabel(status: string): string {
@@ -61,7 +50,7 @@ function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
   try {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   } catch {
     return dateStr;
   }
@@ -71,123 +60,105 @@ function getInitials(name: string): string {
   return name.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function InfoRow({ icon, value }: { icon: string; value: string }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  return (
-    <View style={styles.infoRow}>
-      {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-      <Icon name={icon} size={18} color={colors.textSecondary} />
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-}
-
 export function ProfileModal({
   visible, user, subscription, onClose, onViewSubscription, onLogout,
 }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const initials = getInitials(user.fullName);
-  const tierKey = subscription?.currentTierKey;
-  const tierLabel = tierKey ? TIER_LABELS[tierKey] : null;
-  const tierLimit = tierKey ? TIER_STUDENT_LIMITS[tierKey] : null;
   const renewalDate = subscription?.status === 'TRIAL' ? subscription.trialEndAt : subscription?.paidEndAt;
-  const renewalLabel = subscription?.status === 'TRIAL' ? 'Trial ends' : 'Renews on';
+  const renewalLabel = subscription?.status === 'TRIAL' ? 'Trial ends' : 'Renews';
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} testID="profile-modal-overlay">
         <TouchableOpacity activeOpacity={1} style={styles.sheet}>
-          <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-            {/* Close */}
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} testID="profile-modal-close">
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="close" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
+          {/* Drag handle */}
+          <View style={styles.dragHandle} />
 
-            {/* Avatar + Name */}
-            <View style={styles.profileSection}>
-              <View style={styles.avatarLarge}>
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+            {/* Profile header — compact horizontal layout */}
+            <View style={styles.profileRow}>
+              <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{initials}</Text>
               </View>
-              <Text style={styles.profileName}>{user.fullName}</Text>
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleBadgeText}>{user.role}</Text>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName} numberOfLines={1}>{user.fullName}</Text>
+                <Text style={styles.profileEmail} numberOfLines={1}>{user.email}</Text>
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleBadgeText}>{user.role}</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose} testID="profile-modal-close">
+                <AppIcon name="close" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Contact row */}
+            <View style={styles.contactRow}>
+              <View style={styles.contactItem}>
+                <AppIcon name="phone-outline" size={16} color={colors.primary} />
+                <Text style={styles.contactText} numberOfLines={1}>{user.phoneNumber}</Text>
               </View>
             </View>
 
-            {/* Contact */}
-            <View style={styles.card}>
-              <InfoRow icon="email-outline" value={user.email} />
-              <InfoRow icon="phone-outline" value={user.phoneNumber} />
-            </View>
+            {/* Divider */}
+            <View style={styles.divider} />
 
-            {/* Subscription */}
+            {/* Subscription section */}
             {subscription && (
-              <View style={styles.card}>
-                <View style={styles.subHeader}>
-                  <Text style={styles.cardTitle}>Current Plan</Text>
-                  <View style={[styles.statusPill, { backgroundColor: getStatusColor(subscription.status, colors) + '20' }]}>
-                    <View style={[styles.statusDot, { backgroundColor: getStatusColor(subscription.status, colors) }]} />
-                    <Text style={[styles.statusText, { color: getStatusColor(subscription.status, colors) }]}>
-                      {getStatusLabel(subscription.status)}
-                    </Text>
+              <>
+                <View style={styles.subSection}>
+                  <View style={styles.subRow}>
+                    <Text style={styles.subTitle}>Subscription</Text>
+                    <View style={[styles.statusPill, { backgroundColor: getStatusColor(subscription.status, colors) + '20' }]}>
+                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(subscription.status, colors) }]} />
+                      <Text style={[styles.statusLabel, { color: getStatusColor(subscription.status, colors) }]}>
+                        {getStatusLabel(subscription.status)}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                {tierLabel && (
-                  <View style={styles.tierCard}>
-                    <View style={styles.tierIcon}>
-                      {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                      <Icon name="shield-star-outline" size={22} color={colors.primary} />
+                  {/* Stats row */}
+                  <View style={styles.statsRow}>
+                    <View style={styles.statBox}>
+                      <Text style={styles.statValue}>{subscription.activeStudentCount}</Text>
+                      <Text style={styles.statLabel}>Students</Text>
                     </View>
-                    <View>
-                      <Text style={styles.tierName}>{tierLabel}</Text>
-                      <Text style={styles.tierLimit}>{tierLimit}</Text>
-                    </View>
+                    {subscription.daysRemaining > 0 && (
+                      <View style={styles.statBox}>
+                        <Text style={styles.statValue}>{subscription.daysRemaining}</Text>
+                        <Text style={styles.statLabel}>Days Left</Text>
+                      </View>
+                    )}
+                    {renewalDate && (
+                      <View style={styles.statBox}>
+                        <Text style={[styles.statValue, { fontSize: fontSizes.sm }]}>{formatDate(renewalDate)}</Text>
+                        <Text style={styles.statLabel}>{renewalLabel}</Text>
+                      </View>
+                    )}
                   </View>
-                )}
-
-                <View style={styles.subStats}>
-                  <View style={styles.subStatItem}>
-                    <Text style={styles.subStatValue}>{subscription.activeStudentCount}</Text>
-                    <Text style={styles.subStatLabel}>Active Students</Text>
-                  </View>
-                  {renewalDate && (
-                    <View style={styles.subStatItem}>
-                      <Text style={styles.subStatValue}>{formatDate(renewalDate)}</Text>
-                      <Text style={styles.subStatLabel}>{renewalLabel}</Text>
-                    </View>
-                  )}
-                  {subscription.daysRemaining > 0 && (
-                    <View style={styles.subStatItem}>
-                      <Text style={styles.subStatValue}>{subscription.daysRemaining}</Text>
-                      <Text style={styles.subStatLabel}>Days Left</Text>
-                    </View>
-                  )}
                 </View>
 
                 <TouchableOpacity
-                  style={styles.subscriptionBtn}
+                  style={styles.actionBtn}
                   onPress={() => { onClose(); onViewSubscription(); }}
                   testID="view-subscription-btn"
                 >
-                  <Text style={styles.subscriptionBtnText}>View Subscription Plan</Text>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-right" size={18} color={colors.white} />
+                  <AppIcon name="card-account-details-outline" size={18} color={colors.primary} />
+                  <Text style={styles.actionBtnText}>Manage Subscription</Text>
+                  <AppIcon name="chevron-right" size={16} color={colors.textDisabled} />
                 </TouchableOpacity>
-              </View>
+              </>
             )}
 
-            {/* Logout */}
+            {/* Sign Out */}
             <TouchableOpacity
               style={styles.logoutBtn}
               onPress={() => { onClose(); onLogout(); }}
               testID="profile-modal-logout"
             >
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="logout" size={18} color={colors.danger} />
+              <AppIcon name="logout" size={18} color={colors.danger} />
               <Text style={styles.logoutText}>Sign Out</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -197,99 +168,134 @@ export function ProfileModal({
   );
 }
 
-const AVATAR_SIZE = 76;
-
 const makeStyles = (colors: Colors) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    padding: spacing.xl,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: colors.bg,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    maxHeight: '85%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['2xl'],
+    maxHeight: '70%',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+      android: { elevation: 16 },
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+    }),
   },
-  closeBtn: {
-    alignSelf: 'flex-end',
-    padding: spacing.xs,
-  },
-  // Profile
-  profileSection: {
-    alignItems: 'center',
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.md,
     marginBottom: spacing.lg,
   },
-  avatarLarge: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
+
+  // Profile header
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.base,
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginRight: spacing.md,
   },
   avatarText: {
-    fontSize: fontSizes['3xl'],
+    fontSize: fontSizes.xl,
     fontWeight: fontWeights.bold,
     color: colors.white,
   },
+  profileInfo: {
+    flex: 1,
+  },
   profileName: {
-    fontSize: fontSizes['2xl'],
+    fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
+  },
+  profileEmail: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    marginTop: 1,
     marginBottom: spacing.xs,
   },
   roleBadge: {
+    alignSelf: 'flex-start',
     backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
     borderRadius: radius.full,
   },
   roleBadgeText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.primary,
-  },
-  // Cards
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.base,
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
-  cardTitle: {
-    fontSize: fontSizes.md,
+    fontSize: 10,
     fontWeight: fontWeights.bold,
-    color: colors.text,
+    color: colors.primary,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  // Info rows
-  infoRow: {
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.bgSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Contact
+  contactRow: {
+    marginBottom: spacing.sm,
+  },
+  contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  infoValue: {
-    fontSize: fontSizes.base,
-    color: colors.text,
-    flex: 1,
+  contactText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
   },
+
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+
   // Subscription
-  subHeader: {
+  subSection: {
+    marginBottom: spacing.md,
+  },
+  subRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
+  subTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
     borderRadius: radius.full,
   },
   statusDot: {
@@ -297,82 +303,69 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  statusText: {
+  statusLabel: {
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.semibold,
   },
-  tierCard: {
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
-  tierIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tierName: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: colors.primary,
-  },
-  tierLimit: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  subStats: {
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-  },
-  subStatItem: {
+  statBox: {
     flex: 1,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  subStatValue: {
-    fontSize: fontSizes.md,
+  statValue: {
+    fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
   },
-  subStatLabel: {
-    fontSize: fontSizes.xs,
+  statLabel: {
+    fontSize: 10,
     color: colors.textSecondary,
     marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
-  subscriptionBtn: {
+
+  // Action button
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
     gap: spacing.sm,
   },
-  subscriptionBtnText: {
+  actionBtnText: {
+    flex: 1,
     fontSize: fontSizes.base,
-    fontWeight: fontWeights.semibold,
-    color: colors.white,
+    fontWeight: fontWeights.medium,
+    color: colors.text,
   },
+
   // Logout
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.dangerBg,
-    borderRadius: radius.lg,
     paddingVertical: spacing.md,
     gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   logoutText: {
     fontSize: fontSizes.base,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.medium,
     color: colors.danger,
   },
 });

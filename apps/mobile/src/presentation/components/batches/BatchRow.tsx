@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useCallback } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { AppCard } from '../ui/AppCard';
 import { Badge } from '../ui/Badge';
@@ -9,7 +9,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 type BatchRowProps = {
   batch: BatchListItem;
-  onPress: () => void;
+  onPress: (batch: BatchListItem) => void;
 };
 
 const DAY_SHORT: Record<string, string> = {
@@ -32,6 +32,9 @@ function formatTime12h(time: string): string {
 function BatchRowComponent({ batch, onPress }: BatchRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const handlePress = useCallback(() => onPress(batch), [onPress, batch]);
+
   const daysText = batch.days.length > 0
     ? batch.days.map((d) => DAY_SHORT[d] ?? d).join(', ')
     : 'No days set';
@@ -45,7 +48,7 @@ function BatchRowComponent({ batch, onPress }: BatchRowProps) {
     : `${batch.studentCount}`;
 
   return (
-    <AppCard style={styles.container} onPress={onPress} testID={`batch-row-${batch.id}`}>
+    <AppCard style={styles.container} onPress={handlePress} testID={`batch-row-${batch.id}`}>
       <View style={styles.row}>
         {batch.profilePhotoUrl ? (
           <Image source={{ uri: batch.profilePhotoUrl }} style={styles.avatar} />

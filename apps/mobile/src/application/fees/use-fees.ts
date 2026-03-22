@@ -39,6 +39,7 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
   const [hasMoreUnpaid, setHasMoreUnpaid] = useState(false);
   const [loadingMoreUnpaid, setLoadingMoreUnpaid] = useState(false);
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,19 +87,26 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
   }, [month, feesApi]);
 
   const fetchMoreUnpaid = useCallback(async () => {
-    if (loading || loadingMoreUnpaid || !hasMoreUnpaid) return;
+    if (fetchingMoreRef.current || loading || loadingMoreUnpaid || !hasMoreUnpaid) return;
+    fetchingMoreRef.current = true;
     const nextPage = unpaidPage + 1;
     setLoadingMoreUnpaid(true);
 
-    const result = await listUnpaidDuesUseCase({ feesApi }, month, nextPage, UNPAID_PAGE_SIZE);
+    try {
+      const result = await listUnpaidDuesUseCase({ feesApi }, month, nextPage, UNPAID_PAGE_SIZE);
 
-    if (!mountedRef.current) return;
-    setLoadingMoreUnpaid(false);
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setUnpaidItems((prev) => [...prev, ...result.value.items]);
-      setUnpaidPage(nextPage);
-      setHasMoreUnpaid(result.value.meta.page < result.value.meta.totalPages);
+      if (result.ok) {
+        setUnpaidItems((prev) => [...prev, ...result.value.items]);
+        setUnpaidPage(nextPage);
+        setHasMoreUnpaid(result.value.meta.page < result.value.meta.totalPages);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[useFees] fetchMoreUnpaid failed:', e);
+    } finally {
+      if (mountedRef.current) setLoadingMoreUnpaid(false);
+      fetchingMoreRef.current = false;
     }
   }, [loading, loadingMoreUnpaid, hasMoreUnpaid, unpaidPage, feesApi, month]);
 

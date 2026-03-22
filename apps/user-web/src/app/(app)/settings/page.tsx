@@ -83,8 +83,9 @@ export default function SettingsPage() {
         body: JSON.stringify({ type: 'academy', ...academy }),
       });
       if (!res.ok) {
-        const json = await res.json();
-        setAcademyError(json.message || 'Failed to save');
+        let msg = 'Failed to save';
+        try { const json = await res.json(); msg = json.message || msg; } catch { /* non-JSON */ }
+        setAcademyError(msg);
       } else {
         setAcademySuccess(true);
         setTimeout(() => setAcademySuccess(false), 4000);
@@ -110,8 +111,9 @@ export default function SettingsPage() {
         body: JSON.stringify({ type: 'institute', ...institute }),
       });
       if (!res.ok) {
-        const json = await res.json();
-        setInstituteError(json.message || 'Failed to save');
+        let msg = 'Failed to save';
+        try { const json = await res.json(); msg = json.message || msg; } catch { /* non-JSON */ }
+        setInstituteError(msg);
       } else {
         setInstituteSuccess(true);
         setTimeout(() => setInstituteSuccess(false), 4000);
@@ -160,6 +162,8 @@ export default function SettingsPage() {
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={academy.lateFeeEnabled}
               className={`${styles.toggleSwitch} ${academy.lateFeeEnabled ? styles.active : ''}`}
               onClick={() => setAcademy((p) => ({ ...p, lateFeeEnabled: !p.lateFeeEnabled }))}
               aria-label="Toggle late fee"

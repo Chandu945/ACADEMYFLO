@@ -115,17 +115,17 @@ export function MoreStack() {
       <Stack.Screen
         name="AddEnquiry"
         component={AddEnquiryScreen}
-        options={{ title: 'Add Enquiry' }}
+        options={{ title: 'Add Enquiry', headerBackVisible: true }}
       />
       <Stack.Screen
         name="EnquiryDetail"
         component={EnquiryDetailScreen}
-        options={{ title: 'Enquiry Detail' }}
+        options={{ title: 'Enquiry Detail', headerBackVisible: true }}
       />
       <Stack.Screen
         name="EditEnquiry"
         component={EditEnquiryScreen}
-        options={{ title: 'Edit Enquiry' }}
+        options={{ title: 'Edit Enquiry', headerBackVisible: true }}
       />
       <Stack.Screen
         name="EventList"
@@ -135,22 +135,22 @@ export function MoreStack() {
       <Stack.Screen
         name="AddEvent"
         component={AddEventScreen}
-        options={{ title: 'Add Event' }}
+        options={{ title: 'Add Event', headerBackVisible: true }}
       />
       <Stack.Screen
         name="EditEvent"
         component={EditEventScreen}
-        options={{ title: 'Edit Event' }}
+        options={{ title: 'Edit Event', headerBackVisible: true }}
       />
       <Stack.Screen
         name="EventDetail"
         component={EventDetailScreen}
-        options={{ title: 'Event Detail' }}
+        options={{ title: 'Event Detail', headerBackVisible: true }}
       />
       <Stack.Screen
         name="EventGallery"
         component={EventGalleryScreen}
-        options={{ title: 'Photo Gallery' }}
+        options={{ title: 'Photo Gallery', headerBackVisible: true }}
       />
       <Stack.Screen
         name="PhotoViewer"
@@ -224,6 +224,7 @@ export function MoreStack() {
         component={StaffFormScreen}
         options={({ route }) => ({
           title: route.params.mode === 'create' ? 'Add Staff' : 'Edit Staff',
+          headerBackVisible: true,
         })}
       />
       <Stack.Screen

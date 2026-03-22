@@ -83,7 +83,8 @@ export class GetDailyAttendanceViewUseCase {
 
       const allBatchStudents = await this.studentRepo.findByIds(studentIds);
       let activeStudents = allBatchStudents.filter(
-        (s) => s.status === 'ACTIVE' && s.academyId === actor.academyId,
+        (s) => s.status === 'ACTIVE' && s.academyId === actor.academyId
+          && (!s.joiningDate || s.joiningDate.toISOString().slice(0, 10) <= input.date),
       );
 
       if (input.search) {
@@ -98,13 +99,16 @@ export class GetDailyAttendanceViewUseCase {
       const start = (input.page - 1) * input.pageSize;
       students = activeStudents.slice(start, start + input.pageSize);
     } else {
-      // Default: all ACTIVE students (existing behavior)
+      // Default: all ACTIVE students who have joined on or before the selected date
       const result = await this.studentRepo.list(
         { academyId: actor.academyId, status: 'ACTIVE', search: input.search },
         input.page,
         input.pageSize,
       );
-      students = result.students;
+      // Filter out students who joined after the selected date
+      students = result.students.filter(
+        (s) => !s.joiningDate || s.joiningDate.toISOString().slice(0, 10) <= input.date,
+      );
       total = result.total;
     }
 

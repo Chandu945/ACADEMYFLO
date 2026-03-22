@@ -1,6 +1,6 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { StudentListItem } from '../../../domain/student/student.types';
 import { AppCard } from '../ui/AppCard';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
@@ -9,15 +9,15 @@ import { useTheme } from '../../context/ThemeContext';
 
 type StudentRowProps = {
   student: StudentListItem;
-  onPress: () => void;
-  onLongPress?: () => void;
+  onPress: (student: StudentListItem) => void;
+  onLongPress?: (student: StudentListItem) => void;
 };
 
 function getStatusColors(colors: Colors): Record<string, { bg: string; text: string }> {
   return {
-    ACTIVE: { bg: '#ecfdf5', text: colors.success },
-    INACTIVE: { bg: '#fef9c3', text: '#a16207' },
-    LEFT: { bg: '#fef2f2', text: colors.danger },
+    ACTIVE: { bg: colors.successBg, text: colors.successText },
+    INACTIVE: { bg: colors.warningBg, text: colors.warningText },
+    LEFT: { bg: colors.dangerBg, text: colors.dangerText },
   };
 }
 
@@ -35,8 +35,11 @@ function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps)
   const STATUS_COLORS = useMemo(() => getStatusColors(colors), [colors]);
   const statusStyle = STATUS_COLORS[student.status] ?? { bg: colors.bgSubtle, text: colors.textDisabled };
 
+  const handlePress = useCallback(() => onPress(student), [onPress, student]);
+  const handleLongPress = useCallback(() => onLongPress?.(student), [onLongPress, student]);
+
   return (
-    <AppCard style={styles.card} onPress={onPress} onLongPress={onLongPress} testID={`student-row-${student.id}`}>
+    <AppCard style={styles.card} onPress={handlePress} onLongPress={handleLongPress} testID={`student-row-${student.id}`}>
       {student.profilePhotoUrl ? (
         <Image source={{ uri: student.profilePhotoUrl }} style={styles.avatar} />
       ) : (
@@ -54,15 +57,14 @@ function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps)
           </View>
           {student.guardian?.mobile && (
             <View style={styles.phoneMeta}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="phone-outline" size={12} color={colors.textDisabled} />
+              <AppIcon name="phone-outline" size={12} color={colors.textDisabled} />
               <Text style={styles.phoneText}>{student.guardian.mobile}</Text>
             </View>
           )}
         </View>
       </View>
       <View style={styles.feeContainer}>
-        <Text style={styles.fee}>{`\u20B9${student.monthlyFee}`}</Text>
+        <Text style={styles.fee}>{`\u20B9${student.monthlyFee.toLocaleString('en-IN')}`}</Text>
         <Text style={styles.feeLabel}>/ month</Text>
       </View>
     </AppCard>

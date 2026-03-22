@@ -6,11 +6,11 @@ import {
   Image,
   FlatList,
   RefreshControl,
-  Alert,
   StyleSheet,
   ActivityIndicator,
   Pressable,
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -82,16 +82,21 @@ export function BatchDetailScreen() {
   const fetchStudents = useCallback(
     async (page: number, append = false) => {
       if (!batch?.id) return;
-      const result = await listBatchStudents(batch.id, page, PAGE_SIZE, debouncedSearch || undefined);
+      try {
+        const result = await listBatchStudents(batch.id, page, PAGE_SIZE, debouncedSearch || undefined);
 
-      if (result.ok) {
-        const data = result.value;
-        setStudents((prev) => (append ? [...prev, ...data.data] : data.data));
-        totalItemsRef.current = data.meta.totalItems;
-        hasMoreRef.current = page < data.meta.totalPages;
-        setError(null);
-      } else {
-        setError(result.error.message);
+        if (result.ok) {
+          const data = result.value;
+          setStudents((prev) => (append ? [...prev, ...data.data] : data.data));
+          totalItemsRef.current = data.meta.totalItems;
+          hasMoreRef.current = page < data.meta.totalPages;
+          setError(null);
+        } else {
+          setError(result.error.message);
+        }
+      } catch (err) {
+        if (__DEV__) console.error('[BatchDetailScreen] fetchStudents failed:', err);
+        setError('Something went wrong. Please try again.');
       }
     },
     [batch?.id, debouncedSearch],
@@ -100,8 +105,13 @@ export function BatchDetailScreen() {
   const loadInitial = useCallback(async () => {
     setLoading(true);
     pageRef.current = 1;
-    await fetchStudents(1);
-    setLoading(false);
+    try {
+      await fetchStudents(1);
+    } catch (err) {
+      if (__DEV__) console.error('[BatchDetailScreen] loadInitial failed:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [fetchStudents]);
 
   useFocusEffect(
@@ -113,8 +123,13 @@ export function BatchDetailScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     pageRef.current = 1;
-    await fetchStudents(1);
-    setRefreshing(false);
+    try {
+      await fetchStudents(1);
+    } catch (err) {
+      if (__DEV__) console.error('[BatchDetailScreen] onRefresh failed:', err);
+    } finally {
+      setRefreshing(false);
+    }
   }, [fetchStudents]);
 
   const fetchMore = useCallback(async () => {
@@ -122,14 +137,19 @@ export function BatchDetailScreen() {
     setLoadingMore(true);
     const nextPage = pageRef.current + 1;
     pageRef.current = nextPage;
-    await fetchStudents(nextPage, true);
-    setLoadingMore(false);
+    try {
+      await fetchStudents(nextPage, true);
+    } catch (err) {
+      if (__DEV__) console.error('[BatchDetailScreen] fetchMore failed:', err);
+    } finally {
+      setLoadingMore(false);
+    }
   }, [loadingMore, fetchStudents]);
 
   const handleRemove = useCallback(
     (student: StudentListItem) => {
       if (!batch?.id) return;
-      Alert.alert(
+      crossAlert(
         'Remove Student',
         `Remove ${student.fullName} from this batch?`,
         [
@@ -139,14 +159,20 @@ export function BatchDetailScreen() {
             style: 'destructive',
             onPress: async () => {
               setRemovingId(student.id);
-              const result = await removeStudentFromBatch(batch.id, student.id);
-              if (result.ok) {
-                setStudents((prev) => prev.filter((s) => s.id !== student.id));
-                totalItemsRef.current -= 1;
-              } else {
-                Alert.alert('Error', result.error.message);
+              try {
+                const result = await removeStudentFromBatch(batch.id, student.id);
+                if (result.ok) {
+                  setStudents((prev) => prev.filter((s) => s.id !== student.id));
+                  totalItemsRef.current -= 1;
+                } else {
+                  crossAlert('Error', result.error.message);
+                }
+              } catch (err) {
+                if (__DEV__) console.error('[BatchDetailScreen] handleRemove failed:', err);
+                crossAlert('Error', 'Failed to remove student. Please try again.');
+              } finally {
+                setRemovingId(null);
               }
-              setRemovingId(null);
             },
           },
         ],
@@ -162,7 +188,7 @@ export function BatchDetailScreen() {
 
   const handleDelete = useCallback(() => {
     if (!batch) return;
-    Alert.alert(
+    crossAlert(
       'Delete Batch',
       `Delete "${batch.batchName}"? All students will be unassigned from this batch.`,
       [
@@ -171,11 +197,16 @@ export function BatchDetailScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const result = await deleteBatch(batch.id);
-            if (result.ok) {
-              navigation.goBack();
-            } else {
-              Alert.alert('Error', result.error.message);
+            try {
+              const result = await deleteBatch(batch.id);
+              if (result.ok) {
+                navigation.goBack();
+              } else {
+                crossAlert('Error', result.error.message);
+              }
+            } catch (err) {
+              if (__DEV__) console.error('[BatchDetailScreen] handleDelete failed:', err);
+              crossAlert('Error', 'Failed to delete batch. Please try again.');
             }
           },
         },
@@ -196,9 +227,12 @@ export function BatchDetailScreen() {
   if (!batch?.id) {
     return (
       <View style={styles.screen}>
-        <Text style={{ textAlign: 'center', marginTop: 40, color: colors.textSecondary }}>
-          Batch data unavailable
-        </Text>
+        <EmptyState
+          variant="empty"
+          icon="account-group-outline"
+          message="Batch data unavailable"
+          subtitle="Please go back and try again."
+        />
       </View>
     );
   }
@@ -231,7 +265,7 @@ export function BatchDetailScreen() {
           <Text style={styles.studentName} numberOfLines={1}>
             {item.fullName}
           </Text>
-          <Text style={styles.studentFee}>{'\u20B9'}{item.monthlyFee}/mo</Text>
+          <Text style={styles.studentFee}>{'\u20B9'}{item.monthlyFee?.toLocaleString('en-IN') ?? 0}/mo</Text>
         </View>
 
         <Pressable
@@ -239,6 +273,8 @@ export function BatchDetailScreen() {
           disabled={removingId === item.id}
           style={styles.removeButton}
           hitSlop={8}
+          accessibilityLabel={`Remove ${item.fullName} from batch`}
+          accessibilityRole="button"
           testID={`remove-student-${item.id}`}
         >
           {removingId === item.id ? (
@@ -346,6 +382,7 @@ export function BatchDetailScreen() {
             placeholderTextColor={colors.textDisabled}
             value={searchText}
             onChangeText={setSearchText}
+            accessibilityLabel="Search students in this batch"
             testID="batch-detail-search-input"
           />
         </View>

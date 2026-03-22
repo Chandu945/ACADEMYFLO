@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { fontSizes, fontWeights, radius, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -38,8 +38,8 @@ export const KpiTile = React.memo(function KpiTile({
     >
       {icon && (
         <View style={styles.iconCircle}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name={icon} size={16} color={colors.primary} />
+          
+          <AppIcon name={icon} size={16} color={colors.primary} />
         </View>
       )}
       <Text style={styles.value}>{displayValue}</Text>

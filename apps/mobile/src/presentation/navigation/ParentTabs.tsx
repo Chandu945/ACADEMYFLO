@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../components/ui/AppIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ParentDashboardScreen } from '../screens/parent/ParentDashboardScreen';
 import { ParentHomeStack } from './ParentHomeStack';
@@ -29,15 +29,15 @@ export function ParentTabs() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    // @ts-expect-error @types/react version mismatch in monorepo
+    
     <Tab.Navigator
       screenOptions={({ route }) => ({
         ...makeTabScreenOptions(colors, insets.bottom),
         tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
           const icons = TAB_ICONS[route.name];
           const iconName = focused ? icons?.active : icons?.inactive;
-          // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-          return <Icon name={iconName ?? 'circle'} size={size} color={color} />;
+          
+          return <AppIcon name={iconName ?? 'circle'} size={size} color={color} />;
         },
       })}
     >

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { ParentPaymentsStackParamList } from '../../navigation/ParentPaymentsStack';
 import { getPaymentHistoryUseCase } from '../../../application/parent/use-cases/get-payment-history.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
@@ -47,15 +47,25 @@ export function PaymentHistoryScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    const result = await getPaymentHistoryUseCase({ parentApi });
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setItems(result.value);
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await getPaymentHistoryUseCase({ parentApi });
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setItems(result.value);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[PaymentHistoryScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError('Failed to load payment history.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-    setLoading(false);
-    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -75,9 +85,13 @@ export function PaymentHistoryScreen() {
     }, [load]),
   );
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    load();
+    try {
+      await load();
+    } catch {
+      // Handled inside load
+    }
   }, [load]);
 
   const totalPaid = items.reduce((sum, item) => sum + item.amount, 0);
@@ -101,8 +115,8 @@ export function PaymentHistoryScreen() {
         <View style={styles.cardTop}>
           <View style={styles.cardLeft}>
             <View style={[styles.sourceIcon, { backgroundColor: src.bg }]}>
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name={src.icon} size={18} color={src.color} />
+              
+              <AppIcon name={src.icon} size={18} color={src.color} />
             </View>
             <View style={styles.cardInfo}>
               <Text style={styles.studentName} numberOfLines={1}>
@@ -120,18 +134,18 @@ export function PaymentHistoryScreen() {
         </View>
         <View style={styles.cardBottom}>
           <View style={styles.detailItem}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="pound" size={12} color={colors.textDisabled} />
+            
+            <AppIcon name="pound" size={12} color={colors.textDisabled} />
             <Text style={styles.detailText}>{item.receiptNumber}</Text>
           </View>
           <View style={styles.cardBottomRight}>
             <View style={styles.detailItem}>
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="calendar-outline" size={12} color={colors.textDisabled} />
+              
+              <AppIcon name="calendar-outline" size={12} color={colors.textDisabled} />
               <Text style={styles.detailText}>{formatDate(item.paidAt)}</Text>
             </View>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="chevron-right" size={16} color={colors.textDisabled} />
+            
+            <AppIcon name="chevron-right" size={16} color={colors.textDisabled} />
           </View>
         </View>
       </TouchableOpacity>
@@ -150,8 +164,8 @@ export function PaymentHistoryScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+        
+        <AppIcon name="alert-circle-outline" size={48} color={colors.danger} />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={load}>
           <Text style={styles.retryText}>Try Again</Text>
@@ -172,8 +186,8 @@ export function PaymentHistoryScreen() {
       ListHeaderComponent={
         items.length > 0 ? (
           <View style={styles.summaryCard}>
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="check-decagram" size={24} color={colors.success} />
+            
+            <AppIcon name="check-decagram" size={24} color={colors.success} />
             <View style={styles.summaryInfo}>
               <Text style={styles.summaryLabel}>Total Paid</Text>
               <Text style={styles.summaryValue}>{formatCurrency(totalPaid)}</Text>
@@ -187,8 +201,8 @@ export function PaymentHistoryScreen() {
       }
       ListEmptyComponent={
         <View style={styles.emptyContainer}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="receipt" size={64} color={colors.textDisabled} />
+          
+          <AppIcon name="receipt" size={64} color={colors.textDisabled} />
           <Text style={styles.emptyTitle}>No Payments Yet</Text>
           <Text style={styles.emptySubtitle}>
             Your payment history will appear here once you make a payment

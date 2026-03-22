@@ -13,7 +13,7 @@ type UseOwnerDashboardResult = {
   data: OwnerDashboardKpis | null;
   loading: boolean;
   error: AppError | null;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 };
 
 export function useOwnerDashboard(
@@ -29,16 +29,24 @@ export function useOwnerDashboard(
     setLoading(true);
     setError(null);
 
-    const result = await getOwnerDashboardUseCase({ dashboardApi }, range);
+    try {
+      const result = await getOwnerDashboardUseCase({ dashboardApi }, range);
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setData(result.value);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setData(result.value);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[useOwnerDashboard] Fetch failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Failed to load dashboard. Pull to retry.' });
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, [range, dashboardApi]);
 
   useEffect(() => {

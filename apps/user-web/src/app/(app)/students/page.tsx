@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStudents } from '@/application/students/use-students';
 import { useBatches } from '@/application/batches/use-batches';
+import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Chip } from '@/components/ui/Chip';
@@ -24,6 +25,12 @@ const FEE_FILTERS = [
   { value: 'PAID', label: 'Paid' },
 ];
 
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+
 function statusBadgeVariant(status: string) {
   switch (status.toLowerCase()) {
     case 'active': return 'success' as const;
@@ -33,13 +40,24 @@ function statusBadgeVariant(status: string) {
   }
 }
 
+/** Format a date string like "2024-01-15" without timezone shift. */
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-');
+  if (!y || !m || !d) return dateStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+}
+
 export default function StudentsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [feeFilter, setFeeFilter] = useState('');
   const [batchFilter, setBatchFilter] = useState('');
   const [page, setPage] = useState(1);
+
+  const canAddStudent = user?.role === 'OWNER' || user?.role === 'STAFF';
 
   const { data: students, meta, loading, error, refetch } = useStudents({
     page,
@@ -52,10 +70,13 @@ export default function StudentsPage() {
 
   const { data: batches } = useBatches();
 
-  const batchOptions = [
-    { value: '', label: 'All Batches' },
-    ...batches.map((b) => ({ value: b.id, label: b.batchName })),
-  ];
+  const batchOptions = useMemo(
+    () => [
+      { value: '', label: 'All Batches' },
+      ...batches.map((b) => ({ value: b.id, label: b.batchName })),
+    ],
+    [batches],
+  );
 
   const handleSearch = useCallback((val: string) => {
     setSearch(val);
@@ -72,9 +93,11 @@ export default function StudentsPage() {
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Students</h1>
-        <Button variant="primary" onClick={() => router.push('/students/new')}>
-          Add Student
-        </Button>
+        {canAddStudent && (
+          <Button variant="primary" onClick={() => router.push('/students/new')}>
+            Add Student
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -120,49 +143,51 @@ export default function StudentsPage() {
         <EmptyState
           message="No students found"
           subtitle={search ? 'Try adjusting your search or filters' : 'Add your first student to get started'}
-          action={!search ? <Button variant="primary" onClick={() => router.push('/students/new')}>Add Student</Button> : undefined}
+          action={!search && canAddStudent ? <Button variant="primary" onClick={() => router.push('/students/new')}>Add Student</Button> : undefined}
         />
       ) : (
         <>
-          <Table striped>
-            <Thead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Status</Th>
-                <Th>Guardian</Th>
-                <Th>Monthly Fee</Th>
-                <Th>Joined</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {students.map((student) => (
-                <Tr
-                  key={student.id}
-                  clickable
-                  onClick={() => router.push(`/students/${student.id}`)}
-                >
-                  <Td>
-                    <div className={styles.avatarCell}>
-                      <Avatar src={student.profilePhotoUrl} name={student.fullName} size="sm" />
-                      <span className={styles.studentName}>{student.fullName}</span>
-                    </div>
-                  </Td>
-                  <Td>
-                    <Badge variant={statusBadgeVariant(student.status)} dot>
-                      {student.status}
-                    </Badge>
-                  </Td>
-                  <Td>{student.guardian?.name ?? '-'}</Td>
-                  <Td>
-                    <span className={styles.feeText}>
-                      {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(student.monthlyFee)}
-                    </span>
-                  </Td>
-                  <Td>{new Date(student.joiningDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Td>
+          <div className={styles.tableWrapper}>
+            <Table striped>
+              <Thead>
+                <Tr>
+                  <Th>Name</Th>
+                  <Th>Status</Th>
+                  <Th>Guardian</Th>
+                  <Th>Monthly Fee</Th>
+                  <Th>Joined</Th>
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
+              </Thead>
+              <Tbody>
+                {students.map((student) => (
+                  <Tr
+                    key={student.id}
+                    clickable
+                    onClick={() => router.push(`/students/${student.id}`)}
+                  >
+                    <Td>
+                      <div className={styles.avatarCell}>
+                        <Avatar src={student.profilePhotoUrl} name={student.fullName} size="sm" />
+                        <span className={styles.studentName}>{student.fullName}</span>
+                      </div>
+                    </Td>
+                    <Td>
+                      <Badge variant={statusBadgeVariant(student.status)} dot>
+                        {student.status}
+                      </Badge>
+                    </Td>
+                    <Td>{student.guardian?.name ?? '-'}</Td>
+                    <Td>
+                      <span className={styles.feeText}>
+                        {currencyFormatter.format(student.monthlyFee)}
+                      </span>
+                    </Td>
+                    <Td>{formatDate(student.joiningDate)}</Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </div>
 
           {meta && meta.totalPages > 1 && (
             <Pagination

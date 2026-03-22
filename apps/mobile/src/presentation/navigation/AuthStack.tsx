@@ -22,13 +22,13 @@ export function AuthStack() {
       <Stack.Screen
         name="OwnerSignup"
         component={OwnerSignupScreen}
-        options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Back', headerTransparent: true }}
+        options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Back', headerShadowVisible: false }}
       />
       <Stack.Screen name="AcademySetup" component={AcademySetupScreen} />
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
-        options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Back', headerTransparent: true }}
+        options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Back', headerShadowVisible: false }}
       />
     </Stack.Navigator>
   );

@@ -55,18 +55,26 @@ export function StudentFeeDetailScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { from, to } = getDefaultRange();
+    try {
+      const { from, to } = getDefaultRange();
 
-    const result = await getStudentFeeDetailUseCase({ feesApi: detailApi }, studentId, from, to);
+      const result = await getStudentFeeDetailUseCase({ feesApi: detailApi }, studentId, from, to);
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setItems(result.value);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setItems(result.value);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[StudentFeeDetail] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, [studentId]);
 
   useEffect(() => {
@@ -104,21 +112,28 @@ export function StudentFeeDetailScreen() {
     if (!confirmItem) return;
     setMarking(true);
     setMarkError(null);
+    try {
+      const result = await ownerMarkPaidUseCase(
+        { feesApi: markPaidApi },
+        confirmItem.studentId,
+        confirmItem.monthKey,
+      );
 
-    const result = await ownerMarkPaidUseCase(
-      { feesApi: markPaidApi },
-      confirmItem.studentId,
-      confirmItem.monthKey,
-    );
+      if (!mountedRef.current) return;
 
-    if (!mountedRef.current) return;
-    setMarking(false);
-
-    if (result.ok) {
-      setConfirmItem(null);
-      load();
-    } else {
-      setMarkError(result.error.message);
+      if (result.ok) {
+        setConfirmItem(null);
+        load();
+      } else {
+        setMarkError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[StudentFeeDetail] Mark paid failed:', e);
+      if (mountedRef.current) {
+        setMarkError('Something went wrong. Please try again.');
+      }
+    } finally {
+      if (mountedRef.current) setMarking(false);
     }
   }, [confirmItem, load]);
 

@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useReports } from '../../../application/reports/use-reports';
 import { usePendingDues } from '../../../application/reports/use-pending-dues';
 import {
@@ -105,8 +105,13 @@ export function ReportsHomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetch(), refetchDues()]);
-    setRefreshing(false);
+    try {
+      await Promise.all([refetch(), refetchDues()]);
+    } catch {
+      // Handled by hooks
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch, refetchDues]);
 
   const handleExportRevenue = useCallback(() => {
@@ -138,8 +143,8 @@ export function ReportsHomeScreen() {
               {item.studentName}
             </Text>
             <View style={styles.dueMetaRow}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="clock-alert-outline" size={12} color={colors.warning} />
+              
+              <AppIcon name="clock-alert-outline" size={12} color={colors.warning} />
               <Text style={styles.duePending}>
                 {item.pendingMonthsCount} month{item.pendingMonthsCount !== 1 ? 's' : ''} pending
               </Text>
@@ -194,16 +199,16 @@ export function ReportsHomeScreen() {
               <View style={styles.kpiRow}>
                 <View style={styles.kpiTile}>
                   <View style={[styles.kpiIconCircle, { backgroundColor: colors.primarySoft }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="cash-multiple" size={20} color={colors.primary} />
+                    
+                    <AppIcon name="cash-multiple" size={20} color={colors.primary} />
                   </View>
                   <Text style={styles.kpiValue}>{formatCurrency(revenue.totalAmount)}</Text>
                   <Text style={styles.kpiLabel}>Total Revenue</Text>
                 </View>
                 <View style={styles.kpiTile}>
                   <View style={[styles.kpiIconCircle, { backgroundColor: colors.infoBg }]}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="receipt" size={20} color={colors.info} />
+                    
+                    <AppIcon name="receipt" size={20} color={colors.info} />
                   </View>
                   <Text style={styles.kpiValue}>{revenue.transactionCount}</Text>
                   <Text style={styles.kpiLabel}>Transactions</Text>
@@ -213,8 +218,8 @@ export function ReportsHomeScreen() {
               {/* ── Transactions Header ────────────────── */}
               {revenue.transactions.length > 0 && (
                 <View style={styles.listSectionHeader}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="format-list-bulleted" size={18} color={colors.textSecondary} />
+                  
+                  <AppIcon name="format-list-bulleted" size={18} color={colors.textSecondary} />
                   <Text style={styles.listSectionTitle}>Transactions</Text>
                   <Text style={styles.listSectionCount}>{revenue.transactions.length}</Text>
                 </View>
@@ -226,8 +231,8 @@ export function ReportsHomeScreen() {
                 revenue.transactions.map((tx) => (
                   <View key={tx.id} style={styles.txRow} testID={`tx-row-${tx.id}`}>
                     <View style={[styles.txIconCircle, { backgroundColor: colors.successBg }]}>
-                      {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                      <Icon name={getSourceIcon(tx.source)} size={18} color={colors.success} />
+                      
+                      <AppIcon name={getSourceIcon(tx.source)} size={18} color={colors.success} />
                     </View>
                     <View style={styles.txInfo}>
                       <Text style={styles.txReceipt}>{tx.receiptNumber}</Text>
@@ -247,7 +252,7 @@ export function ReportsHomeScreen() {
                 />
               </View>
             </View>
-          ) : null}
+          ) : <EmptyState message="No revenue data for this month" />}
         </ScrollView>
       ) : (
         <View style={styles.duesContainer}>
@@ -269,8 +274,8 @@ export function ReportsHomeScreen() {
               ListHeaderComponent={
                 pendingDues.length > 0 ? (
                   <View style={styles.listSectionHeader}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name="account-alert-outline" size={18} color={colors.textSecondary} />
+                    
+                    <AppIcon name="account-alert-outline" size={18} color={colors.textSecondary} />
                     <Text style={styles.listSectionTitle}>Pending Dues</Text>
                     <Text style={styles.listSectionCount}>{duesTotal}</Text>
                   </View>

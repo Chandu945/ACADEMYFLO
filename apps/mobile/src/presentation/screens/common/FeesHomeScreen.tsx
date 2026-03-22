@@ -5,10 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { FeesStackParamList } from '../../navigation/FeesStack';
 import { useAuth } from '../../context/AuthContext';
 import { useFees } from '../../../application/fees/use-fees';
@@ -115,11 +116,17 @@ export function FeesHomeScreen() {
     }
     let cancelled = false;
     async function load() {
-      const result = await listBatchStudents(selectedBatchId!, 1, 500);
-      if (cancelled) return;
-      if (result.ok) {
-        const ids = new Set(result.value.data.map((s: { id: string }) => s.id));
-        setBatchStudentIds(ids);
+      try {
+        // TODO: Batch filtering should be server-side. Currently fetches up to 500
+        // students client-side to build ID set for filtering.
+        const result = await listBatchStudents(selectedBatchId!, 1, 500);
+        if (cancelled || !mountedRef.current) return;
+        if (result.ok) {
+          const ids = new Set(result.value.data.map((s: { id: string }) => s.id));
+          setBatchStudentIds(ids);
+        }
+      } catch {
+        // Silently fail — show all students without batch filter
       }
     }
     load();
@@ -207,24 +214,40 @@ export function FeesHomeScreen() {
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     setSearchActive(false);
     setSearchText('');
     setDebouncedSearch('');
   }, []);
 
+  // Clear search/filters when switching to Approvals/My Requests
+  const handleSegmentChange = useCallback((index: number) => {
+    setSelectedSegment(index);
+    if (index === 2) {
+      if (searchActive) closeSearch();
+      clearAllFilters();
+    }
+  }, [searchActive, closeSearch, clearAllFilters]);
+
+  const showSearchAndFilters = selectedSegment !== 2;
+
   return (
     <View style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
-        {searchActive ? (
+        {searchActive && showSearchAndFilters ? (
           <View style={styles.searchBar}>
-            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity
+              onPress={closeSearch}
+              style={styles.navBtn}
+              accessibilityLabel="Close search"
+              accessibilityRole="button"
+            >
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -233,13 +256,20 @@ export function FeesHomeScreen() {
               placeholderTextColor={colors.textDisabled}
               value={searchText}
               onChangeText={setSearchText}
+              returnKeyType="search"
+              onSubmitEditing={() => Keyboard.dismiss()}
               autoFocus
+              accessibilityLabel="Search fees by student name"
               testID="fees-search-input"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
+              <TouchableOpacity
+                onPress={() => setSearchText('')}
+                style={styles.navBtn}
+                accessibilityLabel="Clear search text"
+                accessibilityRole="button"
+              >
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -249,60 +279,58 @@ export function FeesHomeScreen() {
               <Text style={styles.navTitle}>Fees</Text>
               <Text style={styles.navSubtitle}>{formatMonthLabel(month)}</Text>
             </View>
-            <View style={styles.navActions}>
-              <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="magnify" size={22} color={colors.text} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={toggleFilters}
-                style={[styles.navBtn, showFilters && styles.navBtnActive]}
-                testID="filter-button"
-                accessibilityLabel="Toggle filters"
-                accessibilityRole="button"
-              >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon
-                  name={showFilters ? 'filter-variant-remove' : 'filter-variant'}
-                  size={22}
-                  color={showFilters ? colors.primary : colors.text}
-                />
-                {selectedBatchId !== null && !showFilters && (
-                  <View style={styles.filterBadge}>
-                    <Text style={styles.filterBadgeText}>1</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
+            {showSearchAndFilters && (
+              <View style={styles.navActions}>
+                <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search students" accessibilityRole="button">
+                  <AppIcon name="magnify" size={22} color={colors.text} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={toggleFilters}
+                  style={[styles.navBtn, showFilters && styles.navBtnActive]}
+                  testID="filter-button"
+                  accessibilityLabel="Toggle filters"
+                  accessibilityRole="button"
+                >
+                  <AppIcon
+                    name={showFilters ? 'filter-variant-remove' : 'filter-variant'}
+                    size={22}
+                    color={showFilters ? colors.primary : colors.text}
+                  />
+                  {selectedBatchId !== null && !showFilters && (
+                    <View style={styles.filterBadge}>
+                      <Text style={styles.filterBadgeText}>1</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       </View>
 
       {/* ── Active Filter Pills (visible when panel closed) ── */}
-      {!showFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />}
+      {!showFilters && showSearchAndFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />}
 
       {/* ── Filter Panel ──────────────────────────────── */}
-      {showFilters && (
+      {showFilters && showSearchAndFilters && (
         <View style={styles.filterPanel}>
           <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
           <SegmentedControl
             segments={segments}
             selectedIndex={selectedSegment}
-            onSelect={setSelectedSegment}
+            onSelect={handleSegmentChange}
             testID="fees-segments"
           />
           <View style={styles.filterCard}>
             <View style={styles.filterCardHeader}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="account-group-outline" size={15} color={colors.textSecondary} />
+              <AppIcon name="account-group-outline" size={15} color={colors.textSecondary} />
               <Text style={styles.filterCardTitle}>Batch</Text>
             </View>
             <BatchFilterBar selectedBatchId={selectedBatchId} onChange={handleBatchChange} />
           </View>
           {selectedBatchId !== null && (
             <TouchableOpacity style={styles.clearFilters} onPress={clearAllFilters}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="filter-remove-outline" size={16} color={colors.danger} />
+              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
               <Text style={styles.clearFiltersText}>Clear Batch Filter</Text>
             </TouchableOpacity>
           )}
@@ -316,7 +344,7 @@ export function FeesHomeScreen() {
           <SegmentedControl
             segments={segments}
             selectedIndex={selectedSegment}
-            onSelect={setSelectedSegment}
+            onSelect={handleSegmentChange}
             testID="fees-segments"
           />
         </View>

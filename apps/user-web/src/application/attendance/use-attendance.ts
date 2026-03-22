@@ -26,16 +26,28 @@ type MonthlySummaryItem = {
 
 type DailyCountItem = { date: string; presentCount: number; absentCount: number; isHoliday: boolean };
 
+async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export function useDailyAttendance(date: string, batchId?: string, search?: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<AttendancePage | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cancelRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
-    const id = ++cancelRef.current;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -44,110 +56,171 @@ export function useDailyAttendance(date: string, batchId?: string, search?: stri
       if (search) params.set('search', search);
       const res = await fetch(`/api/attendance?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
       });
-      if (id !== cancelRef.current) return;
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
-      setData(json);
+      if (controller.signal.aborted) return;
+
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+
+      if (!res.ok || !json) {
+        throw new Error((json?.['message'] as string) || 'Failed to load attendance');
+      }
+      setData(json as unknown as AttendancePage);
     } catch (e) {
-      if (id !== cancelRef.current) return;
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
       setError(e instanceof Error ? e.message : 'Failed to load attendance');
     } finally {
-      if (id === cancelRef.current) setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [accessToken, date, batchId, search]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    fetch_();
+    return () => { abortRef.current?.abort(); };
+  }, [fetch_]);
 
   return { data, loading, error, refetch: fetch_ };
 }
 
 export async function markAttendance(studentId: string, date: string, status: string, accessToken?: string | null) {
-  const res = await fetch('/api/attendance', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify({ studentId, date, status }),
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    return { ok: false as const, error: json.message };
+  try {
+    const res = await fetch('/api/attendance', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ studentId, date, status }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) {
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to mark attendance' };
+    }
+    return { ok: true as const, data: json };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
   }
-  return { ok: true as const, data: json };
 }
 
 export async function markBulkAttendance(date: string, updates: { studentId: string; status: string }[], accessToken?: string | null) {
-  const res = await fetch('/api/attendance', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify({ bulk: true, date, updates }),
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    return { ok: false as const, error: json.message };
+  try {
+    const res = await fetch('/api/attendance', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ bulk: true, date, updates }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) {
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to mark bulk attendance' };
+    }
+    return { ok: true as const, data: json };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
   }
-  return { ok: true as const, data: json };
 }
 
 export function useMonthlySummary(month: string, search?: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<MonthlySummaryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const cancelRef = useRef(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(async () => {
-    const id = ++cancelRef.current;
+    if (!accessToken) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
+    setError(null);
     try {
-      if (!accessToken) return;
       const params = new URLSearchParams({ type: 'monthly-summary', month, pageSize: '100' });
       if (search) params.set('search', search);
       const res = await fetch(`/api/attendance?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
       });
-      if (id !== cancelRef.current) return;
-      if (res.ok) {
-        const json = await res.json();
-        setData(json.data ?? json.items ?? json ?? []);
+      if (controller.signal.aborted) return;
+
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+
+      if (!res.ok || !json) {
+        throw new Error((json?.['message'] as string) || 'Failed to load summary');
       }
+      const items = (json['data'] ?? json['items'] ?? json) as MonthlySummaryItem[];
+      setData(Array.isArray(items) ? items : []);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load summary');
     } finally {
-      if (id === cancelRef.current) setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [accessToken, month, search]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    fetch_();
+    return () => { abortRef.current?.abort(); };
+  }, [fetch_]);
 
-  return { data, loading, refetch: fetch_ };
+  return { data, loading, error, refetch: fetch_ };
 }
 
 export function useMonthDailyCounts(month: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<DailyCountItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(async () => {
+    if (!accessToken) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
+    setError(null);
     try {
-      if (!accessToken) return;
       const params = new URLSearchParams({ type: 'month-daily-counts', month });
       const res = await fetch(`/api/attendance?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
       });
-      if (res.ok) {
-        const json = await res.json();
-        setData(Array.isArray(json) ? json : json.days ?? []);
+      if (controller.signal.aborted) return;
+
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+
+      if (!res.ok || !json) {
+        throw new Error((json?.['message'] as string) || 'Failed to load daily counts');
       }
+      const items = Array.isArray(json) ? json : (json['days'] ?? []);
+      setData(items as DailyCountItem[]);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load daily counts');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [accessToken, month]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    fetch_();
+    return () => { abortRef.current?.abort(); };
+  }, [fetch_]);
 
-  return { data, loading, refetch: fetch_ };
+  return { data, loading, error, refetch: fetch_ };
 }

@@ -16,7 +16,7 @@ export type SaveStudentDeps = {
 };
 
 const E164_RE = /^\+[1-9]\d{6,14}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 
 export function validateStudentForm(
   fields: Record<string, string>,
@@ -37,7 +37,7 @@ export function validateStudentForm(
   }
 
   if (fields['guardianMobile']?.trim() && !E164_RE.test(fields['guardianMobile'])) {
-    errors['guardianMobile'] = 'Mobile must be in E.164 format (e.g., +919876543210)';
+    errors['guardianMobile'] = 'Please enter a valid phone number (e.g., 9876543210)';
   }
 
   if (fields['guardianEmail']?.trim() && !EMAIL_RE.test(fields['guardianEmail'])) {

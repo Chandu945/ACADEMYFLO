@@ -65,20 +65,20 @@ export async function PUT(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  let body: unknown;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await request.json() as Record<string, unknown>;
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (body.bulk) {
-    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(body.date)}`, { updates: body.updates }, { accessToken });
+  if (body['bulk']) {
+    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(String(body['date']))}`, { updates: body['updates'] }, { accessToken });
     if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
-  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(body.studentId)}?date=${encodeURIComponent(body.date)}`, { status: body.status }, { accessToken });
+  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(String(body['studentId']))}?date=${encodeURIComponent(String(body['date']))}`, { status: body['status'] }, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

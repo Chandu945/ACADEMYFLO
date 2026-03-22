@@ -38,6 +38,13 @@
   flex-wrap: wrap;
 }
 
+/* ── Table Wrapper (horizontal scroll on mobile) ─────────────────────── */
+.tableWrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-lg);
+}
+
 /* ── Table Enhancements ───────────────────────────────────────────────── */
 .avatarCell {
   display: flex;

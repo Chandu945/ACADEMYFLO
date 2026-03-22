@@ -6,13 +6,14 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { ExpenseItem, ExpenseCategory } from '../../../domain/expense/expense.types';
 import { useExpenses } from '../../../application/expense/use-expenses';
@@ -140,12 +141,16 @@ export function ExpensesHomeScreen() {
   // Dynamic categories
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const loadCategories = useCallback(async () => {
-    const result = await expenseApi.listCategories();
-    if (result.ok) {
-      const parsed = expenseCategoryListSchema.safeParse(result.value);
-      if (parsed.success) {
-        setCategories(parsed.data.categories);
+    try {
+      const result = await expenseApi.listCategories();
+      if (result.ok) {
+        const parsed = expenseCategoryListSchema.safeParse(result.value);
+        if (parsed.success) {
+          setCategories(parsed.data.categories);
+        }
       }
+    } catch (e) {
+      if (__DEV__) console.error('[ExpensesHomeScreen] Load categories failed:', e);
     }
   }, []);
 
@@ -167,12 +172,17 @@ export function ExpensesHomeScreen() {
 
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
-    const result = await getExpenseSummaryUseCase({ expenseApi: stableApi }, month);
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setSummary(result.value);
+    try {
+      const result = await getExpenseSummaryUseCase({ expenseApi: stableApi }, month);
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setSummary(result.value);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ExpensesHomeScreen] Load summary failed:', e);
+    } finally {
+      if (mountedRef.current) setSummaryLoading(false);
     }
-    setSummaryLoading(false);
   }, [month, stableApi]);
 
   useEffect(() => {
@@ -183,19 +193,38 @@ export function ExpensesHomeScreen() {
     };
   }, [loadSummary]);
 
+  // Refresh when returning from add/edit expense
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      refetch();
+      loadSummary();
+    }, [refetch, loadSummary]),
+  );
+
   const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetch(), loadSummary(), loadCategories()]);
-    setRefreshing(false);
-  };
+    try {
+      await Promise.all([refetch(), loadSummary(), loadCategories()]);
+    } catch {
+      // Errors handled by individual loaders
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch, loadSummary, loadCategories]);
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     setSearchActive(false);
     setSearchText('');
     setDebouncedSearch('');
@@ -221,8 +250,8 @@ export function ExpensesHomeScreen() {
     return [{ key: 'category', label: 'Category', value: selectedCategoryName, onRemove: clearCategoryFilter }];
   }, [selectedCategoryName, clearCategoryFilter]);
 
-  const handleDelete = (item: ExpenseItem) => {
-    Alert.alert(
+  const handleDelete = useCallback((item: ExpenseItem) => {
+    crossAlert(
       'Delete Expense',
       `Delete ${item.categoryName} - ${formatCurrency(item.amount)}?`,
       [
@@ -231,18 +260,22 @@ export function ExpensesHomeScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const result = await deleteExpenseUseCase({ expenseApi: stableApi }, item.id);
-            if (result.ok) {
-              refetch();
-              loadSummary();
+            try {
+              const result = await deleteExpenseUseCase({ expenseApi: stableApi }, item.id);
+              if (result.ok) {
+                refetch();
+                loadSummary();
+              }
+            } catch (e) {
+              if (__DEV__) console.error('[ExpensesHomeScreen] Delete failed:', e);
             }
           },
         },
       ],
     );
-  };
+  }, [stableApi, refetch, loadSummary]);
 
-  const renderItem = ({ item }: { item: ExpenseItem }) => {
+  const renderItem = useCallback(({ item }: { item: ExpenseItem }) => {
     const catColor = getCategoryColor(item.categoryName, isDark);
     const catIcon = getCategoryIcon(item.categoryName);
     return (
@@ -255,14 +288,14 @@ export function ExpensesHomeScreen() {
       >
         <View style={styles.cardBody}>
           <View style={[styles.iconCircle, { backgroundColor: catColor + '18' }]}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name={catIcon} size={20} color={catColor} />
+
+            <AppIcon name={catIcon} size={20} color={catColor} />
           </View>
           <View style={styles.cardMiddle}>
             <Text style={styles.categoryLabel} numberOfLines={1}>{item.categoryName}</Text>
             <View style={styles.cardMeta}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="calendar-outline" size={12} color={colors.textSecondary} />
+
+              <AppIcon name="calendar-outline" size={12} color={colors.textSecondary} />
               <Text style={styles.dateLabel}>{formatDate(item.date)}</Text>
             </View>
             {item.notes ? (
@@ -273,7 +306,7 @@ export function ExpensesHomeScreen() {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [isDark, colors, styles, handleDelete, navigation]);
 
   // Compute max category amount for progress bars
   const maxCatAmount = useMemo(() => {
@@ -290,8 +323,8 @@ export function ExpensesHomeScreen() {
           style={styles.monthBtn}
           testID="prev-month"
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="chevron-left" size={24} color={colors.primary} />
+          
+          <AppIcon name="chevron-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <View style={styles.monthCenter}>
           <Text style={styles.monthLabel}>{formatMonth(month)}</Text>
@@ -301,8 +334,8 @@ export function ExpensesHomeScreen() {
           style={styles.monthBtn}
           testID="next-month"
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="chevron-right" size={24} color={colors.primary} />
+          
+          <AppIcon name="chevron-right" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -311,8 +344,8 @@ export function ExpensesHomeScreen() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <View style={styles.summaryIconCircle}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="wallet-outline" size={20} color={colors.primary} />
+              
+              <AppIcon name="wallet-outline" size={20} color={colors.primary} />
             </View>
             <Text style={styles.summaryTitle}>Monthly Summary</Text>
           </View>
@@ -352,9 +385,9 @@ export function ExpensesHomeScreen() {
       <View style={styles.navbar}>
         {searchActive ? (
           <View style={styles.searchBar}>
-            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity onPress={closeSearch} style={styles.navBtn} accessibilityLabel="Close search" accessibilityRole="button">
+              
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -363,21 +396,23 @@ export function ExpensesHomeScreen() {
               placeholderTextColor={colors.textDisabled}
               value={searchText}
               onChangeText={setSearchText}
+              returnKeyType="search"
+              onSubmitEditing={() => Keyboard.dismiss()}
               autoFocus
               testID="expense-search"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
+              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn} accessibilityLabel="Clear search text" accessibilityRole="button">
+                
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
         ) : (
           <View style={styles.titleBar}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn} accessibilityLabel="Go back" accessibilityRole="button">
+              
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.titleWrap}>
               <Text style={styles.navTitle}>Expenses</Text>
@@ -385,8 +420,8 @@ export function ExpensesHomeScreen() {
             </View>
             <View style={styles.navActions}>
               <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="magnify" size={22} color={colors.text} />
+                
+                <AppIcon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={toggleFilters}
@@ -395,8 +430,8 @@ export function ExpensesHomeScreen() {
                 accessibilityLabel="Toggle filters"
                 accessibilityRole="button"
               >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon
+                
+                <AppIcon
                   name={showFilters ? 'filter-variant-remove' : 'filter-variant'}
                   size={22}
                   color={showFilters ? colors.primary : colors.text}
@@ -419,8 +454,8 @@ export function ExpensesHomeScreen() {
       {showFilters && (
         <View style={styles.filterPanel}>
           <View style={styles.filterPanelHeader}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="tag-outline" size={16} color={colors.textSecondary} />
+            
+            <AppIcon name="tag-outline" size={16} color={colors.textSecondary} />
             <Text style={styles.filterPanelTitle}>Category</Text>
           </View>
           <View style={styles.filterRow}>
@@ -438,8 +473,8 @@ export function ExpensesHomeScreen() {
                 style={[styles.filterChip, categoryFilter === cat.id && styles.filterChipActive]}
                 onPress={() => setCategoryFilter(categoryFilter === cat.id ? undefined : cat.id)}
               >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon
+                
+                <AppIcon
                   name={getCategoryIcon(cat.name)}
                   size={14}
                   color={categoryFilter === cat.id ? colors.white : colors.textSecondary}
@@ -457,8 +492,8 @@ export function ExpensesHomeScreen() {
           </View>
           {categoryFilter && (
             <TouchableOpacity style={styles.clearFilters} onPress={clearCategoryFilter}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="filter-remove-outline" size={16} color={colors.danger} />
+              
+              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
               <Text style={styles.clearFiltersText}>Clear Filter</Text>
             </TouchableOpacity>
           )}
@@ -474,8 +509,8 @@ export function ExpensesHomeScreen() {
           !loading ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="cash-remove" size={48} color={colors.primary} />
+                
+                <AppIcon name="cash-remove" size={48} color={colors.primary} />
               </View>
               <Text style={styles.emptyTitle}>No expenses found</Text>
               <Text style={styles.emptySubtitle}>
@@ -498,9 +533,12 @@ export function ExpensesHomeScreen() {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('ExpenseForm', { mode: 'create' })}
+        accessibilityLabel="Add new expense"
+        accessibilityRole="button"
         testID="add-expense-fab"
       >
-        <Text style={styles.fabText}>+</Text>
+        
+        <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
     </View>
   );

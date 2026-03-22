@@ -32,7 +32,7 @@
 
 .cardGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 440px));
   gap: var(--space-4);
 }
 
@@ -51,6 +51,11 @@
   box-shadow: var(--shadow-lg);
 }
 
+.eventCard:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .eventHeader {
   display: flex;
   align-items: flex-start;
@@ -63,6 +68,9 @@
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .eventMeta {

@@ -5,12 +5,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  Alert,
+
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { launchImageLibrary } from 'react-native-image-picker';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { useInstituteInfo } from '../../../application/settings/use-institute-info';
 import { instituteInfoApi, uploadInstituteImage, deleteInstituteImage } from '../../../infra/settings/institute-info-api';
 import { Input } from '../../components/ui/Input';
@@ -18,6 +19,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 export function InstituteInfoScreen() {
   const { colors } = useTheme();
@@ -49,8 +51,46 @@ export function InstituteInfoScreen() {
     }
   }, [info, initialized]);
 
+  const isDirty = initialized && (
+    accountHolderName !== (info?.bankDetails?.accountHolderName ?? '') ||
+    accountNumber !== (info?.bankDetails?.accountNumber ?? '') ||
+    ifscCode !== (info?.bankDetails?.ifscCode ?? '') ||
+    bankName !== (info?.bankDetails?.bankName ?? '') ||
+    branchName !== (info?.bankDetails?.branchName ?? '') ||
+    upiId !== (info?.upiId ?? '')
+  );
+
+  useUnsavedChangesWarning(isDirty && !saving);
+
   const handleSaveBankDetails = async () => {
     const hasBankFields = accountHolderName || accountNumber || ifscCode || bankName || branchName;
+
+    // Validate bank fields if any bank field is filled
+    if (hasBankFields) {
+      const missing: string[] = [];
+      if (!accountHolderName.trim()) missing.push('Account Holder Name');
+      if (!accountNumber.trim()) missing.push('Account Number');
+      if (!ifscCode.trim()) missing.push('IFSC Code');
+      if (!bankName.trim()) missing.push('Bank Name');
+      if (!branchName.trim()) missing.push('Branch Name');
+
+      if (missing.length > 0) {
+        crossAlert('Validation', `Please fill in: ${missing.join(', ')}`);
+        return;
+      }
+
+      const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+      if (!ifscPattern.test(ifscCode.trim().toUpperCase())) {
+        crossAlert('Validation', 'IFSC Code must be 11 characters in the format: 4 letters, 0, then 6 alphanumeric characters (e.g. SBIN0001234).');
+        return;
+      }
+
+      const acctNum = accountNumber.trim();
+      if (!/^\d{9,18}$/.test(acctNum)) {
+        crossAlert('Validation', 'Account number must be 9 to 18 digits.');
+        return;
+      }
+    }
 
     const bankDetails = hasBankFields
       ? {
@@ -62,15 +102,20 @@ export function InstituteInfoScreen() {
         }
       : null;
 
-    const err = await update({
-      bankDetails,
-      upiId: upiId.trim() || null,
-    });
+    try {
+      const err = await update({
+        bankDetails,
+        upiId: upiId.trim() || null,
+      });
 
-    if (err) {
-      Alert.alert('Error', err.message);
-    } else {
-      showToast('Institute information saved');
+      if (err) {
+        crossAlert('Error', err.message);
+      } else {
+        showToast('Institute information saved');
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[InstituteInfoScreen] Save failed:', e);
+      crossAlert('Error', 'Something went wrong. Please try again.');
     }
   };
 
@@ -89,19 +134,25 @@ export function InstituteInfoScreen() {
       if (!asset.uri || !asset.fileName || !asset.type) return;
 
       setUploading(imageType);
-      const uploadResult = await uploadInstituteImage(
-        imageType,
-        asset.uri,
-        asset.fileName,
-        asset.type,
-      );
-      setUploading(null);
+      try {
+        const uploadResult = await uploadInstituteImage(
+          imageType,
+          asset.uri,
+          asset.fileName,
+          asset.type,
+        );
 
-      if (uploadResult.ok) {
-        showToast('Image uploaded');
-        refetch();
-      } else {
-        Alert.alert('Upload Error', uploadResult.error.message);
+        if (uploadResult.ok) {
+          showToast('Image uploaded');
+          refetch();
+        } else {
+          crossAlert('Upload Error', uploadResult.error.message);
+        }
+      } catch (e) {
+        if (__DEV__) console.error('[InstituteInfoScreen] Upload failed:', e);
+        crossAlert('Upload Error', 'Something went wrong. Please try again.');
+      } finally {
+        setUploading(null);
       }
     },
     [refetch, showToast],
@@ -110,18 +161,23 @@ export function InstituteInfoScreen() {
   const handleDeleteImage = useCallback(
     (imageType: 'signature' | 'qrcode') => {
       const label = imageType === 'signature' ? 'signature/stamp' : 'QR code';
-      Alert.alert(`Delete ${label}`, `Are you sure you want to delete this ${label}?`, [
+      crossAlert(`Delete ${label}`, `Are you sure you want to delete this ${label}?`, [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            const result = await deleteInstituteImage(imageType);
-            if (result.ok) {
-              showToast('Image removed');
-              refetch();
-            } else {
-              Alert.alert('Error', result.error.message);
+            try {
+              const result = await deleteInstituteImage(imageType);
+              if (result.ok) {
+                showToast('Image removed');
+                refetch();
+              } else {
+                crossAlert('Error', result.error.message);
+              }
+            } catch (e) {
+              if (__DEV__) console.error('[InstituteInfoScreen] Delete image failed:', e);
+              crossAlert('Error', 'Something went wrong. Please try again.');
             }
           },
         },
@@ -146,13 +202,13 @@ export function InstituteInfoScreen() {
       <View style={styles.screen}>
         <View style={styles.center} testID="institute-error">
           <View style={styles.errorIconCircle}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+            
+            <AppIcon name="alert-circle-outline" size={48} color={colors.danger} />
           </View>
           <Text style={styles.errorText}>{error.message}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={refetch} testID="institute-retry">
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="refresh" size={18} color={colors.white} />
+            
+            <AppIcon name="refresh" size={18} color={colors.white} />
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -165,12 +221,13 @@ export function InstituteInfoScreen() {
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {/* ── Signature / Stamp ────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="signature-freehand" size={20} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Signature / Stamp</Text>
+        
+        <AppIcon name="signature-freehand" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Signature / Stamp</Text>
       </View>
       <View style={styles.card}>
         <ImageUploadCard
@@ -186,9 +243,9 @@ export function InstituteInfoScreen() {
 
       {/* ── Payment QR Code ──────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="qrcode" size={20} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Payment QR Code</Text>
+        
+        <AppIcon name="qrcode" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Payment QR Code</Text>
       </View>
       <View style={styles.card}>
         <ImageUploadCard
@@ -204,9 +261,9 @@ export function InstituteInfoScreen() {
 
       {/* ── Bank Details ─────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="bank-outline" size={20} color={colors.primary} />
-        <Text style={styles.sectionTitle}>Bank Details</Text>
+        
+        <AppIcon name="bank-outline" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">Bank Details</Text>
       </View>
       <View style={styles.card}>
         <Input
@@ -255,9 +312,9 @@ export function InstituteInfoScreen() {
 
       {/* ── UPI ──────────────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="cellphone-nfc" size={20} color={colors.primary} />
-        <Text style={styles.sectionTitle}>UPI</Text>
+        
+        <AppIcon name="cellphone-nfc" size={20} color={colors.primary} />
+        <Text style={styles.sectionTitle} accessibilityRole="header">UPI</Text>
       </View>
       <View style={styles.card}>
         <Input
@@ -279,8 +336,8 @@ export function InstituteInfoScreen() {
         testID="save-institute-info"
       >
         {!saving && (
-          // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-          <Icon name="content-save-outline" size={20} color={colors.white} />
+          
+          <AppIcon name="content-save-outline" size={20} color={colors.white} />
         )}
         <Text style={styles.saveButtonText}>
           {saving ? 'Saving...' : 'Save Details'}
@@ -331,8 +388,8 @@ function ImageUploadCard({
             onPress={onPick}
             testID={`${testID}-change`}
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="image-edit-outline" size={16} color={colors.primary} />
+            
+            <AppIcon name="image-edit-outline" size={16} color={colors.primary} />
             <Text style={styles.changeButtonText}>Change</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -340,8 +397,8 @@ function ImageUploadCard({
             onPress={onDelete}
             testID={`${testID}-delete`}
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="trash-can-outline" size={16} color={colors.danger} />
+            
+            <AppIcon name="trash-can-outline" size={16} color={colors.danger} />
             <Text style={styles.removeButtonText}>Remove</Text>
           </TouchableOpacity>
         </View>
@@ -352,8 +409,8 @@ function ImageUploadCard({
   return (
     <TouchableOpacity style={styles.uploadCard} onPress={onPick} testID={`${testID}-upload`}>
       <View style={styles.uploadIconCircle}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name={icon} size={28} color={colors.primary} />
+        
+        <AppIcon name={icon} size={28} color={colors.primary} />
       </View>
       <Text style={styles.uploadLabel}>{label}</Text>
       <Text style={styles.uploadHint}>JPEG, PNG, or WebP (max 5MB)</Text>

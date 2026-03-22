@@ -45,7 +45,7 @@ export function updateEnquiry(
   id: string,
   req: UpdateEnquiryRequest,
 ): Promise<Result<EnquiryDetail, AppError>> {
-  return apiPatch<EnquiryDetail>(`/api/v1/enquiries/${id}`, req);
+  return apiPut<EnquiryDetail>(`/api/v1/enquiries/${id}`, req);
 }
 
 export function addFollowUp(

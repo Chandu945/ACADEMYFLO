@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Text, TouchableOpacity, StyleSheet, Alert, View, ActivityIndicator } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
 import { changePasswordUseCase } from '../../../application/parent/use-cases/change-password.usecase';
@@ -37,18 +38,24 @@ export function ChangePasswordScreen() {
     }
 
     setSaving(true);
-    const result = await changePasswordUseCase(
-      { currentPassword, newPassword },
-      { parentApi },
-    );
-    setSaving(false);
+    try {
+      const result = await changePasswordUseCase(
+        { currentPassword, newPassword },
+        { parentApi },
+      );
 
-    if (result.ok) {
-      Alert.alert('Success', 'Password changed successfully', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } else {
-      setError(result.error.message);
+      if (result.ok) {
+        crossAlert('Success', 'Password changed successfully', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[ChangePasswordScreen] handleSubmit failed:', err);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
     }
   }, [currentPassword, newPassword, confirmPassword, navigation]);
 
@@ -57,8 +64,8 @@ export function ChangePasswordScreen() {
       {/* Header Icon */}
       <View style={styles.headerSection}>
         <View style={styles.headerIcon}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="shield-key-outline" size={32} color={colors.primary} />
+          
+          <AppIcon name="shield-key-outline" size={32} color={colors.primary} />
         </View>
         <Text style={styles.headerTitle}>Update Password</Text>
         <Text style={styles.headerSubtitle}>
@@ -68,8 +75,8 @@ export function ChangePasswordScreen() {
 
       {error ? (
         <View style={styles.errorCard}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="alert-circle-outline" size={16} color={colors.dangerText} />
+          
+          <AppIcon name="alert-circle-outline" size={16} color={colors.dangerText} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
@@ -110,8 +117,8 @@ export function ChangePasswordScreen() {
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <>
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="lock-check-outline" size={18} color={colors.white} />
+              
+              <AppIcon name="lock-check-outline" size={18} color={colors.white} />
               <Text style={styles.submitButtonText}>Update Password</Text>
             </>
           )}

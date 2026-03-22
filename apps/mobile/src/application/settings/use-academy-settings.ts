@@ -29,16 +29,26 @@ export function useAcademySettings(settingsApi: SettingsApiCombined): UseAcademy
     setLoading(true);
     setError(null);
 
-    const result = await getAcademySettingsUseCase({ settingsApi });
+    try {
+      const result = await getAcademySettingsUseCase({ settingsApi });
 
-    if (!mountedRef.current) return;
+      if (!mountedRef.current) return;
 
-    if (result.ok) {
-      setSettings(result.value);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setSettings(result.value);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[useAcademySettings] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-    setLoading(false);
   }, [settingsApi]);
 
   const refetch = useCallback(() => {
@@ -50,19 +60,24 @@ export function useAcademySettings(settingsApi: SettingsApiCombined): UseAcademy
       setSaving(true);
       setError(null);
 
-      const result = await updateAcademySettingsUseCase({ settingsApi }, req);
+      try {
+        const result = await updateAcademySettingsUseCase({ settingsApi }, req);
 
-      if (!mountedRef.current) return null;
+        if (!mountedRef.current) return null;
 
-      setSaving(false);
+        if (result.ok) {
+          setSettings(result.value);
+          return null;
+        }
 
-      if (result.ok) {
-        setSettings(result.value);
-        return null;
+        setError(result.error);
+        return result.error;
+      } catch (e) {
+        if (__DEV__) console.error('[useAcademySettings] Save failed:', e);
+        return { code: 'UNKNOWN', message: 'Something went wrong.' };
+      } finally {
+        if (mountedRef.current) setSaving(false);
       }
-
-      setError(result.error);
-      return result.error;
     },
     [settingsApi],
   );

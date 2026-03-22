@@ -5,10 +5,11 @@ import type { AppErrorCode } from '@/domain/common/errors';
 
 /** Build a NextResponse from an AppError — use after `if (!result.ok)` checks. */
 export function toErrorResponse(error: AppError): NextResponse {
-  return NextResponse.json(
-    { message: error.message },
-    { status: errorCodeToStatus(error.code) },
-  );
+  const body: Record<string, unknown> = { message: error.message };
+  if (error.fieldErrors) {
+    body['fieldErrors'] = error.fieldErrors;
+  }
+  return NextResponse.json(body, { status: errorCodeToStatus(error.code) });
 }
 
 export function errorCodeToStatus(code: AppErrorCode): number {

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import type { OwnerDashboardRange } from '../../../domain/dashboard/dashboard.types';
 import { dateRangeSchema } from '../../../domain/dashboard/dashboard.schemas';
 import { DatePickerInput } from '../ui/DatePickerInput';
@@ -55,8 +55,8 @@ export function DashboardFilters({ range, onRangeChange }: DashboardFiltersProps
           accessibilityState={{ selected: !showCustom }}
           testID="filter-this-month"
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon
+          
+          <AppIcon
             name="calendar-month-outline"
             size={16}
             color={!showCustom ? colors.white : colors.textSecondary}
@@ -72,8 +72,8 @@ export function DashboardFilters({ range, onRangeChange }: DashboardFiltersProps
           accessibilityState={{ selected: showCustom }}
           testID="filter-date-range"
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon
+          
+          <AppIcon
             name="calendar-range-outline"
             size={16}
             color={showCustom ? colors.white : colors.textSecondary}

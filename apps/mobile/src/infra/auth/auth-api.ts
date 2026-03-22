@@ -45,7 +45,7 @@ async function attemptPost<T>(
     return ok(json.data);
   } catch {
     clearTimeout(timer);
-    return err({ code: 'NETWORK', message: 'Network error. Please check your connection.' });
+    return err({ code: 'NETWORK', message: 'Unable to connect. Please check your internet connection and try again.' });
   }
 }
 

@@ -1,0 +1,11 @@
+.page { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-6); max-width: 800px; }
+.backButton { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--color-text-secondary); cursor: pointer; background: none; border: none; padding: 0; transition: color var(--transition-base); }
+.backButton:hover { color: var(--color-primary); }
+.detailHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
+.eventTitle { font-size: var(--text-3xl); font-weight: var(--weight-bold); margin-bottom: var(--space-2); color: var(--color-text); }
+.badgeRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.headerActions { display: flex; gap: var(--space-2); }
+.infoGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4); }
+.infoLabel { color: var(--color-text-secondary); margin-bottom: 4px; font-size: var(--text-sm); }
+.infoValue { font-weight: var(--weight-medium); color: var(--color-text); }
+@media (max-width: 768px) { .page { padding: var(--space-4); } .detailHeader { flex-direction: column; } .infoGrid { grid-template-columns: 1fr; } }

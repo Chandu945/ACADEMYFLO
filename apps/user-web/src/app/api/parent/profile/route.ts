@@ -20,17 +20,17 @@ export async function PUT(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  let body: unknown;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await request.json() as Record<string, unknown>;
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (body.changePassword) {
+  if (body['changePassword']) {
     const result = await apiPut('/api/v1/parent/change-password', {
-      currentPassword: body.currentPassword,
-      newPassword: body.newPassword,
+      currentPassword: body['currentPassword'],
+      newPassword: body['newPassword'],
     }, { accessToken });
     if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -31,11 +31,13 @@ export function AttendanceHeader({
           style={styles.actionCard}
           onPress={onDailyReport}
           activeOpacity={0.7}
+          accessibilityLabel="View daily report"
+          accessibilityRole="button"
           testID="daily-report-button"
         >
           <View style={styles.actionIconWrap}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="file-chart-outline" size={18} color={colors.primary} />
+            
+            <AppIcon name="file-chart-outline" size={18} color={colors.primary} />
           </View>
           <Text style={styles.actionLabel}>Daily Report</Text>
         </TouchableOpacity>
@@ -44,11 +46,13 @@ export function AttendanceHeader({
           style={styles.actionCard}
           onPress={onMonthlySummary}
           activeOpacity={0.7}
+          accessibilityLabel="View monthly summary"
+          accessibilityRole="button"
           testID="monthly-summary-button"
         >
           <View style={styles.actionIconWrap}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="calendar-text-outline" size={18} color={colors.primary} />
+            
+            <AppIcon name="calendar-text-outline" size={18} color={colors.primary} />
           </View>
           <Text style={styles.actionLabel}>Monthly Summary</Text>
         </TouchableOpacity>
@@ -59,6 +63,8 @@ export function AttendanceHeader({
             onPress={onDeclareHoliday}
             activeOpacity={0.7}
             disabled={declaringHoliday}
+            accessibilityLabel="Declare holiday for this date"
+            accessibilityRole="button"
             testID="declare-holiday-button"
           >
             {declaringHoliday ? (
@@ -66,8 +72,8 @@ export function AttendanceHeader({
             ) : (
               <>
                 <View style={[styles.actionIconWrap, styles.holidayIconWrap]}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="calendar-star" size={18} color={colors.warning} />
+                  
+                  <AppIcon name="calendar-star" size={18} color={colors.warning} />
                 </View>
                 <Text style={styles.actionLabel}>Holiday</Text>
               </>

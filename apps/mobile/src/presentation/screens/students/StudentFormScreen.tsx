@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { ScrollView, View, Text, TextInput, StyleSheet, Pressable, Keyboard } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StudentsStackParamList } from '../../navigation/StudentsStack';
@@ -34,6 +35,13 @@ const GENDER_OPTIONS: { label: string; value: Gender }[] = [
 
 const saveApi = { createStudent, updateStudent };
 
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/[\s\-()]/g, '');
+  if (/^\d{10}$/.test(digits)) return `+91${digits}`;
+  if (digits.startsWith('+')) return digits;
+  return raw;
+}
+
 export function StudentFormScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -44,15 +52,10 @@ export function StudentFormScreen() {
   const { user, subscription } = useAuth();
   const isStaff = user?.role === 'STAFF';
 
-  // Existing fields
+  // --- Form state ---
   const [fullName, setFullName] = useState(student?.fullName ?? '');
   const [dateOfBirth, setDateOfBirth] = useState(student?.dateOfBirth ?? '');
   const [gender, setGender] = useState<Gender | ''>(student?.gender ?? '');
-  const [addressLine1] = useState(student?.address.line1 ?? '');
-  const [addressLine2] = useState(student?.address.line2 ?? '');
-  const [city] = useState(student?.address.city ?? '');
-  const [state] = useState(student?.address.state ?? '');
-  const [pincode] = useState(student?.address.pincode ?? '');
   const [guardianName, setGuardianName] = useState(student?.guardian?.name ?? '');
   const [guardianMobile, setGuardianMobile] = useState(student?.guardian?.mobile ?? '');
   const [guardianEmail, setGuardianEmail] = useState(student?.email ?? student?.guardian?.email ?? '');
@@ -60,8 +63,6 @@ export function StudentFormScreen() {
   const [monthlyFee, setMonthlyFee] = useState(
     student?.monthlyFee ? String(student.monthlyFee) : '',
   );
-
-  // New extended fields
   const [fatherName, setFatherName] = useState(student?.fatherName ?? '');
   const [motherName, setMotherName] = useState(student?.motherName ?? '');
   const [whatsappNumber, setWhatsappNumber] = useState(student?.whatsappNumber ?? '');
@@ -81,7 +82,36 @@ export function StudentFormScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [today] = useState(() => new Date());
+  const submittingGuardRef = useRef(false);
 
+  // --- Refs for focus chain ---
+  const fatherNameRef = useRef<TextInput>(null);
+  const motherNameRef = useRef<TextInput>(null);
+  const whatsappRef = useRef<TextInput>(null);
+  const mobileRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const addressRef = useRef<TextInput>(null);
+  const guardianNameRef = useRef<TextInput>(null);
+  const guardianMobileRef = useRef<TextInput>(null);
+  const monthlyFeeRef = useRef<TextInput>(null);
+
+  // Ref-based form snapshot for handleSubmit: with 15+ fields, using state directly
+  // would require a massive dependency array and cause unnecessary callback recreation.
+  // The ref is synced on every render (below), so handleSubmit always reads current values.
+  const formRef = useRef({
+    fullName, dateOfBirth, gender, guardianName, guardianMobile, guardianEmail,
+    joiningDate, monthlyFee, fatherName, motherName, whatsappNumber, mobileNumber,
+    addressText, photoUrl, selectedBatchIds,
+  });
+  // Keep refs in sync
+  formRef.current = {
+    fullName, dateOfBirth, gender, guardianName, guardianMobile, guardianEmail,
+    joiningDate, monthlyFee, fatherName, motherName, whatsappNumber, mobileNumber,
+    addressText, photoUrl, selectedBatchIds,
+  };
+
+  // --- Dirty tracking ---
   const initialRef = useRef({
     fullName, dateOfBirth, gender, guardianName, guardianMobile, guardianEmail,
     joiningDate, monthlyFee, fatherName, motherName, whatsappNumber, mobileNumber,
@@ -109,6 +139,7 @@ export function StudentFormScreen() {
     addressText, photoUrl, selectedBatchIds]);
   useUnsavedChangesWarning(isDirty && !submitting);
 
+  // --- Load batches for edit mode ---
   useEffect(() => {
     if (mode === 'edit' && student?.id) {
       let cancelled = false;
@@ -123,38 +154,98 @@ export function StudentFormScreen() {
     }
   }, [mode, student?.id]);
 
+  // --- Field change helpers ---
+  const clearFieldError = useCallback((field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    if (serverError) setServerError(null);
+  }, [serverError]);
+
+  const makeChangeHandler = useCallback(
+    (setter: (v: string) => void, field?: string) =>
+      (text: string) => {
+        setter(text);
+        if (field) clearFieldError(field);
+      },
+    [clearFieldError],
+  );
+
+  const handleFullNameChange = useMemo(() => makeChangeHandler(setFullName, 'fullName'), [makeChangeHandler]);
+  const handleFatherNameChange = useMemo(() => makeChangeHandler(setFatherName), [makeChangeHandler]);
+  const handleMotherNameChange = useMemo(() => makeChangeHandler(setMotherName), [makeChangeHandler]);
+  const handleWhatsappChange = useMemo(() => makeChangeHandler(setWhatsappNumber), [makeChangeHandler]);
+  const handleMobileChange = useMemo(() => makeChangeHandler(setMobileNumber), [makeChangeHandler]);
+  const handleEmailChange = useMemo(() => makeChangeHandler(setGuardianEmail, 'guardianEmail'), [makeChangeHandler]);
+  const handleAddressChange = useMemo(() => makeChangeHandler(setAddressText), [makeChangeHandler]);
+  const handleGuardianNameChange = useMemo(() => makeChangeHandler(setGuardianName), [makeChangeHandler]);
+  const handleGuardianMobileChange = useMemo(() => makeChangeHandler(setGuardianMobile, 'guardianMobile'), [makeChangeHandler]);
+  const handleMonthlyFeeChange = useMemo(() => makeChangeHandler(setMonthlyFee, 'monthlyFee'), [makeChangeHandler]);
+
+  const handleGenderChange = useCallback((value: Gender) => {
+    setGender(value);
+    clearFieldError('gender');
+  }, [clearFieldError]);
+
+  const handleDobChange = useCallback((value: string) => {
+    setDateOfBirth(value);
+    clearFieldError('dateOfBirth');
+  }, [clearFieldError]);
+
+  const handleJoiningDateChange = useCallback((value: string) => {
+    setJoiningDate(value);
+    clearFieldError('joiningDate');
+  }, [clearFieldError]);
+
+  // --- Delete ---
   const canDelete = mode === 'edit' && user?.role === 'OWNER' && student?.id;
 
   const handleDelete = useCallback(async () => {
-    if (!student?.id) return;
+    if (!student?.id || submittingGuardRef.current) return;
+    submittingGuardRef.current = true;
     setSubmitting(true);
-    const result = await deleteStudent(student.id);
-    setSubmitting(false);
-    if (result.ok) {
-      setShowDeleteConfirm(false);
-      showToast('Student deleted');
-      navigation.goBack();
-    } else {
-      setServerError(result.error.message);
+    try {
+      const result = await deleteStudent(student.id);
+      if (result.ok) {
+        setShowDeleteConfirm(false);
+        showToast('Student deleted');
+        navigation.goBack();
+      } else {
+        setServerError(result.error.message);
+      }
+    } catch {
+      if (__DEV__) console.error('[StudentFormScreen] Delete failed');
+      setServerError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+      submittingGuardRef.current = false;
     }
   }, [student?.id, navigation, showToast]);
 
+  // --- Submit ---
   const showMonthlyFee = mode === 'create' || !isStaff;
 
   const handleSubmit = useCallback(async () => {
+    if (submittingGuardRef.current) return;
+    Keyboard.dismiss();
+    const f = formRef.current;
+
     const fields: Record<string, string> = {
-      fullName,
-      dateOfBirth,
-      gender,
-      addressLine1,
-      city,
-      state,
-      pincode,
-      guardianName,
-      guardianMobile,
-      guardianEmail,
-      joiningDate,
-      monthlyFee,
+      fullName: f.fullName,
+      dateOfBirth: f.dateOfBirth,
+      gender: f.gender,
+      addressLine1: f.addressText.trim().slice(0, 100) || '',
+      city: '',
+      state: '',
+      pincode: '',
+      guardianName: f.guardianName,
+      guardianMobile: f.guardianMobile ? normalizePhone(f.guardianMobile.trim()) : '',
+      guardianEmail: f.guardianEmail,
+      joiningDate: f.joiningDate,
+      monthlyFee: f.monthlyFee,
     };
 
     const errors = validateStudentForm(fields, mode);
@@ -165,97 +256,107 @@ export function StudentFormScreen() {
     setFieldErrors({});
 
     const data: CreateStudentRequest = {
-      fullName: fullName.trim(),
-      dateOfBirth,
-      gender: gender as Gender,
+      fullName: f.fullName.trim(),
+      dateOfBirth: f.dateOfBirth,
+      gender: f.gender as Gender,
+      // TODO: API should accept addressText directly instead of structured address.
+      // These placeholder values are sent because the API requires structured fields
+      // but the form only collects free-text address.
       address: {
-        line1: addressLine1.trim() || addressText.trim().slice(0, 100) || '-',
-        ...(addressLine2.trim() ? { line2: addressLine2.trim() } : {}),
-        city: city.trim() || '-',
-        state: state.trim() || '-',
-        pincode: pincode.trim() || '000000',
+        line1: f.addressText.trim().slice(0, 100) || '-',
+        city: '-',
+        state: '-',
+        pincode: '000000',
       },
-      joiningDate,
-      monthlyFee: Number(monthlyFee),
+      joiningDate: f.joiningDate,
+      monthlyFee: Number(f.monthlyFee),
     };
 
-    // Guardian — always include email so parent invite flow can use it
-    if (guardianName.trim() || guardianMobile.trim() || guardianEmail.trim()) {
+    // Guardian
+    const normalizedGuardianMobile = f.guardianMobile.trim() ? normalizePhone(f.guardianMobile.trim()) : '';
+    if (f.guardianName.trim() || normalizedGuardianMobile || f.guardianEmail.trim()) {
       data.guardian = {
-        name: guardianName.trim(),
-        mobile: guardianMobile.trim(),
-        email: guardianEmail.trim(),
+        name: f.guardianName.trim(),
+        mobile: normalizedGuardianMobile,
+        email: f.guardianEmail.trim(),
       };
     }
 
-    // Email goes to both student.email and guardian.email (used for parent invite)
-    if (guardianEmail.trim()) {
-      data.email = guardianEmail.trim();
-      // Ensure guardian exists with at least the email, even if name/mobile are empty
+    if (f.guardianEmail.trim()) {
+      data.email = f.guardianEmail.trim();
       if (!data.guardian) {
-        data.guardian = { name: '', mobile: '', email: guardianEmail.trim() };
+        data.guardian = { name: '', mobile: '', email: f.guardianEmail.trim() };
       }
     }
-    if (fatherName.trim()) data.fatherName = fatherName.trim();
-    if (motherName.trim()) data.motherName = motherName.trim();
-    if (whatsappNumber.trim()) data.whatsappNumber = whatsappNumber.trim();
-    if (mobileNumber.trim()) data.mobileNumber = mobileNumber.trim();
-    if (addressText.trim()) data.addressText = addressText.trim();
-    if (photoUrl) data.profilePhotoUrl = photoUrl;
+    if (f.fatherName.trim()) data.fatherName = f.fatherName.trim();
+    if (f.motherName.trim()) data.motherName = f.motherName.trim();
+    if (f.whatsappNumber.trim()) data.whatsappNumber = f.whatsappNumber.trim();
+    if (f.mobileNumber.trim()) data.mobileNumber = f.mobileNumber.trim();
+    if (f.addressText.trim()) data.addressText = f.addressText.trim();
+    if (f.photoUrl) data.profilePhotoUrl = f.photoUrl;
 
     // Staff cannot change fees
     if (mode === 'edit' && isStaff) {
       delete (data as Partial<CreateStudentRequest>).monthlyFee;
     }
 
+    submittingGuardRef.current = true;
     setSubmitting(true);
     setServerError(null);
 
-    const result = await saveStudentUseCase({ saveApi }, mode, student?.id, data);
+    try {
+      const result = await saveStudentUseCase({ saveApi }, mode, student?.id, data);
 
-    setSubmitting(false);
-
-    if (result.ok) {
-      const studentId = mode === 'edit' ? student?.id : (result.value as { id?: string })?.id;
-      if (studentId) {
-        const batchResult = await setStudentBatches(studentId, selectedBatchIds);
-        if (batchResult && !batchResult.ok) {
-          showToast('Student saved but batch assignment failed. Please try again.', 'error');
+      if (result.ok) {
+        const studentId = mode === 'edit' ? student?.id : (result.value as { id?: string })?.id;
+        if (studentId) {
+          try {
+            const batchResult = await setStudentBatches(studentId, f.selectedBatchIds);
+            if (batchResult && !batchResult.ok) {
+              showToast('Student saved but batch assignment failed.', 'error');
+            }
+          } catch {
+            showToast('Student saved but batch assignment failed.', 'error');
+          }
         }
-      }
 
-      showToast(mode === 'create' ? 'Student created' : 'Student updated');
+        showToast(mode === 'create' ? 'Student created' : 'Student updated');
 
-      if (mode === 'create' && subscription) {
-        const currentTier = subscription.tiers.find(
-          (t) => t.tierKey === subscription.currentTierKey,
-        );
-        if (currentTier?.max && subscription.activeStudentCount + 1 > currentTier.max) {
-          Alert.alert(
-            'Tier Upgrade Required',
-            `Your active student count now exceeds the limit for your current tier (${currentTier.max} students). Please upgrade your subscription to continue adding students.`,
-            [{ text: 'OK' }],
+        if (mode === 'create' && subscription) {
+          const currentTier = subscription.tiers.find(
+            (t) => t.tierKey === subscription.currentTierKey,
           );
+          if (currentTier?.max && subscription.activeStudentCount + 1 > currentTier.max) {
+            crossAlert(
+              'Tier Upgrade Required',
+              `Your active student count now exceeds the limit for your current tier (${currentTier.max} students). Please upgrade your subscription to continue adding students.`,
+              [{ text: 'OK' }],
+            );
+          }
         }
-      }
 
-      navigation.goBack();
-    } else {
-      setServerError(result.error.message);
+        navigation.goBack();
+      } else {
+        if (result.error.fieldErrors) {
+          setFieldErrors(result.error.fieldErrors);
+        }
+        setServerError(result.error.message);
+      }
+    } catch {
+      if (__DEV__) console.error('[StudentFormScreen] Submit failed');
+      setServerError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+      submittingGuardRef.current = false;
     }
-  }, [
-    fullName, dateOfBirth, gender, addressLine1, addressLine2, city, state, pincode,
-    guardianName, guardianMobile, guardianEmail, joiningDate, monthlyFee,
-    fatherName, motherName, whatsappNumber, mobileNumber,
-    addressText,
-    mode, student?.id, selectedBatchIds, navigation, isStaff, subscription, showToast,
-  ]);
+  }, [mode, student?.id, isStaff, subscription, navigation, showToast]);
 
   return (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
     >
       {serverError && <InlineError message={serverError} />}
 
@@ -269,43 +370,53 @@ export function StudentFormScreen() {
       />
 
       {/* Section: Student Information */}
-      <Text style={styles.sectionTitle}>Student Information</Text>
+      <Text style={styles.sectionTitle} accessibilityRole="header">Student Information</Text>
       <Text style={styles.sectionSubtitle}>Enter student personal details here.</Text>
 
       <Input
         label="Student Name"
         value={fullName}
-        onChangeText={setFullName}
+        onChangeText={handleFullNameChange}
         error={fieldErrors['fullName']}
         maxLength={100}
         autoCapitalize="words"
+        autoComplete="name"
+        textContentType="name"
+        returnKeyType="next"
+        onSubmitEditing={() => fatherNameRef.current?.focus()}
         testID="input-fullName"
       />
 
       <Input
+        ref={fatherNameRef}
         label="Father Name"
         value={fatherName}
-        onChangeText={setFatherName}
+        onChangeText={handleFatherNameChange}
         maxLength={100}
         autoCapitalize="words"
+        returnKeyType="next"
+        onSubmitEditing={() => motherNameRef.current?.focus()}
         testID="input-fatherName"
       />
 
       <Input
+        ref={motherNameRef}
         label="Mother Name"
         value={motherName}
-        onChangeText={setMotherName}
+        onChangeText={handleMotherNameChange}
         maxLength={100}
         autoCapitalize="words"
+        returnKeyType="next"
+        onSubmitEditing={() => Keyboard.dismiss()}
         testID="input-motherName"
       />
 
       <DatePickerInput
         label="Date of Birth"
         value={dateOfBirth}
-        onChange={setDateOfBirth}
+        onChange={handleDobChange}
         error={fieldErrors['dateOfBirth']}
-        maximumDate={new Date()}
+        maximumDate={today}
         placeholder="Select date of birth"
         testID="input-dateOfBirth"
       />
@@ -316,7 +427,10 @@ export function StudentFormScreen() {
           <Pressable
             key={opt.value}
             style={[styles.genderOption, gender === opt.value && styles.genderSelected]}
-            onPress={() => setGender(opt.value)}
+            onPress={() => handleGenderChange(opt.value)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: gender === opt.value }}
+            accessibilityLabel={`Gender: ${opt.label}`}
             testID={`gender-${opt.value.toLowerCase()}`}
           >
             <Text style={[styles.genderLabel, gender === opt.value && styles.genderLabelSelected]}>
@@ -330,78 +444,105 @@ export function StudentFormScreen() {
       ) : null}
 
       {/* Section: Contact Information */}
-      <Text style={styles.sectionTitle}>Contact Information</Text>
-      <Text style={styles.sectionSubtitle}>Country Code Required (e.g. 91XXXXXXXXXX)</Text>
+      <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
+      <Text style={styles.sectionSubtitle}>Phone numbers with country code (e.g. 919876543210)</Text>
 
       <Input
+        ref={whatsappRef}
         label="WhatsApp"
         value={whatsappNumber}
-        onChangeText={setWhatsappNumber}
+        onChangeText={handleWhatsappChange}
         keyboardType="phone-pad"
+        autoComplete="tel"
+        textContentType="telephoneNumber"
         placeholder="919876543210"
         maxLength={15}
+        returnKeyType="next"
+        onSubmitEditing={() => mobileRef.current?.focus()}
         testID="input-whatsappNumber"
       />
 
       <Input
+        ref={mobileRef}
         label="Mobile Number"
         value={mobileNumber}
-        onChangeText={setMobileNumber}
+        onChangeText={handleMobileChange}
         keyboardType="phone-pad"
+        autoComplete="tel"
+        textContentType="telephoneNumber"
         placeholder="919876543210"
         maxLength={15}
+        returnKeyType="next"
+        onSubmitEditing={() => emailRef.current?.focus()}
         testID="input-mobileNumber"
       />
 
       <Input
+        ref={emailRef}
         label="Email"
         value={guardianEmail}
-        onChangeText={setGuardianEmail}
+        onChangeText={handleEmailChange}
         error={fieldErrors['guardianEmail']}
         keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
         maxLength={100}
+        returnKeyType="next"
+        onSubmitEditing={() => addressRef.current?.focus()}
         testID="input-guardianEmail"
       />
 
       <Input
+        ref={addressRef}
         label="Address"
         value={addressText}
-        onChangeText={setAddressText}
+        onChangeText={handleAddressChange}
         placeholder="456 Park Lane, Mumbai"
         maxLength={300}
+        returnKeyType="next"
+        onSubmitEditing={() => guardianNameRef.current?.focus()}
         testID="input-addressText"
       />
 
       {/* Section: Guardian Information (Optional) */}
-      <Text style={styles.sectionTitle}>Guardian Information</Text>
+      <Text style={styles.sectionTitle} accessibilityRole="header">Guardian Information</Text>
+      <Text style={styles.sectionSubtitle}>Optional — add parent/guardian contact details.</Text>
 
       <Input
-        label="Guardian Name"
+        ref={guardianNameRef}
+        label="Guardian Name (Optional)"
         value={guardianName}
-        onChangeText={setGuardianName}
+        onChangeText={handleGuardianNameChange}
         maxLength={100}
         autoCapitalize="words"
+        returnKeyType="next"
+        onSubmitEditing={() => guardianMobileRef.current?.focus()}
         testID="input-guardianName"
       />
 
       <Input
-        label="Guardian Mobile (E.164)"
+        ref={guardianMobileRef}
+        label="Guardian Mobile (Optional)"
         value={guardianMobile}
-        onChangeText={setGuardianMobile}
+        onChangeText={handleGuardianMobileChange}
         error={fieldErrors['guardianMobile']}
-        placeholder="+919876543210"
+        placeholder="9876543210 or +919876543210"
         keyboardType="phone-pad"
+        autoComplete="tel"
+        textContentType="telephoneNumber"
         maxLength={16}
+        returnKeyType="next"
+        onSubmitEditing={() => monthlyFeeRef.current?.focus()}
         testID="input-guardianMobile"
       />
 
       {/* Section: Enrollment */}
-      <Text style={styles.sectionTitle}>Enrollment</Text>
+      <Text style={styles.sectionTitle} accessibilityRole="header">Enrollment</Text>
 
       <DatePickerInput
         label="Joining Date"
         value={joiningDate}
-        onChange={setJoiningDate}
+        onChange={handleJoiningDateChange}
         error={fieldErrors['joiningDate']}
         placeholder="Select joining date"
         testID="input-joiningDate"
@@ -409,12 +550,15 @@ export function StudentFormScreen() {
 
       {showMonthlyFee && (
         <Input
+          ref={monthlyFeeRef}
           label="Monthly Fee"
           value={monthlyFee}
-          onChangeText={setMonthlyFee}
+          onChangeText={handleMonthlyFeeChange}
           error={fieldErrors['monthlyFee']}
           keyboardType="numeric"
           maxLength={8}
+          returnKeyType="done"
+          onSubmitEditing={() => Keyboard.dismiss()}
           testID="input-monthlyFee"
         />
       )}
@@ -423,7 +567,7 @@ export function StudentFormScreen() {
 
       <View style={styles.submitContainer}>
         <Button
-          title={mode === 'create' ? 'Save' : 'Save Changes'}
+          title={submitting ? (mode === 'create' ? 'Saving...' : 'Saving changes...') : (mode === 'create' ? 'Save' : 'Save Changes')}
           onPress={handleSubmit}
           loading={submitting}
           testID="submit-button"
@@ -432,7 +576,7 @@ export function StudentFormScreen() {
           <View style={styles.deleteContainer}>
             <Button
               title="Delete Student"
-              variant="secondary"
+              variant="danger"
               onPress={() => setShowDeleteConfirm(true)}
               loading={submitting}
               testID="delete-button"

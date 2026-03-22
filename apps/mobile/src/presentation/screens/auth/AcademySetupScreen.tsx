@@ -1,19 +1,22 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
   StatusBar,
+  Keyboard,
+  Pressable,
+  Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../context/AuthContext';
 import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,7 +24,7 @@ import { useTheme } from '../../context/ThemeContext';
 const PINCODE_REGEX = /^\d{6}$/;
 
 export function AcademySetupScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { setupAcademy, logout } = useAuth();
 
@@ -29,28 +32,99 @@ export function AcademySetupScreen() {
   const [line1, setLine1] = useState('');
   const [line2, setLine2] = useState('');
   const [city, setCity] = useState('');
-  const [state, setStateName] = useState('');
+  const [stateName, setStateName] = useState('');
   const [pincode, setPincode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Refs for focus chain
+  const line1Ref = useRef<TextInput>(null);
+  const line2Ref = useRef<TextInput>(null);
+  const cityRef = useRef<TextInput>(null);
+  const stateRef = useRef<TextInput>(null);
+  const pincodeRef = useRef<TextInput>(null);
+  const submittingRef = useRef(false);
+
+  // --- Field change handlers ---
+
+  const clearFieldError = useCallback((field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
+  const handleAcademyNameChange = useCallback((text: string) => {
+    setAcademyName(text);
+    clearFieldError('academyName');
+    if (error) setError(null);
+  }, [clearFieldError, error]);
+
+  const handleLine1Change = useCallback((text: string) => {
+    setLine1(text);
+    clearFieldError('line1');
+    if (error) setError(null);
+  }, [clearFieldError, error]);
+
+  const handleLine2Change = useCallback((text: string) => {
+    setLine2(text);
+    clearFieldError('line2');
+    if (error) setError(null);
+  }, [clearFieldError, error]);
+
+  const handleCityChange = useCallback((text: string) => {
+    setCity(text);
+    clearFieldError('city');
+    if (error) setError(null);
+  }, [clearFieldError, error]);
+
+  const handleStateChange = useCallback((text: string) => {
+    setStateName(text);
+    clearFieldError('state');
+    if (error) setError(null);
+  }, [clearFieldError, error]);
+
+  const handlePincodeChange = useCallback((text: string) => {
+    setPincode(text);
+    clearFieldError('pincode');
+    if (error) setError(null);
+  }, [clearFieldError, error]);
+
+  // --- Validation ---
+
   const validate = useCallback((): boolean => {
     const errors: Record<string, string> = {};
-    if (!academyName.trim()) errors['academyName'] = 'Academy name is required';
+    const trimmedName = academyName.trim();
+    if (!trimmedName) {
+      errors['academyName'] = 'Academy name is required';
+    } else if (trimmedName.length < 2) {
+      errors['academyName'] = 'Academy name must be at least 2 characters';
+    }
     if (!line1.trim()) errors['line1'] = 'Address line 1 is required';
     if (!city.trim()) errors['city'] = 'City is required';
-    if (!state.trim()) errors['state'] = 'State is required';
-    if (!pincode.trim()) errors['pincode'] = 'Pincode is required';
-    else if (!PINCODE_REGEX.test(pincode.trim())) errors['pincode'] = 'Pincode must be 6 digits';
+    if (!stateName.trim()) errors['state'] = 'State is required';
+    const trimmedPincode = pincode.trim();
+    if (!trimmedPincode) {
+      errors['pincode'] = 'Pincode is required';
+    } else if (!PINCODE_REGEX.test(trimmedPincode)) {
+      errors['pincode'] = 'Pincode must be 6 digits';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [academyName, line1, city, state, pincode]);
+  }, [academyName, line1, city, stateName, pincode]);
+
+  // --- Submit ---
 
   const handleSetup = useCallback(async () => {
+    if (submittingRef.current) return;
+    Keyboard.dismiss();
     setError(null);
     if (!validate()) return;
 
+    submittingRef.current = true;
     setLoading(true);
     try {
       const err = await setupAcademy({
@@ -59,140 +133,197 @@ export function AcademySetupScreen() {
           line1: line1.trim(),
           line2: line2.trim() || undefined,
           city: city.trim(),
-          state: state.trim(),
+          state: stateName.trim(),
           pincode: pincode.trim(),
           country: 'India',
         },
       });
 
       if (err) {
+        if (err.fieldErrors) {
+          setFieldErrors(err.fieldErrors);
+        }
         setError(err.message);
       }
+    } catch {
+      if (__DEV__) console.error('[AcademySetupScreen] Setup failed');
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
-  }, [academyName, line1, line2, city, state, pincode, setupAcademy, validate]);
+  }, [setupAcademy, validate, academyName, line1, line2, city, stateName, pincode]);
+
+  const handleLogout = useCallback(() => {
+    crossAlert(
+      'Sign Out',
+      'Are you sure you want to sign out? Your setup progress will be lost.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: logout },
+      ],
+    );
+  }, [logout]);
 
   return (
     <Screen style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.wrapper}>
-          {/* Header */}
-          <View style={styles.headerSection}>
-            <View style={styles.iconBadge}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="domain" size={28} color={colors.primary} />
-            </View>
-            <Text style={styles.title}>Set Up Your Academy</Text>
-            <Text style={styles.subtitle}>
-              Almost there! Tell us about your academy to get started.
-            </Text>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
+      <Pressable style={styles.wrapper} onPress={Platform.OS !== 'web' ? Keyboard.dismiss : undefined} accessible={false}>
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <View style={styles.iconBadge}>
+            <AppIcon name="domain" size={28} color={colors.primary} />
           </View>
-
-          {/* Form Card */}
-          <View style={styles.card}>
-            {error ? <InlineError message={error} /> : null}
-
-            <View style={styles.sectionLabel}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="school-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.sectionLabelText}>Academy Details</Text>
-            </View>
-
-            <Input
-              label="Academy Name"
-              value={academyName}
-              onChangeText={setAcademyName}
-              error={fieldErrors['academyName']}
-              placeholder="e.g. Sunrise Dance Academy"
-              autoCapitalize="words"
-              testID="setup-name"
-            />
-
-            <View style={styles.divider} />
-
-            <View style={styles.sectionLabel}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="map-marker-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.sectionLabelText}>Address</Text>
-            </View>
-
-            <Input
-              label="Address Line 1"
-              value={line1}
-              onChangeText={setLine1}
-              error={fieldErrors['line1']}
-              placeholder="Street address"
-              testID="setup-line1"
-            />
-
-            <Input
-              label="Address Line 2 (Optional)"
-              value={line2}
-              onChangeText={setLine2}
-              placeholder="Floor, suite, etc."
-              testID="setup-line2"
-            />
-
-            <View style={styles.row}>
-              <View style={styles.halfField}>
-                <Input
-                  label="City"
-                  value={city}
-                  onChangeText={setCity}
-                  error={fieldErrors['city']}
-                  placeholder="City"
-                  autoCapitalize="words"
-                  testID="setup-city"
-                />
-              </View>
-              <View style={styles.halfField}>
-                <Input
-                  label="State"
-                  value={state}
-                  onChangeText={setStateName}
-                  error={fieldErrors['state']}
-                  placeholder="State"
-                  autoCapitalize="words"
-                  testID="setup-state"
-                />
-              </View>
-            </View>
-
-            <Input
-              label="Pincode"
-              value={pincode}
-              onChangeText={setPincode}
-              error={fieldErrors['pincode']}
-              placeholder="6-digit pincode"
-              keyboardType="number-pad"
-              testID="setup-pincode"
-            />
-
-            <Button
-              title="Complete Setup"
-              onPress={handleSetup}
-              loading={loading}
-              testID="setup-submit"
-            />
-          </View>
-
-          {/* Sign out link */}
-          <View style={styles.footer}>
-            <TouchableOpacity onPress={logout} testID="setup-logout">
-              <View style={styles.logoutRow}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="logout" size={16} color={colors.textSecondary} />
-                <Text style={styles.logoutText}>Sign Out</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.title} accessibilityRole="header">Set Up Your Academy</Text>
+          <Text style={styles.subtitle}>
+            Almost there! Tell us about your academy to get started.
+          </Text>
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Form Card */}
+        <View style={styles.card}>
+          {error ? <InlineError message={error} /> : null}
+
+          <View style={styles.sectionLabel}>
+            <AppIcon name="school-outline" size={16} color={colors.textSecondary} />
+            <Text style={styles.sectionLabelText}>Academy Details</Text>
+          </View>
+
+          <Input
+            label="Academy Name"
+            value={academyName}
+            onChangeText={handleAcademyNameChange}
+            error={fieldErrors['academyName']}
+            placeholder="e.g. Sunrise Dance Academy"
+            autoCapitalize="words"
+            autoComplete="organization"
+            maxLength={100}
+            returnKeyType="next"
+            onSubmitEditing={() => line1Ref.current?.focus()}
+            testID="setup-name"
+          />
+
+          <View style={styles.divider} />
+
+          <View style={styles.sectionLabel}>
+            <AppIcon name="map-marker-outline" size={16} color={colors.textSecondary} />
+            <Text style={styles.sectionLabelText}>Address</Text>
+          </View>
+
+          <Input
+            ref={line1Ref}
+            label="Address Line 1"
+            value={line1}
+            onChangeText={handleLine1Change}
+            error={fieldErrors['line1']}
+            placeholder="Street address"
+            autoComplete="street-address"
+            textContentType="streetAddressLine1"
+            maxLength={200}
+            returnKeyType="next"
+            onSubmitEditing={() => line2Ref.current?.focus()}
+            testID="setup-line1"
+          />
+
+          <Input
+            ref={line2Ref}
+            label="Address Line 2 (Optional)"
+            value={line2}
+            onChangeText={handleLine2Change}
+            error={fieldErrors['line2']}
+            placeholder="Floor, suite, etc."
+            textContentType="streetAddressLine2"
+            maxLength={200}
+            returnKeyType="next"
+            onSubmitEditing={() => cityRef.current?.focus()}
+            testID="setup-line2"
+          />
+
+          <View style={styles.row}>
+            <View style={styles.halfField}>
+              <Input
+                ref={cityRef}
+                label="City"
+                value={city}
+                onChangeText={handleCityChange}
+                error={fieldErrors['city']}
+                placeholder="City"
+                autoCapitalize="words"
+                autoComplete="postal-address-locality"
+                textContentType="addressCity"
+                maxLength={50}
+                returnKeyType="next"
+                onSubmitEditing={() => stateRef.current?.focus()}
+                testID="setup-city"
+              />
+            </View>
+            <View style={styles.halfField}>
+              <Input
+                ref={stateRef}
+                label="State"
+                value={stateName}
+                onChangeText={handleStateChange}
+                error={fieldErrors['state']}
+                placeholder="State"
+                autoCapitalize="words"
+                autoComplete="postal-address-region"
+                textContentType="addressState"
+                maxLength={50}
+                returnKeyType="next"
+                onSubmitEditing={() => pincodeRef.current?.focus()}
+                testID="setup-state"
+              />
+            </View>
+          </View>
+
+          <Input
+            ref={pincodeRef}
+            label="Pincode"
+            value={pincode}
+            onChangeText={handlePincodeChange}
+            error={fieldErrors['pincode']}
+            placeholder="6-digit pincode"
+            keyboardType="number-pad"
+            autoComplete="postal-code"
+            textContentType="postalCode"
+            maxLength={6}
+            returnKeyType="go"
+            onSubmitEditing={handleSetup}
+            testID="setup-pincode"
+          />
+
+          <Input
+            label="Country"
+            value="India"
+            onChangeText={() => {}}
+            editable={false}
+            testID="setup-country"
+          />
+
+          <Button
+            title={loading ? 'Setting up...' : 'Complete Setup'}
+            onPress={handleSetup}
+            loading={loading}
+            testID="setup-submit"
+          />
+        </View>
+
+        {/* Sign out link */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            onPress={handleLogout}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out of your account"
+            testID="setup-logout"
+          >
+            <View style={styles.logoutRow}>
+              <AppIcon name="logout" size={16} color={colors.textSecondary} />
+              <Text style={styles.logoutText}>Sign Out</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
     </Screen>
   );
 }
@@ -201,11 +332,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.bg,
   },
-  flex: {
-    flex: 1,
-  },
   wrapper: {
-    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xl,
   },
   headerSection: {

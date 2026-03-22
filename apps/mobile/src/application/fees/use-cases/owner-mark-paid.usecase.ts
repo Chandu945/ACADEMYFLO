@@ -26,7 +26,8 @@ export async function ownerMarkPaidUseCase(
 
   const parsed = feeDueItemSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[ownerMarkPaidUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Failed to mark fee as paid. Please try again.' });
   }
 
   return ok(parsed.data);

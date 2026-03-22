@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
@@ -31,17 +32,25 @@ export function ParentProfileScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    const result = await getParentProfileUseCase({ parentApi });
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setFullName(result.value.fullName);
-      setEmail(result.value.email);
-      setPhoneNumber(result.value.phoneNumber);
-      setProfilePhotoUrl(result.value.profilePhotoUrl ?? null);
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await getParentProfileUseCase({ parentApi });
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setFullName(result.value.fullName);
+        setEmail(result.value.email);
+        setPhoneNumber(result.value.phoneNumber);
+        setProfilePhotoUrl(result.value.profilePhotoUrl ?? null);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ParentProfileScreen] Load failed:', e);
+      if (mountedRef.current) {
+        setError('Failed to load profile.');
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -57,15 +66,21 @@ export function ParentProfileScreen() {
     }
     setSaving(true);
     setError(null);
-    const result = await updateParentProfileUseCase(
-      { fullName: fullName.trim(), phoneNumber: phoneNumber.trim() },
-      { parentApi },
-    );
-    setSaving(false);
-    if (result.ok) {
-      Alert.alert('Success', 'Profile updated successfully');
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await updateParentProfileUseCase(
+        { fullName: fullName.trim(), phoneNumber: phoneNumber.trim() },
+        { parentApi },
+      );
+      if (result.ok) {
+        crossAlert('Success', 'Profile updated successfully');
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[ParentProfileScreen] Save failed:', e);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
     }
   }, [fullName, phoneNumber]);
 
@@ -99,8 +114,8 @@ export function ParentProfileScreen() {
 
       {error ? (
         <View style={styles.errorCard}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="alert-circle-outline" size={16} color={colors.dangerText} />
+          
+          <AppIcon name="alert-circle-outline" size={16} color={colors.dangerText} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
@@ -123,8 +138,8 @@ export function ParentProfileScreen() {
           testID="profile-email"
         />
         <View style={styles.readOnlyRow}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="lock-outline" size={12} color={colors.textDisabled} />
+          
+          <AppIcon name="lock-outline" size={12} color={colors.textDisabled} />
           <Text style={styles.readOnlyHint}>Email cannot be changed</Text>
         </View>
 
@@ -147,8 +162,8 @@ export function ParentProfileScreen() {
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <>
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="content-save-outline" size={18} color={colors.white} />
+              
+              <AppIcon name="content-save-outline" size={18} color={colors.white} />
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </>
           )}
@@ -162,12 +177,12 @@ export function ParentProfileScreen() {
         testID="profile-change-password"
       >
         <View style={styles.cpIconContainer}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="key-outline" size={20} color={colors.primary} />
+          
+          <AppIcon name="key-outline" size={20} color={colors.primary} />
         </View>
         <Text style={styles.changePasswordText}>Change Password</Text>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name="chevron-right" size={20} color={colors.textDisabled} />
+        
+        <AppIcon name="chevron-right" size={20} color={colors.textDisabled} />
       </TouchableOpacity>
     </Screen>
   );

@@ -60,8 +60,9 @@ export default function ProfilePage() {
         }),
       });
       if (!res.ok) {
-        const json = await res.json();
-        setEditError(json.message || 'Failed to update profile');
+        let msg = 'Failed to update profile';
+        try { const json = await res.json(); msg = json.message || msg; } catch { /* non-JSON */ }
+        setEditError(msg);
       } else {
         setEditSuccess(true);
         setTimeout(() => setEditSuccess(false), 4000);
@@ -78,7 +79,7 @@ export default function ProfilePage() {
     setPasswordSuccess(false);
 
     if (!passwordForm.currentPassword) { setPasswordError('Current password is required'); return; }
-    if (passwordForm.newPassword.length < 6) { setPasswordError('New password must be at least 6 characters'); return; }
+    if (passwordForm.newPassword.length < 8) { setPasswordError('New password must be at least 8 characters'); return; }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) { setPasswordError('Passwords do not match'); return; }
 
     setChangingPassword(true);
@@ -95,8 +96,9 @@ export default function ProfilePage() {
         }),
       });
       if (!res.ok) {
-        const json = await res.json();
-        setPasswordError(json.message || 'Failed to change password');
+        let msg = 'Failed to change password';
+        try { const json = await res.json(); msg = json.message || msg; } catch { /* non-JSON */ }
+        setPasswordError(msg);
       } else {
         setPasswordSuccess(true);
         setTimeout(() => setPasswordSuccess(false), 4000);
@@ -120,7 +122,7 @@ export default function ProfilePage() {
         <Avatar src={user?.profilePhotoUrl} name={user?.fullName} size="xl" />
         <div className={styles.profileInfo}>
           <div className={styles.profileName}>{user?.fullName ?? 'User'}</div>
-          <div style={{ marginBottom: '8px' }}>
+          <div className={styles.roleBadge}>
             <Badge variant="primary">{user?.role ?? 'OWNER'}</Badge>
           </div>
           <div className={styles.profileMeta}>
@@ -182,7 +184,7 @@ export default function ProfilePage() {
             type="password"
             value={passwordForm.newPassword}
             onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
-            hint="Minimum 6 characters"
+            hint="Minimum 8 characters"
           />
           <Input
             label="Confirm New Password"

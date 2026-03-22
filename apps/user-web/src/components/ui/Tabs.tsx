@@ -48,6 +48,12 @@ export function Tabs({ items, defaultActiveKey, activeKey, onChange, className }
         e.preventDefault();
         const prev = posInEnabled - 1 < 0 ? enabledIndices.length - 1 : posInEnabled - 1;
         nextIndex = enabledIndices[prev];
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        nextIndex = enabledIndices[0];
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        nextIndex = enabledIndices[enabledIndices.length - 1];
       }
 
       if (nextIndex !== undefined) {

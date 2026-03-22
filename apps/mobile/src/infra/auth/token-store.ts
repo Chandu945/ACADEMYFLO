@@ -17,7 +17,7 @@ export const tokenStore = {
       if (!parsed?.refreshToken || !parsed?.user?.id) return null;
       return parsed as StoredSession;
     } catch (error) {
-      console.warn('[TokenStore] Keychain read failed:', error instanceof Error ? error.message : 'unknown');
+      if (__DEV__) console.warn('[TokenStore] Keychain read failed:', error instanceof Error ? error.message : 'unknown');
       return null;
     }
   },
@@ -30,7 +30,7 @@ export const tokenStore = {
         accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
       });
     } catch (error) {
-      console.warn('[TokenStore] Keychain write failed:', error instanceof Error ? error.message : 'unknown');
+      if (__DEV__) console.warn('[TokenStore] Keychain write failed:', error instanceof Error ? error.message : 'unknown');
       throw new Error('Failed to save session to secure storage');
     }
   },
@@ -39,7 +39,7 @@ export const tokenStore = {
     try {
       await Keychain.resetGenericPassword({ service: SERVICE_KEY });
     } catch (error) {
-      console.warn('[TokenStore] Keychain clear failed:', error instanceof Error ? error.message : 'unknown');
+      if (__DEV__) console.warn('[TokenStore] Keychain clear failed:', error instanceof Error ? error.message : 'unknown');
     }
   },
 };

@@ -28,6 +28,12 @@
   color: var(--color-primary);
 }
 
+.errorActions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
 /* ── Profile Header ───────────────────────────────────────────────────── */
 .profileHeader {
   display: flex;

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import styles from './page.module.css';
 
 function statusBadgeVariant(status: string) {
   switch (status) {
@@ -19,6 +20,13 @@ function statusBadgeVariant(status: string) {
     case 'CANCELLED': return 'danger' as const;
     default: return 'default' as const;
   }
+}
+
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-');
+  if (!y || !m || !d) return dateStr;
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
 }
 
 export default function EventDetailPage() {
@@ -45,37 +53,39 @@ export default function EventDetailPage() {
 
   if (loading) return <Spinner centered size="lg" />;
   if (error) return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '800px' }}>
+    <div className={styles.page}>
       <Alert variant="error" message={error} />
-      <div style={{ marginTop: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
         <Button onClick={refetch}>Retry</Button>
+        <Button variant="secondary" onClick={() => router.push('/events')}>Back to Events</Button>
       </div>
     </div>
   );
-  if (!event) return <Alert variant="error" message="Event not found" />;
+  if (!event) return (
+    <div className={styles.page}>
+      <Alert variant="error" message="Event not found" />
+      <Button variant="secondary" onClick={() => router.push('/events')} style={{ marginTop: 16 }}>Back to Events</Button>
+    </div>
+  );
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '800px' }}>
-      <button
-        onClick={() => router.push('/events')}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-base)', fontWeight: 500, color: 'var(--color-text-secondary)', cursor: 'pointer', background: 'none', border: 'none', marginBottom: '24px' }}
-      >
+    <div className={styles.page}>
+      <button type="button" className={styles.backButton} onClick={() => router.push('/events')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Back to Events
       </button>
 
       <Card>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <div className={styles.detailHeader}>
           <div>
-            <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, marginBottom: '8px', color: 'var(--color-text)' }}>{event.title}</h1>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <h1 className={styles.eventTitle}>{event.title}</h1>
+            <div className={styles.badgeRow}>
               <Badge variant={statusBadgeVariant(event.status)}>{event.status}</Badge>
               {event.eventType && <Badge variant="primary">{event.eventType}</Badge>}
               {event.isAllDay && <Badge variant="info">All Day</Badge>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="outline" onClick={() => router.push(`/events/${params.id}/edit`)}>Edit</Button>
+          <div className={styles.headerActions}>
             <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>
           </div>
         </div>
@@ -83,32 +93,32 @@ export default function EventDetailPage() {
         <div style={{ display: 'grid', gap: '16px' }}>
           {event.description && (
             <div>
-              <h4 style={{ color: 'var(--color-text-secondary)', marginBottom: '4px', fontSize: 'var(--text-sm)' }}>Description</h4>
-              <p style={{ color: 'var(--color-text)' }}>{event.description}</p>
+              <h4 className={styles.infoLabel}>Description</h4>
+              <p className={styles.infoValue}>{event.description}</p>
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+          <div className={styles.infoGrid}>
             <div>
-              <h4 style={{ color: 'var(--color-text-secondary)', marginBottom: '4px', fontSize: 'var(--text-sm)' }}>Start Date</h4>
-              <p style={{ fontWeight: 500 }}>{new Date(event.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <h4 className={styles.infoLabel}>Start Date</h4>
+              <p className={styles.infoValue}>{formatDate(event.startDate)}</p>
             </div>
             {event.endDate && (
               <div>
-                <h4 style={{ color: 'var(--color-text-secondary)', marginBottom: '4px', fontSize: 'var(--text-sm)' }}>End Date</h4>
-                <p style={{ fontWeight: 500 }}>{new Date(event.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <h4 className={styles.infoLabel}>End Date</h4>
+                <p className={styles.infoValue}>{formatDate(event.endDate)}</p>
               </div>
             )}
             {event.startTime && (
               <div>
-                <h4 style={{ color: 'var(--color-text-secondary)', marginBottom: '4px', fontSize: 'var(--text-sm)' }}>Time</h4>
-                <p style={{ fontWeight: 500 }}>{event.startTime}{event.endTime ? ` - ${event.endTime}` : ''}</p>
+                <h4 className={styles.infoLabel}>Time</h4>
+                <p className={styles.infoValue}>{event.startTime}{event.endTime ? ` - ${event.endTime}` : ''}</p>
               </div>
             )}
             {event.location && (
               <div>
-                <h4 style={{ color: 'var(--color-text-secondary)', marginBottom: '4px', fontSize: 'var(--text-sm)' }}>Location</h4>
-                <p style={{ fontWeight: 500 }}>{event.location}</p>
+                <h4 className={styles.infoLabel}>Location</h4>
+                <p className={styles.infoValue}>{event.location}</p>
               </div>
             )}
           </div>

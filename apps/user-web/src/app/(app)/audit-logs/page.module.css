@@ -71,6 +71,10 @@
   color: var(--color-text-secondary);
 }
 
+.actorName {
+  font-weight: var(--weight-medium);
+}
+
 .detailsText {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);

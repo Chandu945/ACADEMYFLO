@@ -57,7 +57,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               className={styles.passwordToggle}
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              tabIndex={-1}
             >
               {showPassword ? (
                 <svg

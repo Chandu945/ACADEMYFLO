@@ -48,7 +48,7 @@ export function Alert({ variant, title, message, action, onDismiss, className }:
   const classNames = [styles.alert, styles[variant], className].filter(Boolean).join(' ');
 
   return (
-    <div className={classNames} role="alert">
+    <div className={classNames} role={variant === 'error' || variant === 'warning' ? 'alert' : 'status'}>
       <span className={styles.icon} aria-hidden="true">
         {icons[variant]}
       </span>

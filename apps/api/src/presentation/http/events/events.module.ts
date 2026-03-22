@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EventsController } from './events.controller';
+import { EventGalleryController } from './event-gallery.controller';
 import { AuthModule } from '../auth/auth.module';
 import { EventModel, EventSchema } from '@infrastructure/database/schemas/event.schema';
+import { GalleryPhotoModel, GalleryPhotoSchema } from '@infrastructure/database/schemas/gallery-photo.schema';
 import { MongoEventRepository } from '@infrastructure/repositories/mongo-event.repository';
+import { MongoGalleryPhotoRepository } from '@infrastructure/repositories/mongo-gallery-photo.repository';
 import { EVENT_REPOSITORY } from '@domain/event/ports/event.repository';
+import { GALLERY_PHOTO_REPOSITORY } from '@domain/event/ports/gallery-photo.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { CreateEventUseCase } from '@application/event/use-cases/create-event.usecase';
 import { UpdateEventUseCase } from '@application/event/use-cases/update-event.usecase';
@@ -13,11 +17,18 @@ import { GetEventsUseCase } from '@application/event/use-cases/get-events.usecas
 import { GetEventDetailUseCase } from '@application/event/use-cases/get-event-detail.usecase';
 import { GetEventSummaryUseCase } from '@application/event/use-cases/get-event-summary.usecase';
 import { ChangeEventStatusUseCase } from '@application/event/use-cases/change-event-status.usecase';
+import { ListGalleryPhotosUseCase } from '@application/event/use-cases/list-gallery-photos.usecase';
+import { UploadGalleryPhotoUseCase } from '@application/event/use-cases/upload-gallery-photo.usecase';
+import { DeleteGalleryPhotoUseCase } from '@application/event/use-cases/delete-gallery-photo.usecase';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EventRepository } from '@domain/event/ports/event.repository';
+import type { GalleryPhotoRepository } from '@domain/event/ports/gallery-photo.repository';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
+import type { FileStoragePort } from '@application/common/ports/file-storage.port';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-storage.service';
 
 @Module({
   imports: [
@@ -25,11 +36,14 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
     AuditLogsModule,
     MongooseModule.forFeature([
       { name: EventModel.name, schema: EventSchema },
+      { name: GalleryPhotoModel.name, schema: GalleryPhotoSchema },
     ]),
   ],
-  controllers: [EventsController],
+  controllers: [EventsController, EventGalleryController],
   providers: [
     { provide: EVENT_REPOSITORY, useClass: MongoEventRepository },
+    { provide: GALLERY_PHOTO_REPOSITORY, useClass: MongoGalleryPhotoRepository },
+    { provide: FILE_STORAGE_PORT, useClass: CloudinaryStorageService },
     {
       provide: 'CREATE_EVENT_USE_CASE',
       useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>
@@ -71,6 +85,24 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
       useFactory: (userRepo: UserRepository, eventRepo: EventRepository) =>
         new ChangeEventStatusUseCase(userRepo, eventRepo),
       inject: [USER_REPOSITORY, EVENT_REPOSITORY],
+    },
+    {
+      provide: 'LIST_GALLERY_PHOTOS_USE_CASE',
+      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository) =>
+        new ListGalleryPhotosUseCase(userRepo, eventRepo, galleryRepo),
+      inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY],
+    },
+    {
+      provide: 'UPLOAD_GALLERY_PHOTO_USE_CASE',
+      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository, fileStorage: FileStoragePort, auditRecorder: AuditRecorderPort) =>
+        new UploadGalleryPhotoUseCase(userRepo, eventRepo, galleryRepo, fileStorage, auditRecorder),
+      inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT],
+    },
+    {
+      provide: 'DELETE_GALLERY_PHOTO_USE_CASE',
+      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository, fileStorage: FileStoragePort, auditRecorder: AuditRecorderPort) =>
+        new DeleteGalleryPhotoUseCase(userRepo, eventRepo, galleryRepo, fileStorage, auditRecorder),
+      inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT],
     },
   ],
 })

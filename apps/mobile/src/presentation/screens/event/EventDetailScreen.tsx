@@ -1,15 +1,17 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { ScrollView, View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { ScrollView, View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EventDetail as EventDetailType, EventStatus } from '../../../domain/event/event.types';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import * as eventApi from '../../../infra/event/event-api';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -65,24 +67,35 @@ export function EventDetailScreen() {
   const fetchDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const result = await eventApi.getEventDetail(eventId);
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      setEvent(result.value);
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await eventApi.getEventDetail(eventId);
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setEvent(result.value);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[EventDetailScreen] fetchDetail failed:', err);
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [eventId]);
 
   useEffect(() => {
     mountedRef.current = true;
-    fetchDetail();
     return () => { mountedRef.current = false; };
-  }, [fetchDetail]);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDetail();
+    }, [fetchDetail]),
+  );
 
   const handleStatusChange = useCallback((newStatus: EventStatus, label: string) => {
-    Alert.alert(
+    crossAlert(
       label,
       `Are you sure you want to ${label.toLowerCase()}?`,
       [
@@ -91,12 +104,18 @@ export function EventDetailScreen() {
           text: 'Confirm',
           onPress: async () => {
             setActionLoading(true);
-            const result = await eventApi.changeEventStatus(eventId, newStatus);
-            setActionLoading(false);
-            if (result.ok) {
-              fetchDetail();
-            } else {
-              Alert.alert('Error', result.error.message);
+            try {
+              const result = await eventApi.changeEventStatus(eventId, newStatus);
+              if (result.ok) {
+                fetchDetail();
+              } else {
+                crossAlert('Error', result.error.message);
+              }
+            } catch (err) {
+              if (__DEV__) console.error('[EventDetailScreen] handleStatusChange failed:', err);
+              crossAlert('Error', 'Failed to update status. Please try again.');
+            } finally {
+              setActionLoading(false);
             }
           },
         },
@@ -105,7 +124,7 @@ export function EventDetailScreen() {
   }, [eventId, fetchDetail]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
+    crossAlert(
       'Delete Event',
       'Are you sure you want to delete this event? This action cannot be undone.',
       [
@@ -115,12 +134,18 @@ export function EventDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
-            const result = await eventApi.deleteEvent(eventId);
-            setActionLoading(false);
-            if (result.ok) {
-              navigation.goBack();
-            } else {
-              Alert.alert('Error', result.error.message);
+            try {
+              const result = await eventApi.deleteEvent(eventId);
+              if (result.ok) {
+                navigation.goBack();
+              } else {
+                crossAlert('Error', result.error.message);
+              }
+            } catch (err) {
+              if (__DEV__) console.error('[EventDetailScreen] handleDelete failed:', err);
+              crossAlert('Error', 'Failed to delete event. Please try again.');
+            } finally {
+              setActionLoading(false);
             }
           },
         },
@@ -149,7 +174,17 @@ export function EventDetailScreen() {
     );
   }
 
-  if (!event) return null;
+  if (!event) {
+    return (
+      <View style={styles.container}>
+        <EmptyState
+          message="Event not found"
+          subtitle="This event may have been removed or is no longer available."
+          icon="calendar-remove-outline"
+        />
+      </View>
+    );
+  }
 
   const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS['UPCOMING']!;
   const canEdit = isOwner || event.createdBy === user?.id;
@@ -211,8 +246,7 @@ export function EventDetailScreen() {
         testID="gallery-link"
       >
         <View style={styles.galleryIconCircle}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name="image-multiple-outline" size={24} color={colors.primary} />
+          <AppIcon name="image-multiple-outline" size={24} color={colors.primary} />
         </View>
         <View style={styles.galleryInfo}>
           <Text style={styles.galleryTitle}>Photo Gallery</Text>
@@ -222,8 +256,7 @@ export function EventDetailScreen() {
               : 'Tap to view or add photos'}
           </Text>
         </View>
-        {/* @ts-expect-error react-native-vector-icons types */}
-        <Icon name="chevron-right" size={22} color={colors.textSecondary} />
+        <AppIcon name="chevron-right" size={22} color={colors.textSecondary} />
       </Pressable>
 
       <Text style={styles.meta}>
@@ -278,7 +311,7 @@ export function EventDetailScreen() {
             <View style={styles.actionGap} />
             <Button
               title="Delete Event"
-              variant="secondary"
+              variant="danger"
               onPress={handleDelete}
               loading={actionLoading}
               disabled={actionLoading}

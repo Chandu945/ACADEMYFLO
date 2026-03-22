@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 
 type UserRole = 'OWNER' | 'STAFF' | 'PARENT';
 
@@ -30,16 +31,8 @@ type AuthState = {
 
 type AuthContextValue = AuthState & {
   login: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signup: (data: SignupData) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
-};
-
-type SignupData = {
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  password: string;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -50,6 +43,9 @@ let _initPromise: Promise<{ accessToken: string } | null> | null = null;
 
 type AuthResponse = { accessToken: string; user?: AuthUser };
 
+/** Default refresh interval — 8 minutes. */
+const REFRESH_INTERVAL_MS = 8 * 60 * 1000;
+
 function initAuth(): Promise<AuthResponse | null> {
   if (_initPromise) return _initPromise;
   _initPromise = fetch('/api/auth/refresh', { method: 'POST' })
@@ -57,7 +53,11 @@ function initAuth(): Promise<AuthResponse | null> {
       if (!res.ok) { _initPromise = null; return null; }
       return res.json() as Promise<AuthResponse>;
     })
-    .catch(() => { _initPromise = null; return null; });
+    .catch((err) => {
+      console.error('[AuthContext] initAuth refresh failed:', err);
+      _initPromise = null;
+      return null;
+    });
   return _initPromise;
 }
 
@@ -74,6 +74,7 @@ function decodeUserFromToken(token: string): AuthUser | null {
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
     const decoded = JSON.parse(atob(padded));
+    if (!decoded.sub && !decoded.userId) return null;
     return {
       id: decoded.sub ?? decoded.userId,
       fullName: decoded.fullName ?? '',
@@ -87,7 +88,27 @@ function decodeUserFromToken(token: string): AuthUser | null {
   }
 }
 
+/**
+ * Try to hydrate auth state from sessionStorage (set during login on the login page).
+ * This avoids an extra /api/auth/refresh call immediately after login.
+ */
+function consumeFreshLoginData(): AuthResponse | null {
+  try {
+    const raw = sessionStorage.getItem('pc_fresh_login');
+    if (!raw) return null;
+    sessionStorage.removeItem('pc_fresh_login');
+    const parsed = JSON.parse(raw);
+    if (parsed?.accessToken) return parsed as AuthResponse;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [state, setState] = useState<AuthState>({
     user: null,
     accessToken: null,
@@ -110,13 +131,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         isAuthenticated: true,
       });
-    } catch {
+    } catch (err) {
+      console.error('[AuthContext] refreshAuth failed:', err);
       setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
     }
   }, []);
 
+  // Initial auth: hydrate from fresh login data or refresh from server
   useEffect(() => {
     let cancelled = false;
+
+    // Check if we just came from the login page
+    const freshData = consumeFreshLoginData();
+    if (freshData?.accessToken) {
+      const user = freshData.user ?? decodeUserFromToken(freshData.accessToken);
+      if (user && !cancelled) {
+        setState({
+          user,
+          accessToken: freshData.accessToken,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+        return;
+      }
+    }
+
+    // Normal flow: refresh from server
     initAuth().then((data) => {
       if (cancelled) return;
       if (data?.accessToken) {
@@ -159,49 +199,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (signupData: SignupData) => {
-    try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(signupData),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return { ok: false, error: data.message || 'Signup failed' };
-      }
-      const user = data.user ?? decodeUserFromToken(data.accessToken);
-      setState({
-        user,
-        accessToken: data.accessToken,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Network error. Please try again.' };
-    }
-  }, []);
-
   const logout = useCallback(async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } finally {
-      _initPromise = null; // Reset so next login gets a fresh refresh
+      _initPromise = null;
       setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
-      window.location.href = '/login';
+      router.replace('/login');
     }
-  }, []);
+  }, [router]);
 
   const value = useMemo(
-    () => ({ ...state, login, signup, logout, refreshAuth }),
-    [state, login, signup, logout, refreshAuth],
+    () => ({ ...state, login, logout, refreshAuth }),
+    [state, login, logout, refreshAuth],
   );
 
   // Periodically refresh the access token while authenticated
   useEffect(() => {
     if (!state.isAuthenticated) return;
-    const interval = setInterval(() => { refreshAuth(); }, 10 * 60 * 1000);
+    const interval = setInterval(() => {
+      refreshAuth().catch((err) => {
+        console.error('[AuthContext] Periodic refresh failed:', err);
+      });
+    }, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [state.isAuthenticated, refreshAuth]);
 
@@ -210,9 +230,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // but the refresh token is no longer valid.
   useEffect(() => {
     if (!state.isLoading && !state.isAuthenticated) {
-      window.location.href = '/login';
+      const returnTo = pathname && pathname !== '/login' ? `?returnTo=${encodeURIComponent(pathname)}` : '';
+      router.replace(`/login${returnTo}`);
     }
-  }, [state.isLoading, state.isAuthenticated]);
+  }, [state.isLoading, state.isAuthenticated, pathname, router]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

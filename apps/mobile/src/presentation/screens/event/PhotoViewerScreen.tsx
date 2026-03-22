@@ -8,14 +8,15 @@ import {
   Pressable,
   useWindowDimensions,
   Platform,
-  Alert,
+
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import RNShare from 'react-native-share';
 import RNFS from 'react-native-fs';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { GalleryPhoto } from '../../../domain/event/event-gallery.types';
 import * as galleryApi from '../../../infra/event/event-gallery-api';
@@ -104,7 +105,7 @@ export function PhotoViewerScreen() {
         e instanceof Error &&
         (e.message.includes('cancel') || e.message.includes('dismiss'));
       if (!isCancel) {
-        Alert.alert('Share Failed', 'Could not share this photo.');
+        crossAlert('Share Failed', 'Could not share this photo.');
       }
     } finally {
       RNFS.unlink(tempPath).catch(() => {});
@@ -130,10 +131,10 @@ export function PhotoViewerScreen() {
       if (downloadResult.statusCode === 200) {
         showToast('Photo saved');
       } else {
-        Alert.alert('Download Failed', 'Could not download this photo.');
+        crossAlert('Download Failed', 'Could not download this photo.');
       }
     } catch {
-      Alert.alert('Download Failed', 'Could not download this photo.');
+      crossAlert('Download Failed', 'Could not download this photo.');
     }
   }, [currentPhoto, showToast]);
 
@@ -142,15 +143,20 @@ export function PhotoViewerScreen() {
     setDeleting(true);
     setDeleteError(null);
 
-    const result = await galleryApi.deleteGalleryPhoto(eventId, deleteTarget.id);
-    setDeleting(false);
+    try {
+      const result = await galleryApi.deleteGalleryPhoto(eventId, deleteTarget.id);
 
-    if (result.ok) {
-      setDeleteTarget(null);
-      showToast('Photo deleted');
-      navigation.goBack();
-    } else {
-      setDeleteError(result.error.message);
+      if (result.ok) {
+        setDeleteTarget(null);
+        showToast('Photo deleted');
+        navigation.goBack();
+      } else {
+        setDeleteError(result.error.message);
+      }
+    } catch {
+      setDeleteError('Failed to delete photo.');
+    } finally {
+      setDeleting(false);
     }
   }, [deleteTarget, eventId, showToast, navigation]);
 
@@ -217,8 +223,8 @@ export function PhotoViewerScreen() {
             accessibilityRole="button"
             accessibilityLabel="Share photo"
           >
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="share-variant-outline" size={22} color={colors.white} />
+            
+            <AppIcon name="share-variant-outline" size={22} color={colors.white} />
             <Text style={styles.actionLabel}>Share</Text>
           </Pressable>
 
@@ -228,8 +234,8 @@ export function PhotoViewerScreen() {
             accessibilityRole="button"
             accessibilityLabel="Download photo"
           >
-            {/* @ts-expect-error react-native-vector-icons types */}
-            <Icon name="download-outline" size={22} color={colors.white} />
+            
+            <AppIcon name="download-outline" size={22} color={colors.white} />
             <Text style={styles.actionLabel}>Save</Text>
           </Pressable>
 
@@ -240,8 +246,8 @@ export function PhotoViewerScreen() {
               accessibilityRole="button"
               accessibilityLabel="Delete photo"
             >
-              {/* @ts-expect-error react-native-vector-icons types */}
-              <Icon name="trash-can-outline" size={22} color={colors.danger} />
+              
+              <AppIcon name="trash-can-outline" size={22} color={colors.danger} />
               <Text style={[styles.actionLabel, { color: colors.danger }]}>
                 Delete
               </Text>

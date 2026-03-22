@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import styles from './page.module.css';
@@ -34,7 +35,7 @@ export default function EnquiriesPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const { data: enquiries, loading } = useEnquiries({
+  const { data: enquiries, loading, error, refetch } = useEnquiries({
     search: search || undefined,
     status: statusFilter || undefined,
   });
@@ -78,6 +79,8 @@ export default function EnquiriesPage() {
         <SearchInput value={search} onChange={setSearch} placeholder="Search enquiries..." />
         <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} />
       </div>
+
+      {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: refetch }} />}
 
       {/* Table */}
       {loading ? (

@@ -10,6 +10,7 @@ import { getStudentMonthlyDetail } from '../../../infra/attendance/attendance-ap
 import { AttendanceCalendar } from '../../components/attendance/AttendanceCalendar';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -24,6 +25,7 @@ export function StudentMonthlyAttendanceScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
   const studentId = route.params?.studentId ?? '';
+  const fullName = route.params?.fullName ?? '';
   const month = route.params?.month ?? '';
 
   const [detail, setDetail] = useState<StudentMonthlyDetail | null>(null);
@@ -34,21 +36,28 @@ export function StudentMonthlyAttendanceScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    try {
+      const result = await getStudentMonthlyDetailUseCase(
+        { attendanceApi: detailApi },
+        studentId,
+        month,
+      );
 
-    const result = await getStudentMonthlyDetailUseCase(
-      { attendanceApi: detailApi },
-      studentId,
-      month,
-    );
+      if (!mountedRef.current) return;
 
-    if (!mountedRef.current) return;
-
-    if (result.ok) {
-      setDetail(result.value);
-    } else {
-      setError(result.error);
+      if (result.ok) {
+        setDetail(result.value);
+      } else {
+        setError(result.error);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[StudentMonthlyAttendance] Load failed:', e);
+      if (mountedRef.current) {
+        setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-    setLoading(false);
   }, [studentId, month]);
 
   useEffect(() => {
@@ -80,7 +89,15 @@ export function StudentMonthlyAttendanceScreen() {
     );
   }
 
-  if (!detail) return null;
+  if (!detail) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.content}>
+          <EmptyState message="No attendance data available" subtitle="No data found for this student and month." />
+        </View>
+      </View>
+    );
+  }
 
   const dateItems = [
     ...detail.absentDates.map((d) => ({ date: d, type: 'ABSENT' as const })),
@@ -89,18 +106,19 @@ export function StudentMonthlyAttendanceScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {fullName ? <Text style={styles.studentName} accessibilityRole="header">{fullName}</Text> : null}
       <Text style={styles.monthLabel}>{new Date(detail.month + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</Text>
 
       <View style={styles.countsRow}>
-        <View style={styles.countBox}>
+        <View style={styles.countBox} accessibilityLabel={`${detail.presentCount} days present`}>
           <Text style={styles.presentNum}>{detail.presentCount}</Text>
           <Text style={styles.countLabel}>Present</Text>
         </View>
-        <View style={styles.countBox}>
+        <View style={styles.countBox} accessibilityLabel={`${detail.absentCount} days absent`}>
           <Text style={styles.absentNum}>{detail.absentCount}</Text>
           <Text style={styles.countLabel}>Absent</Text>
         </View>
-        <View style={styles.countBox}>
+        <View style={styles.countBox} accessibilityLabel={`${detail.holidayCount} holidays`}>
           <Text style={styles.holidayNum}>{detail.holidayCount}</Text>
           <Text style={styles.countLabel}>Holiday</Text>
         </View>
@@ -138,10 +156,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   content: {
     padding: spacing.base,
   },
+  studentName: {
+    fontSize: fontSizes['2xl'],
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
   monthLabel: {
     fontSize: fontSizes.xl,
     fontWeight: fontWeights.semibold,
-    color: colors.text,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.base,
   },

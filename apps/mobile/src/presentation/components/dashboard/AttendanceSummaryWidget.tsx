@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { getMonthDailyCounts } from '../../../infra/attendance/attendance-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -17,6 +17,11 @@ const BAR_MAX_HEIGHT = 80;
 
 // Client-side cache for past months (they won't change)
 const monthCache = new Map<string, DayData[]>();
+
+/** Clear cached data (call on logout to prevent cross-user data leak) */
+export function clearAttendanceSummaryCache(): void {
+  monthCache.clear();
+}
 
 function getMonthLabel(year: number, month: number): string {
   const d = new Date(year, month - 1);
@@ -147,23 +152,23 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="calendar-check-outline" size={20} color={colors.primary} />
+          
+          <AppIcon name="calendar-check-outline" size={20} color={colors.primary} />
           <Text style={styles.title}>Attendance Summary</Text>
           {onPress && (
-            // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-            <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+            
+            <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
           )}
         </TouchableOpacity>
         <View style={styles.monthNav}>
-          <TouchableOpacity onPress={goBack} style={styles.navBtn} testID="attendance-month-back">
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="chevron-left" size={20} color={colors.textLight} />
+          <TouchableOpacity onPress={goBack} style={styles.navBtn} accessibilityLabel="Previous month" accessibilityRole="button" testID="attendance-month-back">
+            
+            <AppIcon name="chevron-left" size={20} color={colors.textLight} />
           </TouchableOpacity>
           <Text style={styles.monthLabel}>{getMonthLabel(year, month)}</Text>
-          <TouchableOpacity onPress={goForward} style={styles.navBtn} testID="attendance-month-forward">
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="chevron-right" size={20} color={colors.textLight} />
+          <TouchableOpacity onPress={goForward} style={styles.navBtn} accessibilityLabel="Next month" accessibilityRole="button" testID="attendance-month-forward">
+            
+            <AppIcon name="chevron-right" size={20} color={colors.textLight} />
           </TouchableOpacity>
         </View>
       </View>
@@ -196,7 +201,7 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
                         <View
                           style={[
                             styles.bar,
-                            { height: Math.max(absentH, 2), backgroundColor: '#ef4444' },
+                            { height: Math.max(absentH, 2), backgroundColor: colors.danger },
                           ]}
                         />
                       </>
@@ -217,7 +222,7 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
           <Text style={styles.legendText}>Present {totalPresent}</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+          <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
           <Text style={styles.legendText}>Absent {totalAbsent}</Text>
         </View>
         <View style={styles.legendItem}>
@@ -242,37 +247,45 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.base,
+    gap: spacing.sm,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flex: 1,
+    flexShrink: 1,
   },
   title: {
-    fontSize: fontSizes.lg,
+    fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    flexShrink: 1,
   },
   monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.full,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexShrink: 0,
   },
   navBtn: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.surface,
   },
   monthLabel: {
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.bold,
     color: colors.text,
-    marginHorizontal: spacing.sm,
+    marginHorizontal: spacing.md,
   },
   chartPlaceholder: {
     height: BAR_MAX_HEIGHT + 30,

@@ -23,6 +23,7 @@ export function useBatches(batchApi: BatchApiPort, search?: string): UseBatchesR
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -33,24 +34,34 @@ export function useBatches(batchApi: BatchApiPort, search?: string): UseBatchesR
       }
       setError(null);
 
-      const result = await listBatchesUseCase({ batchApi }, targetPage, PAGE_SIZE, search);
+      try {
+        const result = await listBatchesUseCase({ batchApi }, targetPage, PAGE_SIZE, search);
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.ok) {
-        if (append) {
-          setItems((prev) => [...prev, ...result.value.items]);
+        if (result.ok) {
+          if (append) {
+            setItems((prev) => [...prev, ...result.value.items]);
+          } else {
+            setItems(result.value.items);
+          }
+          setPage(targetPage);
+          setHasMore(targetPage < result.value.meta.totalPages);
         } else {
-          setItems(result.value.items);
+          setError(result.error);
         }
-        setPage(targetPage);
-        setHasMore(targetPage < result.value.meta.totalPages);
-      } else {
-        setError(result.error);
+      } catch (e) {
+        if (__DEV__) console.error('[useBatches] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Failed to load batches. Pull to retry.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          fetchingMoreRef.current = false;
+        }
       }
-
-      setLoading(false);
-      setLoadingMore(false);
     },
     [batchApi, search],
   );
@@ -60,9 +71,9 @@ export function useBatches(batchApi: BatchApiPort, search?: string): UseBatchesR
   }, [load]);
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true);
   }, [loading, loadingMore, hasMore, page, load]);
 
   useEffect(() => {

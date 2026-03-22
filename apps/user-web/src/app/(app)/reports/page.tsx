@@ -10,9 +10,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import styles from './page.module.css';
 
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-}
+const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+function formatCurrency(amount: number) { return currencyFormatter.format(amount); }
 
 function getMonthLabel(monthKey: string) {
   const [year, month] = monthKey.split('-');
@@ -50,7 +49,7 @@ export default function ReportsPage() {
         </div>
         <div className={`${styles.revenueCard} ${styles.total}`}>
           <div className={styles.revenueLabel}>Total Students</div>
-          <div className={styles.revenueValue}>{kpisLoading ? '-' : kpis?.totalActiveStudents ?? 0}</div>
+          <div className={styles.revenueValue}>{kpisLoading ? '-' : kpis?.totalStudents ?? 0}</div>
         </div>
       </div>
     </>

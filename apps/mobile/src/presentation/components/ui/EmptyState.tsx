@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from './AppIcon';
 
 import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
@@ -39,8 +39,8 @@ export function EmptyState({
     <View style={styles.container} testID="empty-state" accessibilityLabel={accessLabel}>
       {resolvedIcon && (
         <View style={[styles.iconCircle, { backgroundColor: circleBg }]}>
-          {/* @ts-expect-error react-native-vector-icons types */}
-          <Icon name={resolvedIcon} size={40} color={iconColor} />
+          
+          <AppIcon name={resolvedIcon} size={40} color={iconColor} />
         </View>
       )}
       <Text style={styles.title}>{message}</Text>

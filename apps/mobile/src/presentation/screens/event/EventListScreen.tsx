@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Text,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { EventListItem, EventListFilters, EventStatus } from '../../../domain/event/event.types';
 import * as eventApi from '../../../infra/event/event-api';
@@ -77,18 +79,28 @@ export function EventListScreen() {
   const fetchEvents = useCallback(async (pageNum: number, append = false) => {
     if (!append) setLoading(true);
     setError(null);
-    const result = await eventApi.listEvents(filters, pageNum);
-    if (!mountedRef.current) return;
-    if (result.ok) {
-      const { data, pagination } = result.value;
-      setItems((prev) => append ? [...prev, ...data] : data);
-      setTotal(pagination.total);
-      setPage(pageNum);
-    } else {
-      setError(result.error.message);
+    try {
+      const result = await eventApi.listEvents(filters, pageNum);
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        const { data, pagination } = result.value;
+        setItems((prev) => append ? [...prev, ...data] : data);
+        setTotal(pagination.total);
+        setPage(pageNum);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (e) {
+      if (__DEV__) console.error('[EventList] Fetch failed:', e);
+      if (mountedRef.current) {
+        setError('Something went wrong.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-    setLoading(false);
-    setLoadingMore(false);
   }, [filters]);
 
   useEffect(() => {
@@ -104,8 +116,13 @@ export function EventListScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchEvents(1);
-    setRefreshing(false);
+    try {
+      await fetchEvents(1);
+    } catch {
+      // Handled inside fetchEvents
+    } finally {
+      setRefreshing(false);
+    }
   }, [fetchEvents]);
 
   const onEndReached = useCallback(() => {
@@ -124,10 +141,11 @@ export function EventListScreen() {
 
   const openSearch = useCallback(() => {
     setSearchActive(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
   }, []);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     setSearchActive(false);
     setSearchText('');
     setDebouncedSearch('');
@@ -160,9 +178,9 @@ export function EventListScreen() {
       <View style={styles.navbar}>
         {searchActive ? (
           <View style={styles.searchBar}>
-            <TouchableOpacity onPress={closeSearch} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+            <TouchableOpacity onPress={closeSearch} style={styles.navBtn} accessibilityLabel="Close search" accessibilityRole="button">
+
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
               ref={searchInputRef}
@@ -175,17 +193,17 @@ export function EventListScreen() {
               testID="event-search"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="close" size={20} color={colors.textSecondary} />
+              <TouchableOpacity onPress={() => setSearchText('')} style={styles.navBtn} accessibilityLabel="Clear search" accessibilityRole="button">
+
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
         ) : (
           <View style={styles.titleBar}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="arrow-left" size={22} color={colors.text} />
+              
+              <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.titleWrap}>
               <Text style={styles.navTitle}>Events</Text>
@@ -197,8 +215,8 @@ export function EventListScreen() {
             </View>
             <View style={styles.navActions}>
               <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search" accessibilityRole="button">
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="magnify" size={22} color={colors.text} />
+                
+                <AppIcon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowFilters((v) => !v)}
@@ -207,8 +225,8 @@ export function EventListScreen() {
                 accessibilityLabel="Toggle filters"
                 accessibilityRole="button"
               >
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon
+                
+                <AppIcon
                   name={showFilters ? 'filter-variant-remove' : 'filter-variant'}
                   size={22}
                   color={showFilters ? colors.primary : colors.text}
@@ -244,8 +262,8 @@ export function EventListScreen() {
           </View>
           {statusFilter !== undefined && (
             <TouchableOpacity style={styles.clearFilters} onPress={() => setStatusFilter(undefined)}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="filter-remove-outline" size={16} color={colors.danger} />
+              
+              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
               <Text style={styles.clearFiltersText}>Clear Filter</Text>
             </TouchableOpacity>
           )}
@@ -256,14 +274,14 @@ export function EventListScreen() {
       {!showFilters && statusFilter !== undefined && (
         <View style={styles.activeFilterBar}>
           <View style={styles.activeFilterPill}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="filter-variant" size={14} color={colors.primary} />
+            
+            <AppIcon name="filter-variant" size={14} color={colors.primary} />
             <Text style={styles.activeFilterText}>
               {STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}
             </Text>
             <TouchableOpacity onPress={() => setStatusFilter(undefined)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-              <Icon name="close-circle" size={16} color={colors.textSecondary} />
+              
+              <AppIcon name="close-circle" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -273,13 +291,15 @@ export function EventListScreen() {
 
       {loading && !refreshing ? (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <SkeletonTile />
+          <SkeletonTile />
+          <SkeletonTile />
         </View>
       ) : !loading && filteredItems.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="calendar-blank-outline" size={48} color={colors.primary} />
+            
+            <AppIcon name="calendar-blank-outline" size={48} color={colors.primary} />
           </View>
           <Text style={styles.emptyTitle}>No events found</Text>
           <Text style={styles.emptySubtitle}>
@@ -304,6 +324,8 @@ export function EventListScreen() {
       <TouchableOpacity
         style={styles.fab}
         onPress={handleAdd}
+        accessibilityLabel="Add new event"
+        accessibilityRole="button"
         testID="add-event-fab"
       >
         <Text style={styles.fabText}>+</Text>

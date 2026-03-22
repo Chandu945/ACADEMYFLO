@@ -7,99 +7,172 @@ type EnquiryListItem = { id: string; prospectName: string; mobileNumber: string;
 type EnquiryDetail = EnquiryListItem & { guardianName: string | null; whatsappNumber: string | null; email: string | null; address: string | null; interestedIn: string | null; notes: string | null; closureReason: string | null; convertedStudentId: string | null; followUps: { id: string; date: string; notes: string; nextFollowUpDate: string | null; createdAt: string }[]; updatedAt: string };
 type EnquirySummary = { total: number; active: number; closed: number; todayFollowUp: number };
 
-export function useEnquiries(filters: Record<string, string | undefined> = {}) {
+async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
+  try { return await res.json(); } catch { return null; }
+}
+
+export function useEnquiries(filters: { status?: string; source?: string; search?: string } = {}) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<EnquiryListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const cancelRef = useRef(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const filtersKey = JSON.stringify(filters);
+  const { status, source, search } = filters;
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
-    const id = ++cancelRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams();
-      const currentFilters = JSON.parse(filtersKey) as Record<string, string | undefined>;
-      Object.entries(currentFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
-      const res = await fetch(`/api/enquiries?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-      if (id !== cancelRef.current) return;
-      if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
-    } finally { if (id === cancelRef.current) setLoading(false); }
-  }, [accessToken, filtersKey]);
+      if (status) params.set('status', status);
+      if (source) params.set('source', source);
+      if (search) params.set('search', search);
+      const res = await fetch(`/api/enquiries?${params}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      });
+      if (controller.signal.aborted) return;
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+      if (!res.ok || !json) throw new Error((json?.['message'] as string) || 'Failed to load enquiries');
+      setData((json['data'] ?? json['items'] ?? []) as EnquiryListItem[]);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load enquiries');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [accessToken, status, source, search]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
-  return { data, loading, refetch: fetch_ };
+  useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
+  return { data, loading, error, refetch: fetch_ };
 }
 
 export function useEnquirySummary() {
   const { accessToken } = useAuth();
   const [data, setData] = useState<EnquirySummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/enquiries?type=summary', { headers: { Authorization: `Bearer ${accessToken}` } });
-      if (res.ok) setData(await res.json());
-    } finally { setLoading(false); }
+      const res = await fetch('/api/enquiries?type=summary', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      });
+      if (controller.signal.aborted) return;
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+      if (!res.ok || !json) throw new Error((json?.['message'] as string) || 'Failed to load summary');
+      setData(json as unknown as EnquirySummary);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load summary');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
   }, [accessToken]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
-  return { data, loading, refetch: fetch_ };
+  useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
+  return { data, loading, error, refetch: fetch_ };
 }
 
 export function useEnquiryDetail(id: string | null) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<EnquiryDetail | null>(null);
-  const [loading, setLoading] = useState(!!id);
-  const cancelRef = useRef(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => { setData(null); }, [id]);
+  useEffect(() => { setData(null); setError(null); }, [id]);
 
   const fetch_ = useCallback(async () => {
     if (!id || !accessToken) return;
-    const reqId = ++cancelRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`/api/enquiries/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-      if (reqId !== cancelRef.current) return;
-      if (res.ok) setData(await res.json());
-    } finally { if (reqId === cancelRef.current) setLoading(false); }
+      const res = await fetch(`/api/enquiries/${id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      });
+      if (controller.signal.aborted) return;
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+      if (!res.ok || !json) throw new Error((json?.['message'] as string) || 'Failed to load enquiry');
+      setData(json as unknown as EnquiryDetail);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load enquiry');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
   }, [accessToken, id]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
-  return { data, loading, refetch: fetch_ };
+  useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
+  return { data, loading, error, refetch: fetch_ };
 }
 
 export async function createEnquiry(body: Record<string, unknown>, accessToken?: string | null) {
-  const res = await fetch('/api/enquiries', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body) });
-  const json = await res.json();
-  return res.ok ? { ok: true as const, data: json } : { ok: false as const, error: json.message };
+  try {
+    const res = await fetch('/api/enquiries', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const json = await safeJson(res);
+    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to create enquiry', fieldErrors: json?.['fieldErrors'] as Record<string, string> | undefined };
+    return { ok: true as const, data: json };
+  } catch { return { ok: false as const, error: 'Network error. Please try again.' }; }
 }
 
 export async function updateEnquiry(id: string, body: Record<string, unknown>, accessToken?: string | null) {
-  const res = await fetch(`/api/enquiries/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body) });
-  const json = await res.json();
-  return res.ok ? { ok: true as const, data: json } : { ok: false as const, error: json.message };
+  try {
+    const res = await fetch(`/api/enquiries/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const json = await safeJson(res);
+    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to update enquiry' };
+    return { ok: true as const, data: json };
+  } catch { return { ok: false as const, error: 'Network error. Please try again.' }; }
 }
 
 export async function addFollowUp(enquiryId: string, body: Record<string, unknown>, accessToken?: string | null) {
-  const res = await fetch(`/api/enquiries/${enquiryId}/follow-ups`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body) });
-  const json = await res.json();
-  return res.ok ? { ok: true as const, data: json } : { ok: false as const, error: json.message };
+  try {
+    const res = await fetch(`/api/enquiries/${enquiryId}/follow-ups`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const json = await safeJson(res);
+    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to add follow-up' };
+    return { ok: true as const, data: json };
+  } catch { return { ok: false as const, error: 'Network error. Please try again.' }; }
 }
 
 export async function closeEnquiry(id: string, reason: string, accessToken?: string | null) {
-  const res = await fetch(`/api/enquiries/${id}/close`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ closureReason: reason }) });
-  if (!res.ok) { const json = await res.json(); return { ok: false as const, error: json.message }; }
-  return { ok: true as const };
+  try {
+    const res = await fetch(`/api/enquiries/${id}/close`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ closureReason: reason }), signal: AbortSignal.timeout(15000) });
+    if (!res.ok) { const json = await safeJson(res); return { ok: false as const, error: (json?.['message'] as string) || 'Failed to close enquiry' }; }
+    return { ok: true as const };
+  } catch { return { ok: false as const, error: 'Network error. Please try again.' }; }
 }
 
 export async function convertEnquiry(id: string, body: Record<string, unknown>, accessToken?: string | null) {
-  const res = await fetch(`/api/enquiries/${id}/convert`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body) });
-  const json = await res.json();
-  return res.ok ? { ok: true as const, data: json } : { ok: false as const, error: json.message };
+  try {
+    const res = await fetch(`/api/enquiries/${id}/convert`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const json = await safeJson(res);
+    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to convert enquiry' };
+    return { ok: true as const, data: json };
+  } catch { return { ok: false as const, error: 'Network error. Please try again.' }; }
 }

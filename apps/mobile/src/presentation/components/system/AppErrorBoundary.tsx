@@ -87,7 +87,7 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
     // Always log structured error data — both dev and production.
     // In production this ensures errors surface in device logs / log-drain services
     // even before a dedicated crash reporter is wired up.
-    console.error('[AppErrorBoundary] Uncaught error:', {
+    if (__DEV__) console.error('[AppErrorBoundary] Uncaught error:', {
       message,
       stack,
       ...context,

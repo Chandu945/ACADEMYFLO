@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useMemo, useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -19,9 +20,6 @@ type MenuItem = {
   icon: string;
   label: string;
   screen: keyof MoreStackParamList;
-  ownerOnly?: boolean;
-  staffVisible?: boolean;
-  parentOnly?: boolean;
 };
 
 type MenuSection = { title: string; items: MenuItem[] };
@@ -31,7 +29,7 @@ const OWNER_SECTIONS: MenuSection[] = [
     title: 'Manage',
     items: [
       { key: 'batches', icon: 'account-group-outline', label: 'Batches', screen: 'BatchesList' },
-      { key: 'staff', icon: 'account-tie-outline', label: 'Staff', screen: 'StaffList', ownerOnly: true },
+      { key: 'staff', icon: 'account-tie-outline', label: 'Staff', screen: 'StaffList' },
       { key: 'enquiries', icon: 'account-question-outline', label: 'Enquiries', screen: 'EnquiryList' },
       { key: 'events', icon: 'calendar-plus', label: 'Events', screen: 'EventList' },
     ],
@@ -39,17 +37,17 @@ const OWNER_SECTIONS: MenuSection[] = [
   {
     title: 'Finance & Reports',
     items: [
-      { key: 'expenses', icon: 'calculator-variant-outline', label: 'Expenses', screen: 'ExpensesHome', ownerOnly: true },
-      { key: 'reports', icon: 'chart-bar', label: 'Reports', screen: 'ReportsHome', ownerOnly: true },
-      { key: 'staff-attendance', icon: 'calendar-account-outline', label: 'Staff Attendance', screen: 'StaffAttendance', ownerOnly: true },
-      { key: 'audit-logs', icon: 'clipboard-text-clock-outline', label: 'Audit Logs', screen: 'AuditLogs', ownerOnly: true },
+      { key: 'expenses', icon: 'calculator-variant-outline', label: 'Expenses', screen: 'ExpensesHome' },
+      { key: 'reports', icon: 'chart-bar', label: 'Reports', screen: 'ReportsHome' },
+      { key: 'staff-attendance', icon: 'calendar-account-outline', label: 'Staff Attendance', screen: 'StaffAttendance' },
+      { key: 'audit-logs', icon: 'clipboard-text-clock-outline', label: 'Audit Logs', screen: 'AuditLogs' },
     ],
   },
   {
     title: 'Settings',
     items: [
       { key: 'academy-settings', icon: 'cog-outline', label: 'Academy Settings', screen: 'AcademySettings' },
-      { key: 'institute-info', icon: 'office-building-outline', label: 'Institute Information', screen: 'InstituteInfo', ownerOnly: true },
+      { key: 'institute-info', icon: 'office-building-outline', label: 'Institute Information', screen: 'InstituteInfo' },
       { key: 'subscription', icon: 'card-account-details-outline', label: 'Subscription', screen: 'Subscription' },
     ],
   },
@@ -77,9 +75,9 @@ const PARENT_SECTIONS: MenuSection[] = [
   {
     title: 'Account',
     items: [
-      { key: 'parent-profile', icon: 'account-outline', label: 'My Profile', screen: 'ParentProfile', parentOnly: true },
-      { key: 'academy-info', icon: 'school-outline', label: 'Academy Info', screen: 'AcademyInfo', parentOnly: true },
-      { key: 'payment-history', icon: 'history', label: 'Payment History', screen: 'PaymentHistory', parentOnly: true },
+      { key: 'parent-profile', icon: 'account-outline', label: 'My Profile', screen: 'ParentProfile' },
+      { key: 'academy-info', icon: 'school-outline', label: 'Academy Info', screen: 'AcademyInfo' },
+      { key: 'payment-history', icon: 'history', label: 'Payment History', screen: 'PaymentHistory' },
     ],
   },
 ];
@@ -95,8 +93,16 @@ export function MoreScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { logout, user } = useAuth();
+  const [photoUrl, setPhotoUrl] = useState<string | null>(user?.profilePhotoUrl ?? null);
   const isOwner = user?.role === 'OWNER';
   const isParent = user?.role === 'PARENT';
+
+  const handleLogout = useCallback(() => {
+    crossAlert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: () => logout() },
+    ]);
+  }, [logout]);
 
   const sections = isParent
     ? PARENT_SECTIONS
@@ -105,8 +111,8 @@ export function MoreScreen() {
       : STAFF_SECTIONS;
 
   return (
-    <Screen>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <Screen scroll={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.screenTitle} testID="more-title">More</Text>
 
         {/* Profile Card */}
@@ -114,9 +120,9 @@ export function MoreScreen() {
           <View style={styles.profileCard} testID="profile-card">
             <View style={styles.profileAvatarWrap}>
               <ProfilePhotoUploader
-                currentPhotoUrl={user.profilePhotoUrl ?? null}
+                currentPhotoUrl={photoUrl}
                 uploadPath="/api/v1/profile/photo"
-                onPhotoUploaded={() => {}}
+                onPhotoUploaded={(url) => setPhotoUrl(url)}
                 size={56}
                 testID="profile-photo"
               />
@@ -127,13 +133,13 @@ export function MoreScreen() {
                 <Text style={styles.profileRoleBadgeText}>{user.role}</Text>
               </View>
               <View style={styles.profileContactRow}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="email-outline" size={14} color={colors.textSecondary} />
+                
+                <AppIcon name="email-outline" size={14} color={colors.textSecondary} />
                 <Text style={styles.profileContactText} numberOfLines={1}>{user.email}</Text>
               </View>
               <View style={styles.profileContactRow}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="phone-outline" size={14} color={colors.textSecondary} />
+                
+                <AppIcon name="phone-outline" size={14} color={colors.textSecondary} />
                 <Text style={styles.profileContactText}>{user.phoneNumber}</Text>
               </View>
             </View>
@@ -149,15 +155,17 @@ export function MoreScreen() {
                   key={item.key}
                   style={[styles.menuItem, idx < section.items.length - 1 && styles.menuItemBorder]}
                   onPress={() => navigation.navigate(item.screen as any)}
+                  accessibilityLabel={item.label}
+                  accessibilityRole="link"
                   testID={`menu-${item.key}`}
                 >
                   <View style={styles.iconContainer}>
-                    {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                    <Icon name={item.icon} size={20} color={colors.primary} />
+                    
+                    <AppIcon name={item.icon} size={20} color={colors.primary} />
                   </View>
                   <Text style={styles.menuLabel}>{item.label}</Text>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-right" size={18} color={colors.textDisabled} />
+                  
+                  <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -173,16 +181,19 @@ export function MoreScreen() {
                 key={opt.key}
                 style={[styles.menuItem, idx < THEME_OPTIONS.length - 1 && styles.menuItemBorder]}
                 onPress={() => setMode(opt.key)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: mode === opt.key }}
+                accessibilityLabel={`${opt.label} theme`}
                 testID={`theme-${opt.key}`}
               >
                 <View style={styles.iconContainer}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name={opt.icon} size={20} color={colors.primary} />
+                  
+                  <AppIcon name={opt.icon} size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.menuLabel}>{opt.label}</Text>
                 {mode === opt.key && (
-                  // @ts-expect-error react-native-vector-icons types incompatible with @types/react@19
-                  <Icon name="check" size={20} color={colors.primary} />
+                  
+                  <AppIcon name="check" size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -191,11 +202,13 @@ export function MoreScreen() {
 
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => Alert.alert('Sign Out', 'Are you sure you want to sign out?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign Out', style: 'destructive', onPress: () => logout() }])}
+          onPress={handleLogout}
+          accessibilityLabel="Sign out"
+          accessibilityRole="button"
           testID="more-logout"
         >
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="logout" size={20} color={colors.danger} />
+          
+          <AppIcon name="logout" size={20} color={colors.danger} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
 
@@ -206,6 +219,10 @@ export function MoreScreen() {
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  scrollContent: {
+    flexGrow: 1,
+    padding: spacing.lg,
+  },
   screenTitle: {
     fontSize: fontSizes['3xl'],
     fontWeight: fontWeights.bold,

@@ -151,6 +151,10 @@
   flex-shrink: 0;
 }
 
+.tierAction {
+  margin-top: var(--space-4);
+}
+
 @media (max-width: 768px) {
   .page {
     padding: var(--space-4);

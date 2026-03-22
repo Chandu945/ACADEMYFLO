@@ -122,7 +122,7 @@ function ToastHost({ toasts, exitingIds, onDismiss }: ToastHostProps) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className={styles.container} aria-live="polite" aria-label="Notifications">
+    <div className={styles.container} aria-live="polite" aria-atomic="true" aria-label="Notifications">
       {toasts.map((toast) => {
         const isExiting = exitingIds.has(toast.id);
         const classNames = [

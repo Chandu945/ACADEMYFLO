@@ -28,6 +28,7 @@ export function useExpenses(
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -38,31 +39,41 @@ export function useExpenses(
       }
       setError(null);
 
-      const result = await listExpensesUseCase(
-        { expenseApi },
-        month,
-        targetPage,
-        PAGE_SIZE,
-        categoryId,
-        search,
-      );
+      try {
+        const result = await listExpensesUseCase(
+          { expenseApi },
+          month,
+          targetPage,
+          PAGE_SIZE,
+          categoryId,
+          search,
+        );
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.ok) {
-        if (append) {
-          setItems((prev) => [...prev, ...result.value.items]);
+        if (result.ok) {
+          if (append) {
+            setItems((prev) => [...prev, ...result.value.items]);
+          } else {
+            setItems(result.value.items);
+          }
+          setPage(targetPage);
+          setHasMore(targetPage < result.value.meta.totalPages);
         } else {
-          setItems(result.value.items);
+          setError(result.error);
         }
-        setPage(targetPage);
-        setHasMore(targetPage < result.value.meta.totalPages);
-      } else {
-        setError(result.error);
+      } catch (e) {
+        if (__DEV__) console.error('[useExpenses] Load failed:', e);
+        if (mountedRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Failed to load expenses. Pull to retry.' });
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          fetchingMoreRef.current = false;
+        }
       }
-
-      setLoading(false);
-      setLoadingMore(false);
     },
     [expenseApi, month, categoryId, search],
   );
@@ -72,9 +83,9 @@ export function useExpenses(
   }, [load]);
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true);
   }, [loading, loadingMore, hasMore, page, load]);
 
   useEffect(() => {

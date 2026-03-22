@@ -14,6 +14,10 @@ export function middleware(request: NextRequest) {
   if (!hasSession && !isAuthPath) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = LOGIN_PATH;
+    // Preserve original path so login page can redirect back after auth
+    if (pathname !== '/') {
+      loginUrl.searchParams.set('returnTo', pathname);
+    }
     return NextResponse.redirect(loginUrl);
   }
 

@@ -16,7 +16,7 @@ export async function getParentProfileUseCase(
 
   const parsed = parentProfileSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response: ' + parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ') });
   }
 
   return ok(parsed.data);

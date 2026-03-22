@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   New Student Page
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.page {
+  padding: var(--space-6);
+  max-width: 680px;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  margin-bottom: var(--space-6);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  transition: color var(--transition-base), background-color var(--transition-base);
+}
+
+.backButton:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg-subtle);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.fieldLabel {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--space-2);
+  color: var(--color-text-medium);
+}
+
+.required {
+  color: var(--color-danger);
+  margin-left: 2px;
+}
+
+.chipGroup {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.fieldError {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+  margin-top: 4px;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────── */
+.section {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.sectionTitle {
+  margin-bottom: var(--space-3);
+  color: var(--color-primary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.sectionFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gridRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-4);
+  }
+
+  .gridRow {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
+}

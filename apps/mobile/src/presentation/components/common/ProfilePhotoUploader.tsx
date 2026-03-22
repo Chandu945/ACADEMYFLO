@@ -5,9 +5,10 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
@@ -50,11 +51,22 @@ export function ProfilePhotoUploader({
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', {
-        uri: asset.uri,
-        name: asset.fileName || 'photo.jpg',
-        type: asset.type || 'image/jpeg',
-      } as unknown as Blob);
+      const fileName = asset.fileName || 'photo.jpg';
+      const mimeType = asset.type || 'image/jpeg';
+
+      if (Platform.OS === 'web') {
+        // On web, convert data URI or blob URL to a proper File object
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        formData.append('file', new File([blob], fileName, { type: mimeType }));
+      } else {
+        // On native, use the RN-style object
+        formData.append('file', {
+          uri: asset.uri,
+          name: fileName,
+          type: mimeType,
+        } as unknown as Blob);
+      }
 
       const token = getAccessToken();
       const res = await fetch(`${env.API_BASE_URL}${effectivePath}`, {
@@ -68,21 +80,38 @@ export function ProfilePhotoUploader({
 
       if (!res.ok) {
         const json = await res.json().catch(() => null);
-        throw new Error(json?.error || 'Upload failed');
+        throw new Error(json?.message || json?.error || 'Upload failed');
       }
 
       const json = (await res.json()) as { data: { url: string } };
       setPhotoUrl(json.data.url);
       onPhotoUploaded(json.data.url);
     } catch (e) {
-      Alert.alert('Upload Failed', e instanceof Error ? e.message : 'Could not upload photo');
+      crossAlert('Upload Failed', e instanceof Error ? e.message : 'Could not upload photo');
     } finally {
       setUploading(false);
     }
   }, [effectivePath, onPhotoUploaded]);
 
+  const openGallery = useCallback(() => {
+    launchImageLibrary(
+      { mediaType: 'photo', maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
+      (response) => {
+        if (response.assets?.[0]) {
+          void uploadPhoto(response.assets[0]);
+        }
+      },
+    );
+  }, [uploadPhoto]);
+
   const pickImage = useCallback(() => {
-    Alert.alert('Profile Photo', 'Choose an option', [
+    // On web, skip the Camera/Gallery dialog — directly open file picker
+    if (Platform.OS === 'web') {
+      openGallery();
+      return;
+    }
+
+    crossAlert('Profile Photo', 'Choose an option', [
       {
         text: 'Camera',
         onPress: () => {
@@ -98,20 +127,11 @@ export function ProfilePhotoUploader({
       },
       {
         text: 'Gallery',
-        onPress: () => {
-          launchImageLibrary(
-            { mediaType: 'photo', maxWidth: 1024, maxHeight: 1024, quality: 0.8 },
-            (response) => {
-              if (response.assets?.[0]) {
-                void uploadPhoto(response.assets[0]);
-              }
-            },
-          );
-        },
+        onPress: () => openGallery(),
       },
       { text: 'Cancel', style: 'cancel' },
     ]);
-  }, [uploadPhoto]);
+  }, [uploadPhoto, openGallery]);
 
   const resolvedUri = photoUrl
     ? photoUrl.startsWith('http')

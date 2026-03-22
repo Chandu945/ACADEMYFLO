@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { getOwnerDashboard } from '../../../infra/dashboard/dashboard-api';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
@@ -19,7 +19,8 @@ function getMonthRange(year: number, month: number): { from: string; to: string 
 }
 
 function formatCurrency(n: number): string {
-  return `\u20B9${Math.abs(n).toLocaleString('en-IN')}`;
+  if (n < 0) return `-\u20B9${Math.abs(n).toLocaleString('en-IN')}`;
+  return `\u20B9${n.toLocaleString('en-IN')}`;
 }
 
 type FinancialData = {
@@ -48,8 +49,8 @@ function MetricTile({
   return (
     <TouchableOpacity style={styles.metricTile} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
       <View style={styles.metricIconCircle}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name={icon} size={14} color={colors.primary} />
+        
+        <AppIcon name={icon} size={14} color={colors.primary} />
       </View>
       <Text style={styles.metricAmount}>{formatCurrency(amount)}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
@@ -57,7 +58,7 @@ function MetricTile({
         <View
           style={[
             styles.metricBarFill,
-            { width: `${pct}%` as unknown as number },
+            { width: `${pct}%` as any },
           ]}
         />
       </View>
@@ -75,9 +76,9 @@ type FinancialOverviewWidgetProps = {
 export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onExpensesPress, initialData }: FinancialOverviewWidgetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [initDate] = useState(() => new Date());
+  const [year, setYear] = useState(initDate.getFullYear());
+  const [month, setMonth] = useState(initDate.getMonth() + 1);
   const [data, setData] = useState<FinancialData | null>(initialData ?? null);
   const [loading, setLoading] = useState(!initialData);
   const mountedRef = useRef(true);
@@ -86,14 +87,14 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
   const initialUsedRef = useRef(false);
   useEffect(() => {
     if (initialData && !initialUsedRef.current) {
-      const isCurrent = year === now.getFullYear() && month === now.getMonth() + 1;
+      const isCurrent = year === initDate.getFullYear() && month === initDate.getMonth() + 1;
       if (isCurrent) {
         setData(initialData);
         setLoading(false);
         initialUsedRef.current = true;
       }
     }
-  }, [initialData, year, month, now]);
+  }, [initialData, year, month, initDate]);
 
   const load = useCallback(async () => {
     // Skip fetch for current month if initialData was used
@@ -171,27 +172,31 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-          <Icon name="currency-inr" size={20} color={colors.primary} />
+          
+          <AppIcon name="currency-inr" size={20} color={colors.primary} />
           <Text style={styles.title}>Financial Overview</Text>
         </View>
         <View style={styles.monthNav}>
           <TouchableOpacity
             onPress={goBack}
             style={styles.navBtn}
+            accessibilityLabel="Previous month"
+            accessibilityRole="button"
             testID="financial-month-back"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="chevron-left" size={20} color={colors.textLight} />
+            
+            <AppIcon name="chevron-left" size={20} color={colors.textLight} />
           </TouchableOpacity>
           <Text style={styles.monthLabel}>{getMonthLabel(year, month)}</Text>
           <TouchableOpacity
             onPress={goForward}
             style={styles.navBtn}
+            accessibilityLabel="Next month"
+            accessibilityRole="button"
             testID="financial-month-forward"
           >
-            {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-            <Icon name="chevron-right" size={20} color={colors.textLight} />
+            
+            <AppIcon name="chevron-right" size={20} color={colors.textLight} />
           </TouchableOpacity>
         </View>
       </View>
@@ -205,22 +210,21 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
           {/* Net Profit highlight */}
           <View style={styles.profitCard}>
             <View style={styles.profitHeader}>
-              <Text style={styles.profitLabel}>Net Profit</Text>
-              <View style={styles.profitIconCircle}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon
+              <Text style={styles.profitLabel}>{netProfit >= 0 ? 'Net Profit' : 'Net Loss'}</Text>
+              <View style={[styles.profitIconCircle, { backgroundColor: netProfit >= 0 ? colors.successBg : colors.dangerBg }]}>
+                <AppIcon
                   name={netProfit >= 0 ? 'trending-up' : 'trending-down'}
-                  size={14}
-                  color={colors.primary}
+                  size={16}
+                  color={netProfit >= 0 ? colors.success : colors.danger}
                 />
               </View>
             </View>
-            <Text style={styles.profitValue}>{formatCurrency(netProfit)}</Text>
+            <Text style={[styles.profitValue, { color: netProfit >= 0 ? colors.success : colors.danger }]}>{formatCurrency(netProfit)}</Text>
             <View style={styles.profitBar}>
               <View
                 style={[
                   styles.profitBarFill,
-                  { width: `${profitPct}%` as unknown as number },
+                  { width: `${profitPct}%` as any },
                 ]}
               />
             </View>
@@ -284,23 +288,26 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.full,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   navBtn: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.surface,
   },
   monthLabel: {
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.bold,
     color: colors.text,
-    marginHorizontal: spacing.sm,
+    marginHorizontal: spacing.md,
   },
   placeholder: {
     height: 120,
@@ -310,16 +317,18 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* Net Profit */
   profitCard: {
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.lg,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   profitHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   profitLabel: {
     fontSize: fontSizes.sm,
@@ -327,15 +336,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textSecondary,
   },
   profitIconCircle: {
-    width: 24,
-    height: 24,
+    width: 32,
+    height: 32,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   profitValue: {
-    fontSize: fontSizes['2xl'],
+    fontSize: fontSizes['3xl'],
     fontWeight: fontWeights.bold,
     color: colors.text,
     marginBottom: spacing.sm,

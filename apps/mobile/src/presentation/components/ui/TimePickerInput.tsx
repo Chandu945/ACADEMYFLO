@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from './AppIcon';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -86,13 +86,13 @@ export function TimePickerInput({
         accessibilityLabel={label ? `${label}, ${value ? format12h(parse24(value).h, parse24(value).m) : placeholder}` : placeholder}
         testID={testID}
       >
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="clock-outline" size={20} color={value ? colors.primary : colors.textDisabled} />
+        
+        <AppIcon name="clock-outline" size={20} color={value ? colors.primary : colors.textDisabled} />
         <Text style={[styles.valueText, !value && styles.placeholderText]} numberOfLines={1}>
           {value ? format12h(parse24(value).h, parse24(value).m) : placeholder}
         </Text>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="chevron-down" size={18} color={colors.textDisabled} />
+        
+        <AppIcon name="chevron-down" size={18} color={colors.textDisabled} />
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -107,15 +107,15 @@ export function TimePickerInput({
               <View style={styles.spinnerCol}>
                 <Text style={styles.spinnerLabel}>Hour</Text>
                 <Pressable onPress={incHour} style={styles.spinnerBtn} accessibilityLabel="Increase hour" testID={testID ? `${testID}-hour-up` : undefined}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-up" size={28} color={colors.primary} />
+                  
+                  <AppIcon name="chevron-up" size={28} color={colors.primary} />
                 </Pressable>
                 <View style={styles.spinnerValue}>
                   <Text style={styles.spinnerValueText}>{pad2(hour12)}</Text>
                 </View>
                 <Pressable onPress={decHour} style={styles.spinnerBtn} accessibilityLabel="Decrease hour" testID={testID ? `${testID}-hour-down` : undefined}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-down" size={28} color={colors.primary} />
+                  
+                  <AppIcon name="chevron-down" size={28} color={colors.primary} />
                 </Pressable>
               </View>
 
@@ -125,15 +125,15 @@ export function TimePickerInput({
               <View style={styles.spinnerCol}>
                 <Text style={styles.spinnerLabel}>Min</Text>
                 <Pressable onPress={incMin} style={styles.spinnerBtn} accessibilityLabel="Increase minute" testID={testID ? `${testID}-min-up` : undefined}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-up" size={28} color={colors.primary} />
+                  
+                  <AppIcon name="chevron-up" size={28} color={colors.primary} />
                 </Pressable>
                 <View style={styles.spinnerValue}>
                   <Text style={styles.spinnerValueText}>{pad2(minute)}</Text>
                 </View>
                 <Pressable onPress={decMin} style={styles.spinnerBtn} accessibilityLabel="Decrease minute" testID={testID ? `${testID}-min-down` : undefined}>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-down" size={28} color={colors.primary} />
+                  
+                  <AppIcon name="chevron-down" size={28} color={colors.primary} />
                 </Pressable>
               </View>
 

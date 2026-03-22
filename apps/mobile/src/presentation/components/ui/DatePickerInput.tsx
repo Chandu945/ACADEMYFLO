@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from './AppIcon';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -129,13 +129,13 @@ export function DatePickerInput({
         accessibilityLabel={label ? `${label}, ${value ? formatDisplay(value) : placeholder}` : placeholder}
         testID={testID}
       >
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="calendar-outline" size={20} color={value ? colors.primary : colors.textDisabled} />
+        
+        <AppIcon name="calendar-outline" size={20} color={value ? colors.primary : colors.textDisabled} />
         <Text style={[styles.valueText, !value && styles.placeholderText]} numberOfLines={1}>
           {value ? formatDisplay(value) : placeholder}
         </Text>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="chevron-down" size={18} color={colors.textDisabled} />
+        
+        <AppIcon name="chevron-down" size={18} color={colors.textDisabled} />
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -145,13 +145,13 @@ export function DatePickerInput({
             {/* Month/year header */}
             <View style={styles.calHeader}>
               <Pressable onPress={goToPrevMonth} hitSlop={12} style={styles.navButton} testID={testID ? `${testID}-prev` : undefined}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="chevron-left" size={24} color={colors.text} />
+                
+                <AppIcon name="chevron-left" size={24} color={colors.text} />
               </Pressable>
               <Text style={styles.calTitle}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
               <Pressable onPress={goToNextMonth} hitSlop={12} style={styles.navButton} testID={testID ? `${testID}-next` : undefined}>
-                {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                <Icon name="chevron-right" size={24} color={colors.text} />
+                
+                <AppIcon name="chevron-right" size={24} color={colors.text} />
               </Pressable>
             </View>
 

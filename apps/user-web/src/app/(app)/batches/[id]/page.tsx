@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useBatches, updateBatch, deleteBatch } from '@/application/batches/use-batches';
+import { useBatchDetail, updateBatch, deleteBatch } from '@/application/batches/use-batches';
 import { useStudents } from '@/application/students/use-students';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
@@ -18,15 +18,28 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAYS = [
+  { value: 'MON', label: 'Mon' },
+  { value: 'TUE', label: 'Tue' },
+  { value: 'WED', label: 'Wed' },
+  { value: 'THU', label: 'Thu' },
+  { value: 'FRI', label: 'Fri' },
+  { value: 'SAT', label: 'Sat' },
+  { value: 'SUN', label: 'Sun' },
+];
+
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
 
 export default function BatchDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken } = useAuth();
 
-  const { data: batches, loading, error, refetch } = useBatches();
-  const batch = batches.find((b) => b.id === params.id);
+  const { data: batch, loading, error, refetch } = useBatchDetail(params.id);
 
   const [studentSearch, setStudentSearch] = useState('');
   const { data: students, loading: studentsLoading } = useStudents({ batchId: params.id, search: studentSearch || undefined, pageSize: 100 });
@@ -102,12 +115,22 @@ export default function BatchDetailPage() {
   }, [params.id, accessToken, router]);
 
   if (loading) return <Spinner centered size="lg" />;
-  if (error) return <Alert variant="error" message={error} />;
-  if (!batch) return <Alert variant="error" message="Batch not found" />;
+  if (error) return (
+    <div className={styles.page}>
+      <Alert variant="error" message={error} />
+      <Button variant="secondary" onClick={() => router.push('/batches')} style={{ marginTop: 16 }}>Back to Batches</Button>
+    </div>
+  );
+  if (!batch) return (
+    <div className={styles.page}>
+      <Alert variant="error" message="Batch not found" />
+      <Button variant="secondary" onClick={() => router.push('/batches')} style={{ marginTop: 16 }}>Back to Batches</Button>
+    </div>
+  );
 
   return (
     <div className={styles.page}>
-      <button className={styles.backButton} onClick={() => router.push('/batches')}>
+      <button type="button" className={styles.backButton} onClick={() => router.push('/batches')}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         Back to Batches
       </button>
@@ -167,7 +190,7 @@ export default function BatchDetailPage() {
                   <Td>
                     <Badge variant={s.status === 'ACTIVE' ? 'success' : 'warning'} dot>{s.status}</Badge>
                   </Td>
-                  <Td>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(s.monthlyFee)}</Td>
+                  <Td>{currencyFormatter.format(s.monthlyFee)}</Td>
                 </Tr>
               ))}
             </Tbody>
@@ -184,10 +207,21 @@ export default function BatchDetailPage() {
             <label style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: '8px', color: 'var(--color-text-medium)' }}>Days</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {WEEKDAYS.map((day) => (
-                <label key={day} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: 'var(--text-sm)' }}>
-                  <input type="checkbox" checked={editForm.days.includes(day)} onChange={() => toggleDay(day)} />
-                  {day.slice(0, 3)}
-                </label>
+                <button
+                  key={day.value}
+                  type="button"
+                  onClick={() => toggleDay(day.value)}
+                  aria-pressed={editForm.days.includes(day.value)}
+                  style={{
+                    padding: '4px 12px', borderRadius: '6px', cursor: 'pointer',
+                    fontSize: 'var(--text-sm)', fontWeight: 500,
+                    border: `1px solid ${editForm.days.includes(day.value) ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: editForm.days.includes(day.value) ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+                    color: editForm.days.includes(day.value) ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                  }}
+                >
+                  {day.label}
+                </button>
               ))}
             </div>
           </div>

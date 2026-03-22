@@ -27,7 +27,8 @@ export async function listPaidDuesUseCase(
 
   const parsed = feeDueListResponseSchema.safeParse(result.value);
   if (!parsed.success) {
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    if (__DEV__) console.error('[listPaidDuesUseCase] Schema parse failed:', parsed.error.issues);
+    return err({ code: 'UNKNOWN', message: 'Something went wrong. Please try again.' });
   }
 
   return ok(parsed.data);

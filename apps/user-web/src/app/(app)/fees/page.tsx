@@ -23,8 +23,14 @@ const PAYMENT_METHODS = [
   { value: 'ONLINE', label: 'Online' },
 ];
 
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  return currencyFormatter.format(amount);
 }
 
 function getMonthLabel(monthKey: string) {
@@ -36,14 +42,14 @@ function getMonthLabel(monthKey: string) {
 export default function FeesPage() {
   const { accessToken, user } = useAuth();
   const isOwner = user?.role === 'OWNER';
-  const now = new Date();
   const [monthOffset, setMonthOffset] = useState(0);
   const [activeTab, setActiveTab] = useState('unpaid');
 
   const month = useMemo(() => {
+    const now = new Date();
     const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, [now.getFullYear(), now.getMonth(), monthOffset]);
+  }, [monthOffset]);
 
   const monthLabel = getMonthLabel(month);
 
@@ -141,7 +147,7 @@ export default function FeesPage() {
                     </Button>
                   </div>
                   {paymentMethodError === `${due.studentId}-${due.monthKey}` && (
-                    <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-xs)', marginTop: '4px', display: 'block' }}>Please select a payment method</span>
+                    <span className={styles.paymentMethodError}>Please select a payment method</span>
                   )}
                 </Td>
               </Tr>
@@ -175,7 +181,7 @@ export default function FeesPage() {
                 <Td>{fee.studentName ?? '-'}</Td>
                 <Td>{getMonthLabel(fee.monthKey)}</Td>
                 <Td className={styles.amountPaid}>{formatCurrency(fee.amount)}</Td>
-                <Td>{fee.paidAt ? new Date(fee.paidAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</Td>
+                <Td>{fee.paidAt ? new Date(fee.paidAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '-'}</Td>
                 <Td><Badge variant="info">{fee.paidSource ?? fee.paymentLabel ?? '-'}</Badge></Td>
               </Tr>
             ))}

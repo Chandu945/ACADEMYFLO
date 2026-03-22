@@ -49,6 +49,9 @@ export default function StaffPage() {
     return (
       <div className={styles.page}>
         <Alert variant="warning" message="Only owners can manage staff" />
+        <Button variant="secondary" onClick={() => router.push('/dashboard')} style={{ marginTop: 16 }}>
+          Go to Dashboard
+        </Button>
       </div>
     );
   }
@@ -73,49 +76,53 @@ export default function StaffPage() {
           action={<Button variant="primary" onClick={() => router.push('/staff/new')}>Add Staff</Button>}
         />
       ) : (
-        <Table striped>
-          <Thead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Email</Th>
-              <Th>Phone</Th>
-              <Th>Role</Th>
-              <Th>Status</Th>
-              <Th>Actions</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {staff.map((member) => (
-              <Tr key={member.id}>
-                <Td>
-                  <div className={styles.avatarCell}>
-                    <Avatar src={member.profilePhotoUrl} name={member.fullName} size="sm" />
-                    <span className={styles.staffName}>{member.fullName}</span>
-                  </div>
-                </Td>
-                <Td>{member.email}</Td>
-                <Td>{member.phoneNumber}</Td>
-                <Td>
-                  <Badge variant="primary">{member.role}</Badge>
-                </Td>
-                <Td>
-                  <button
-                    type="button"
-                    className={`${styles.toggleSwitch} ${member.status === 'ACTIVE' ? styles.active : ''}`}
-                    onClick={() => handleToggleStatus(member.id, member.status, member.fullName)}
-                    aria-label={`Toggle status for ${member.fullName}`}
-                    title={member.status === 'ACTIVE' ? 'Active - click to deactivate' : 'Inactive - click to activate'}
-                  />
-                </Td>
-                <Td>
-                  <Button variant="ghost" size="sm" onClick={() => router.push(`/staff/${member.id}/edit`)}>
-                    Edit
-                  </Button>
-                </Td>
+        <div className={styles.tableWrapper}>
+          <Table striped>
+            <Thead>
+              <Tr>
+                <Th>Name</Th>
+                <Th>Email</Th>
+                <Th>Phone</Th>
+                <Th>Role</Th>
+                <Th>Status</Th>
+                <Th>Actions</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {staff.map((member) => (
+                <Tr key={member.id}>
+                  <Td>
+                    <div className={styles.avatarCell}>
+                      <Avatar src={member.profilePhotoUrl} name={member.fullName} size="sm" />
+                      <span className={styles.staffName}>{member.fullName}</span>
+                    </div>
+                  </Td>
+                  <Td>{member.email}</Td>
+                  <Td>{member.phoneNumber}</Td>
+                  <Td>
+                    <Badge variant="primary">{member.role}</Badge>
+                  </Td>
+                  <Td>
+                    <button
+                      type="button"
+                      className={`${styles.toggleSwitch} ${member.status === 'ACTIVE' ? styles.active : ''}`}
+                      onClick={() => handleToggleStatus(member.id, member.status, member.fullName)}
+                      aria-label={`Toggle status for ${member.fullName}`}
+                      title={member.status === 'ACTIVE' ? 'Active - click to deactivate' : 'Inactive - click to activate'}
+                      role="switch"
+                      aria-checked={member.status === 'ACTIVE'}
+                    />
+                  </Td>
+                  <Td>
+                    <Button variant="ghost" size="sm" onClick={() => router.push(`/staff/${member.id}/edit`)}>
+                      Edit
+                    </Button>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </div>
       )}
 
       <ConfirmDialog

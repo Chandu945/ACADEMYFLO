@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { AppIcon } from '../ui/AppIcon';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -23,19 +23,19 @@ function MonthPickerRowComponent({ month, onPrevious, onNext }: MonthPickerRowPr
   return (
     <View style={styles.container}>
       <Pressable onPress={onPrevious} style={styles.arrow} testID="month-prev">
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="chevron-left" size={20} color={colors.primary} />
+        
+        <AppIcon name="chevron-left" size={20} color={colors.primary} />
       </Pressable>
       <View style={styles.monthContainer}>
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="calendar-month" size={16} color={colors.primary} />
+        
+        <AppIcon name="calendar-month" size={16} color={colors.primary} />
         <Text style={styles.monthText} testID="month-display">
           {formatMonth(month)}
         </Text>
       </View>
       <Pressable onPress={onNext} style={styles.arrow} testID="month-next">
-        {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-        <Icon name="chevron-right" size={20} color={colors.primary} />
+        
+        <AppIcon name="chevron-right" size={20} color={colors.primary} />
       </Pressable>
     </View>
   );
