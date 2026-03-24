@@ -48,7 +48,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
 
   const [prospectName, setProspectName] = useState(enquiry?.prospectName ?? '');
   const [guardianName, setGuardianName] = useState(enquiry?.guardianName ?? '');
-  const [mobileNumber, setMobileNumber] = useState(enquiry?.mobileNumber ?? (isEdit ? '' : '+91'));
+  const [mobileNumber, setMobileNumber] = useState(enquiry?.mobileNumber ?? '');
   const [whatsappNumber, setWhatsappNumber] = useState(enquiry?.whatsappNumber ?? '');
   const [email, setEmail] = useState(enquiry?.email ?? '');
   const [address, setAddress] = useState(enquiry?.address ?? '');
@@ -183,8 +183,11 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
           label="Mobile Number *"
           value={mobileNumber}
           onChangeText={setMobileNumber}
-          placeholder="10-15 digits"
+          prefix="+91"
+          placeholder="9876543210"
           keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
           maxLength={15}
           testID={`${testIdPrefix}mobile-number`}
         />

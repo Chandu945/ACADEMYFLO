@@ -26,6 +26,14 @@ import { useToast } from '../../context/ToastContext';
 
 type FormRoute = RouteProp<StaffStackParamList, 'StaffForm'>;
 
+function normalizeToE164(raw: string): string {
+  const digits = raw.replace(/[^\d]/g, '');
+  if (/^\d{10}$/.test(digits)) return `+91${digits}`;
+  if (raw.startsWith('+')) return raw;
+  if (/^\d{12}$/.test(digits) && digits.startsWith('91')) return `+${digits}`;
+  return raw;
+}
+
 const GENDER_OPTIONS: { label: string; value: 'MALE' | 'FEMALE' | 'OTHER' }[] = [
   { label: 'Male', value: 'MALE' },
   { label: 'Female', value: 'FEMALE' },
@@ -52,13 +60,13 @@ export function StaffFormScreen() {
   // Basic fields
   const [fullName, setFullName] = useState(staff?.fullName ?? '');
   const [email, setEmail] = useState(staff?.email ?? '');
-  const [phoneNumber, setPhoneNumber] = useState(staff?.phoneNumber ?? (mode === 'create' ? '+91' : ''));
+  const [phoneNumber, setPhoneNumber] = useState(staff?.phoneNumber ?? '');
   const [password, setPassword] = useState('');
 
   // Extended fields
   const [startDate, setStartDate] = useState(staff?.startDate ?? '');
   const [gender, setGender] = useState(staff?.gender ?? '');
-  const [whatsappNumber, setWhatsappNumber] = useState(staff?.whatsappNumber ?? (mode === 'create' ? '+91' : ''));
+  const [whatsappNumber, setWhatsappNumber] = useState(staff?.whatsappNumber ?? '');
   const [mobileNumber, setMobileNumber] = useState(staff?.mobileNumber ?? '');
   const [address, setAddress] = useState(staff?.address ?? '');
   const [qualification, setQualification] = useState(staff?.qualificationInfo?.qualification ?? '');
@@ -115,13 +123,13 @@ export function StaffFormScreen() {
       const input: CreateStaffInput = {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: normalizeToE164(phoneNumber.trim()),
         password,
       };
       if (startDate.trim()) input.startDate = startDate.trim();
       if (gender === 'MALE' || gender === 'FEMALE' || gender === 'OTHER') input.gender = gender;
-      if (whatsappNumber.trim()) input.whatsappNumber = whatsappNumber.trim();
-      if (mobileNumber.trim()) input.mobileNumber = mobileNumber.trim();
+      if (whatsappNumber.trim()) input.whatsappNumber = normalizeToE164(whatsappNumber.trim());
+      if (mobileNumber.trim()) input.mobileNumber = normalizeToE164(mobileNumber.trim());
       if (address.trim()) input.address = address.trim();
       if (qualification.trim() || position.trim()) {
         input.qualificationInfo = {
@@ -141,7 +149,7 @@ export function StaffFormScreen() {
       const patch: UpdateStaffInput = {};
       if (fullName.trim() !== staff?.fullName) patch.fullName = fullName.trim();
       if (email.trim().toLowerCase() !== staff?.email) patch.email = email.trim().toLowerCase();
-      if (phoneNumber.trim() !== staff?.phoneNumber) patch.phoneNumber = phoneNumber.trim();
+      if (normalizeToE164(phoneNumber.trim()) !== staff?.phoneNumber) patch.phoneNumber = normalizeToE164(phoneNumber.trim());
       if (password) patch.password = password;
 
       // Extended fields — send if changed
@@ -151,10 +159,10 @@ export function StaffFormScreen() {
       const newGender = gender === 'MALE' || gender === 'FEMALE' || gender === 'OTHER' ? gender : null;
       if (newGender !== (staff?.gender ?? null)) patch.gender = newGender;
 
-      const newWhatsapp = whatsappNumber.trim() || null;
+      const newWhatsapp = whatsappNumber.trim() ? normalizeToE164(whatsappNumber.trim()) : null;
       if (newWhatsapp !== (staff?.whatsappNumber ?? null)) patch.whatsappNumber = newWhatsapp;
 
-      const newMobile = mobileNumber.trim() || null;
+      const newMobile = mobileNumber.trim() ? normalizeToE164(mobileNumber.trim()) : null;
       if (newMobile !== (staff?.mobileNumber ?? null)) patch.mobileNumber = newMobile;
 
       const newAddress = address.trim() || null;
@@ -257,9 +265,12 @@ export function StaffFormScreen() {
           label="Phone Number"
           value={phoneNumber}
           onChangeText={setPhoneNumber}
-          placeholder="e.g. +919876543210"
+          prefix="+91"
+          placeholder="9876543210"
           error={fieldErrors['phoneNumber']}
           keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
           maxLength={16}
           testID="input-phoneNumber"
         />
@@ -322,8 +333,11 @@ export function StaffFormScreen() {
           label="WhatsApp Number"
           value={whatsappNumber}
           onChangeText={setWhatsappNumber}
-          placeholder="e.g. +919876543210"
+          prefix="+91"
+          placeholder="9876543210"
           keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
           maxLength={16}
           testID="input-whatsappNumber"
         />

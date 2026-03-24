@@ -35,11 +35,20 @@ const GENDER_OPTIONS: { label: string; value: Gender }[] = [
 
 const saveApi = { createStudent, updateStudent };
 
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/[\s\-()]/g, '');
+/** Normalize to E.164 format (+91XXXXXXXXXX) for mobileNumber & guardian.mobile */
+function normalizeToE164(raw: string): string {
+  const digits = raw.replace(/[^\d]/g, '');
   if (/^\d{10}$/.test(digits)) return `+91${digits}`;
-  if (digits.startsWith('+')) return digits;
+  if (raw.startsWith('+')) return raw;
+  if (/^\d{12}$/.test(digits) && digits.startsWith('91')) return `+${digits}`;
   return raw;
+}
+
+/** Normalize to digits-only format (91XXXXXXXXXX) for whatsappNumber */
+function normalizeToDigits(raw: string): string {
+  const digits = raw.replace(/[^\d]/g, '');
+  if (/^\d{10}$/.test(digits)) return `91${digits}`;
+  return digits;
 }
 
 export function StudentFormScreen() {
@@ -242,7 +251,7 @@ export function StudentFormScreen() {
       state: '',
       pincode: '',
       guardianName: f.guardianName,
-      guardianMobile: f.guardianMobile ? normalizePhone(f.guardianMobile.trim()) : '',
+      guardianMobile: f.guardianMobile ? normalizeToE164(f.guardianMobile.trim()) : '',
       guardianEmail: f.guardianEmail,
       joiningDate: f.joiningDate,
       monthlyFee: f.monthlyFee,
@@ -272,26 +281,25 @@ export function StudentFormScreen() {
       monthlyFee: Number(f.monthlyFee),
     };
 
-    // Guardian
-    const normalizedGuardianMobile = f.guardianMobile.trim() ? normalizePhone(f.guardianMobile.trim()) : '';
-    if (f.guardianName.trim() || normalizedGuardianMobile || f.guardianEmail.trim()) {
-      data.guardian = {
-        name: f.guardianName.trim(),
-        mobile: normalizedGuardianMobile,
-        email: f.guardianEmail.trim(),
-      };
+    // Guardian — only include fields that have values; omit empty strings
+    const guardianNameVal = f.guardianName.trim();
+    const guardianMobileVal = f.guardianMobile.trim() ? normalizeToE164(f.guardianMobile.trim()) : '';
+    const guardianEmailVal = f.guardianEmail.trim();
+    if (guardianNameVal || guardianMobileVal || guardianEmailVal) {
+      const guardian: Record<string, string> = {};
+      if (guardianNameVal) guardian.name = guardianNameVal;
+      if (guardianMobileVal) guardian.mobile = guardianMobileVal;
+      if (guardianEmailVal) guardian.email = guardianEmailVal;
+      data.guardian = guardian as any;
     }
 
-    if (f.guardianEmail.trim()) {
-      data.email = f.guardianEmail.trim();
-      if (!data.guardian) {
-        data.guardian = { name: '', mobile: '', email: f.guardianEmail.trim() };
-      }
+    if (guardianEmailVal) {
+      data.email = guardianEmailVal;
     }
     if (f.fatherName.trim()) data.fatherName = f.fatherName.trim();
     if (f.motherName.trim()) data.motherName = f.motherName.trim();
-    if (f.whatsappNumber.trim()) data.whatsappNumber = f.whatsappNumber.trim();
-    if (f.mobileNumber.trim()) data.mobileNumber = f.mobileNumber.trim();
+    if (f.whatsappNumber.trim()) data.whatsappNumber = normalizeToDigits(f.whatsappNumber.trim());
+    if (f.mobileNumber.trim()) data.mobileNumber = normalizeToE164(f.mobileNumber.trim());
     if (f.addressText.trim()) data.addressText = f.addressText.trim();
     if (f.photoUrl) data.profilePhotoUrl = f.photoUrl;
 
@@ -445,7 +453,7 @@ export function StudentFormScreen() {
 
       {/* Section: Contact Information */}
       <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
-      <Text style={styles.sectionSubtitle}>Phone numbers with country code (e.g. 919876543210)</Text>
+      <Text style={styles.sectionSubtitle}>Phone numbers with country code.</Text>
 
       <Input
         ref={whatsappRef}
@@ -455,7 +463,8 @@ export function StudentFormScreen() {
         keyboardType="phone-pad"
         autoComplete="tel"
         textContentType="telephoneNumber"
-        placeholder="919876543210"
+        prefix="+91"
+        placeholder="9876543210"
         maxLength={15}
         returnKeyType="next"
         onSubmitEditing={() => mobileRef.current?.focus()}
@@ -470,7 +479,8 @@ export function StudentFormScreen() {
         keyboardType="phone-pad"
         autoComplete="tel"
         textContentType="telephoneNumber"
-        placeholder="919876543210"
+        prefix="+91"
+        placeholder="9876543210"
         maxLength={15}
         returnKeyType="next"
         onSubmitEditing={() => emailRef.current?.focus()}
@@ -526,7 +536,8 @@ export function StudentFormScreen() {
         value={guardianMobile}
         onChangeText={handleGuardianMobileChange}
         error={fieldErrors['guardianMobile']}
-        placeholder="9876543210 or +919876543210"
+        prefix="+91"
+        placeholder="9876543210"
         keyboardType="phone-pad"
         autoComplete="tel"
         textContentType="telephoneNumber"

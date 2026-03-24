@@ -52,7 +52,7 @@ export function OwnerSignupScreen() {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('+91');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -264,7 +264,8 @@ export function OwnerSignupScreen() {
             value={phoneNumber}
             onChangeText={handlePhoneChange}
             error={fieldErrors['phoneNumber']}
-            placeholder="10-digit number (e.g. 9876543210)"
+            prefix="+91"
+            placeholder="9876543210"
             keyboardType="phone-pad"
             autoComplete="tel"
             textContentType="telephoneNumber"

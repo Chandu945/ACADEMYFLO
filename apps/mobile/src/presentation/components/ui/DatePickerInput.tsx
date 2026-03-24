@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, Pressable, Modal, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
 import { AppIcon } from './AppIcon';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
@@ -45,12 +45,22 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+const MONTH_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 function todayString(): string {
   const now = new Date();
   return toDateString(now.getFullYear(), now.getMonth(), now.getDate());
 }
+
+// Year range for the year picker
+const YEAR_RANGE_BEFORE = 100;
+const YEAR_RANGE_AFTER = 5;
+
+type PickerView = 'calendar' | 'year' | 'month';
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -67,6 +77,7 @@ export function DatePickerInput({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [show, setShow] = useState(false);
+  const [pickerView, setPickerView] = useState<PickerView>('calendar');
 
   // Calendar starts on the month of the current value (or today)
   const initial = value ? parseYMD(value) : (() => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth(), d: n.getDate() }; })();
@@ -84,6 +95,7 @@ export function DatePickerInput({
       setViewYear(now.getFullYear());
       setViewMonth(now.getMonth());
     }
+    setPickerView('calendar');
     setShow(true);
   }, [value]);
 
@@ -106,6 +118,16 @@ export function DatePickerInput({
     setShow(false);
   }, [viewYear, viewMonth, onChange]);
 
+  const selectYear = useCallback((y: number) => {
+    setViewYear(y);
+    setPickerView('month');
+  }, []);
+
+  const selectMonth = useCallback((m: number) => {
+    setViewMonth(m);
+    setPickerView('calendar');
+  }, []);
+
   const today = todayString();
   const totalDays = daysInMonth(viewYear, viewMonth);
   const startDay = startDayOfMonth(viewYear, viewMonth);
@@ -119,6 +141,13 @@ export function DatePickerInput({
   const minStr = minimumDate ? toDateString(minimumDate.getFullYear(), minimumDate.getMonth(), minimumDate.getDate()) : null;
   const maxStr = maximumDate ? toDateString(maximumDate.getFullYear(), maximumDate.getMonth(), maximumDate.getDate()) : null;
 
+  // Year range
+  const currentYear = new Date().getFullYear();
+  const minYear = minimumDate ? minimumDate.getFullYear() : currentYear - YEAR_RANGE_BEFORE;
+  const maxYear = maximumDate ? maximumDate.getFullYear() : currentYear + YEAR_RANGE_AFTER;
+  const years: number[] = [];
+  for (let y = maxYear; y >= minYear; y--) years.push(y);
+
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -129,12 +158,12 @@ export function DatePickerInput({
         accessibilityLabel={label ? `${label}, ${value ? formatDisplay(value) : placeholder}` : placeholder}
         testID={testID}
       >
-        
+
         <AppIcon name="calendar-outline" size={20} color={value ? colors.primary : colors.textDisabled} />
         <Text style={[styles.valueText, !value && styles.placeholderText]} numberOfLines={1}>
           {value ? formatDisplay(value) : placeholder}
         </Text>
-        
+
         <AppIcon name="chevron-down" size={18} color={colors.textDisabled} />
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -142,68 +171,166 @@ export function DatePickerInput({
       <Modal visible={show} transparent animationType="fade" onRequestClose={() => setShow(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShow(false)}>
           <Pressable style={styles.modalContent} onPress={() => {}}>
-            {/* Month/year header */}
-            <View style={styles.calHeader}>
-              <Pressable onPress={goToPrevMonth} hitSlop={12} style={styles.navButton} testID={testID ? `${testID}-prev` : undefined}>
-                
-                <AppIcon name="chevron-left" size={24} color={colors.text} />
-              </Pressable>
-              <Text style={styles.calTitle}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
-              <Pressable onPress={goToNextMonth} hitSlop={12} style={styles.navButton} testID={testID ? `${testID}-next` : undefined}>
-                
-                <AppIcon name="chevron-right" size={24} color={colors.text} />
-              </Pressable>
-            </View>
 
-            {/* Day-of-week labels */}
-            <View style={styles.weekRow}>
-              {DAY_LABELS.map((d) => (
-                <Text key={d} style={styles.weekLabel}>{d}</Text>
-              ))}
-            </View>
-
-            {/* Day grid */}
-            <View style={styles.dayGrid}>
-              {cells.map((day, idx) => {
-                if (day === null) {
-                  return <View key={`empty-${idx}`} style={styles.dayCell} />;
-                }
-                const ds = toDateString(viewYear, viewMonth, day);
-                const isSelected = ds === value;
-                const isToday = ds === today;
-                const isDisabled = (minStr && ds < minStr) || (maxStr && ds > maxStr);
-
-                return (
-                  <Pressable
-                    key={day}
-                    style={[
-                      styles.dayCell,
-                      isSelected && styles.dayCellSelected,
-                      isToday && !isSelected && styles.dayCellToday,
-                    ]}
-                    onPress={() => !isDisabled && selectDate(day)}
-                    disabled={!!isDisabled}
-                    testID={testID ? `${testID}-day-${day}` : undefined}
-                  >
-                    <Text
-                      style={[
-                        styles.dayText,
-                        isSelected && styles.dayTextSelected,
-                        isToday && !isSelected && styles.dayTextToday,
-                        isDisabled && styles.dayTextDisabled,
-                      ]}
-                    >
-                      {day}
-                    </Text>
+            {/* ── Year picker view ── */}
+            {pickerView === 'year' && (
+              <>
+                <View style={styles.calHeader}>
+                  <View style={styles.navButton} />
+                  <Text style={styles.calTitle}>Select Year</Text>
+                  <Pressable onPress={() => setPickerView('calendar')} hitSlop={12} style={styles.navButton}>
+                    <AppIcon name="close" size={22} color={colors.text} />
                   </Pressable>
-                );
-              })}
-            </View>
+                </View>
+                <ScrollView
+                  style={styles.yearScroll}
+                  contentContainerStyle={styles.yearGrid}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {years.map((y) => {
+                    const isSelected = y === viewYear;
+                    const isCurrent = y === currentYear;
+                    return (
+                      <Pressable
+                        key={y}
+                        style={[
+                          styles.yearCell,
+                          isSelected && styles.yearCellSelected,
+                          isCurrent && !isSelected && styles.yearCellCurrent,
+                        ]}
+                        onPress={() => selectYear(y)}
+                      >
+                        <Text
+                          style={[
+                            styles.yearText,
+                            isSelected && styles.yearTextSelected,
+                            isCurrent && !isSelected && styles.yearTextCurrent,
+                          ]}
+                        >
+                          {y}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
 
-            {/* Today shortcut */}
-            <Pressable style={styles.todayButton} onPress={() => { const n = new Date(); selectDate(n.getDate()); setViewYear(n.getFullYear()); setViewMonth(n.getMonth()); }}>
-              <Text style={styles.todayButtonText}>Today</Text>
-            </Pressable>
+            {/* ── Month picker view ── */}
+            {pickerView === 'month' && (
+              <>
+                <View style={styles.calHeader}>
+                  <Pressable onPress={() => setPickerView('year')} hitSlop={12} style={styles.navButton}>
+                    <AppIcon name="chevron-left" size={24} color={colors.text} />
+                  </Pressable>
+                  <Text style={styles.calTitle}>{viewYear}</Text>
+                  <Pressable onPress={() => setPickerView('calendar')} hitSlop={12} style={styles.navButton}>
+                    <AppIcon name="close" size={22} color={colors.text} />
+                  </Pressable>
+                </View>
+                <View style={styles.monthGrid}>
+                  {MONTH_SHORT.map((name, idx) => {
+                    const isSelected = idx === viewMonth && pickerView === 'month';
+                    const isCurrent = idx === new Date().getMonth() && viewYear === currentYear;
+                    return (
+                      <Pressable
+                        key={name}
+                        style={[
+                          styles.monthCell,
+                          isSelected && styles.monthCellSelected,
+                          isCurrent && !isSelected && styles.monthCellCurrent,
+                        ]}
+                        onPress={() => selectMonth(idx)}
+                      >
+                        <Text
+                          style={[
+                            styles.monthText,
+                            isSelected && styles.monthTextSelected,
+                            isCurrent && !isSelected && styles.monthTextCurrent,
+                          ]}
+                        >
+                          {name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            {/* ── Calendar view ── */}
+            {pickerView === 'calendar' && (
+              <>
+                {/* Month/year header — tap title to open year picker */}
+                <View style={styles.calHeader}>
+                  <Pressable onPress={goToPrevMonth} hitSlop={12} style={styles.navButton} testID={testID ? `${testID}-prev` : undefined}>
+
+                    <AppIcon name="chevron-left" size={24} color={colors.text} />
+                  </Pressable>
+                  <Pressable onPress={() => setPickerView('year')} hitSlop={8}>
+                    <View style={styles.calTitleRow}>
+                      <Text style={styles.calTitle}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+                      <AppIcon name="chevron-down" size={16} color={colors.textSecondary} />
+                    </View>
+                  </Pressable>
+                  <Pressable onPress={goToNextMonth} hitSlop={12} style={styles.navButton} testID={testID ? `${testID}-next` : undefined}>
+
+                    <AppIcon name="chevron-right" size={24} color={colors.text} />
+                  </Pressable>
+                </View>
+
+                {/* Day-of-week labels */}
+                <View style={styles.weekRow}>
+                  {DAY_LABELS.map((d) => (
+                    <Text key={d} style={styles.weekLabel}>{d}</Text>
+                  ))}
+                </View>
+
+                {/* Day grid */}
+                <View style={styles.dayGrid}>
+                  {cells.map((day, idx) => {
+                    if (day === null) {
+                      return <View key={`empty-${idx}`} style={styles.dayCell} />;
+                    }
+                    const ds = toDateString(viewYear, viewMonth, day);
+                    const isSelected = ds === value;
+                    const isToday = ds === today;
+                    const isDisabled = (minStr && ds < minStr) || (maxStr && ds > maxStr);
+
+                    return (
+                      <Pressable
+                        key={day}
+                        style={[
+                          styles.dayCell,
+                          isSelected && styles.dayCellSelected,
+                          isToday && !isSelected && styles.dayCellToday,
+                        ]}
+                        onPress={() => !isDisabled && selectDate(day)}
+                        disabled={!!isDisabled}
+                        testID={testID ? `${testID}-day-${day}` : undefined}
+                      >
+                        <Text
+                          style={[
+                            styles.dayText,
+                            isSelected && styles.dayTextSelected,
+                            isToday && !isSelected && styles.dayTextToday,
+                            isDisabled && styles.dayTextDisabled,
+                          ]}
+                        >
+                          {day}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {/* Today shortcut */}
+                <Pressable style={styles.todayButton} onPress={() => { const n = new Date(); selectDate(n.getDate()); setViewYear(n.getFullYear()); setViewMonth(n.getMonth()); }}>
+                  <Text style={styles.todayButtonText}>Today</Text>
+                </Pressable>
+              </>
+            )}
+
           </Pressable>
         </Pressable>
       </Modal>
@@ -288,6 +415,11 @@ const makeStyles = (colors: Colors) =>
       fontWeight: fontWeights.bold,
       color: colors.text,
     },
+    calTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
 
     // Weekday labels
     weekRow: {
@@ -349,5 +481,80 @@ const makeStyles = (colors: Colors) =>
       fontSize: fontSizes.base,
       fontWeight: fontWeights.semibold,
       color: colors.primary,
+    },
+
+    // Year picker
+    yearScroll: {
+      maxHeight: 280,
+    },
+    yearGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingBottom: spacing.md,
+    },
+    yearCell: {
+      width: 72,
+      height: 42,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.lg,
+    },
+    yearCellSelected: {
+      backgroundColor: colors.primary,
+    },
+    yearCellCurrent: {
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+    },
+    yearText: {
+      fontSize: fontSizes.base,
+      fontWeight: fontWeights.medium,
+      color: colors.text,
+    },
+    yearTextSelected: {
+      color: colors.white,
+      fontWeight: fontWeights.bold,
+    },
+    yearTextCurrent: {
+      color: colors.primary,
+      fontWeight: fontWeights.bold,
+    },
+
+    // Month picker
+    monthGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingBottom: spacing.md,
+    },
+    monthCell: {
+      width: 80,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.lg,
+    },
+    monthCellSelected: {
+      backgroundColor: colors.primary,
+    },
+    monthCellCurrent: {
+      borderWidth: 1.5,
+      borderColor: colors.primary,
+    },
+    monthText: {
+      fontSize: fontSizes.base,
+      fontWeight: fontWeights.medium,
+      color: colors.text,
+    },
+    monthTextSelected: {
+      color: colors.white,
+      fontWeight: fontWeights.bold,
+    },
+    monthTextCurrent: {
+      color: colors.primary,
+      fontWeight: fontWeights.bold,
     },
   });

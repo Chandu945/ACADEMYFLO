@@ -58,7 +58,7 @@ function getCategoryIcon(name: string): string {
   if (lower.includes('travel')) return 'airplane-outline';
   if (lower.includes('tax')) return 'file-document-outline';
   if (lower.includes('miscellan')) return 'dots-horizontal-circle-outline';
-  return 'cash-outline';
+  return 'cash';
 }
 
 export function ExpenseFormScreen() {

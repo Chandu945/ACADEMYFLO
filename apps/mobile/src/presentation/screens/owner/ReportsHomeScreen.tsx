@@ -58,7 +58,7 @@ function getSourceIcon(source: string): string {
   switch (source) {
     case 'STAFF_APPROVED': return 'account-check-outline';
     case 'MANUAL': return 'pencil-outline';
-    default: return 'cash-outline';
+    default: return 'cash';
   }
 }
 

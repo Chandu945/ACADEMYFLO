@@ -42,7 +42,7 @@ export class GetOwnerDashboardKpisUseCase {
     if (!user || !user.academyId) return err(FeeErrors.academyRequired());
 
     const academyId = user.academyId;
-    const today = formatLocalDate(input.from);
+    const today = formatLocalDate(new Date());
     const currentMonthKey = toMonthKeyFromDate(input.from);
 
     const [

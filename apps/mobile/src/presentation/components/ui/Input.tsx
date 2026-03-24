@@ -12,6 +12,7 @@ type InputProps = {
   onChangeText: (text: string) => void;
   error?: string;
   placeholder?: string;
+  prefix?: string;
   secureTextEntry?: boolean;
   keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
@@ -30,6 +31,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({
   onChangeText,
   error,
   placeholder,
+  prefix,
   secureTextEntry,
   keyboardType,
   autoCapitalize = 'none',
@@ -51,9 +53,15 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.inputWrapper, error ? styles.inputWrapperError : undefined]}>
+        {prefix ? (
+          <View style={styles.prefixContainer}>
+            <Text style={styles.prefixText}>{prefix}</Text>
+            <View style={styles.prefixDivider} />
+          </View>
+        ) : null}
         <TextInput
           ref={ref}
-          style={[styles.input, isPassword ? styles.inputWithToggle : undefined]}
+          style={[styles.input, isPassword ? styles.inputWithToggle : undefined, prefix ? styles.inputWithPrefix : undefined]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -127,6 +135,26 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   inputWithToggle: {
     paddingRight: 4,
+  },
+  inputWithPrefix: {
+    paddingLeft: spacing.sm,
+  },
+  prefixContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: spacing.base,
+  },
+  prefixText: {
+    fontSize: fontSizes.base,
+    color: colors.primary,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.3,
+  },
+  prefixDivider: {
+    width: 1.5,
+    height: 20,
+    backgroundColor: colors.border,
+    marginLeft: spacing.sm,
   },
   toggleButton: {
     paddingHorizontal: spacing.md,

@@ -208,5 +208,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing.base,
     paddingBottom: listDefaults.contentPaddingBottomNoFab,
+    marginTop: spacing.base,
   },
 });

@@ -7,7 +7,7 @@ export const IST_OFFSET_MS = IST_OFFSET_MINUTES * 60 * 1000;
 /** Returns the current Date adjusted to IST regardless of device timezone */
 export function nowIST(): Date {
   const now = new Date();
-  return new Date(now.getTime() + (IST_OFFSET_MINUTES - now.getTimezoneOffset()) * 60_000);
+  return new Date(now.getTime() + (IST_OFFSET_MINUTES + now.getTimezoneOffset()) * 60_000);
 }
 
 /** Returns today's date in IST as YYYY-MM-DD */

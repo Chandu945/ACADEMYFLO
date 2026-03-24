@@ -17,6 +17,14 @@ import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ParentProfile'>;
 
+function normalizeToE164(raw: string): string {
+  const digits = raw.replace(/[\s\-()]/g, '');
+  if (/^\d{10}$/.test(digits)) return `+91${digits}`;
+  if (digits.startsWith('+')) return digits;
+  if (/^\d{12}$/.test(digits) && digits.startsWith('91')) return `+${digits}`;
+  return raw;
+}
+
 export function ParentProfileScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -68,7 +76,7 @@ export function ParentProfileScreen() {
     setError(null);
     try {
       const result = await updateParentProfileUseCase(
-        { fullName: fullName.trim(), phoneNumber: phoneNumber.trim() },
+        { fullName: fullName.trim(), phoneNumber: phoneNumber.trim() ? normalizeToE164(phoneNumber.trim()) : '' },
         { parentApi },
       );
       if (result.ok) {
@@ -147,7 +155,11 @@ export function ParentProfileScreen() {
           label="Phone Number"
           value={phoneNumber}
           onChangeText={setPhoneNumber}
+          prefix="+91"
+          placeholder="9876543210"
           keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
           testID="profile-phone"
         />
 

@@ -42,8 +42,10 @@ export class DashboardController {
     let to: Date;
 
     if (query.from && query.to) {
-      from = new Date(query.from + 'T00:00:00.000Z');
-      to = new Date(query.to + 'T23:59:59.999Z');
+      const [fY, fM, fD] = query.from.split('-').map(Number);
+      const [tY, tM, tD] = query.to.split('-').map(Number);
+      from = new Date(fY!, fM! - 1, fD!, 0, 0, 0, 0);
+      to = new Date(tY!, tM! - 1, tD!, 23, 59, 59, 999);
     } else {
       // Default: THIS_MONTH
       const now = new Date();

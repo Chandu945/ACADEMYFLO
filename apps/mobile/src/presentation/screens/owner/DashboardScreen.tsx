@@ -153,8 +153,7 @@ export function DashboardScreen() {
                   <View style={styles.pendingBadge}>
                     <Text style={styles.pendingBadgeText}>{data.pendingPaymentRequests}</Text>
                   </View>
-                  {/* @ts-expect-error react-native-vector-icons types incompatible with @types/react@19 */}
-                  <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+                  <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
                 </View>
               </TouchableOpacity>
             )}
