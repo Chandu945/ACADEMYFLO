@@ -5,6 +5,7 @@ import { AppError as AppErrorClass } from '@shared/kernel';
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { isValidMonthKey, getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { ParentErrors } from '../../common/errors';
@@ -18,11 +19,49 @@ export interface GetChildAttendanceInput {
   month: string;
 }
 
+/**
+ * Calculate the effective number of countable days in a month for a student,
+ * considering their joining date and today's date.
+ */
+function getEffectiveDays(month: string, joiningDate: string | Date | null | undefined): number {
+  const totalDays = getDaysInMonth(month);
+  const [yearStr, monthStr] = month.split('-');
+  const year = Number(yearStr);
+  const mon = Number(monthStr) - 1; // 0-indexed
+
+  // First day of the month
+  let startDay = 1;
+
+  // If the student joined during this month, start from joining date
+  if (joiningDate) {
+    const jd = new Date(joiningDate);
+    if (jd.getFullYear() === year && jd.getMonth() === mon) {
+      startDay = jd.getDate();
+    } else if (jd.getFullYear() > year || (jd.getFullYear() === year && jd.getMonth() > mon)) {
+      // Student hasn't joined yet during this month
+      return 0;
+    }
+  }
+
+  // Don't count future days
+  const now = new Date();
+  let endDay = totalDays;
+  if (now.getFullYear() === year && now.getMonth() === mon) {
+    endDay = Math.min(totalDays, now.getDate());
+  } else if (now.getFullYear() < year || (now.getFullYear() === year && now.getMonth() < mon)) {
+    // This month is in the future
+    return 0;
+  }
+
+  return Math.max(0, endDay - startDay + 1);
+}
+
 export class GetChildAttendanceUseCase {
   constructor(
     private readonly linkRepo: ParentStudentLinkRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
+    private readonly studentRepo: StudentRepository,
   ) {}
 
   async execute(
@@ -38,19 +77,20 @@ export class GetChildAttendanceUseCase {
     const link = await this.linkRepo.findByParentAndStudent(input.parentUserId, input.studentId);
     if (!link) return err(ParentErrors.childNotLinked());
 
-    const [absentRecords, holidays] = await Promise.all([
+    const [absentRecords, holidays, student] = await Promise.all([
       this.attendanceRepo.findAbsentByAcademyStudentAndMonth(
         link.academyId,
         input.studentId,
         input.month,
       ),
       this.holidayRepo.findByAcademyAndMonth(link.academyId, input.month),
+      this.studentRepo.findById(input.studentId),
     ]);
 
-    const daysInMonth = getDaysInMonth(input.month);
+    const effectiveDays = getEffectiveDays(input.month, student?.joiningDate);
     const absentCount = absentRecords.length;
     const holidayCount = holidays.length;
-    const presentCount = Math.max(0, daysInMonth - absentCount - holidayCount);
+    const presentCount = Math.max(0, effectiveDays - absentCount - holidayCount);
 
     return ok({
       studentId: input.studentId,

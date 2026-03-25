@@ -14,9 +14,19 @@ import { Chip } from '@/components/ui/Chip';
 import { Spinner } from '@/components/ui/Spinner';
 import styles from './page.module.css';
 
+/** Safely convert any date string to YYYY-MM-DD for HTML date input */
+function toDateInputValue(raw: unknown): string {
+  if (!raw || typeof raw !== 'string') return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (raw.includes('T')) { const p = raw.split('T')[0]; if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) return p; }
+  const d = new Date(raw);
+  return !isNaN(d.getTime()) ? d.toISOString().split('T')[0]! : '';
+}
+
 const GENDERS = [
   { value: 'MALE', label: 'Male' },
   { value: 'FEMALE', label: 'Female' },
+  { value: 'OTHER', label: 'Other' },
 ] as const;
 
 const SALARY_FREQUENCIES = [
@@ -27,6 +37,16 @@ const SALARY_FREQUENCIES = [
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const E164_RE = /^\+[1-9]\d{6,14}$/;
+
+/** Normalize a phone input to E.164 (+91XXXXXXXXXX). Returns the input as-is if already E.164 or empty. */
+function normalizePhone(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('+')) return trimmed;
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  return trimmed;
+}
 
 export default function EditStaffPage() {
   const params = useParams<{ id: string }>();
@@ -46,6 +66,10 @@ export default function EditStaffPage() {
     fullName: '',
     email: '',
     phoneNumber: '',
+    whatsappNumber: '',
+    mobileNumber: '',
+    address: '',
+    password: '',
     startDate: '',
     gender: '',
     qualification: '',
@@ -64,7 +88,11 @@ export default function EditStaffPage() {
         fullName: staffMember.fullName ?? '',
         email: staffMember.email ?? '',
         phoneNumber: staffMember.phoneNumber ?? '',
-        startDate: staffMember.startDate ? staffMember.startDate.split('T')[0]! : '',
+        whatsappNumber: staffMember.whatsappNumber ?? '',
+        mobileNumber: staffMember.mobileNumber ?? '',
+        address: staffMember.address ?? '',
+        password: '',
+        startDate: toDateInputValue(staffMember.startDate),
         gender: (staffMember.gender ?? '').toUpperCase(),
         qualification: staffMember.qualificationInfo?.qualification ?? '',
         position: staffMember.qualificationInfo?.position ?? '',
@@ -107,6 +135,18 @@ export default function EditStaffPage() {
     } else if (!E164_RE.test(form.phoneNumber.trim())) {
       errors['phoneNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
     }
+    if (form.whatsappNumber.trim() && !E164_RE.test(normalizePhone(form.whatsappNumber))) {
+      errors['whatsappNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (form.mobileNumber.trim() && !E164_RE.test(normalizePhone(form.mobileNumber))) {
+      errors['mobileNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (form.address.trim().length > 300) {
+      errors['address'] = 'Address must be 300 characters or less';
+    }
+    if (form.password && form.password.length < 8) {
+      errors['password'] = 'Password must be at least 8 characters';
+    }
     if (form.salaryAmount && Number(form.salaryAmount) < 0) {
       errors['salaryAmount'] = 'Salary must be a positive number';
     }
@@ -121,21 +161,28 @@ export default function EditStaffPage() {
     if (!validate()) return;
 
     setLoading(true);
+    const payload: Record<string, unknown> = {
+      fullName: form.fullName.trim(),
+      email: form.email.trim().toLowerCase(),
+      phoneNumber: form.phoneNumber.trim(),
+      whatsappNumber: normalizePhone(form.whatsappNumber) || undefined,
+      mobileNumber: normalizePhone(form.mobileNumber) || undefined,
+      address: form.address.trim() || undefined,
+      startDate: form.startDate || undefined,
+      gender: form.gender || undefined,
+      qualificationInfo: (form.qualification.trim() || form.position.trim())
+        ? { qualification: form.qualification.trim() || null, position: form.position.trim() || null }
+        : undefined,
+      salaryConfig: form.salaryAmount
+        ? { amount: Number(form.salaryAmount), frequency: form.salaryFrequency }
+        : undefined,
+    };
+    if (form.password) {
+      payload.password = form.password;
+    }
     const result = await updateStaff(
       params.id,
-      {
-        fullName: form.fullName.trim(),
-        email: form.email.trim().toLowerCase(),
-        phoneNumber: form.phoneNumber.trim(),
-        startDate: form.startDate || undefined,
-        gender: form.gender || undefined,
-        qualificationInfo: (form.qualification.trim() || form.position.trim())
-          ? { qualification: form.qualification.trim() || null, position: form.position.trim() || null }
-          : undefined,
-        salaryConfig: form.salaryAmount
-          ? { amount: Number(form.salaryAmount), frequency: form.salaryFrequency }
-          : undefined,
-      },
+      payload,
       accessToken,
     );
     setLoading(false);
@@ -178,6 +225,23 @@ export default function EditStaffPage() {
           <Input label="Full Name" required value={form.fullName} onChange={(e) => set('fullName', e.target.value)} error={fieldErrors['fullName']} />
           <Input label="Email" required type="email" value={form.email} onChange={(e) => set('email', e.target.value)} error={fieldErrors['email']} />
           <Input label="Phone Number" required type="tel" value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)} error={fieldErrors['phoneNumber']} placeholder="+919876543210" hint="E.164 format with country code" />
+
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Contact Information</h4>
+            <div className={styles.sectionFields}>
+              <Input label="WhatsApp Number" type="tel" value={form.whatsappNumber} onChange={(e) => set('whatsappNumber', e.target.value)} error={fieldErrors['whatsappNumber']} placeholder="+919876543210" hint="E.164 format with +91 prefix" />
+              <Input label="Mobile Number" type="tel" value={form.mobileNumber} onChange={(e) => set('mobileNumber', e.target.value)} error={fieldErrors['mobileNumber']} placeholder="+919876543210" hint="E.164 format with +91 prefix" />
+              <Input label="Address" value={form.address} onChange={(e) => set('address', e.target.value)} error={fieldErrors['address']} placeholder="Full address (optional)" hint="Max 300 characters" />
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Change Password</h4>
+            <div className={styles.sectionFields}>
+              <Input label="New Password (optional)" type="password" value={form.password} onChange={(e) => set('password', e.target.value)} error={fieldErrors['password']} placeholder="Leave blank to keep current" hint="Min 8 characters" />
+            </div>
+          </div>
+
           <DatePicker label="Start Date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
 
           <div>

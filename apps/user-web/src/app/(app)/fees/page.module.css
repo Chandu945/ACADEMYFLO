@@ -68,6 +68,23 @@
   outline-offset: 2px;
 }
 
+/* ── Search & Filters ────────────────────────────────────────────────── */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 200px;
+}
+
+.batchFilter {
+  min-width: 180px;
+}
+
 .paymentMethodError {
   color: var(--color-danger);
   font-size: var(--text-xs);
@@ -108,6 +125,43 @@
   gap: var(--space-2);
 }
 
+/* ── Staff Notes ──────────────────────────────────────────────────────── */
+.staffNotes {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  max-width: 200px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Reviewed By ──────────────────────────────────────────────────────── */
+.reviewedBy {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Rejection Reason Sub-row ─────────────────────────────────────────── */
+.rejectionRow {
+  background: var(--color-danger-bg, #fef2f2);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.rejectionLabel {
+  font-weight: var(--weight-semibold);
+}
+
+/* ── Reject Reason Field ──────────────────────────────────────────────── */
+.rejectReasonField {
+  margin-top: var(--space-4);
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .page {
@@ -121,5 +175,18 @@
   .actionCell {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchInput {
+    min-width: unset;
+  }
+
+  .batchFilter {
+    min-width: unset;
   }
 }

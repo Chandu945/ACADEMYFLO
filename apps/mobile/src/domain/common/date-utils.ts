@@ -28,6 +28,31 @@ export function getCurrentMonthIST(): string {
 }
 
 /**
+ * Extracts YYYY-MM-DD from any date string (ISO, timestamp, etc.).
+ * Returns empty string if the input is falsy or unparseable.
+ */
+export function toDateOnly(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  // ISO format — take the date part before T
+  if (trimmed.includes('T')) {
+    const part = trimmed.split('T')[0];
+    if (part && /^\d{4}-\d{2}-\d{2}$/.test(part)) return part;
+  }
+  // Fallback: try Date constructor
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return '';
+}
+
+/**
  * Validates a YYYY-MM-DD date string.
  * Returns true if the format is valid AND the date actually exists (e.g. rejects 2026-02-30).
  */

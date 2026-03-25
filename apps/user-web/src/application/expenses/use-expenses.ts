@@ -163,6 +163,22 @@ export async function updateExpense(id: string, body: Record<string, unknown>, a
   }
 }
 
+export async function createCategory(body: { name: string }, accessToken?: string | null): Promise<{ ok: true; data: { id: string; name: string } } | { ok: false; error: string }> {
+  try {
+    const res = await fetch('/api/expenses/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) return { ok: false, error: (json?.['message'] as string) || 'Failed to create category' };
+    return { ok: true, data: json as unknown as { id: string; name: string } };
+  } catch {
+    return { ok: false, error: 'Network error. Please try again.' };
+  }
+}
+
 export async function deleteExpense(id: string, accessToken?: string | null) {
   try {
     const res = await fetch(`/api/expenses?id=${id}`, {

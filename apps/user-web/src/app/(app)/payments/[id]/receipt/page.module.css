@@ -1,0 +1,204 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Receipt Page
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-6);
+  gap: var(--space-5);
+}
+
+/* ── Actions Bar ─────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 600px;
+}
+
+/* ── Receipt Card ────────────────────────────────────────────────────── */
+.receipt {
+  width: 100%;
+  max-width: 600px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ── Receipt Header ──────────────────────────────────────────────────── */
+.receiptHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 2px solid var(--color-primary);
+  background: var(--color-primary);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brandIcon {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.brandName {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: #fff;
+}
+
+.receiptLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Receipt Body ────────────────────────────────────────────────────── */
+.receiptBody {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border, #eee);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--weight-medium, 500);
+}
+
+.rowValue {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+}
+
+/* ── Amount Highlight ────────────────────────────────────────────────── */
+.amountRow {
+  background: var(--color-primary-soft, #f0f4ff);
+  margin: 0 calc(var(--space-6) * -1);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: none;
+}
+
+.amountValue {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-primary);
+}
+
+/* ── Receipt Footer ──────────────────────────────────────────────────── */
+.receiptFooter {
+  padding: var(--space-4) var(--space-6);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border, #eee);
+}
+
+/* ── Loading / Error States ──────────────────────────────────────────── */
+.centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  width: 100%;
+}
+
+.errorMessage {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--color-text-secondary);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .receiptHeader {
+    padding: var(--space-4) var(--space-5);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .receiptBody {
+    padding: var(--space-4);
+  }
+
+  .amountRow {
+    margin: 0 calc(var(--space-4) * -1);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .receiptFooter {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: var(--space-3);
+  }
+
+  .brandName {
+    font-size: var(--text-lg);
+  }
+
+  .amountValue {
+    font-size: var(--text-xl);
+  }
+}
+
+/* ── Print Styles ────────────────────────────────────────────────────── */
+@media print {
+  .page {
+    padding: 0;
+  }
+
+  .actions {
+    display: none;
+  }
+
+  .receipt {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .receiptHeader {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

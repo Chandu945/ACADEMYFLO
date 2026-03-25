@@ -1,12 +1,38 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
+
+type SubscriptionStatus = 'TRIAL' | 'ACTIVE_PAID' | 'EXPIRED_GRACE' | 'BLOCKED' | 'DISABLED' | string;
+
+function statusBadgeVariant(status: SubscriptionStatus): 'info' | 'success' | 'warning' | 'danger' | 'default' {
+  switch (status) {
+    case 'TRIAL': return 'info';
+    case 'ACTIVE_PAID': return 'success';
+    case 'EXPIRED_GRACE': return 'warning';
+    case 'BLOCKED':
+    case 'DISABLED': return 'danger';
+    default: return 'default';
+  }
+}
+
+function statusLabel(status: SubscriptionStatus): string {
+  switch (status) {
+    case 'TRIAL': return 'Trial';
+    case 'ACTIVE_PAID': return 'Active';
+    case 'EXPIRED_GRACE': return 'Expired (Grace)';
+    case 'BLOCKED': return 'Blocked';
+    case 'DISABLED': return 'Disabled';
+    default: return status;
+  }
+}
 
 type SubscriptionData = {
   status: string;
@@ -41,6 +67,7 @@ const TIERS = [
 ];
 
 export default function SubscriptionPage() {
+  const router = useRouter();
   const { accessToken } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +100,13 @@ export default function SubscriptionPage() {
   useEffect(() => {
     fetchSubscription();
   }, [fetchSubscription]);
+
+  // Redirect to blocked page for BLOCKED/DISABLED statuses
+  useEffect(() => {
+    if (subscription && (subscription.status === 'BLOCKED' || subscription.status === 'DISABLED')) {
+      router.replace('/subscription-blocked');
+    }
+  }, [subscription, router]);
 
   const handleUpgrade = useCallback(async (tier: string) => {
     setUpgradeLoading(true);
@@ -119,12 +153,45 @@ export default function SubscriptionPage() {
       {upgradeError && <Alert variant="error" message={upgradeError} />}
       {upgradeSuccess && <Alert variant="success" message="Subscription upgraded successfully!" />}
 
+      {/* Trial Banner */}
+      {subscription?.status === 'TRIAL' && (
+        <div className={styles.trialBanner}>
+          <div className={styles.trialBannerContent}>
+            <Badge variant="info">Trial</Badge>
+            <span className={styles.trialBannerText}>
+              You have <strong>{subscription.daysRemaining}</strong> day{subscription.daysRemaining !== 1 ? 's' : ''} remaining in your trial.
+            </span>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => {
+            const tierSection = document.querySelector(`.${styles.tierSection}`);
+            tierSection?.scrollIntoView({ behavior: 'smooth' });
+          }}>
+            Upgrade Now
+          </Button>
+        </div>
+      )}
+
+      {/* Expired/Grace Warning Banner */}
+      {subscription?.status === 'EXPIRED_GRACE' && (
+        <Alert
+          variant="warning"
+          message="Your subscription has expired. You are in a grace period. Please upgrade to continue using all features."
+          action={{
+            label: 'Upgrade Now',
+            onClick: () => {
+              const tierSection = document.querySelector(`.${styles.tierSection}`);
+              tierSection?.scrollIntoView({ behavior: 'smooth' });
+            },
+          }}
+        />
+      )}
+
       {/* Current Plan */}
       {subscription && (
         <div className={styles.currentPlan}>
           <div className={styles.planHeader}>
             <span className={styles.planTitle}>Current Plan</span>
-            <span className={styles.planBadge}>{subscription.status}</span>
+            <Badge variant={statusBadgeVariant(subscription.status)}>{statusLabel(subscription.status)}</Badge>
           </div>
           <div className={styles.planStats}>
             <div className={styles.planStat}>

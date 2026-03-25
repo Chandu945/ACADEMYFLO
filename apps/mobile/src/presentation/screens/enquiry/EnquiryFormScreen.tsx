@@ -17,7 +17,7 @@ import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { Input } from '../../components/ui/Input';
 import { TextArea } from '../../components/ui/TextArea';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
-import { isValidDate } from '../../../domain/common/date-utils';
+import { isValidDate, toDateOnly } from '../../../domain/common/date-utils';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -57,7 +57,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
     enquiry?.source ? (enquiry.source as EnquirySource) : undefined,
   );
   const [notes, setNotes] = useState(enquiry?.notes ?? '');
-  const [nextFollowUpDate, setNextFollowUpDate] = useState(enquiry?.nextFollowUpDate ?? '');
+  const [nextFollowUpDate, setNextFollowUpDate] = useState(toDateOnly(enquiry?.nextFollowUpDate));
   const [saving, setSaving] = useState(false);
 
   // In edit mode, track whether any field changed from its initial value.
@@ -72,7 +72,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
       interestedIn !== (enquiry?.interestedIn ?? '') ||
       (source ?? null) !== ((enquiry?.source as EnquirySource | null) ?? null) ||
       notes !== (enquiry?.notes ?? '') ||
-      nextFollowUpDate !== (enquiry?.nextFollowUpDate ?? '')
+      nextFollowUpDate !== toDateOnly(enquiry?.nextFollowUpDate)
     : !!(prospectName || mobileNumber);
 
   useUnsavedChangesWarning(hasChanges && !saving);

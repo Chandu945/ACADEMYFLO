@@ -8,6 +8,18 @@ import { Alert } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import styles from './page.module.css';
 
+type WorkingDay = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
+
+const ALL_DAYS: { key: WorkingDay; label: string }[] = [
+  { key: 'MON', label: 'Mon' },
+  { key: 'TUE', label: 'Tue' },
+  { key: 'WED', label: 'Wed' },
+  { key: 'THU', label: 'Thu' },
+  { key: 'FRI', label: 'Fri' },
+  { key: 'SAT', label: 'Sat' },
+  { key: 'SUN', label: 'Sun' },
+];
+
 type AcademySettings = {
   dueDateDay: number;
   receiptPrefix: string;
@@ -15,6 +27,7 @@ type AcademySettings = {
   gracePeriodDays: number;
   lateFeeAmount: number;
   lateFeeRepeatIntervalDays: number;
+  workingDays: WorkingDay[];
 };
 
 type InstituteInfo = {
@@ -40,6 +53,7 @@ export default function SettingsPage() {
     gracePeriodDays: 0,
     lateFeeAmount: 0,
     lateFeeRepeatIntervalDays: 30,
+    workingDays: ['MON', 'TUE', 'WED', 'THU', 'FRI'],
   });
 
   const [institute, setInstitute] = useState<InstituteInfo>({
@@ -47,18 +61,40 @@ export default function SettingsPage() {
     upiId: '',
   });
 
-  // Fetch settings on mount
+  // Fetch settings on mount — use the dedicated BFF routes
   useEffect(() => {
     async function fetchSettings() {
       setLoading(true);
+      const headers: HeadersInit = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
       try {
-        const res = await fetch('/api/settings', {
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.academy) setAcademy(data.academy);
-          if (data.institute) setInstitute(data.institute);
+        const [academyRes, instituteRes] = await Promise.all([
+          fetch('/api/settings/academy', { headers }),
+          fetch('/api/settings/institute-info', { headers }),
+        ]);
+        if (academyRes.ok) {
+          const data = await academyRes.json();
+          setAcademy((prev) => ({
+            ...prev,
+            dueDateDay: data.defaultDueDateDay ?? data.dueDateDay ?? prev.dueDateDay,
+            receiptPrefix: data.receiptPrefix ?? prev.receiptPrefix,
+            lateFeeEnabled: data.lateFeeEnabled ?? prev.lateFeeEnabled,
+            gracePeriodDays: data.gracePeriodDays ?? prev.gracePeriodDays,
+            lateFeeAmount: data.lateFeeAmountInr ?? data.lateFeeAmount ?? prev.lateFeeAmount,
+            lateFeeRepeatIntervalDays: data.lateFeeRepeatIntervalDays ?? prev.lateFeeRepeatIntervalDays,
+            workingDays: data.workingDays ?? prev.workingDays,
+          }));
+        }
+        if (instituteRes.ok) {
+          const data = await instituteRes.json();
+          const bank = data.bankDetails;
+          setInstitute({
+            bankDetails: typeof bank === 'string'
+              ? bank
+              : bank
+                ? [bank.bankName, bank.accountNumber, bank.ifscCode].filter(Boolean).join(', ')
+                : '',
+            upiId: data.upiId ?? '',
+          });
         }
       } catch {
         setFetchError('Failed to load settings');
@@ -69,18 +105,38 @@ export default function SettingsPage() {
     fetchSettings();
   }, [accessToken]);
 
+  const toggleWorkingDay = useCallback((day: WorkingDay) => {
+    setAcademy((prev) => {
+      const has = prev.workingDays.includes(day);
+      return {
+        ...prev,
+        workingDays: has
+          ? prev.workingDays.filter((d) => d !== day)
+          : [...prev.workingDays, day],
+      };
+    });
+  }, []);
+
   const saveAcademy = useCallback(async () => {
     setSavingAcademy(true);
     setAcademySuccess(false);
     setAcademyError(null);
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch('/api/settings/academy', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ type: 'academy', ...academy }),
+        body: JSON.stringify({
+          defaultDueDateDay: academy.dueDateDay,
+          receiptPrefix: academy.receiptPrefix,
+          lateFeeEnabled: academy.lateFeeEnabled,
+          gracePeriodDays: academy.gracePeriodDays,
+          lateFeeAmountInr: academy.lateFeeAmount,
+          lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays,
+          workingDays: academy.workingDays,
+        }),
       });
       if (!res.ok) {
         let msg = 'Failed to save';
@@ -102,13 +158,16 @@ export default function SettingsPage() {
     setInstituteSuccess(false);
     setInstituteError(null);
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch('/api/settings/institute-info', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ type: 'institute', ...institute }),
+        body: JSON.stringify({
+          bankDetails: institute.bankDetails,
+          upiId: institute.upiId,
+        }),
       });
       if (!res.ok) {
         let msg = 'Failed to save';
@@ -154,6 +213,29 @@ export default function SettingsPage() {
             onChange={(e) => setAcademy((p) => ({ ...p, receiptPrefix: e.target.value }))}
             hint="Prefix for receipt numbers (e.g. REC)"
           />
+
+          {/* Working Days */}
+          <div className={styles.fieldGroup}>
+            <div className={styles.fieldLabel}>Working Days</div>
+            <div className={styles.fieldHint}>Select which days the academy is open</div>
+            <div className={styles.dayGrid}>
+              {ALL_DAYS.map(({ key, label }) => {
+                const isActive = academy.workingDays.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`${styles.dayChip} ${isActive ? styles.dayChipActive : ''}`}
+                    onClick={() => toggleWorkingDay(key)}
+                    aria-pressed={isActive}
+                    aria-label={`${label} ${isActive ? 'working day' : 'off day'}`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className={styles.toggleRow}>
             <div>

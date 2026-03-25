@@ -65,3 +65,6 @@ export type { SearchInputProps } from './SearchInput';
 
 export { DropdownMenu } from './DropdownMenu';
 export type { DropdownMenuProps, DropdownMenuItem } from './DropdownMenu';
+
+export { PhotoViewer } from './PhotoViewer';
+export type { PhotoViewerProps, PhotoViewerPhoto } from './PhotoViewer';

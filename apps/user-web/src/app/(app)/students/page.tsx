@@ -16,6 +16,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Alert } from '@/components/ui/Alert';
+import { DropdownMenu } from '@/components/ui/DropdownMenu';
+import type { DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import styles from './page.module.css';
 
 const STATUS_FILTERS = ['All', 'Active', 'Inactive', 'Left'] as const;
@@ -88,6 +90,45 @@ export default function StudentsPage() {
     setPage(1);
   }, []);
 
+  const isOwner = user?.role === 'OWNER';
+
+  // Active filter pills (matches mobile's ActiveFilterBar)
+  const activeFilters = useMemo(() => {
+    const filters: { label: string; onRemove: () => void }[] = [];
+    if (statusFilter !== 'All') filters.push({ label: `Status: ${statusFilter}`, onRemove: () => { setStatusFilter('All'); setPage(1); } });
+    if (feeFilter) {
+      const feeLabel = FEE_FILTERS.find((f) => f.value === feeFilter)?.label ?? feeFilter;
+      filters.push({ label: `Fee: ${feeLabel}`, onRemove: () => { setFeeFilter(''); setPage(1); } });
+    }
+    if (batchFilter) {
+      const batchLabel = batches.find((b) => b.id === batchFilter)?.batchName ?? 'Batch';
+      filters.push({ label: `Batch: ${batchLabel}`, onRemove: () => { setBatchFilter(''); setPage(1); } });
+    }
+    return filters;
+  }, [statusFilter, feeFilter, batchFilter, batches]);
+
+  const clearAllFilters = useCallback(() => {
+    setStatusFilter('All');
+    setFeeFilter('');
+    setBatchFilter('');
+    setSearch('');
+    setPage(1);
+  }, []);
+
+  /** Build action menu items for a student row */
+  const getRowActions = useCallback((student: { id: string; status: string }): DropdownMenuItem[] => {
+    const items: DropdownMenuItem[] = [
+      { key: 'view', label: 'View Details', onClick: () => router.push(`/students/${student.id}`) },
+      { key: 'edit', label: 'Edit Student', onClick: () => router.push(`/students/${student.id}/edit`) },
+      { key: 'fees', label: 'View Fees', onClick: () => router.push(`/students/${student.id}/fees`) },
+    ];
+    if (isOwner) {
+      items.push({ type: 'divider' });
+      items.push({ key: 'delete', label: 'Delete Student', danger: true, onClick: () => router.push(`/students/${student.id}?action=delete`) });
+    }
+    return items;
+  }, [router, isOwner]);
+
   return (
     <div className={styles.page}>
       {/* Header */}
@@ -105,7 +146,7 @@ export default function StudentsPage() {
         <SearchInput
           value={search}
           onChange={handleSearch}
-          placeholder="Search students..."
+          placeholder="Search by name..."
         />
         <div className={styles.chipGroup}>
           {STATUS_FILTERS.map((s) => (
@@ -131,6 +172,21 @@ export default function StudentsPage() {
         />
       </div>
 
+      {/* Active Filter Bar */}
+      {activeFilters.length > 0 && (
+        <div className={styles.activeFilters}>
+          {activeFilters.map((f) => (
+            <span key={f.label} className={styles.filterPill}>
+              {f.label}
+              <button type="button" className={styles.filterPillRemove} onClick={f.onRemove} aria-label={`Remove ${f.label}`}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </span>
+          ))}
+          <button type="button" className={styles.clearAllBtn} onClick={clearAllFilters}>Clear all</button>
+        </div>
+      )}
+
       {/* Error */}
       {error && (
         <Alert variant="error" message={error} action={{ label: 'Retry', onClick: refetch }} />
@@ -142,8 +198,8 @@ export default function StudentsPage() {
       ) : students.length === 0 ? (
         <EmptyState
           message="No students found"
-          subtitle={search ? 'Try adjusting your search or filters' : 'Add your first student to get started'}
-          action={!search && canAddStudent ? <Button variant="primary" onClick={() => router.push('/students/new')}>Add Student</Button> : undefined}
+          subtitle={search || activeFilters.length > 0 ? 'Try adjusting your search or filters' : 'Add your first student to get started'}
+          action={!search && activeFilters.length === 0 && canAddStudent ? <Button variant="primary" onClick={() => router.push('/students/new')}>Add Student</Button> : undefined}
         />
       ) : (
         <>
@@ -156,6 +212,7 @@ export default function StudentsPage() {
                   <Th>Guardian</Th>
                   <Th>Monthly Fee</Th>
                   <Th>Joined</Th>
+                  {canAddStudent && <Th>Actions</Th>}
                 </Tr>
               </Thead>
               <Tbody>
@@ -176,13 +233,36 @@ export default function StudentsPage() {
                         {student.status}
                       </Badge>
                     </Td>
-                    <Td>{student.guardian?.name ?? '-'}</Td>
+                    <Td>
+                      <div className={styles.guardianCell}>
+                        <span>{student.guardian?.name ?? '-'}</span>
+                        {student.guardian?.mobile && (
+                          <span className={styles.guardianMobile}>{student.guardian.mobile}</span>
+                        )}
+                      </div>
+                    </Td>
                     <Td>
                       <span className={styles.feeText}>
                         {currencyFormatter.format(student.monthlyFee)}
                       </span>
                     </Td>
                     <Td>{formatDate(student.joiningDate)}</Td>
+                    {canAddStudent && (
+                      <Td>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu
+                            trigger={
+                              <button type="button" className={styles.actionBtn} aria-label={`Actions for ${student.fullName}`}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
+                                </svg>
+                              </button>
+                            }
+                            items={getRowActions(student)}
+                          />
+                        </div>
+                      </Td>
+                    )}
                   </Tr>
                 ))}
               </Tbody>

@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useFeeDues, usePaidFees, usePaymentRequests, markFeePaid, handlePaymentRequest } from '@/application/fees/use-fees';
+import { useBatches } from '@/application/batches/use-batches';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
@@ -12,6 +15,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { TextArea } from '@/components/ui/TextArea';
 import styles from './page.module.css';
 
 const PAYMENT_METHODS = [
@@ -42,8 +47,22 @@ function getMonthLabel(monthKey: string) {
 export default function FeesPage() {
   const { accessToken, user } = useAuth();
   const isOwner = user?.role === 'OWNER';
+  const isStaff = user?.role === 'STAFF';
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'my-requests' ? 'my-requests' : 'unpaid';
   const [monthOffset, setMonthOffset] = useState(0);
-  const [activeTab, setActiveTab] = useState('unpaid');
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Search & batch filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBatchId, setSelectedBatchId] = useState('');
+
+  const { data: batches } = useBatches();
+
+  const batchOptions = useMemo(
+    () => batches.map((b) => ({ value: b.id, label: b.batchName })),
+    [batches],
+  );
 
   const month = useMemo(() => {
     const now = new Date();
@@ -53,8 +72,8 @@ export default function FeesPage() {
 
   const monthLabel = getMonthLabel(month);
 
-  const { data: dues, loading: duesLoading, error: duesError, refetch: refetchDues } = useFeeDues(month);
-  const { data: paidFees, loading: paidLoading } = usePaidFees(month);
+  const { data: dues, loading: duesLoading, error: duesError, refetch: refetchDues } = useFeeDues(month, 1, selectedBatchId || undefined);
+  const { data: paidFees, loading: paidLoading } = usePaidFees(month, selectedBatchId || undefined);
   const { data: requests, loading: requestsLoading, refetch: refetchRequests } = usePaymentRequests();
 
   const [paymentMethods, setPaymentMethods] = useState<Record<string, string>>({});
@@ -64,6 +83,14 @@ export default function FeesPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [paymentMethodError, setPaymentMethodError] = useState<string | null>(null);
   const [rejectConfirm, setRejectConfirm] = useState<{ id: string; studentName: string } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionReasonError, setRejectionReasonError] = useState<string | null>(null);
+
+  // Filter helper
+  const matchesSearch = useCallback((studentName: string | null) => {
+    if (!searchQuery.trim()) return true;
+    return (studentName ?? '').toLowerCase().includes(searchQuery.trim().toLowerCase());
+  }, [searchQuery]);
 
   const handleMarkPaid = useCallback(async (studentId: string, monthKey: string) => {
     const method = paymentMethods[`${studentId}-${monthKey}`];
@@ -83,10 +110,11 @@ export default function FeesPage() {
     refetchDues();
   }, [paymentMethods, accessToken, refetchDues]);
 
-  const handleRequest = useCallback(async (requestId: string, action: string) => {
+  const handleRequest = useCallback(async (requestId: string, action: string, reason?: string) => {
     setActionLoading({ id: requestId, action });
     setActionError(null);
-    const result = await handlePaymentRequest(requestId, action, undefined, accessToken);
+    const extraData = action === 'REJECT' && reason ? { rejectionReason: reason } : undefined;
+    const result = await handlePaymentRequest(requestId, action, extraData, accessToken);
     setActionLoading(null);
     if (!result.ok) {
       setActionError(result.error || `Failed to ${action.toLowerCase()} payment request`);
@@ -97,9 +125,37 @@ export default function FeesPage() {
 
   const handleRejectConfirm = useCallback(async () => {
     if (!rejectConfirm) return;
-    await handleRequest(rejectConfirm.id, 'REJECT');
+    if (rejectionReason.trim().length < 3) {
+      setRejectionReasonError('Rejection reason must be at least 3 characters');
+      return;
+    }
+    setRejectionReasonError(null);
+    await handleRequest(rejectConfirm.id, 'REJECT', rejectionReason.trim());
     setRejectConfirm(null);
-  }, [rejectConfirm, handleRequest]);
+    setRejectionReason('');
+  }, [rejectConfirm, handleRequest, rejectionReason]);
+
+  const handleRejectClose = useCallback(() => {
+    setRejectConfirm(null);
+    setRejectionReason('');
+    setRejectionReasonError(null);
+  }, []);
+
+  // Filtered data
+  const filteredDues = useMemo(
+    () => dues.filter((d) => d.status !== 'PAID').filter((d) => matchesSearch(d.studentName)),
+    [dues, matchesSearch],
+  );
+
+  const filteredPaidFees = useMemo(
+    () => paidFees.filter((fee) => matchesSearch(fee.studentName)),
+    [paidFees, matchesSearch],
+  );
+
+  const filteredRequests = useMemo(
+    () => requests.filter((req) => matchesSearch(req.studentName)),
+    [requests, matchesSearch],
+  );
 
   const unpaidTab = (
     <>
@@ -107,8 +163,8 @@ export default function FeesPage() {
       {markPaidError && <Alert variant="error" message={markPaidError} />}
       {duesLoading ? (
         <Spinner centered size="lg" />
-      ) : dues.filter((d) => d.status !== 'PAID').length === 0 ? (
-        <EmptyState message="No unpaid dues" subtitle={`All fees are cleared for ${monthLabel}`} />
+      ) : filteredDues.length === 0 ? (
+        <EmptyState message="No unpaid dues" subtitle={searchQuery ? 'Try a different search' : `All fees are cleared for ${monthLabel}`} />
       ) : (
         <Table striped>
           <Thead>
@@ -122,7 +178,7 @@ export default function FeesPage() {
             </Tr>
           </Thead>
           <Tbody>
-            {dues.filter((d) => d.status !== 'PAID').map((due) => (
+            {filteredDues.map((due) => (
               <Tr key={due.id}>
                 <Td>{due.studentName ?? '-'}</Td>
                 <Td>{getMonthLabel(due.monthKey)}</Td>
@@ -162,8 +218,8 @@ export default function FeesPage() {
     <>
       {paidLoading ? (
         <Spinner centered size="lg" />
-      ) : paidFees.length === 0 ? (
-        <EmptyState message="No paid fees this month" />
+      ) : filteredPaidFees.length === 0 ? (
+        <EmptyState message="No paid fees this month" subtitle={searchQuery ? 'Try a different search' : undefined} />
       ) : (
         <Table striped>
           <Thead>
@@ -176,7 +232,7 @@ export default function FeesPage() {
             </Tr>
           </Thead>
           <Tbody>
-            {paidFees.map((fee) => (
+            {filteredPaidFees.map((fee) => (
               <Tr key={fee.id}>
                 <Td>{fee.studentName ?? '-'}</Td>
                 <Td>{getMonthLabel(fee.monthKey)}</Td>
@@ -196,8 +252,8 @@ export default function FeesPage() {
       {actionError && <Alert variant="error" message={actionError} />}
       {requestsLoading ? (
         <Spinner centered size="lg" />
-      ) : requests.length === 0 ? (
-        <EmptyState message="No payment requests" />
+      ) : filteredRequests.length === 0 ? (
+        <EmptyState message="No payment requests" subtitle={searchQuery ? 'Try a different search' : undefined} />
       ) : (
         <Table striped>
           <Thead>
@@ -206,54 +262,188 @@ export default function FeesPage() {
               <Th>Month</Th>
               <Th>Amount</Th>
               <Th>Submitted By</Th>
+              <Th>Notes</Th>
               <Th>Status</Th>
               {isOwner && <Th>Actions</Th>}
             </Tr>
           </Thead>
           <Tbody>
-            {requests.map((req) => (
+            {filteredRequests.map((req) => (
+              <React.Fragment key={req.id}>
+                <Tr>
+                  <Td>{req.studentName ?? '-'}</Td>
+                  <Td>{getMonthLabel(req.monthKey)}</Td>
+                  <Td className={styles.amount}>{formatCurrency(req.amount)}</Td>
+                  <Td>{req.staffName ?? '-'}</Td>
+                  <Td>
+                    {req.staffNotes ? (
+                      <span className={styles.staffNotes}>{req.staffNotes}</span>
+                    ) : '-'}
+                  </Td>
+                  <Td>
+                    <Badge
+                      variant={
+                        req.status === 'APPROVED' ? 'success' :
+                        req.status === 'REJECTED' ? 'danger' :
+                        'warning'
+                      }
+                    >
+                      {req.status}
+                    </Badge>
+                    {req.reviewedByName && (
+                      <span className={styles.reviewedBy}>by {req.reviewedByName}</span>
+                    )}
+                  </Td>
+                  {isOwner && (
+                    <Td>
+                      {req.status === 'PENDING' && (
+                        <div className={styles.requestActions}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={actionLoading?.id === req.id && actionLoading?.action === 'APPROVE'}
+                            disabled={actionLoading?.id === req.id}
+                            onClick={() => handleRequest(req.id, 'APPROVE')}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            loading={actionLoading?.id === req.id && actionLoading?.action === 'REJECT'}
+                            disabled={actionLoading?.id === req.id}
+                            onClick={() => setRejectConfirm({ id: req.id, studentName: req.studentName ?? 'this request' })}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </Td>
+                  )}
+                </Tr>
+                {req.status === 'REJECTED' && req.rejectionReason && (
+                  <Tr>
+                    <Td colSpan={isOwner ? 7 : 6}>
+                      <div className={styles.rejectionRow}>
+                        <span className={styles.rejectionLabel}>Rejection Reason:</span> {req.rejectionReason}
+                      </div>
+                    </Td>
+                  </Tr>
+                )}
+              </React.Fragment>
+            ))}
+          </Tbody>
+        </Table>
+      )}
+    </>
+  );
+
+  /* -- Staff "My Requests" tab ------------------------------------------- */
+  const myRequests = useMemo(() => {
+    if (!user?.id) return [];
+    return requests.filter((req) => req.staffUserId === user.id).filter((req) => matchesSearch(req.studentName));
+  }, [requests, user?.id, matchesSearch]);
+
+  const [cancelConfirm, setCancelConfirm] = useState<{ id: string; studentName: string } | null>(null);
+
+  const handleCancelRequest = useCallback(async () => {
+    if (!cancelConfirm) return;
+    setActionLoading({ id: cancelConfirm.id, action: 'CANCEL' });
+    setActionError(null);
+    const result = await handlePaymentRequest(cancelConfirm.id, 'CANCEL', undefined, accessToken);
+    setActionLoading(null);
+    if (!result.ok) {
+      setActionError(result.error || 'Failed to cancel payment request');
+    }
+    setCancelConfirm(null);
+    refetchRequests();
+  }, [cancelConfirm, accessToken, refetchRequests]);
+
+  const myRequestsTab = (
+    <>
+      <div className={styles.header} style={{ marginBottom: 'var(--space-4)' }}>
+        <span />
+        <Link href="/fees/new-request">
+          <Button variant="primary" size="sm">New Request</Button>
+        </Link>
+      </div>
+      {actionError && <Alert variant="error" message={actionError} />}
+      {requestsLoading ? (
+        <Spinner centered size="lg" />
+      ) : myRequests.length === 0 ? (
+        <EmptyState
+          message="No payment requests yet"
+          subtitle={searchQuery ? 'Try a different search' : 'Submit a payment request for a student using the button above.'}
+        />
+      ) : (
+        <Table striped>
+          <Thead>
+            <Tr>
+              <Th>Student</Th>
+              <Th>Month</Th>
+              <Th>Amount</Th>
+              <Th>Notes</Th>
+              <Th>Status</Th>
+              <Th>Submitted</Th>
+              <Th>Actions</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {myRequests.map((req) => (
               <Tr key={req.id}>
                 <Td>{req.studentName ?? '-'}</Td>
                 <Td>{getMonthLabel(req.monthKey)}</Td>
                 <Td className={styles.amount}>{formatCurrency(req.amount)}</Td>
-                <Td>{req.staffName ?? '-'}</Td>
+                <Td>{req.staffNotes || '-'}</Td>
                 <Td>
                   <Badge
                     variant={
                       req.status === 'APPROVED' ? 'success' :
                       req.status === 'REJECTED' ? 'danger' :
+                      req.status === 'CANCELLED' ? 'default' :
                       'warning'
                     }
                   >
                     {req.status}
                   </Badge>
                 </Td>
-                {isOwner && (
-                  <Td>
-                    {req.status === 'PENDING' && (
-                      <div className={styles.requestActions}>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          loading={actionLoading?.id === req.id && actionLoading?.action === 'APPROVE'}
-                          disabled={actionLoading?.id === req.id}
-                          onClick={() => handleRequest(req.id, 'APPROVE')}
-                        >
-                          Approve
+                <Td>
+                  {req.createdAt
+                    ? new Date(req.createdAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        timeZone: 'Asia/Kolkata',
+                      })
+                    : '-'}
+                </Td>
+                <Td>
+                  {req.status === 'PENDING' && (
+                    <div className={styles.requestActions}>
+                      <Link
+                        href={`/fees/new-request?edit=true&requestId=${req.id}&studentId=${req.studentId}&monthKey=${req.monthKey}&amount=${req.amount}&notes=${encodeURIComponent(req.staffNotes || '')}`}
+                      >
+                        <Button variant="outline" size="sm">
+                          Edit
                         </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          loading={actionLoading?.id === req.id && actionLoading?.action === 'REJECT'}
-                          disabled={actionLoading?.id === req.id}
-                          onClick={() => setRejectConfirm({ id: req.id, studentName: req.studentName ?? 'this request' })}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                  </Td>
-                )}
+                      </Link>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={actionLoading?.id === req.id && actionLoading?.action === 'CANCEL'}
+                        disabled={actionLoading?.id === req.id}
+                        onClick={() => setCancelConfirm({ id: req.id, studentName: req.studentName ?? 'this request' })}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  {req.status === 'REJECTED' && req.rejectionReason && (
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)' }}>
+                      {req.rejectionReason}
+                    </span>
+                  )}
+                </Td>
               </Tr>
             ))}
           </Tbody>
@@ -279,12 +469,37 @@ export default function FeesPage() {
         </button>
       </div>
 
+      {/* Search & Batch Filter */}
+      <div className={styles.filters}>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search by student name..."
+          className={styles.searchInput}
+        />
+        <Select
+          options={batchOptions}
+          value={selectedBatchId}
+          onChange={(e) => setSelectedBatchId(e.target.value)}
+          placeholder="All Batches"
+          className={styles.batchFilter}
+        />
+        {selectedBatchId && (
+          <Button variant="outline" size="sm" onClick={() => setSelectedBatchId('')}>
+            Clear
+          </Button>
+        )}
+      </div>
+
       {/* Tabs */}
       <Tabs
         items={[
           { key: 'unpaid', label: 'Unpaid Dues', content: unpaidTab },
           { key: 'paid', label: 'Paid', content: paidTab },
-          { key: 'requests', label: 'Payment Requests', content: requestsTab },
+          ...(isStaff
+            ? [{ key: 'my-requests', label: 'My Requests', content: myRequestsTab }]
+            : [{ key: 'requests', label: 'Payment Requests', content: requestsTab }]
+          ),
         ]}
         activeKey={activeTab}
         onChange={setActiveTab}
@@ -293,13 +508,39 @@ export default function FeesPage() {
       {/* Reject Confirmation */}
       <ConfirmDialog
         open={!!rejectConfirm}
-        onClose={() => setRejectConfirm(null)}
+        onClose={handleRejectClose}
         onConfirm={handleRejectConfirm}
         title="Reject Payment Request"
         message={`Are you sure you want to reject the payment request for ${rejectConfirm?.studentName ?? 'this student'}?`}
         confirmLabel="Reject"
         danger
         loading={actionLoading?.action === 'REJECT'}
+      >
+        <div className={styles.rejectReasonField}>
+          <TextArea
+            label="Rejection Reason"
+            required
+            placeholder="Enter the reason for rejection..."
+            value={rejectionReason}
+            onChange={(e) => { setRejectionReason(e.target.value); setRejectionReasonError(null); }}
+            rows={3}
+            maxLength={500}
+            showCharCount
+            error={rejectionReasonError ?? undefined}
+          />
+        </div>
+      </ConfirmDialog>
+
+      {/* Cancel Confirmation (staff) */}
+      <ConfirmDialog
+        open={!!cancelConfirm}
+        onClose={() => setCancelConfirm(null)}
+        onConfirm={handleCancelRequest}
+        title="Cancel Payment Request"
+        message={`Are you sure you want to cancel the payment request for ${cancelConfirm?.studentName ?? 'this student'}?`}
+        confirmLabel="Cancel Request"
+        danger
+        loading={actionLoading?.action === 'CANCEL'}
       />
     </div>
   );

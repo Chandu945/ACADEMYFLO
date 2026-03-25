@@ -8,4 +8,199 @@
 .infoGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4); }
 .infoLabel { color: var(--color-text-secondary); margin-bottom: 4px; font-size: var(--text-sm); }
 .infoValue { font-weight: var(--weight-medium); color: var(--color-text); }
-@media (max-width: 768px) { .page { padding: var(--space-4); } .detailHeader { flex-direction: column; } .infoGrid { grid-template-columns: 1fr; } }
+/* ── Gallery ───────────────────────────────────────────────────────────── */
+.gallerySection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gallerySectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.gallerySectionTitle {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.photoCount {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  margin-left: var(--space-2);
+}
+
+.galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.photoCard {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--color-bg-subtle);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.photoCard:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+.photoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-2) var(--space-3);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.photoCard:hover .photoOverlay {
+  opacity: 1;
+}
+
+.photoCaption {
+  color: white;
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.deletePhotoButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(239, 68, 68, 0.85);
+  border: none;
+  border-radius: var(--radius-base);
+  color: white;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.deletePhotoButton:hover {
+  background: rgba(220, 38, 38, 1);
+}
+
+.uploadArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-subtle);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  text-align: center;
+}
+
+.uploadArea:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.uploadAreaText {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.uploadAreaHint {
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  opacity: 0.7;
+}
+
+.captionInputRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.captionInput {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  font-size: var(--text-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.captionInput::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.selectedFileInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  background: var(--color-bg-subtle);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.selectedFileName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.galleryEmpty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 768px) {
+  .page { padding: var(--space-4); }
+  .detailHeader { flex-direction: column; }
+  .infoGrid { grid-template-columns: 1fr; }
+  .galleryGrid { grid-template-columns: repeat(3, 1fr); }
+  .captionInputRow { flex-direction: column; align-items: stretch; }
+}
+
+@media (max-width: 480px) {
+  .galleryGrid { grid-template-columns: repeat(2, 1fr); }
+}

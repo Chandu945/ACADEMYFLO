@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useDailyAttendance, markAttendance, markBulkAttendance, useMonthlySummary, useMonthDailyCounts } from '@/application/attendance/use-attendance';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useDailyAttendance, markAttendance, markBulkAttendance, useMonthlySummary, useMonthDailyCounts, removeHoliday } from '@/application/attendance/use-attendance';
 import { useBatches } from '@/application/batches/use-batches';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
@@ -10,8 +11,10 @@ import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/Table';
 import { Tabs } from '@/components/ui/Tabs';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
+import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { SearchInput } from '@/components/ui/SearchInput';
 import styles from './page.module.css';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -36,6 +39,7 @@ function toISODate(d: Date) {
 }
 
 export default function AttendancePage() {
+  const router = useRouter();
   const { accessToken, user } = useAuth();
   const isOwner = user?.role === 'OWNER';
   const today = toISODate(new Date());
@@ -59,6 +63,22 @@ export default function AttendancePage() {
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<{ action: string; label: string } | null>(null);
+
+  // Task 3: Search state for mark attendance tab
+  const [markSearch, setMarkSearch] = useState('');
+
+  // Task 4: Expanded rows state for daily report tab
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [expandedAbsent, setExpandedAbsent] = useState<{ fullName: string }[]>([]);
+  const [expandedLoading, setExpandedLoading] = useState(false);
+
+  // Filtered attendance items based on search
+  const filteredAttendanceItems = useMemo(() => {
+    if (!attendance?.items) return [];
+    if (!markSearch.trim()) return attendance.items;
+    const q = markSearch.trim().toLowerCase();
+    return attendance.items.filter((item) => item.fullName.toLowerCase().includes(q));
+  }, [attendance?.items, markSearch]);
 
   // When attendance data loads, reset local overrides
   React.useEffect(() => {
@@ -123,15 +143,58 @@ export default function AttendancePage() {
     refetch();
   }, [attendance, selectedDate, accessToken, refetch]);
 
+  // Task 2: Remove holiday via DELETE endpoint instead of bulk-marking ABSENT
+  const handleRemoveHoliday = useCallback(async () => {
+    setBulkLoading(true);
+    setAttendanceError(null);
+    const result = await removeHoliday(selectedDate, accessToken);
+    setBulkLoading(false);
+    if (!result.ok) {
+      setAttendanceError(result.error || 'Failed to remove holiday');
+      return;
+    }
+    refetch();
+  }, [selectedDate, accessToken, refetch]);
+
   const handleBulkConfirm = useCallback(async () => {
     if (!bulkConfirm) return;
     if (bulkConfirm.action === 'HOLIDAY') {
       await handleDeclareHoliday();
+    } else if (bulkConfirm.action === 'REMOVE_HOLIDAY') {
+      await handleRemoveHoliday();
     } else {
       await handleBulk(bulkConfirm.action);
     }
     setBulkConfirm(null);
-  }, [bulkConfirm, handleBulk, handleDeclareHoliday]);
+  }, [bulkConfirm, handleBulk, handleDeclareHoliday, handleRemoveHoliday]);
+
+  // Task 4: Expand daily report row to show absent student names
+  const handleExpandDailyRow = useCallback(async (date: string) => {
+    if (expandedDate === date) {
+      setExpandedDate(null);
+      setExpandedAbsent([]);
+      return;
+    }
+    setExpandedDate(date);
+    setExpandedLoading(true);
+    setExpandedAbsent([]);
+    try {
+      const params = new URLSearchParams({ date, pageSize: '100' });
+      const res = await fetch(`/api/attendance?${params}`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const items = (json?.items ?? []) as { fullName: string; status: string }[];
+        setExpandedAbsent(items.filter((i) => i.status === 'ABSENT').map((i) => ({ fullName: i.fullName })));
+      }
+    } catch {
+      // silently fail — row just won't show names
+    } finally {
+      setExpandedLoading(false);
+    }
+  }, [expandedDate, accessToken]);
 
   const markAttendanceTab = (
     <>
@@ -140,7 +203,7 @@ export default function AttendancePage() {
         <div className={styles.holidayBanner}>
           <span className={styles.holidayBannerText}>This day is marked as a holiday</span>
           {isOwner && (
-            <Button variant="outline" size="sm" onClick={() => handleBulk('ABSENT')}>
+            <Button variant="outline" size="sm" disabled={bulkLoading} onClick={() => setBulkConfirm({ action: 'REMOVE_HOLIDAY', label: 'Remove Holiday' })}>
               Remove Holiday
             </Button>
           )}
@@ -169,6 +232,15 @@ export default function AttendancePage() {
         </div>
       </div>
 
+      {/* Search */}
+      <SearchInput
+        value={markSearch}
+        onChange={setMarkSearch}
+        placeholder="Search students..."
+        label="Search students"
+        debounceMs={200}
+      />
+
       {/* Error / Loading */}
       {attendanceError && <Alert variant="error" message={attendanceError} />}
       {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: refetch }} />}
@@ -177,6 +249,8 @@ export default function AttendancePage() {
         <Spinner centered size="lg" />
       ) : !attendance?.items?.length ? (
         <EmptyState message="No students found" subtitle="Try selecting a different batch or date" />
+      ) : filteredAttendanceItems.length === 0 ? (
+        <EmptyState message="No matching students" subtitle="Try a different search term" />
       ) : (
         <Table striped>
           <Thead>
@@ -186,7 +260,7 @@ export default function AttendancePage() {
             </Tr>
           </Thead>
           <Tbody>
-            {attendance.items.map((item) => (
+            {filteredAttendanceItems.map((item) => (
               <Tr key={item.studentId}>
                 <Td>{item.fullName}</Td>
                 <Td>
@@ -237,12 +311,61 @@ export default function AttendancePage() {
           </Thead>
           <Tbody>
             {dailyCounts.map((day) => (
-              <Tr key={day.date}>
-                <Td>{formatShortDate(day.date)}</Td>
-                <Td style={{ color: 'var(--color-success)' }}>{day.presentCount}</Td>
-                <Td style={{ color: 'var(--color-danger)' }}>{day.absentCount}</Td>
-                <Td>{day.isHoliday ? 'Yes' : '-'}</Td>
-              </Tr>
+              <React.Fragment key={day.date}>
+                <Tr
+                  clickable={day.absentCount > 0}
+                  className={day.absentCount > 0 ? styles.clickableRow : undefined}
+                  onClick={day.absentCount > 0 ? () => handleExpandDailyRow(day.date) : undefined}
+                >
+                  <Td>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      {day.absentCount > 0 && (
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{
+                            transition: 'transform 0.2s',
+                            transform: expandedDate === day.date ? 'rotate(90deg)' : 'rotate(0deg)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      )}
+                      {formatShortDate(day.date)}
+                    </span>
+                  </Td>
+                  <Td style={{ color: 'var(--color-success)' }}>{day.presentCount}</Td>
+                  <Td style={{ color: 'var(--color-danger)' }}>{day.absentCount}</Td>
+                  <Td>{day.isHoliday ? 'Yes' : '-'}</Td>
+                </Tr>
+                {expandedDate === day.date && (
+                  <Tr>
+                    <Td colSpan={4}>
+                      <div className={styles.expandedAbsent}>
+                        {expandedLoading ? (
+                          <Spinner size="sm" />
+                        ) : expandedAbsent.length === 0 ? (
+                          <span className={styles.expandedEmpty}>No absent students</span>
+                        ) : (
+                          <div className={styles.absentList}>
+                            <span className={styles.absentListLabel}>Absent:</span>
+                            {expandedAbsent.map((s, i) => (
+                              <Badge key={i} variant="danger">{s.fullName}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </Td>
+                  </Tr>
+                )}
+              </React.Fragment>
             ))}
           </Tbody>
         </Table>
@@ -268,8 +391,15 @@ export default function AttendancePage() {
           </Thead>
           <Tbody>
             {monthlySummary.map((s) => (
-              <Tr key={s.studentId}>
-                <Td>{s.fullName}</Td>
+              <Tr
+                key={s.studentId}
+                clickable
+                className={styles.clickableRow}
+                onClick={() => router.push(`/attendance/student/${s.studentId}?name=${encodeURIComponent(s.fullName)}&month=${currentMonth}`)}
+              >
+                <Td>
+                  <span className={styles.studentLink}>{s.fullName}</span>
+                </Td>
                 <Td style={{ color: 'var(--color-success)', fontWeight: 600 }}>{s.presentCount}</Td>
                 <Td style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{s.absentCount}</Td>
                 <Td>{s.holidayCount}</Td>
@@ -319,7 +449,7 @@ export default function AttendancePage() {
         title={bulkConfirm?.label ?? 'Confirm Action'}
         message={`Are you sure you want to "${bulkConfirm?.label?.toLowerCase()}" for all students on ${formatDateLabel(selectedDate)}?`}
         confirmLabel={bulkConfirm?.label ?? 'Confirm'}
-        danger={bulkConfirm?.action === 'ABSENT'}
+        danger={bulkConfirm?.action === 'ABSENT' || bulkConfirm?.action === 'REMOVE_HOLIDAY'}
         loading={bulkLoading}
       />
     </div>

@@ -130,7 +130,7 @@ export default function StaffPage() {
         onClose={() => { setConfirmOpen(false); setConfirmTarget(null); setToggleError(null); }}
         onConfirm={handleConfirmToggle}
         title={confirmTarget?.currentStatus === 'ACTIVE' ? 'Deactivate Staff' : 'Activate Staff'}
-        message={`Are you sure you want to ${confirmTarget?.currentStatus === 'ACTIVE' ? 'deactivate' : 'activate'} ${confirmTarget?.name ?? 'this staff member'}?`}
+        message={confirmTarget?.currentStatus === 'ACTIVE' ? `Deactivate ${confirmTarget?.name ?? 'this staff member'}? They will be logged out immediately.` : `Are you sure you want to activate ${confirmTarget?.name ?? 'this staff member'}?`}
         confirmLabel={confirmTarget?.currentStatus === 'ACTIVE' ? 'Deactivate' : 'Activate'}
         danger={confirmTarget?.currentStatus === 'ACTIVE'}
         loading={toggling}

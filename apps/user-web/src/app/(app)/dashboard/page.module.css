@@ -243,6 +243,279 @@
   flex-shrink: 0;
 }
 
+/* ── Onboarding Card ─────────────────────────────────────────────────── */
+.onboardingCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6);
+  background: var(--color-surface);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.onboardingIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.08);
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboardingTitle {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.onboardingSubtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+/* ── Greeting ────────────────────────────────────────────────────────── */
+.greeting {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.greetingSub {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+/* ── Quick Stats Grid ────────────────────────────────────────────────── */
+.quickStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.quickStatsGrid.cols2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.quickStatsGrid.cols4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.quickStatCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.quickStatCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.quickStatIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quickStatValue {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.quickStatLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ── Quick Actions Row ───────────────────────────────────────────────── */
+.quickActionsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.quickActionItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+  transition: transform var(--transition-base);
+}
+
+.quickActionItem:hover {
+  transform: translateY(-2px);
+}
+
+.quickActionIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: box-shadow var(--transition-base);
+}
+
+.quickActionItem:hover .quickActionIcon {
+  box-shadow: var(--shadow-md);
+}
+
+.quickActionLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* ── Paid Banner ─────────────────────────────────────────────────────── */
+.paidBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: linear-gradient(135deg, var(--color-success-bg) 0%, var(--color-success-border) 100%);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.paidBannerIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(22, 163, 106, 0.15);
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.paidBannerContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.paidBannerAmount {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-success-text);
+  line-height: 1.2;
+}
+
+.paidBannerLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Birthday Toggle ─────────────────────────────────────────────────── */
+.birthdaySectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.birthdaySectionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+.birthdayToggle {
+  display: inline-flex;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
+}
+
+.birthdayToggleBtn {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: calc(var(--radius-md) - 2px);
+  cursor: pointer;
+  transition: background var(--transition-base), color var(--transition-base);
+}
+
+.birthdayToggleBtn:hover {
+  color: var(--color-text);
+}
+
+.birthdayToggleBtnActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.monthBirthdayCollapsed {
+  margin-top: var(--space-3);
+}
+
+.monthBirthdayHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  width: 100%;
+  text-align: left;
+}
+
+.monthBirthdayHeader:hover {
+  color: var(--color-text);
+}
+
+.monthBirthdayChevron {
+  transition: transform var(--transition-base);
+}
+
+.monthBirthdayChevronOpen {
+  transform: rotate(180deg);
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 1280px) {
   .kpiGrid {
@@ -285,6 +558,34 @@
   .financialValue {
     font-size: var(--text-xl);
   }
+
+  .quickStatsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quickStatsGrid.cols4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .quickActionsRow {
+    flex-wrap: wrap;
+  }
+
+  .quickActionItem {
+    flex: 0 0 calc(50% - var(--space-2));
+  }
+
+  .greeting {
+    font-size: var(--text-xl);
+  }
+
+  .paidBanner {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .paidBannerAmount {
+    font-size: var(--text-base);
+  }
 }
 
 @media (max-width: 480px) {
@@ -307,6 +608,36 @@
   }
 
   .kpiValue {
+    font-size: var(--text-lg);
+  }
+
+  .quickStatsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+  }
+
+  .quickStatCard {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .quickStatValue {
+    font-size: var(--text-lg);
+  }
+
+  .quickActionIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .quickActionLabel {
+    font-size: 10px;
+  }
+
+  .onboardingCard {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .greeting {
     font-size: var(--text-lg);
   }
 }

@@ -116,6 +116,71 @@
   text-align: right;
 }
 
+/* ── Contact Link ────────────────────────────────────────────────────── */
+.contactLink {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: var(--weight-medium);
+  transition: color var(--transition-base);
+}
+
+.contactLink:hover {
+  color: var(--color-primary-dark, var(--color-primary));
+  text-decoration: underline;
+}
+
+/* ── Status Change Modal ─────────────────────────────────────────────── */
+.modalFooter {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.statusModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.currentStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.statusLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.statusOptions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-base);
+}
+
+.radioLabel:hover {
+  background-color: var(--color-bg-subtle);
+}
+
+.radioInput {
+  accent-color: var(--color-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .page {

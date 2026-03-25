@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useId } from 'react';
+import React, { useState, useCallback, useRef, useId, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -9,8 +9,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import styles from './page.module.css';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const NAME_REGEX = /^[a-zA-Z\s'.,-]+$/;
+
+/** Rate-limit cooldown in seconds (matches mobile) */
+const RATE_LIMIT_COOLDOWN_S = 30;
 
 /** Prepend +91 country code to the raw digit input */
 function normalisePhone(raw: string): string {
@@ -18,29 +21,37 @@ function normalisePhone(raw: string): string {
   return `+91${digits}`;
 }
 
+type FormValues = { fullName: string; email: string; phoneNumber: string; password: string; confirmPassword: string };
+
 function validateFieldValue(
   field: string,
-  values: { fullName: string; email: string; phoneNumber: string; password: string },
+  values: FormValues,
 ): string | null {
   switch (field) {
-    case 'fullName':
-      if (!values.fullName.trim()) return 'Full name is required';
+    case 'fullName': {
+      const trimmed = values.fullName.trim();
+      if (!trimmed) return 'Full name is required';
+      if (trimmed.length < 2) return 'Name must be at least 2 characters';
+      if (!NAME_REGEX.test(trimmed)) return 'Name can only contain letters, spaces, and basic punctuation';
       return null;
+    }
     case 'email':
       if (!values.email.trim()) return 'Email is required';
-      if (!EMAIL_REGEX.test(values.email.trim())) return 'Invalid email format';
+      if (!EMAIL_REGEX.test(values.email.trim())) return 'Please enter a valid email address';
       return null;
     case 'phoneNumber': {
       const digits = values.phoneNumber.trim().replace(/\D/g, '');
       if (!digits) return 'Phone number is required';
-      if (digits.length !== 10) return 'Enter a valid 10-digit mobile number';
+      if (digits.length !== 10) return 'Please enter a valid 10-digit phone number';
       return null;
     }
     case 'password':
       if (!values.password) return 'Password is required';
       if (values.password.length < 8) return 'Password must be at least 8 characters';
-      if (!STRONG_PASSWORD_REGEX.test(values.password))
-        return 'Must include uppercase, lowercase, number, and special character';
+      return null;
+    case 'confirmPassword':
+      if (!values.confirmPassword) return 'Please confirm your password';
+      if (values.confirmPassword !== values.password) return 'Passwords do not match';
       return null;
     default:
       return null;
@@ -67,15 +78,35 @@ export default function SignupForm() {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // Unsaved changes warning (matches mobile)
+  const hasUnsavedChanges = !!(fullName || email || phoneNumber || password);
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedChanges]);
+
+  // Rate-limit countdown timer
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const validate = useCallback((): boolean => {
-    const values = { fullName, email, phoneNumber, password };
+    const values = { fullName, email, phoneNumber, password, confirmPassword };
     const errors: Record<string, string> = {};
-    for (const field of ['fullName', 'email', 'phoneNumber', 'password'] as const) {
+    for (const field of ['fullName', 'email', 'phoneNumber', 'password', 'confirmPassword'] as const) {
       const msg = validateFieldValue(field, values);
       if (msg) errors[field] = msg;
     }
@@ -84,7 +115,7 @@ export default function SignupForm() {
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [fullName, email, phoneNumber, password, tosAccepted]);
+  }, [fullName, email, phoneNumber, password, confirmPassword, tosAccepted]);
 
   const clearFieldError = useCallback((field: string) => {
     setFieldErrors((prev) => {
@@ -97,13 +128,13 @@ export default function SignupForm() {
 
   const handleBlur = useCallback(
     (field: string) => {
-      const values = { fullName, email, phoneNumber, password };
+      const values = { fullName, email, phoneNumber, password, confirmPassword };
       const msg = validateFieldValue(field, values);
       if (msg) {
         setFieldErrors((prev) => ({ ...prev, [field]: msg }));
       }
     },
-    [fullName, email, phoneNumber, password],
+    [fullName, email, phoneNumber, password, confirmPassword],
   );
 
   const showError = useCallback((msg: string) => {
@@ -115,6 +146,7 @@ export default function SignupForm() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (cooldown > 0) return;
       setError(null);
       setFieldErrors({});
       if (!validate()) return;
@@ -146,6 +178,9 @@ export default function SignupForm() {
           if (Object.keys(serverFieldErrors).length > 0) {
             setFieldErrors(serverFieldErrors);
           }
+          if (res.status === 429 || (typeof data['code'] === 'string' && data['code'] === 'RATE_LIMITED')) {
+            setCooldown(RATE_LIMIT_COOLDOWN_S);
+          }
           showError((typeof data['message'] === 'string' ? data['message'] : null) ?? 'Signup failed. Please try again.');
           return;
         }
@@ -162,7 +197,7 @@ export default function SignupForm() {
         setLoading(false);
       }
     },
-    [fullName, email, phoneNumber, password, validate, router, showError],
+    [fullName, email, phoneNumber, password, validate, router, showError, cooldown],
   );
 
   return (
@@ -309,7 +344,23 @@ export default function SignupForm() {
                 onBlur={() => handleBlur('password')}
                 error={fieldErrors['password']}
                 placeholder="Min 8 characters"
-                hint="Must include uppercase, lowercase, number, and special character"
+                hint="Minimum 8 characters"
+                autoComplete="new-password"
+                maxLength={64}
+                required
+              />
+
+              <Input
+                label="Confirm Password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  clearFieldError('confirmPassword');
+                }}
+                onBlur={() => handleBlur('confirmPassword')}
+                error={fieldErrors['confirmPassword']}
+                placeholder="Re-enter your password"
                 autoComplete="new-password"
                 maxLength={64}
                 required
@@ -353,9 +404,14 @@ export default function SignupForm() {
                 variant="primary"
                 size="lg"
                 fullWidth
-                loading={loading}
+                loading={loading && cooldown === 0}
+                disabled={cooldown > 0}
               >
-                Create Account
+                {cooldown > 0
+                  ? `Try again in ${cooldown}s`
+                  : loading
+                    ? 'Creating account...'
+                    : 'Create Account'}
               </Button>
             </div>
           </form>

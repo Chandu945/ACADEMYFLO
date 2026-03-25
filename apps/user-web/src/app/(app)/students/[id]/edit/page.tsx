@@ -3,10 +3,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useStudentDetail, updateStudent } from '@/application/students/use-students';
+import { useBatches } from '@/application/batches/use-batches';
 import { useAuth } from '@/application/auth/use-auth';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
@@ -19,15 +21,35 @@ const GENDERS = [
   { value: 'OTHER', label: 'Other' },
 ] as const;
 
+/** Safely convert any date string to YYYY-MM-DD for HTML date input */
+function toDateInputValue(raw: unknown): string {
+  if (!raw || typeof raw !== 'string') return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (raw.includes('T')) { const p = raw.split('T')[0]; if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) return p; }
+  const d = new Date(raw);
+  return !isNaN(d.getTime()) ? d.toISOString().split('T')[0]! : '';
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const E164_RE = /^\+[1-9]\d{6,14}$/;
 const PINCODE_RE = /^\d{5,6}$/;
 
+/** Normalize a phone input to E.164 (+91XXXXXXXXXX). Returns the input as-is if already E.164 or empty. */
+function normalizePhone(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('+')) return trimmed;
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  return trimmed;
+}
+
 export default function EditStudentPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const { data: student, loading: fetching, error: fetchError } = useStudentDetail(params.id);
+  const { data: batches } = useBatches();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -36,6 +58,8 @@ export default function EditStudentPage() {
   const redirectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const initialFormRef = useRef<Record<string, string> | null>(null);
 
+  const isStaff = user?.role === 'STAFF';
+
   const [form, setForm] = useState({
     fullName: '',
     dateOfBirth: '',
@@ -43,8 +67,13 @@ export default function EditStudentPage() {
     guardianName: '',
     guardianMobile: '',
     guardianEmail: '',
+    fatherName: '',
+    motherName: '',
+    whatsappNumber: '',
+    mobileNumber: '',
     joiningDate: '',
     monthlyFee: '',
+    batchId: '',
     addressLine1: '',
     addressCity: '',
     addressState: '',
@@ -64,13 +93,18 @@ export default function EditStudentPage() {
       const addr = student.address;
       const populated = {
         fullName: student.fullName ?? '',
-        dateOfBirth: student.dateOfBirth ? student.dateOfBirth.split('T')[0]! : '',
+        dateOfBirth: student.dateOfBirth ? toDateInputValue(student.dateOfBirth) : '',
         gender: (student.gender ?? '').toUpperCase(),
         guardianName: student.guardian?.name ?? '',
         guardianMobile: student.guardian?.mobile ?? '',
         guardianEmail: student.guardian?.email ?? '',
-        joiningDate: student.joiningDate ? student.joiningDate.split('T')[0]! : '',
+        fatherName: student.fatherName ?? '',
+        motherName: student.motherName ?? '',
+        whatsappNumber: student.whatsappNumber ?? '',
+        mobileNumber: student.mobileNumber ?? '',
+        joiningDate: student.joiningDate ? toDateInputValue(student.joiningDate) : '',
         monthlyFee: String(student.monthlyFee ?? ''),
+        batchId: student.batchId ?? '',
         addressLine1: addr?.line1 ?? '',
         addressCity: addr?.city ?? '',
         addressState: addr?.state ?? '',
@@ -108,13 +142,25 @@ export default function EditStudentPage() {
     if (!form.guardianName.trim()) errors['guardianName'] = 'Guardian name is required';
     if (!form.guardianMobile.trim()) {
       errors['guardianMobile'] = 'Guardian mobile is required';
-    } else if (!E164_RE.test(form.guardianMobile.trim())) {
+    } else if (!E164_RE.test(normalizePhone(form.guardianMobile))) {
       errors['guardianMobile'] = 'Must be in E.164 format (e.g. +919876543210)';
     }
     if (form.guardianEmail.trim() && !EMAIL_RE.test(form.guardianEmail.trim())) {
       errors['guardianEmail'] = 'Invalid email format';
     }
-    if (!form.monthlyFee || Number(form.monthlyFee) <= 0) {
+    if (form.fatherName.trim() && form.fatherName.trim().length > 100) {
+      errors['fatherName'] = 'Father name must be 100 characters or less';
+    }
+    if (form.motherName.trim() && form.motherName.trim().length > 100) {
+      errors['motherName'] = 'Mother name must be 100 characters or less';
+    }
+    if (form.whatsappNumber.trim() && !E164_RE.test(normalizePhone(form.whatsappNumber))) {
+      errors['whatsappNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (form.mobileNumber.trim() && !E164_RE.test(normalizePhone(form.mobileNumber))) {
+      errors['mobileNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (!isStaff && (!form.monthlyFee || Number(form.monthlyFee) <= 0)) {
       errors['monthlyFee'] = 'Monthly fee must be greater than 0';
     }
     if (form.addressPincode.trim() && !PINCODE_RE.test(form.addressPincode.trim())) {
@@ -122,7 +168,7 @@ export default function EditStudentPage() {
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [form]);
+  }, [form, isStaff]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,28 +177,32 @@ export default function EditStudentPage() {
     if (!validate()) return;
 
     setLoading(true);
-    const result = await updateStudent(
-      params.id,
-      {
-        fullName: form.fullName.trim(),
-        dateOfBirth: form.dateOfBirth || undefined,
-        gender: form.gender || undefined,
-        guardian: {
-          name: form.guardianName.trim(),
-          mobile: form.guardianMobile.trim(),
-          email: form.guardianEmail.trim() || undefined,
-        },
-        joiningDate: form.joiningDate || undefined,
-        monthlyFee: Number(form.monthlyFee),
-        address: form.addressLine1.trim() ? {
-          line1: form.addressLine1.trim(),
-          city: form.addressCity.trim() || undefined,
-          state: form.addressState.trim() || undefined,
-          pincode: form.addressPincode.trim() || undefined,
-        } : undefined,
+    const payload: Record<string, unknown> = {
+      fullName: form.fullName.trim(),
+      dateOfBirth: form.dateOfBirth || undefined,
+      gender: form.gender || undefined,
+      guardian: {
+        name: form.guardianName.trim(),
+        mobile: normalizePhone(form.guardianMobile),
+        email: form.guardianEmail.trim() || undefined,
       },
-      accessToken,
-    );
+      fatherName: form.fatherName.trim() || undefined,
+      motherName: form.motherName.trim() || undefined,
+      whatsappNumber: normalizePhone(form.whatsappNumber) || undefined,
+      mobileNumber: normalizePhone(form.mobileNumber) || undefined,
+      joiningDate: form.joiningDate || undefined,
+      batchId: form.batchId || undefined,
+      address: form.addressLine1.trim() ? {
+        line1: form.addressLine1.trim(),
+        city: form.addressCity.trim() || undefined,
+        state: form.addressState.trim() || undefined,
+        pincode: form.addressPincode.trim() || undefined,
+      } : undefined,
+    };
+    if (!isStaff) {
+      payload.monthlyFee = Number(form.monthlyFee);
+    }
+    const result = await updateStudent(params.id, payload, accessToken);
     setLoading(false);
 
     if (!result.ok) {
@@ -162,7 +212,11 @@ export default function EditStudentPage() {
 
     setSuccess(true);
     redirectTimer.current = setTimeout(() => router.push(`/students/${params.id}`), 1200);
-  }, [form, accessToken, router, params.id, validate]);
+  }, [form, accessToken, router, params.id, validate, isStaff]);
+
+  const batchOptions = batches
+    .filter((b) => b.status === 'ACTIVE')
+    .map((b) => ({ value: b.id, label: b.batchName }));
 
   if (fetching) return <Spinner centered size="lg" />;
 
@@ -203,6 +257,51 @@ export default function EditStudentPage() {
             </div>
           </div>
 
+          {/* Family Information */}
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Family Information</h4>
+            <div className={styles.sectionFields}>
+              <div className={styles.gridRow}>
+                <Input
+                  label="Father Name"
+                  value={form.fatherName}
+                  onChange={(e) => set('fatherName', e.target.value)}
+                  error={fieldErrors['fatherName']}
+                  placeholder="Father's name (optional)"
+                  maxLength={100}
+                />
+                <Input
+                  label="Mother Name"
+                  value={form.motherName}
+                  onChange={(e) => set('motherName', e.target.value)}
+                  error={fieldErrors['motherName']}
+                  placeholder="Mother's name (optional)"
+                  maxLength={100}
+                />
+              </div>
+              <div className={styles.gridRow}>
+                <Input
+                  label="WhatsApp Number"
+                  type="tel"
+                  value={form.whatsappNumber}
+                  onChange={(e) => set('whatsappNumber', e.target.value)}
+                  error={fieldErrors['whatsappNumber']}
+                  placeholder="+919876543210"
+                  hint="E.164 format with +91 prefix"
+                />
+                <Input
+                  label="Mobile Number"
+                  type="tel"
+                  value={form.mobileNumber}
+                  onChange={(e) => set('mobileNumber', e.target.value)}
+                  error={fieldErrors['mobileNumber']}
+                  placeholder="+919876543210"
+                  hint="E.164 format with +91 prefix"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Guardian Information */}
           <div className={styles.section}>
             <h4 className={styles.sectionTitle}>Guardian Information</h4>
@@ -222,7 +321,16 @@ export default function EditStudentPage() {
             <h4 className={styles.sectionTitle}>Academy Details</h4>
             <div className={styles.sectionFields}>
               <DatePicker label="Joining Date" value={form.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} />
-              <Input label="Monthly Fee" required type="number" value={form.monthlyFee} onChange={(e) => set('monthlyFee', e.target.value)} error={fieldErrors['monthlyFee']} min={1} />
+              {!isStaff && (
+                <Input label="Monthly Fee" required type="number" value={form.monthlyFee} onChange={(e) => set('monthlyFee', e.target.value)} error={fieldErrors['monthlyFee']} min={1} />
+              )}
+              <Select
+                label="Batch"
+                options={batchOptions}
+                value={form.batchId}
+                onChange={(e) => set('batchId', e.target.value)}
+                placeholder="Select a batch (optional)"
+              />
             </div>
           </div>
 

@@ -20,9 +20,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
-  const { action, ...data } = body;
+  const { action: rawAction, ...data } = body;
+  const action = String(rawAction).toLowerCase();
 
-  if (!['approve', 'reject', 'cancel'].includes(String(action))) {
+  if (!['approve', 'reject', 'cancel', 'update'].includes(action)) {
     return NextResponse.json({ message: 'Invalid action' }, { status: 400 });
   }
 
@@ -30,6 +31,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (action === 'approve') path += '/approve';
   else if (action === 'reject') path += '/reject';
   else if (action === 'cancel') path += '/cancel';
+  // 'update' keeps the base path
 
   const result = await apiPut(path, data, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);

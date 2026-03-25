@@ -14,7 +14,7 @@ const devApiHost = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 
 const ENV_MAP: Record<AppEnv, EnvConfig> = {
   development: {
-    API_BASE_URL: isWeb ? '' : `http://${devApiHost}:3001`,
+    API_BASE_URL: isWeb ? '' : `http://${devApiHost}:3010`,
     APP_ENV: 'development',
   },
   staging: {

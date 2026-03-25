@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     month: searchParams.get('month') || undefined,
     page: searchParams.get('page') || '1',
     pageSize: searchParams.get('pageSize') || '20',
+    batchId: searchParams.get('batchId') || undefined,
   });
 
   const result = await apiGet(`/api/v1/fees/dues?${params}`, { accessToken });

@@ -119,6 +119,12 @@
   color: var(--color-primary);
 }
 
+.exportRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
 @media (max-width: 768px) {
   .page {
     padding: var(--space-4);

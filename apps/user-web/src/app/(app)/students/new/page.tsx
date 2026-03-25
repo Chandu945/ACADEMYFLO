@@ -3,10 +3,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createStudent } from '@/application/students/use-students';
+import { useBatches } from '@/application/batches/use-batches';
 import { useAuth } from '@/application/auth/use-auth';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
@@ -22,9 +24,21 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const E164_RE = /^\+[1-9]\d{6,14}$/;
 const PINCODE_RE = /^\d{5,6}$/;
 
+/** Normalize a phone input to E.164 (+91XXXXXXXXXX). Returns the input as-is if already E.164 or empty. */
+function normalizePhone(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('+')) return trimmed;
+  // If digits only (10 digits), prepend +91
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  return trimmed;
+}
+
 export default function NewStudentPage() {
   const router = useRouter();
   const { accessToken } = useAuth();
+  const { data: batches } = useBatches();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -37,8 +51,13 @@ export default function NewStudentPage() {
     guardianName: '',
     guardianMobile: '',
     guardianEmail: '',
+    fatherName: '',
+    motherName: '',
+    whatsappNumber: '',
+    mobileNumber: '',
     joiningDate: new Date().toISOString().split('T')[0]!,
     monthlyFee: '',
+    batchId: '',
     addressLine1: '',
     addressCity: '',
     addressState: '',
@@ -83,11 +102,23 @@ export default function NewStudentPage() {
     if (!form.guardianName.trim()) errors['guardianName'] = 'Guardian name is required';
     if (!form.guardianMobile.trim()) {
       errors['guardianMobile'] = 'Guardian mobile is required';
-    } else if (!E164_RE.test(form.guardianMobile.trim())) {
+    } else if (!E164_RE.test(normalizePhone(form.guardianMobile))) {
       errors['guardianMobile'] = 'Must be in E.164 format (e.g. +919876543210)';
     }
     if (form.guardianEmail.trim() && !EMAIL_RE.test(form.guardianEmail.trim())) {
       errors['guardianEmail'] = 'Invalid email format';
+    }
+    if (form.fatherName.trim() && form.fatherName.trim().length > 100) {
+      errors['fatherName'] = 'Father name must be 100 characters or less';
+    }
+    if (form.motherName.trim() && form.motherName.trim().length > 100) {
+      errors['motherName'] = 'Mother name must be 100 characters or less';
+    }
+    if (form.whatsappNumber.trim() && !E164_RE.test(normalizePhone(form.whatsappNumber))) {
+      errors['whatsappNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (form.mobileNumber.trim() && !E164_RE.test(normalizePhone(form.mobileNumber))) {
+      errors['mobileNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
     }
     if (!form.joiningDate) errors['joiningDate'] = 'Joining date is required';
     if (!form.monthlyFee || Number(form.monthlyFee) <= 0) {
@@ -114,11 +145,16 @@ export default function NewStudentPage() {
         gender: form.gender || undefined,
         guardian: {
           name: form.guardianName.trim(),
-          mobile: form.guardianMobile.trim(),
+          mobile: normalizePhone(form.guardianMobile),
           email: form.guardianEmail.trim() || undefined,
         },
+        fatherName: form.fatherName.trim() || undefined,
+        motherName: form.motherName.trim() || undefined,
+        whatsappNumber: normalizePhone(form.whatsappNumber) || undefined,
+        mobileNumber: normalizePhone(form.mobileNumber) || undefined,
         joiningDate: form.joiningDate,
         monthlyFee: Number(form.monthlyFee),
+        batchId: form.batchId || undefined,
         address: form.addressLine1.trim() ? {
           line1: form.addressLine1.trim(),
           city: form.addressCity.trim() || undefined,
@@ -139,6 +175,10 @@ export default function NewStudentPage() {
     setSuccess(true);
     redirectTimer.current = setTimeout(() => router.push('/students'), 1200);
   }, [form, accessToken, router, validate]);
+
+  const batchOptions = batches
+    .filter((b) => b.status === 'ACTIVE')
+    .map((b) => ({ value: b.id, label: b.batchName }));
 
   return (
     <div className={styles.page}>
@@ -184,6 +224,51 @@ export default function NewStudentPage() {
             {fieldErrors['gender'] && (
               <span className={styles.fieldError} role="alert">{fieldErrors['gender']}</span>
             )}
+          </div>
+
+          {/* Family Information */}
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Family Information</h4>
+            <div className={styles.sectionFields}>
+              <div className={styles.gridRow}>
+                <Input
+                  label="Father Name"
+                  value={form.fatherName}
+                  onChange={(e) => set('fatherName', e.target.value)}
+                  error={fieldErrors['fatherName']}
+                  placeholder="Father's name (optional)"
+                  maxLength={100}
+                />
+                <Input
+                  label="Mother Name"
+                  value={form.motherName}
+                  onChange={(e) => set('motherName', e.target.value)}
+                  error={fieldErrors['motherName']}
+                  placeholder="Mother's name (optional)"
+                  maxLength={100}
+                />
+              </div>
+              <div className={styles.gridRow}>
+                <Input
+                  label="WhatsApp Number"
+                  type="tel"
+                  value={form.whatsappNumber}
+                  onChange={(e) => set('whatsappNumber', e.target.value)}
+                  error={fieldErrors['whatsappNumber']}
+                  placeholder="+919876543210"
+                  hint="E.164 format with +91 prefix"
+                />
+                <Input
+                  label="Mobile Number"
+                  type="tel"
+                  value={form.mobileNumber}
+                  onChange={(e) => set('mobileNumber', e.target.value)}
+                  error={fieldErrors['mobileNumber']}
+                  placeholder="+919876543210"
+                  hint="E.164 format with +91 prefix"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Guardian Information */}
@@ -239,6 +324,13 @@ export default function NewStudentPage() {
                 error={fieldErrors['monthlyFee']}
                 placeholder="e.g. 2000"
                 min={1}
+              />
+              <Select
+                label="Batch"
+                options={batchOptions}
+                value={form.batchId}
+                onChange={(e) => set('batchId', e.target.value)}
+                placeholder="Select a batch (optional)"
               />
             </div>
           </div>

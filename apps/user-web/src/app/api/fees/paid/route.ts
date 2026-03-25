@@ -10,7 +10,10 @@ export async function GET(request: NextRequest) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = request.nextUrl;
-  const params = buildSafeParams({ month: searchParams.get('month') || undefined });
+  const params = buildSafeParams({
+    month: searchParams.get('month') || undefined,
+    batchId: searchParams.get('batchId') || undefined,
+  });
   const result = await apiGet(`/api/v1/fees/paid?${params}`, { accessToken });
   if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
   return NextResponse.json(result.data);

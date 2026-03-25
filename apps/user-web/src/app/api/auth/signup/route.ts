@@ -8,21 +8,20 @@ import { setSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { toErrorResponse } from '@/infra/http/error-mapper';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 const E164_REGEX = /^\+[1-9]\d{6,14}$/;
-const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 
 const signupBodySchema = z.object({
   fullName: z
     .string()
     .trim()
-    .min(1, 'Full name is required')
+    .min(2, 'Name must be at least 2 characters')
     .max(100, 'Full name must be at most 100 characters'),
   email: z
     .string()
     .trim()
     .min(1, 'Email is required')
-    .regex(EMAIL_REGEX, 'Invalid email format')
+    .regex(EMAIL_REGEX, 'Please enter a valid email address')
     .transform((v) => v.toLowerCase()),
   phoneNumber: z
     .string()
@@ -32,8 +31,7 @@ const signupBodySchema = z.object({
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
-    .max(64, 'Password must be at most 64 characters')
-    .regex(STRONG_PASSWORD_REGEX, 'Must include uppercase, lowercase, number, and special character'),
+    .max(64, 'Password must be at most 64 characters'),
 });
 
 type SignupResponse = {

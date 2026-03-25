@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -9,8 +9,18 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import styles from './page.module.css';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^\+?\d{10,15}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const PHONE_RE = /^\d{10,15}$/;
+
+/** Rate-limit cooldown in seconds (matches mobile) */
+const RATE_LIMIT_COOLDOWN_S = 30;
+
+/** Normalize a phone-like identifier: strip spaces, dashes, +, parens */
+function normalizeIdentifier(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.includes('@')) return trimmed; // email — keep as-is
+  return trimmed.replace(/[\s\-+()]/g, '');
+}
 
 function validateField(
   field: string,
@@ -18,15 +28,15 @@ function validateField(
 ): string | null {
   switch (field) {
     case 'identifier': {
-      const trimmed = values.identifier.trim();
-      if (!trimmed) return 'Email or phone is required';
-      if (!EMAIL_RE.test(trimmed) && !PHONE_RE.test(trimmed))
+      const normalized = normalizeIdentifier(values.identifier);
+      if (!normalized) return 'Email or phone is required';
+      if (!EMAIL_RE.test(normalized) && !PHONE_RE.test(normalized))
         return 'Enter a valid email address or phone number';
       return null;
     }
     case 'password':
       if (!values.password) return 'Password is required';
-      if (values.password.length < 8) return 'Password must be at least 8 characters';
+      if (values.password.length < 6) return 'Password must be at least 6 characters';
       return null;
     default:
       return null;
@@ -52,6 +62,16 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [cooldown, setCooldown] = useState(0);
+
+  // Countdown timer for rate-limit cooldown (matches mobile behavior)
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const validate = useCallback((): boolean => {
     const values = { identifier, password };
@@ -92,6 +112,7 @@ export default function LoginForm() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (cooldown > 0) return;
       setError(null);
       setFieldErrors({});
       if (!validate()) return;
@@ -101,7 +122,7 @@ export default function LoginForm() {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: identifier.trim(), password }),
+          body: JSON.stringify({ identifier: normalizeIdentifier(identifier), password }),
           signal: AbortSignal.timeout(15000),
         });
 
@@ -117,6 +138,10 @@ export default function LoginForm() {
           const serverFieldErrors = safeFieldErrors(data['fieldErrors']);
           if (Object.keys(serverFieldErrors).length > 0) {
             setFieldErrors(serverFieldErrors);
+          }
+          // Start cooldown on failure (matches mobile rate limit behavior)
+          if (res.status === 429 || (typeof data['code'] === 'string' && data['code'] === 'RATE_LIMITED')) {
+            setCooldown(RATE_LIMIT_COOLDOWN_S);
           }
           showError(
             (typeof data['message'] === 'string' ? data['message'] : null) ??
@@ -144,7 +169,7 @@ export default function LoginForm() {
         setLoading(false);
       }
     },
-    [identifier, password, validate, router, searchParams, showError],
+    [identifier, password, validate, router, searchParams, showError, cooldown],
   );
 
   return (
@@ -276,9 +301,14 @@ export default function LoginForm() {
                 variant="primary"
                 size="lg"
                 fullWidth
-                loading={loading}
+                loading={loading && cooldown === 0}
+                disabled={cooldown > 0}
               >
-                Sign In
+                {cooldown > 0
+                  ? `Try again in ${cooldown}s`
+                  : loading
+                    ? 'Signing in...'
+                    : 'Sign In'}
               </Button>
             </div>
           </form>

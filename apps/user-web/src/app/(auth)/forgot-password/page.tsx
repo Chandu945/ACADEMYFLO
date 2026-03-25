@@ -9,9 +9,8 @@ import styles from './page.module.css';
 
 type Step = 'request' | 'confirm' | 'done';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 const PHONE_RE = /^\+?\d{10,15}$/;
-const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 
 const STEPS = [
   { key: 'request', label: 'Email' },
@@ -82,6 +81,7 @@ export default function ForgotPasswordPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [cooldown, setCooldown] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const submittingRef = useRef(false);
 
   // Cooldown timer
   useEffect(() => {
@@ -157,13 +157,11 @@ export default function ForgotPasswordPage() {
   const validateConfirm = useCallback((): boolean => {
     const errors: Record<string, string> = {};
     if (!otp.trim()) errors['otp'] = 'Verification code is required';
-    else if (!/^\d{4,6}$/.test(otp.trim())) errors['otp'] = 'Code must be 4-6 digits';
+    else if (!/^\d{6}$/.test(otp.trim())) errors['otp'] = 'Code must be exactly 6 digits';
     if (!newPassword) {
       errors['newPassword'] = 'New password is required';
     } else if (newPassword.length < 8) {
       errors['newPassword'] = 'Password must be at least 8 characters';
-    } else if (!STRONG_PASSWORD_REGEX.test(newPassword)) {
-      errors['newPassword'] = 'Must include uppercase, lowercase, number, and special character';
     }
     if (!confirmPassword) errors['confirmPassword'] = 'Please confirm your password';
     else if (newPassword !== confirmPassword) errors['confirmPassword'] = 'Passwords do not match';
@@ -174,11 +172,13 @@ export default function ForgotPasswordPage() {
   const handleRequestOtp = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (submittingRef.current) return;
       setError(null);
       setSuccessMessage(null);
       setFieldErrors({});
       if (!validateRequest()) return;
 
+      submittingRef.current = true;
       setLoading(true);
       try {
         const res = await fetch('/api/auth/forgot-password', {
@@ -216,6 +216,7 @@ export default function ForgotPasswordPage() {
         }
       } finally {
         setLoading(false);
+        submittingRef.current = false;
       }
     },
     [identifier, validateRequest],
@@ -224,11 +225,13 @@ export default function ForgotPasswordPage() {
   const handleConfirmReset = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (submittingRef.current) return;
       setError(null);
       setSuccessMessage(null);
       setFieldErrors({});
       if (!validateConfirm()) return;
 
+      submittingRef.current = true;
       setLoading(true);
       try {
         const res = await fetch('/api/auth/forgot-password', {
@@ -266,6 +269,7 @@ export default function ForgotPasswordPage() {
         }
       } finally {
         setLoading(false);
+        submittingRef.current = false;
       }
     },
     [identifier, otp, newPassword, validateConfirm],
@@ -388,7 +392,7 @@ export default function ForgotPasswordPage() {
                   fullWidth
                   loading={loading}
                 >
-                  Send Reset Code
+                  {loading ? 'Sending...' : 'Send Reset Code'}
                 </Button>
               </div>
             </form>
@@ -422,7 +426,7 @@ export default function ForgotPasswordPage() {
                 }}
                 error={fieldErrors['newPassword']}
                 placeholder="Enter new password"
-                hint="Must include uppercase, lowercase, number, and special character"
+                hint="Minimum 8 characters"
                 autoComplete="new-password"
                 maxLength={64}
                 required
@@ -451,7 +455,7 @@ export default function ForgotPasswordPage() {
                   fullWidth
                   loading={loading}
                 >
-                  Reset Password
+                  {loading ? 'Resetting...' : 'Reset Password'}
                 </Button>
               </div>
 
@@ -488,6 +492,10 @@ export default function ForgotPasswordPage() {
                 setError(null);
                 setSuccessMessage(null);
                 setFieldErrors({});
+                // Preserve identifier (matches mobile behavior)
+                setOtp('');
+                setNewPassword('');
+                setConfirmPassword('');
               }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

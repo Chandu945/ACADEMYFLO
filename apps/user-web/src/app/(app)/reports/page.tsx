@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useFeeDues, usePaidFees } from '@/application/fees/use-fees';
 import { useDashboardKpis } from '@/application/dashboard/use-dashboard';
 import { Table, Thead, Tbody, Tr, Th, Td } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Tabs';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -36,6 +37,19 @@ export default function ReportsPage() {
   const totalCollected = paidFees.reduce((acc, f) => acc + f.amount, 0);
   const totalPending = dues.filter((d) => d.status !== 'PAID').reduce((acc, d) => acc + d.totalPayable, 0);
 
+  const handleExportPdf = useCallback((reportType: string) => {
+    const params = new URLSearchParams({ type: reportType, month, format: 'pdf' });
+    window.open(`/api/reports?${params}`, '_blank');
+  }, [month]);
+
+  const downloadIcon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+
   const revenueTab = (
     <>
       <div className={styles.revenueCards}>
@@ -52,6 +66,11 @@ export default function ReportsPage() {
           <div className={styles.revenueValue}>{kpisLoading ? '-' : kpis?.totalStudents ?? 0}</div>
         </div>
       </div>
+      <div className={styles.exportRow}>
+        <Button variant="outline" size="sm" iconLeft={downloadIcon} onClick={() => handleExportPdf('monthly-revenue')}>
+          Export PDF
+        </Button>
+      </div>
     </>
   );
 
@@ -62,32 +81,39 @@ export default function ReportsPage() {
       ) : dues.length === 0 ? (
         <EmptyState message="No dues data for this month" />
       ) : (
-        <Table striped>
-          <Thead>
-            <Tr>
-              <Th>Student</Th>
-              <Th>Fee</Th>
-              <Th>Due Amount</Th>
-              <Th>Status</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {dues.map((due) => (
-              <Tr key={due.id}>
-                <Td style={{ fontWeight: 500 }}>{due.studentName ?? '-'}</Td>
-                <Td>{formatCurrency(due.amount)}</Td>
-                <Td style={{ fontWeight: 600, color: due.status === 'PAID' ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                  {formatCurrency(due.totalPayable)}
-                </Td>
-                <Td>
-                  <Badge variant={due.status === 'PAID' ? 'success' : due.status === 'OVERDUE' ? 'danger' : 'warning'} dot>
-                    {due.status}
-                  </Badge>
-                </Td>
+        <>
+          <Table striped>
+            <Thead>
+              <Tr>
+                <Th>Student</Th>
+                <Th>Fee</Th>
+                <Th>Due Amount</Th>
+                <Th>Status</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {dues.map((due) => (
+                <Tr key={due.id}>
+                  <Td style={{ fontWeight: 500 }}>{due.studentName ?? '-'}</Td>
+                  <Td>{formatCurrency(due.amount)}</Td>
+                  <Td style={{ fontWeight: 600, color: due.status === 'PAID' ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                    {formatCurrency(due.totalPayable)}
+                  </Td>
+                  <Td>
+                    <Badge variant={due.status === 'PAID' ? 'success' : due.status === 'OVERDUE' ? 'danger' : 'warning'} dot>
+                      {due.status}
+                    </Badge>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <div className={styles.exportRow}>
+            <Button variant="outline" size="sm" iconLeft={downloadIcon} onClick={() => handleExportPdf('student-wise-dues')}>
+              Export PDF
+            </Button>
+          </div>
+        </>
       )}
     </>
   );
@@ -99,34 +125,41 @@ export default function ReportsPage() {
       ) : paidFees.length === 0 && dues.length === 0 ? (
         <EmptyState message="No fee data for this month" />
       ) : (
-        <Table striped>
-          <Thead>
-            <Tr>
-              <Th>Student</Th>
-              <Th>Month</Th>
-              <Th>Amount</Th>
-              <Th>Status</Th>
-              <Th>Paid Date</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {[...paidFees, ...dues.filter((d) => d.status !== 'PAID')].map((fee) => (
-              <Tr key={fee.id}>
-                <Td style={{ fontWeight: 500 }}>{fee.studentName ?? '-'}</Td>
-                <Td>{getMonthLabel(fee.monthKey)}</Td>
-                <Td style={{ fontWeight: 600 }}>{formatCurrency(fee.amount)}</Td>
-                <Td>
-                  <Badge variant={fee.status === 'PAID' ? 'success' : 'warning'} dot>{fee.status}</Badge>
-                </Td>
-                <Td>
-                  {fee.paidAt
-                    ? new Date(fee.paidAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-                    : '-'}
-                </Td>
+        <>
+          <Table striped>
+            <Thead>
+              <Tr>
+                <Th>Student</Th>
+                <Th>Month</Th>
+                <Th>Amount</Th>
+                <Th>Status</Th>
+                <Th>Paid Date</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {[...paidFees, ...dues.filter((d) => d.status !== 'PAID')].map((fee) => (
+                <Tr key={fee.id}>
+                  <Td style={{ fontWeight: 500 }}>{fee.studentName ?? '-'}</Td>
+                  <Td>{getMonthLabel(fee.monthKey)}</Td>
+                  <Td style={{ fontWeight: 600 }}>{formatCurrency(fee.amount)}</Td>
+                  <Td>
+                    <Badge variant={fee.status === 'PAID' ? 'success' : 'warning'} dot>{fee.status}</Badge>
+                  </Td>
+                  <Td>
+                    {fee.paidAt
+                      ? new Date(fee.paidAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                      : '-'}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <div className={styles.exportRow}>
+            <Button variant="outline" size="sm" iconLeft={downloadIcon} onClick={() => handleExportPdf('month-wise-dues')}>
+              Export PDF
+            </Button>
+          </div>
+        </>
       )}
     </>
   );

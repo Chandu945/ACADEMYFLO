@@ -26,6 +26,8 @@ export type StudentListItem = {
     pincode: string;
   } | null;
   status: string;
+  batchId: string | null;
+  batch: { id: string; batchName: string } | null;
   createdAt: string;
   updatedAt: string;
 };

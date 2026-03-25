@@ -37,15 +37,19 @@ const currencyFormatter = new Intl.NumberFormat('en-IN', {
 export default function BatchDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const isOwner = user?.role === 'OWNER';
 
   const { data: batch, loading, error, refetch } = useBatchDetail(params.id);
 
   const [studentSearch, setStudentSearch] = useState('');
-  const { data: students, loading: studentsLoading } = useStudents({ batchId: params.id, search: studentSearch || undefined, pageSize: 100 });
+  const { data: students, loading: studentsLoading, refetch: refetchStudents } = useStudents({ batchId: params.id, search: studentSearch || undefined, pageSize: 100 });
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -114,6 +118,31 @@ export default function BatchDetailPage() {
     router.push('/batches');
   }, [params.id, accessToken, router]);
 
+  const handleRemoveStudent = useCallback(async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      const res = await fetch(`/api/batches/${params.id}/students/${removeTarget.id}`, {
+        method: 'DELETE',
+        headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      });
+      if (!res.ok) {
+        let msg = 'Failed to remove student';
+        try { const json = await res.json(); msg = json.message || msg; } catch { /* */ }
+        setRemoveError(msg);
+        return;
+      }
+      setRemoveTarget(null);
+      refetchStudents();
+      refetch();
+    } catch {
+      setRemoveError('Network error');
+    } finally {
+      setRemoving(false);
+    }
+  }, [removeTarget, params.id, accessToken, refetchStudents, refetch]);
+
   if (loading) return <Spinner centered size="lg" />;
   if (error) return (
     <div className={styles.page}>
@@ -141,7 +170,7 @@ export default function BatchDetailPage() {
           <h1 className={styles.batchName}>{batch.batchName}</h1>
           <div className={styles.metaRow}>
             <Badge variant={batch.status === 'ACTIVE' ? 'success' : 'default'} dot>{batch.status}</Badge>
-            <span>{batch.studentCount} student{batch.studentCount !== 1 ? 's' : ''}</span>
+            <span>{batch.studentCount}{batch.maxStudents ? ` / ${batch.maxStudents}` : ''} student{batch.studentCount !== 1 ? 's' : ''}</span>
             {batch.startTime && <span>{batch.startTime} - {batch.endTime}</span>}
           </div>
           <div className={styles.daysRow}>
@@ -149,10 +178,11 @@ export default function BatchDetailPage() {
               <span key={day} className={styles.dayChip}>{day}</span>
             ))}
           </div>
+          {batch.notes && <p className={styles.batchNotes}>{batch.notes}</p>}
         </div>
         <div className={styles.actions}>
           <Button variant="outline" onClick={() => { setEditError(null); setEditOpen(true); }}>Edit</Button>
-          <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>
+          {isOwner && <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>}
         </div>
       </div>
 
@@ -162,7 +192,10 @@ export default function BatchDetailPage() {
       <div className={styles.studentsSection}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Students in Batch</h2>
-          <SearchInput value={studentSearch} onChange={setStudentSearch} placeholder="Search students..." />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <SearchInput value={studentSearch} onChange={setStudentSearch} placeholder="Search students..." />
+            <Button variant="primary" size="sm" onClick={() => router.push(`/batches/${params.id}/add-students`)}>Add Students</Button>
+          </div>
         </div>
 
         {studentsLoading ? (
@@ -176,6 +209,7 @@ export default function BatchDetailPage() {
                 <Th>Name</Th>
                 <Th>Status</Th>
                 <Th>Monthly Fee</Th>
+                <Th></Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -191,6 +225,19 @@ export default function BatchDetailPage() {
                     <Badge variant={s.status === 'ACTIVE' ? 'success' : 'warning'} dot>{s.status}</Badge>
                   </Td>
                   <Td>{currencyFormatter.format(s.monthlyFee)}</Td>
+                  <Td>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className={styles.removeBtn}
+                        onClick={() => setRemoveTarget({ id: s.id, name: s.fullName })}
+                        aria-label={`Remove ${s.fullName} from batch`}
+                        title="Remove from batch"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </div>
+                  </Td>
                 </Tr>
               ))}
             </Tbody>
@@ -250,6 +297,20 @@ export default function BatchDetailPage() {
         loading={deleting}
       >
         {deleteError && <Alert variant="error" message={deleteError} />}
+      </ConfirmDialog>
+
+      {/* Remove Student Confirm */}
+      <ConfirmDialog
+        open={!!removeTarget}
+        onClose={() => { setRemoveTarget(null); setRemoveError(null); }}
+        onConfirm={handleRemoveStudent}
+        title="Remove Student"
+        message={`Remove "${removeTarget?.name ?? ''}" from this batch?`}
+        confirmLabel="Remove"
+        danger
+        loading={removing}
+      >
+        {removeError && <Alert variant="error" message={removeError} />}
       </ConfirmDialog>
     </div>
   );

@@ -10,6 +10,15 @@ export type CreateStaffDeps = {
   staffApi: CreateStaffApiPort;
 };
 
+/** Normalize a phone number to E.164 before validation */
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/[^\d]/g, '');
+  if (/^\d{10}$/.test(digits)) return `+91${digits}`;
+  if (raw.startsWith('+')) return raw;
+  if (/^\d{12}$/.test(digits) && digits.startsWith('91')) return `+${digits}`;
+  return raw;
+}
+
 export function validateCreateStaffForm(fields: {
   fullName: string;
   email: string;
@@ -30,8 +39,8 @@ export function validateCreateStaffForm(fields: {
 
   if (!fields.phoneNumber.trim()) {
     errors['phoneNumber'] = 'Phone number is required';
-  } else if (!/^\+[1-9]\d{6,14}$/.test(fields.phoneNumber.trim())) {
-    errors['phoneNumber'] = 'Phone must be E.164 format (e.g. +919876543210)';
+  } else if (!/^\+[1-9]\d{6,14}$/.test(normalizePhone(fields.phoneNumber.trim()))) {
+    errors['phoneNumber'] = 'Please enter a valid 10-digit phone number';
   }
 
   if (!fields.password) {
@@ -63,8 +72,8 @@ export function validateUpdateStaffForm(fields: {
 
   if (!fields.phoneNumber.trim()) {
     errors['phoneNumber'] = 'Phone number is required';
-  } else if (!/^\+[1-9]\d{6,14}$/.test(fields.phoneNumber.trim())) {
-    errors['phoneNumber'] = 'Phone must be E.164 format (e.g. +919876543210)';
+  } else if (!/^\+[1-9]\d{6,14}$/.test(normalizePhone(fields.phoneNumber.trim()))) {
+    errors['phoneNumber'] = 'Please enter a valid 10-digit phone number';
   }
 
   if (fields.password && fields.password.length < 8) {

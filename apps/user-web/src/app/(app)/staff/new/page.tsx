@@ -16,6 +16,7 @@ import styles from './page.module.css';
 const GENDERS = [
   { value: 'MALE', label: 'Male' },
   { value: 'FEMALE', label: 'Female' },
+  { value: 'OTHER', label: 'Other' },
 ] as const;
 
 const SALARY_FREQUENCIES = [
@@ -26,7 +27,16 @@ const SALARY_FREQUENCIES = [
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const E164_RE = /^\+[1-9]\d{6,14}$/;
-const STRONG_PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+
+/** Normalize a phone input to E.164 (+91XXXXXXXXXX). Returns the input as-is if already E.164 or empty. */
+function normalizePhone(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('+')) return trimmed;
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  return trimmed;
+}
 
 export default function NewStaffPage() {
   const router = useRouter();
@@ -39,6 +49,7 @@ export default function NewStaffPage() {
 
   const initialForm = useRef({
     fullName: '', email: '', phoneNumber: '', password: '',
+    whatsappNumber: '', mobileNumber: '', address: '',
     startDate: new Date().toISOString().split('T')[0]!,
     gender: '', qualification: '', position: '',
     salaryAmount: '', salaryFrequency: 'MONTHLY',
@@ -83,8 +94,15 @@ export default function NewStaffPage() {
       errors['password'] = 'Password is required';
     } else if (form.password.length < 8) {
       errors['password'] = 'Password must be at least 8 characters';
-    } else if (!STRONG_PASSWORD_RE.test(form.password)) {
-      errors['password'] = 'Must include uppercase, lowercase, number, and special character';
+    }
+    if (form.whatsappNumber.trim() && !E164_RE.test(normalizePhone(form.whatsappNumber))) {
+      errors['whatsappNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (form.mobileNumber.trim() && !E164_RE.test(normalizePhone(form.mobileNumber))) {
+      errors['mobileNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
+    }
+    if (form.address.trim().length > 300) {
+      errors['address'] = 'Address must be 300 characters or less';
     }
     if (form.salaryAmount && Number(form.salaryAmount) < 0) {
       errors['salaryAmount'] = 'Salary must be a positive number';
@@ -106,6 +124,9 @@ export default function NewStaffPage() {
         email: form.email.trim().toLowerCase(),
         phoneNumber: form.phoneNumber.trim(),
         password: form.password,
+        whatsappNumber: normalizePhone(form.whatsappNumber) || undefined,
+        mobileNumber: normalizePhone(form.mobileNumber) || undefined,
+        address: form.address.trim() || undefined,
         startDate: form.startDate || undefined,
         gender: form.gender || undefined,
         qualificationInfo: (form.qualification.trim() || form.position.trim())
@@ -144,7 +165,17 @@ export default function NewStaffPage() {
           <Input label="Full Name" required value={form.fullName} onChange={(e) => set('fullName', e.target.value)} error={fieldErrors['fullName']} placeholder="Staff member's full name" />
           <Input label="Email" required type="email" value={form.email} onChange={(e) => set('email', e.target.value)} error={fieldErrors['email']} placeholder="Email address" />
           <Input label="Phone Number" required type="tel" value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)} error={fieldErrors['phoneNumber']} placeholder="+919876543210" hint="E.164 format with country code" />
-          <Input label="Password" required type="password" value={form.password} onChange={(e) => set('password', e.target.value)} error={fieldErrors['password']} placeholder="Min 8 characters" hint="Must include uppercase, lowercase, number, and special character" />
+          <Input label="Password" required type="password" value={form.password} onChange={(e) => set('password', e.target.value)} error={fieldErrors['password']} placeholder="Min 8 characters" hint="Minimum 8 characters" />
+
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Contact Information</h4>
+            <div className={styles.sectionFields}>
+              <Input label="WhatsApp Number" type="tel" value={form.whatsappNumber} onChange={(e) => set('whatsappNumber', e.target.value)} error={fieldErrors['whatsappNumber']} placeholder="+919876543210" hint="E.164 format with +91 prefix" />
+              <Input label="Mobile Number" type="tel" value={form.mobileNumber} onChange={(e) => set('mobileNumber', e.target.value)} error={fieldErrors['mobileNumber']} placeholder="+919876543210" hint="E.164 format with +91 prefix" />
+              <Input label="Address" value={form.address} onChange={(e) => set('address', e.target.value)} error={fieldErrors['address']} placeholder="Full address (optional)" hint="Max 300 characters" />
+            </div>
+          </div>
+
           <DatePicker label="Start Date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
 
           <div>

@@ -12,7 +12,12 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Modal } from '@/components/ui/Modal';
 import styles from './page.module.css';
+
+const CLOSE_REASONS = ['CONVERTED', 'NOT_INTERESTED', 'OTHER'] as const;
+type CloseReasonType = (typeof CLOSE_REASONS)[number];
+const GENDER_OPTIONS = ['Male', 'Female', 'Other'] as const;
 
 function statusBadgeVariant(status: string) {
   switch (status) {
@@ -35,13 +40,17 @@ export default function EnquiryDetailPage() {
   const [followUpError, setFollowUpError] = useState<string | null>(null);
 
   const [closeOpen, setCloseOpen] = useState(false);
-  const [closeReason, setCloseReason] = useState('');
+  const [closeReasonType, setCloseReasonType] = useState<CloseReasonType | ''>('');
+  const [closeCustomReason, setCloseCustomReason] = useState('');
   const [closing, setClosing] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
 
   const [convertOpen, setConvertOpen] = useState(false);
   const [converting, setConverting] = useState(false);
   const [convertError, setConvertError] = useState<string | null>(null);
+  const [convertJoiningDate, setConvertJoiningDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [convertMonthlyFee, setConvertMonthlyFee] = useState('');
+  const [convertGender, setConvertGender] = useState<string>('');
 
   const handleAddFollowUp = useCallback(async () => {
     if (!followUpNotes.trim()) { setFollowUpError('Notes are required'); return; }
@@ -59,9 +68,14 @@ export default function EnquiryDetailPage() {
   }, [followUpNotes, nextFollowUpDate, params.id, accessToken, refetch]);
 
   const handleClose = useCallback(async () => {
+    const reason = closeReasonType === 'OTHER' ? closeCustomReason : closeReasonType;
+    if (!reason) {
+      setCloseError('Please select a reason');
+      return;
+    }
     setClosing(true);
     setCloseError(null);
-    const result = await closeEnquiry(params.id, closeReason, accessToken);
+    const result = await closeEnquiry(params.id, reason, accessToken);
     setClosing(false);
     if (!result.ok) {
       setCloseError(result.error || 'Failed to close enquiry');
@@ -69,12 +83,20 @@ export default function EnquiryDetailPage() {
     }
     setCloseOpen(false);
     refetch();
-  }, [params.id, closeReason, accessToken, refetch]);
+  }, [params.id, closeReasonType, closeCustomReason, accessToken, refetch]);
 
   const handleConvert = useCallback(async () => {
+    if (!convertMonthlyFee || Number(convertMonthlyFee) <= 0) {
+      setConvertError('Monthly fee is required');
+      return;
+    }
     setConverting(true);
     setConvertError(null);
-    const result = await convertEnquiry(params.id, {}, accessToken);
+    const result = await convertEnquiry(params.id, {
+      joiningDate: convertJoiningDate,
+      monthlyFee: Number(convertMonthlyFee),
+      gender: convertGender || undefined,
+    }, accessToken);
     setConverting(false);
     if (!result.ok) {
       setConvertError(result.error || 'Failed to convert enquiry');
@@ -82,7 +104,7 @@ export default function EnquiryDetailPage() {
     }
     setConvertOpen(false);
     router.push('/enquiries');
-  }, [params.id, accessToken, router]);
+  }, [params.id, accessToken, router, convertJoiningDate, convertMonthlyFee, convertGender]);
 
   if (loading) return <Spinner centered size="lg" />;
   if (!enquiry) return <Alert variant="error" message="Enquiry not found" />;
@@ -102,6 +124,7 @@ export default function EnquiryDetailPage() {
             <Badge variant={statusBadgeVariant(enquiry.status)} dot>{enquiry.status}</Badge>
           </div>
           <div className={styles.actions}>
+            <Button variant="outline" size="sm" onClick={() => router.push(`/enquiries/${params.id}/edit`)}>Edit</Button>
             {enquiry.status === 'ACTIVE' && (
               <>
                 <Button variant="primary" size="sm" onClick={() => setConvertOpen(true)}>Convert to Student</Button>
@@ -197,36 +220,92 @@ export default function EnquiryDetailPage() {
       {/* Close Dialog */}
       <ConfirmDialog
         open={closeOpen}
-        onClose={() => { setCloseOpen(false); setCloseReason(''); setCloseError(null); }}
+        onClose={() => { setCloseOpen(false); setCloseReasonType(''); setCloseCustomReason(''); setCloseError(null); }}
         onConfirm={handleClose}
         title="Close Enquiry"
-        message="Are you sure you want to close this enquiry?"
+        message="Select a reason for closing this enquiry."
         confirmLabel="Close Enquiry"
         loading={closing}
       >
         {closeError && <Alert variant="error" message={closeError} />}
-        <div style={{ marginTop: 'var(--space-3)' }}>
-          <Input
-            label="Reason for closing"
-            value={closeReason}
-            onChange={(e) => setCloseReason(e.target.value)}
-            placeholder="Optional reason"
-          />
+        <div style={{ marginTop: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div className={styles.reasonChips}>
+            {CLOSE_REASONS.map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                className={`${styles.reasonChip} ${closeReasonType === reason ? styles.reasonChipActive : ''}`}
+                onClick={() => { setCloseReasonType(reason); if (reason !== 'OTHER') setCloseCustomReason(''); }}
+              >
+                {reason.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+          {closeReasonType === 'OTHER' && (
+            <Input
+              label="Custom reason"
+              value={closeCustomReason}
+              onChange={(e) => setCloseCustomReason(e.target.value)}
+              placeholder="Enter reason..."
+              required
+            />
+          )}
         </div>
       </ConfirmDialog>
 
-      {/* Convert Dialog */}
-      <ConfirmDialog
+      {/* Convert to Student Modal */}
+      <Modal
         open={convertOpen}
-        onClose={() => { setConvertOpen(false); setConvertError(null); }}
-        onConfirm={handleConvert}
+        onClose={() => { setConvertOpen(false); setConvertError(null); setConvertMonthlyFee(''); setConvertGender(''); setConvertJoiningDate(new Date().toISOString().slice(0, 10)); }}
         title="Convert to Student"
-        message={`Convert "${enquiry.prospectName}" to a student?`}
-        confirmLabel="Convert"
-        loading={converting}
+        size="sm"
+        footer={
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => setConvertOpen(false)} disabled={converting}>Cancel</Button>
+            <Button variant="primary" loading={converting} onClick={handleConvert}>Convert</Button>
+          </div>
+        }
       >
-        {convertError && <Alert variant="error" message={convertError} />}
-      </ConfirmDialog>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          {convertError && <Alert variant="error" message={convertError} />}
+          <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', margin: 0 }}>
+            Convert &quot;{enquiry.prospectName}&quot; to a student.
+          </p>
+          <DatePicker
+            label="Joining Date"
+            required
+            value={convertJoiningDate}
+            onChange={(e) => setConvertJoiningDate(e.target.value)}
+          />
+          <Input
+            label="Monthly Fee"
+            type="number"
+            required
+            value={convertMonthlyFee}
+            onChange={(e) => setConvertMonthlyFee(e.target.value)}
+            placeholder="Enter monthly fee"
+            min={0}
+          />
+          <div>
+            <label className={styles.fieldLabel}>Gender</label>
+            <div className={styles.genderRadios}>
+              {GENDER_OPTIONS.map((g) => (
+                <label key={g} className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="convert-gender"
+                    value={g}
+                    checked={convertGender === g}
+                    onChange={() => setConvertGender(g)}
+                    className={styles.radioInput}
+                  />
+                  <span className={styles.radioText}>{g}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

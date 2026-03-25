@@ -176,6 +176,83 @@ export function useMonthlySummary(month: string, search?: string) {
   return { data, loading, error, refetch: fetch_ };
 }
 
+/* ── Student Monthly Attendance ──────────────────────────────────────── */
+
+type StudentMonthlyData = {
+  summary: { present: number; absent: number; holidays: number; total: number };
+  records: Array<{ date: string; status: string }>;
+};
+
+export function useStudentMonthlyAttendance(studentId: string, month: string) {
+  const { accessToken } = useAuth();
+  const [data, setData] = useState<StudentMonthlyData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetch_ = useCallback(async () => {
+    if (!accessToken || !studentId) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ type: 'student-monthly', studentId, month });
+      const res = await fetch(`/api/attendance?${params}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      });
+      if (controller.signal.aborted) return;
+
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+
+      if (!res.ok || !json) {
+        throw new Error((json?.['message'] as string) || 'Failed to load student attendance');
+      }
+      setData(json as unknown as StudentMonthlyData);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load student attendance');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [accessToken, studentId, month]);
+
+  useEffect(() => {
+    fetch_();
+    return () => { abortRef.current?.abort(); };
+  }, [fetch_]);
+
+  return { data, loading, error, refetch: fetch_ };
+}
+
+/* ── Remove Holiday ─────────────────────────────────────────────────── */
+
+export async function removeHoliday(date: string, accessToken?: string | null) {
+  try {
+    const params = new URLSearchParams({ date });
+    const res = await fetch(`/api/attendance/holidays?${params}`, {
+      method: 'DELETE',
+      headers: {
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok) {
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to remove holiday' };
+    }
+    return { ok: true as const };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
+}
+
 export function useMonthDailyCounts(month: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<DailyCountItem[]>([]);

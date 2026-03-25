@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -10,8 +10,11 @@ import { Alert } from '@/components/ui/Alert';
 import { Spinner } from '@/components/ui/Spinner';
 import styles from './page.module.css';
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif'];
+
 export default function ProfilePage() {
-  const { user, accessToken } = useAuth();
+  const { user, accessToken, refreshAuth } = useAuth();
 
   const [editForm, setEditForm] = useState({
     fullName: user?.fullName ?? '',
@@ -36,6 +39,115 @@ export default function ProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // ── Photo Upload State ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSuccess, setPhotoSuccess] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(user?.profilePhotoUrl);
+
+  useEffect(() => {
+    if (user?.profilePhotoUrl) {
+      setAvatarUrl(user.profilePhotoUrl);
+    }
+  }, [user?.profilePhotoUrl]);
+
+  const handleAvatarClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhotoError(null);
+    setPhotoSuccess(false);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setPhotoError('Please select a JPG, PNG, or GIF image.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setPhotoError('Image must be less than 5 MB.');
+      return;
+    }
+
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleUploadPhoto = useCallback(async () => {
+    if (!photoFile) return;
+    setUploadingPhoto(true);
+    setPhotoError(null);
+    setPhotoSuccess(false);
+    try {
+      const formData = new FormData();
+      formData.append('file', photoFile);
+
+      // TODO: Create /api/uploads/image BFF route that proxies to the backend upload endpoint.
+      // For now, this calls the placeholder path. Once the BFF route is implemented, this will work.
+      const res = await fetch('/api/uploads/image', {
+        method: 'POST',
+        headers: {
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        let msg = 'Failed to upload photo';
+        try { const json = await res.json(); msg = json.message || msg; } catch { /* non-JSON */ }
+        setPhotoError(msg);
+        return;
+      }
+
+      const data = await res.json();
+      const uploadedUrl = data.url || data.imageUrl;
+      if (uploadedUrl) {
+        setAvatarUrl(uploadedUrl);
+      }
+
+      // Update the profile with the new photo URL
+      if (uploadedUrl) {
+        await fetch('/api/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify({ profilePhotoUrl: uploadedUrl }),
+        });
+      }
+
+      setPhotoSuccess(true);
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setTimeout(() => setPhotoSuccess(false), 4000);
+
+      // Refresh auth to update the user object with new photo
+      refreshAuth().catch(() => { /* silent */ });
+    } catch {
+      setPhotoError('Network error uploading photo.');
+    } finally {
+      setUploadingPhoto(false);
+      // Reset file input so re-selecting the same file triggers onChange
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [photoFile, accessToken, refreshAuth]);
+
+  const handleCancelPhoto = useCallback(() => {
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    setPhotoError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
 
   const handleSaveProfile = useCallback(async () => {
     setSaving(true);
@@ -119,7 +231,60 @@ export default function ProfilePage() {
 
       {/* Profile Card */}
       <div className={styles.profileCard}>
-        <Avatar src={user?.profilePhotoUrl} name={user?.fullName} size="xl" />
+        <div className={styles.avatarContainer}>
+          <button
+            type="button"
+            className={styles.avatarButton}
+            onClick={handleAvatarClick}
+            aria-label="Change profile photo"
+          >
+            <Avatar
+              src={photoPreview ?? avatarUrl}
+              name={user?.fullName}
+              size="xl"
+            />
+            <span className={styles.avatarOverlay}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif"
+            className={styles.fileInput}
+            onChange={handleFileChange}
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+
+          {/* Photo upload actions */}
+          {photoPreview && (
+            <div className={styles.photoActions}>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={uploadingPhoto}
+                onClick={handleUploadPhoto}
+              >
+                Upload
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancelPhoto}
+                disabled={uploadingPhoto}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+          {photoError && <div className={styles.photoError}>{photoError}</div>}
+          {photoSuccess && <div className={styles.photoSuccess}>Photo updated!</div>}
+        </div>
+
         <div className={styles.profileInfo}>
           <div className={styles.profileName}>{user?.fullName ?? 'User'}</div>
           <div className={styles.roleBadge}>

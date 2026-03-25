@@ -67,6 +67,27 @@
   outline-offset: 2px;
 }
 
+/* ── Filters ──────────────────────────────────────────────────────────── */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.chipGroup {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ── Add Category Inline ─────────────────────────────────────────────── */
+.addCategoryRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
 .expenseAmount {
   font-weight: var(--weight-semibold);
   color: var(--color-danger);

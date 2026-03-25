@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useStaff } from '@/application/staff/use-staff';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +23,23 @@ function toISODate(d: Date) {
   return d.toLocaleDateString('en-CA');
 }
 
+type MonthlySummaryItem = {
+  staffId: string;
+  staffName: string;
+  present: number;
+  absent: number;
+  totalWorkingDays: number;
+};
+
+function toMonthString(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(monthStr: string) {
+  const [year, month] = monthStr.split('-').map(Number);
+  return `${MONTH_NAMES[month - 1]} ${year}`;
+}
+
 export default function StaffAttendancePage() {
   const { accessToken } = useAuth();
   const today = toISODate(new Date());
@@ -34,12 +51,21 @@ export default function StaffAttendancePage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [staffStatuses, setStaffStatuses] = useState<Record<string, string>>({});
   const [fetchingAttendance, setFetchingAttendance] = useState(false);
+  const [isHoliday, setIsHoliday] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Monthly summary state
+  const [selectedMonth, setSelectedMonth] = useState(toMonthString(new Date()));
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummaryItem[]>([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [monthlyError, setMonthlyError] = useState<string | null>(null);
+  const monthlyAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      monthlyAbortRef.current?.abort();
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     };
   }, []);
@@ -76,8 +102,10 @@ export default function StaffAttendancePage() {
             }
           }
           setStaffStatuses(map);
+          setIsHoliday(!!(json['isHoliday'] as boolean));
         } else {
           setStaffStatuses({});
+          setIsHoliday(false);
         }
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -89,6 +117,61 @@ export default function StaffAttendancePage() {
 
     return () => { controller.abort(); };
   }, [selectedDate, accessToken]);
+
+  // Load monthly summary when month changes
+  useEffect(() => {
+    if (!accessToken || activeTab !== 'monthly') return;
+
+    monthlyAbortRef.current?.abort();
+    const controller = new AbortController();
+    monthlyAbortRef.current = controller;
+
+    setMonthlyLoading(true);
+    setMonthlyError(null);
+    (async () => {
+      try {
+        const params = new URLSearchParams({ type: 'monthly', month: selectedMonth });
+        const res = await fetch(`/api/staff-attendance?${params}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+        });
+        if (controller.signal.aborted) return;
+
+        let json: Record<string, unknown> | null = null;
+        try { json = await res.json(); } catch { /* non-JSON */ }
+        if (controller.signal.aborted) return;
+
+        if (res.ok && json) {
+          const items = (json['data'] ?? json['items'] ?? json) as MonthlySummaryItem[];
+          setMonthlySummary(Array.isArray(items) ? items : []);
+        } else {
+          const msg = (json?.['message'] as string) || 'Failed to load monthly summary';
+          setMonthlyError(msg);
+          setMonthlySummary([]);
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (!controller.signal.aborted) {
+          setMonthlyError('Network error. Please try again.');
+          setMonthlySummary([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) setMonthlyLoading(false);
+      }
+    })();
+
+    return () => { controller.abort(); };
+  }, [selectedMonth, accessToken, activeTab]);
+
+  const navigateMonth = useCallback((delta: number) => {
+    setSelectedMonth((prev) => {
+      const [y, m] = prev.split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return toMonthString(d);
+    });
+  }, []);
+
+  const currentMonthStr = toMonthString(new Date());
 
   const showTimedError = useCallback((msg: string) => {
     setActionError(msg);
@@ -134,8 +217,22 @@ export default function StaffAttendancePage() {
 
   const activeStaff = staff.filter((s) => s.status === 'ACTIVE');
 
+  const monthlyAggregates = useMemo(() => {
+    if (monthlySummary.length === 0) return null;
+    const totalPresent = monthlySummary.reduce((sum, item) => sum + item.present, 0);
+    const totalAbsent = monthlySummary.reduce((sum, item) => sum + item.absent, 0);
+    const totalWorkingDays = monthlySummary.reduce((sum, item) => sum + item.totalWorkingDays, 0);
+    const avgAttendance = totalWorkingDays > 0 ? Math.round((totalPresent / totalWorkingDays) * 100) : 0;
+    return { totalPresent, totalAbsent, avgAttendance };
+  }, [monthlySummary]);
+
   const dailyTab = (
     <>
+      {isHoliday && !loading && !fetchingAttendance && (
+        <div className={styles.holidayBanner}>
+          <span className={styles.holidayBannerText}>This day is marked as a holiday</span>
+        </div>
+      )}
       {loading || fetchingAttendance ? (
         <Spinner centered size="lg" />
       ) : activeStaff.length === 0 ? (
@@ -183,7 +280,64 @@ export default function StaffAttendancePage() {
   );
 
   const monthlyTab = (
-    <EmptyState message="Monthly summary coming soon" subtitle="Staff monthly attendance summary is under development." />
+    <>
+      <div className={styles.monthNav}>
+        <button type="button" className={styles.dateNavBtn} onClick={() => navigateMonth(-1)} aria-label="Previous month">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <span className={styles.monthLabel}>{formatMonthLabel(selectedMonth)}</span>
+        <button type="button" className={styles.dateNavBtn} disabled={selectedMonth >= currentMonthStr} onClick={() => navigateMonth(1)} aria-label="Next month">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+        </button>
+        <Button variant="outline" size="sm" onClick={() => setSelectedMonth(currentMonthStr)}>This Month</Button>
+      </div>
+
+      {monthlyAggregates && !monthlyLoading && (
+        <div className={styles.aggregateStats}>
+          <div className={styles.aggregateStat}>
+            <span className={styles.aggregateLabel}>Avg Attendance:</span>
+            <span className={styles.aggregateValue}>{monthlyAggregates.avgAttendance}%</span>
+          </div>
+          <div className={styles.aggregateStat}>
+            <span className={styles.aggregateLabel}>Total Present:</span>
+            <span className={`${styles.aggregateValue} ${styles.presentCount}`}>{monthlyAggregates.totalPresent}</span>
+          </div>
+          <div className={styles.aggregateStat}>
+            <span className={styles.aggregateLabel}>Total Absent:</span>
+            <span className={`${styles.aggregateValue} ${styles.absentCount}`}>{monthlyAggregates.totalAbsent}</span>
+          </div>
+        </div>
+      )}
+
+      {monthlyError && <Alert variant="error" message={monthlyError} />}
+
+      {monthlyLoading ? (
+        <Spinner centered size="lg" />
+      ) : monthlySummary.length === 0 && !monthlyError ? (
+        <EmptyState message="No attendance data" subtitle="No staff attendance records found for this month." />
+      ) : (
+        <Table striped>
+          <Thead>
+            <Tr>
+              <Th>Staff Name</Th>
+              <Th>Present</Th>
+              <Th>Absent</Th>
+              <Th>Total Working Days</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {monthlySummary.map((item) => (
+              <Tr key={item.staffId}>
+                <Td><span className={styles.staffNameCell}>{item.staffName}</span></Td>
+                <Td><span className={styles.presentCount}>{item.present}</span></Td>
+                <Td><span className={styles.absentCount}>{item.absent}</span></Td>
+                <Td>{item.totalWorkingDays}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      )}
+    </>
   );
 
   return (

@@ -44,7 +44,7 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
   }
 }
 
-export function useFeeDues(month?: string, page = 1) {
+export function useFeeDues(month?: string, page = 1, batchId?: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<FeeDueItem[]>([]);
   const [meta, setMeta] = useState<{ total: number; totalPages: number } | null>(null);
@@ -64,6 +64,7 @@ export function useFeeDues(month?: string, page = 1) {
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '20' });
       if (month) params.set('month', month);
+      if (batchId) params.set('batchId', batchId);
       const res = await fetch(`/api/fees/dues?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
@@ -85,7 +86,7 @@ export function useFeeDues(month?: string, page = 1) {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [accessToken, month, page]);
+  }, [accessToken, month, page, batchId]);
 
   useEffect(() => {
     fetch_();
@@ -95,7 +96,7 @@ export function useFeeDues(month?: string, page = 1) {
   return { data, meta, loading, error, refetch: fetch_ };
 }
 
-export function usePaidFees(month?: string) {
+export function usePaidFees(month?: string, batchId?: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<FeeDueItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -114,6 +115,7 @@ export function usePaidFees(month?: string) {
     try {
       const params = new URLSearchParams();
       if (month) params.set('month', month);
+      if (batchId) params.set('batchId', batchId);
       const res = await fetch(`/api/fees/paid?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
@@ -135,7 +137,7 @@ export function usePaidFees(month?: string) {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [accessToken, month]);
+  }, [accessToken, month, batchId]);
 
   useEffect(() => {
     fetch_();
@@ -186,6 +188,54 @@ export function usePaymentRequests(status?: string) {
       if (!controller.signal.aborted) setLoading(false);
     }
   }, [accessToken, status]);
+
+  useEffect(() => {
+    fetch_();
+    return () => { abortRef.current?.abort(); };
+  }, [fetch_]);
+
+  return { data, loading, error, refetch: fetch_ };
+}
+
+export function useStudentFees(studentId: string | null) {
+  const { accessToken } = useAuth();
+  const [data, setData] = useState<FeeDueItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetch_ = useCallback(async () => {
+    if (!accessToken || !studentId) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/fees/students/${encodeURIComponent(studentId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      });
+      if (controller.signal.aborted) return;
+
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+
+      if (!res.ok || !json) {
+        throw new Error((json?.['message'] as string) || 'Failed to load student fees');
+      }
+      const items = Array.isArray(json) ? json : (json['items'] ?? json['data'] ?? json['dues'] ?? []);
+      setData(items as FeeDueItem[]);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load student fees');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [accessToken, studentId]);
 
   useEffect(() => {
     fetch_();

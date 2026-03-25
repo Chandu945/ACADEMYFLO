@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useStudentDetail, deleteStudent } from '@/application/students/use-students';
+import { useStudentDetail, deleteStudent, updateStudent } from '@/application/students/use-students';
 import { useAuth } from '@/application/auth/use-auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -10,6 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Modal } from '@/components/ui/Modal';
+import { TextArea } from '@/components/ui/TextArea';
 import styles from './page.module.css';
 
 const currencyFormatter = new Intl.NumberFormat('en-IN', {
@@ -46,6 +49,17 @@ function formatAddress(addr: unknown): string | null {
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
+function getStatusOptions(currentStatus: string): { value: string; label: string }[] {
+  const upper = currentStatus.toUpperCase();
+  if (upper === 'ACTIVE') {
+    return [
+      { value: 'INACTIVE', label: 'Inactive' },
+      { value: 'LEFT', label: 'Left' },
+    ];
+  }
+  return [{ value: 'ACTIVE', label: 'Active' }];
+}
+
 export default function StudentDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -55,8 +69,47 @@ export default function StudentDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Status change state
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusReason, setStatusReason] = useState('');
+  const [statusChanging, setStatusChanging] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
+
   const canEdit = user?.role === 'OWNER' || user?.role === 'STAFF';
   const canDelete = user?.role === 'OWNER';
+  const canChangeStatus = user?.role === 'OWNER';
+
+  const openStatusModal = useCallback(() => {
+    if (!student) return;
+    const options = getStatusOptions(student.status);
+    setNewStatus(options[0]?.value ?? '');
+    setStatusReason('');
+    setStatusError(null);
+    setStatusSuccess(null);
+    setStatusModalOpen(true);
+  }, [student]);
+
+  const handleStatusChange = useCallback(async () => {
+    if (!params.id || !newStatus) return;
+    setStatusChanging(true);
+    setStatusError(null);
+    const result = await updateStudent(
+      params.id,
+      { status: newStatus, statusChangeReason: statusReason.trim() || undefined },
+      accessToken,
+    );
+    setStatusChanging(false);
+    if (!result.ok) {
+      setStatusError(result.error || 'Failed to change status');
+      return;
+    }
+    setStatusModalOpen(false);
+    setStatusSuccess('Status changed successfully');
+    refetch();
+    setTimeout(() => setStatusSuccess(null), 3000);
+  }, [params.id, newStatus, statusReason, accessToken, refetch]);
 
   const handleDelete = useCallback(async () => {
     if (!params.id) return;
@@ -91,6 +144,8 @@ export default function StudentDetailPage() {
     </div>
   );
 
+  const guardianMobile = student.guardian?.mobile;
+
   return (
     <div className={styles.page}>
       {/* Back */}
@@ -100,6 +155,8 @@ export default function StudentDetailPage() {
         </svg>
         Back to Students
       </button>
+
+      {statusSuccess && <Alert variant="success" message={statusSuccess} />}
 
       {/* Profile Header */}
       <div className={styles.profileHeader}>
@@ -115,6 +172,14 @@ export default function StudentDetailPage() {
           </div>
         </div>
         <div className={styles.profileActions}>
+          <Link href={`/students/${params.id}/fees`}>
+            <Button variant="secondary">View Fee Details</Button>
+          </Link>
+          {canChangeStatus && (
+            <Button variant="outline" onClick={openStatusModal}>
+              Change Status
+            </Button>
+          )}
           {canEdit && (
             <Button variant="outline" onClick={() => router.push(`/students/${params.id}/edit`)}>
               Edit
@@ -157,12 +222,29 @@ export default function StudentDetailPage() {
           )}
         </div>
 
+        {/* Family Info */}
+        <div className={styles.infoCard}>
+          <h3 className={styles.infoCardTitle}>Family Information</h3>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Father Name</span>
+            <span className={styles.infoValue}>{student.fatherName || '-'}</span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Mother Name</span>
+            <span className={styles.infoValue}>{student.motherName || '-'}</span>
+          </div>
+        </div>
+
         {/* Contact Info */}
         <div className={styles.infoCard}>
           <h3 className={styles.infoCardTitle}>Contact Information</h3>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>Phone</span>
+            <span className={styles.infoLabel}>Mobile Number</span>
             <span className={styles.infoValue}>{student.mobileNumber || '-'}</span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>WhatsApp Number</span>
+            <span className={styles.infoValue}>{student.whatsappNumber || '-'}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Email</span>
@@ -179,7 +261,13 @@ export default function StudentDetailPage() {
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Mobile</span>
-            <span className={styles.infoValue}>{student.guardian?.mobile || '-'}</span>
+            <span className={styles.infoValue}>
+              {guardianMobile ? (
+                <a href={`tel:${guardianMobile}`} className={styles.contactLink}>
+                  {guardianMobile}
+                </a>
+              ) : '-'}
+            </span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Email</span>
@@ -187,6 +275,59 @@ export default function StudentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Status Change Modal */}
+      <Modal
+        open={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        title="Change Student Status"
+        size="sm"
+        footer={
+          <div className={styles.modalFooter}>
+            <Button variant="secondary" onClick={() => setStatusModalOpen(false)} disabled={statusChanging}>
+              Cancel
+            </Button>
+            <Button variant="primary" loading={statusChanging} onClick={handleStatusChange}>
+              Confirm
+            </Button>
+          </div>
+        }
+      >
+        <div className={styles.statusModalBody}>
+          {statusError && <Alert variant="error" message={statusError} />}
+          <div className={styles.currentStatus}>
+            <span className={styles.statusLabel}>Current Status:</span>
+            <Badge variant={statusBadgeVariant(student.status)} dot>
+              {student.status}
+            </Badge>
+          </div>
+          <div className={styles.statusOptions}>
+            <span className={styles.statusLabel}>Change to:</span>
+            {getStatusOptions(student.status).map((opt) => (
+              <label key={opt.value} className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name="newStatus"
+                  value={opt.value}
+                  checked={newStatus === opt.value}
+                  onChange={() => setNewStatus(opt.value)}
+                  className={styles.radioInput}
+                />
+                <Badge variant={statusBadgeVariant(opt.value)}>{opt.label}</Badge>
+              </label>
+            ))}
+          </div>
+          <TextArea
+            label="Reason (optional)"
+            value={statusReason}
+            onChange={(e) => setStatusReason(e.target.value)}
+            maxLength={500}
+            showCharCount
+            placeholder="Enter reason for status change..."
+            rows={3}
+          />
+        </div>
+      </Modal>
 
       {/* Delete Confirmation */}
       <ConfirmDialog

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEvents } from '@/application/events/use-events';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SearchInput } from '@/components/ui/SearchInput';
 import styles from './page.module.css';
 
 function formatDate(dateStr: string) {
@@ -49,11 +50,18 @@ export default function EventsPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: events, loading, error, refetch } = useEvents({
     status: statusFilter || undefined,
     eventType: typeFilter || undefined,
   });
+
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery.trim()) return events;
+    const q = searchQuery.trim().toLowerCase();
+    return events.filter((event) => event.title.toLowerCase().includes(q));
+  }, [events, searchQuery]);
 
   return (
     <div className={styles.page}>
@@ -61,6 +69,14 @@ export default function EventsPage() {
         <h1 className={styles.title}>Events</h1>
         <Button variant="primary" onClick={() => router.push('/events/new')}>Add Event</Button>
       </div>
+
+      <SearchInput
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Search events by title..."
+        label="Search events"
+        debounceMs={200}
+      />
 
       <div className={styles.filters}>
         <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} />
@@ -71,15 +87,15 @@ export default function EventsPage() {
 
       {loading ? (
         <Spinner centered size="lg" />
-      ) : events.length === 0 ? (
+      ) : filteredEvents.length === 0 ? (
         <EmptyState
-          message="No events found"
-          subtitle="Create an event to share with your academy"
-          action={<Button variant="primary" onClick={() => router.push('/events/new')}>Add Event</Button>}
+          message={searchQuery.trim() ? 'No matching events' : 'No events found'}
+          subtitle={searchQuery.trim() ? 'Try a different search term' : 'Create an event to share with your academy'}
+          action={!searchQuery.trim() ? <Button variant="primary" onClick={() => router.push('/events/new')}>Add Event</Button> : undefined}
         />
       ) : (
         <div className={styles.cardGrid}>
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <div
               key={event.id}
               className={styles.eventCard}

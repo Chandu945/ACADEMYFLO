@@ -158,3 +158,93 @@ export async function deleteEvent(id: string, accessToken?: string | null) {
     return { ok: false as const, error: 'Network error. Please try again.' };
   }
 }
+
+/* ── Gallery ────────────────────────────────────────────────────────────── */
+
+export type GalleryPhoto = {
+  id: string;
+  eventId: string;
+  url: string;
+  thumbnailUrl: string | null;
+  caption: string | null;
+  uploadedBy: string;
+  uploadedByName: string | null;
+  createdAt: string;
+};
+
+export function useEventGallery(eventId: string | null) {
+  const { accessToken } = useAuth();
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => { setPhotos([]); setError(null); }, [eventId]);
+
+  const fetch_ = useCallback(async () => {
+    if (!eventId || !accessToken) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/events/${eventId}/gallery`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+      });
+      if (controller.signal.aborted) return;
+      const json = await safeJson(res);
+      if (controller.signal.aborted) return;
+      if (!res.ok || !json) throw new Error((json?.['message'] as string) || 'Failed to load gallery');
+      setPhotos((json['data'] ?? json['items'] ?? json) as unknown as GalleryPhoto[]);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      if (controller.signal.aborted) return;
+      setError(e instanceof Error ? e.message : 'Failed to load gallery');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [accessToken, eventId]);
+
+  useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
+  return { photos, loading, error, refetch: fetch_ };
+}
+
+export async function uploadGalleryPhoto(eventId: string, file: File, caption?: string, accessToken?: string | null) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (caption) formData.append('caption', caption);
+
+    const res = await fetch(`/api/events/${eventId}/gallery`, {
+      method: 'POST',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      body: formData,
+      signal: AbortSignal.timeout(30000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to upload photo' };
+    return { ok: true as const, data: json };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
+}
+
+export async function deleteGalleryPhoto(eventId: string, photoId: string, accessToken?: string | null) {
+  try {
+    const res = await fetch(`/api/events/${eventId}/gallery/${photoId}`, {
+      method: 'DELETE',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      const json = await safeJson(res);
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to delete photo' };
+    }
+    return { ok: true as const };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
+}

@@ -25,10 +25,15 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import { useAuth } from '@/application/auth/use-auth';
+import { useTheme } from '@/application/theme/use-theme';
+import type { ThemeMode } from '@/application/theme/use-theme';
 import styles from './Sidebar.module.css';
 
 /* ── Navigation definitions per role ─────────────────────────────────── */
@@ -119,15 +124,15 @@ const PARENT_NAV: NavSection[] = [
   {
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Children', href: '/students', icon: Baby },
-      { label: 'Payments', href: '/fees', icon: Receipt },
+      { label: 'My Children', href: '/children', icon: Baby },
+      { label: 'Payments', href: '/payments', icon: Receipt },
     ],
   },
   {
     title: 'Account',
     items: [
       { label: 'Profile', href: '/profile', icon: User },
-      { label: 'Settings', href: '/settings', icon: Building2 },
+      { label: 'Academy Info', href: '/academy-info', icon: Building2 },
     ],
   },
 ];
@@ -145,9 +150,14 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
+const THEME_CYCLE: ThemeMode[] = ['light', 'dark', 'system'];
+const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
+const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
+
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { mode, setMode } = useTheme();
 
   /* Close sidebar on Escape when mobile overlay is visible */
   useEffect(() => {
@@ -279,6 +289,28 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               </button>
             </div>
           )}
+
+          {/* ── Theme Toggle ──────────────────────────────────────── */}
+          {(() => {
+            const ThemeIcon = THEME_ICON[mode];
+            return (
+              <button
+                type="button"
+                className={styles.themeToggle}
+                onClick={() => {
+                  const idx = THEME_CYCLE.indexOf(mode);
+                  setMode(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]);
+                }}
+                title={`Theme: ${THEME_LABEL[mode]}`}
+                aria-label={`Theme: ${THEME_LABEL[mode]}. Click to change.`}
+              >
+                <ThemeIcon size={18} />
+                {!collapsed && (
+                  <span className={styles.themeLabel}>{THEME_LABEL[mode]}</span>
+                )}
+              </button>
+            );
+          })()}
 
           <button
             type="button"

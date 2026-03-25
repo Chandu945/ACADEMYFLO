@@ -11,6 +11,7 @@ import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUpload
 import { getParentProfileUseCase } from '../../../application/parent/use-cases/get-parent-profile.usecase';
 import { updateParentProfileUseCase } from '../../../application/parent/use-cases/update-parent-profile.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
+import { useAuth } from '../../context/AuthContext';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -29,6 +30,7 @@ export function ParentProfileScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
+  const { logout } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -189,12 +191,29 @@ export function ParentProfileScreen() {
         testID="profile-change-password"
       >
         <View style={styles.cpIconContainer}>
-          
+
           <AppIcon name="key-outline" size={20} color={colors.primary} />
         </View>
         <Text style={styles.changePasswordText}>Change Password</Text>
-        
+
         <AppIcon name="chevron-right" size={20} color={colors.textDisabled} />
+      </TouchableOpacity>
+
+      {/* Logout */}
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={() => {
+          crossAlert('Logout', 'Are you sure you want to logout?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Logout', style: 'destructive', onPress: () => logout() },
+          ]);
+        }}
+        testID="profile-logout"
+      >
+        <View style={styles.logoutIconContainer}>
+          <AppIcon name="logout" size={20} color={colors.danger} />
+        </View>
+        <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </Screen>
   );
@@ -302,5 +321,29 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.medium,
     color: colors.text,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginTop: spacing.base,
+    ...shadows.sm,
+  },
+  logoutIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.dangerBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  logoutText: {
+    flex: 1,
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.medium,
+    color: colors.danger,
   },
 });
