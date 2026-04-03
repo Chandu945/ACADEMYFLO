@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   StatusBar,
@@ -11,6 +10,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
+import type { TextInput } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
@@ -80,7 +80,7 @@ export function OwnerSignupScreen() {
   }, []);
 
   const handleFullNameChange = useCallback((text: string) => {
-    setFullName(text);
+    setFullName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
     clearFieldError('fullName');
     if (error) setError(null);
   }, [clearFieldError, error]);
@@ -92,7 +92,9 @@ export function OwnerSignupScreen() {
   }, [clearFieldError, error]);
 
   const handlePhoneChange = useCallback((text: string) => {
-    setPhoneNumber(text);
+    const digitsOnly = text.replace(/[^0-9]/g, '');
+    if (digitsOnly.length > 0 && !/^[6-9]/.test(digitsOnly)) return;
+    setPhoneNumber(digitsOnly);
     clearFieldError('phoneNumber');
     if (error) setError(null);
   }, [clearFieldError, error]);
@@ -139,6 +141,8 @@ export function OwnerSignupScreen() {
       errors['password'] = 'Password is required';
     } else if (password.length < MIN_PASSWORD_LENGTH) {
       errors['password'] = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])/.test(password)) {
+      errors['password'] = 'Must contain uppercase, lowercase, number, and special character';
     }
 
     if (!confirmPassword) {
@@ -186,11 +190,15 @@ export function OwnerSignupScreen() {
           setError(result.message);
           startCooldown();
         } else {
+          const msg = result.message;
           if (result.fieldErrors && Object.keys(result.fieldErrors).length > 0) {
             setFieldErrors(result.fieldErrors);
-            setError('Please fix the errors below.');
+          } else if (/email already exists/i.test(msg)) {
+            setFieldErrors({ email: msg });
+          } else if (/phone.*already exists/i.test(msg)) {
+            setFieldErrors({ phoneNumber: msg });
           } else {
-            setError(result.message);
+            setError(msg);
           }
         }
       }
@@ -269,7 +277,7 @@ export function OwnerSignupScreen() {
             keyboardType="phone-pad"
             autoComplete="tel"
             textContentType="telephoneNumber"
-            maxLength={16}
+            maxLength={10}
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
             testID="signup-phone"

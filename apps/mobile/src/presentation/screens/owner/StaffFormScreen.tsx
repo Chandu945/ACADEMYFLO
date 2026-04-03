@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { ScrollView, View, Text, TextInput, StyleSheet, Pressable, Keyboard } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
@@ -34,6 +34,15 @@ function normalizeToE164(raw: string): string {
   return raw;
 }
 
+/** Strip country code prefix to get bare 10-digit number for display */
+function stripCountryCode(phone: string): string {
+  if (!phone) return '';
+  const stripped = phone.replace(/^\+91/, '').replace(/^\+/, '');
+  // If it starts with 91 and is 12 digits, strip the 91
+  if (/^91\d{10}$/.test(stripped)) return stripped.slice(2);
+  return stripped;
+}
+
 const GENDER_OPTIONS: { label: string; value: 'MALE' | 'FEMALE' | 'OTHER' }[] = [
   { label: 'Male', value: 'MALE' },
   { label: 'Female', value: 'FEMALE' },
@@ -60,14 +69,14 @@ export function StaffFormScreen() {
   // Basic fields
   const [fullName, setFullName] = useState(staff?.fullName ?? '');
   const [email, setEmail] = useState(staff?.email ?? '');
-  const [phoneNumber, setPhoneNumber] = useState(staff?.phoneNumber ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(stripCountryCode(staff?.phoneNumber ?? ''));
   const [password, setPassword] = useState('');
 
   // Extended fields
   const [startDate, setStartDate] = useState(staff?.startDate ?? '');
   const [gender, setGender] = useState(staff?.gender ?? '');
-  const [whatsappNumber, setWhatsappNumber] = useState(staff?.whatsappNumber ?? '');
-  const [mobileNumber, setMobileNumber] = useState(staff?.mobileNumber ?? '');
+  const [whatsappNumber, setWhatsappNumber] = useState(stripCountryCode(staff?.whatsappNumber ?? ''));
+  const [mobileNumber, _setMobileNumber] = useState(stripCountryCode(staff?.mobileNumber ?? ''));
   const [address, setAddress] = useState(staff?.address ?? '');
   const [qualification, setQualification] = useState(staff?.qualificationInfo?.qualification ?? '');
   const [position, setPosition] = useState(staff?.qualificationInfo?.position ?? '');
@@ -197,10 +206,16 @@ export function StaffFormScreen() {
         (navigation as any).navigate('StaffList');
       }
     } else {
-      if (result.error.fieldErrors) {
+      const msg = result.error.message;
+      if (result.error.fieldErrors && Object.keys(result.error.fieldErrors).length > 0) {
         setFieldErrors(result.error.fieldErrors);
+      } else if (/email already exists/i.test(msg)) {
+        setFieldErrors({ email: msg });
+      } else if (/phone.*already exists/i.test(msg)) {
+        setFieldErrors({ phoneNumber: msg });
+      } else {
+        setServerError(msg);
       }
-      setServerError(result.error.message);
     }
     } catch (e) {
       if (__DEV__) console.error('[StaffFormScreen] Submit failed:', e);
@@ -242,7 +257,7 @@ export function StaffFormScreen() {
         <Input
           label="Full Name"
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(text) => setFullName(text.replace(/[^a-zA-Z\s'.,-]/g, ''))}
           placeholder="e.g. Priya Sharma"
           error={fieldErrors['fullName']}
           autoCapitalize="words"
@@ -264,14 +279,18 @@ export function StaffFormScreen() {
         <Input
           label="Phone Number"
           value={phoneNumber}
-          onChangeText={setPhoneNumber}
+          onChangeText={(text) => {
+            const digits = text.replace(/[^0-9]/g, '');
+            if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+            setPhoneNumber(digits);
+          }}
           prefix="+91"
           placeholder="9876543210"
           error={fieldErrors['phoneNumber']}
           keyboardType="phone-pad"
           autoComplete="tel"
           textContentType="telephoneNumber"
-          maxLength={16}
+          maxLength={10}
           testID="input-phoneNumber"
         />
 
@@ -332,13 +351,17 @@ export function StaffFormScreen() {
         <Input
           label="WhatsApp Number"
           value={whatsappNumber}
-          onChangeText={setWhatsappNumber}
+          onChangeText={(text) => {
+            const digits = text.replace(/[^0-9]/g, '');
+            if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+            setWhatsappNumber(digits);
+          }}
           prefix="+91"
           placeholder="9876543210"
           keyboardType="phone-pad"
           autoComplete="tel"
           textContentType="telephoneNumber"
-          maxLength={16}
+          maxLength={10}
           testID="input-whatsappNumber"
         />
 

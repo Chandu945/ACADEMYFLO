@@ -23,6 +23,13 @@ import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 
+function stripCountryCode(phone: string): string {
+  if (!phone) return '';
+  const stripped = phone.replace(/^\+91/, '').replace(/^\+/, '');
+  if (/^91\d{10}$/.test(stripped)) return stripped.slice(2);
+  return stripped;
+}
+
 type Nav = NativeStackNavigationProp<MoreStackParamList>;
 
 export const SOURCES: { value: EnquirySource; label: string; icon: string }[] = [
@@ -47,11 +54,11 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
   const { showToast } = useToast();
 
   const [prospectName, setProspectName] = useState(enquiry?.prospectName ?? '');
-  const [guardianName, setGuardianName] = useState(enquiry?.guardianName ?? '');
-  const [mobileNumber, setMobileNumber] = useState(enquiry?.mobileNumber ?? '');
-  const [whatsappNumber, setWhatsappNumber] = useState(enquiry?.whatsappNumber ?? '');
-  const [email, setEmail] = useState(enquiry?.email ?? '');
-  const [address, setAddress] = useState(enquiry?.address ?? '');
+  const [guardianName, _setGuardianName] = useState(enquiry?.guardianName ?? '');
+  const [mobileNumber, setMobileNumber] = useState(stripCountryCode(enquiry?.mobileNumber ?? ''));
+  const [whatsappNumber, _setWhatsappNumber] = useState(stripCountryCode(enquiry?.whatsappNumber ?? ''));
+  const [email, _setEmail] = useState(enquiry?.email ?? '');
+  const [address, _setAddress] = useState(enquiry?.address ?? '');
   const [interestedIn, setInterestedIn] = useState(enquiry?.interestedIn ?? '');
   const [source, setSource] = useState<EnquirySource | undefined>(
     enquiry?.source ? (enquiry.source as EnquirySource) : undefined,
@@ -80,12 +87,21 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
   const testIdPrefix = isEdit ? 'edit-' : '';
 
   const handleSave = async () => {
-    if (!prospectName.trim()) {
+    const trimmedName = prospectName.trim();
+    if (!trimmedName) {
       crossAlert('Validation', 'Prospect name is required');
       return;
     }
-    if (!mobileNumber.trim() || !/^\+?\d{10,15}$/.test(mobileNumber.trim())) {
-      crossAlert('Validation', 'Valid mobile number is required (e.g. +919876543210)');
+    if (trimmedName.length < 2) {
+      crossAlert('Validation', 'Name must be at least 2 characters');
+      return;
+    }
+    if (!/^[a-zA-Z\s'.,-]+$/.test(trimmedName)) {
+      crossAlert('Validation', 'Name can only contain letters, spaces, and punctuation');
+      return;
+    }
+    if (!mobileNumber.trim() || !/^[6-9]\d{9}$/.test(mobileNumber.trim())) {
+      crossAlert('Validation', 'Please enter a valid 10-digit mobile number starting with 6-9');
       return;
     }
     if (nextFollowUpDate.trim() && !isValidDate(nextFollowUpDate.trim())) {
@@ -99,8 +115,8 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         const result = await enquiryApi.updateEnquiry(enquiry.id, {
           prospectName: prospectName.trim(),
           guardianName: guardianName.trim() || null,
-          mobileNumber: mobileNumber.trim().replace(/^\+/, ''),
-          whatsappNumber: whatsappNumber.trim() || null,
+          mobileNumber: /^\d{10}$/.test(mobileNumber.trim()) ? `91${mobileNumber.trim()}` : mobileNumber.trim().replace(/^\+/, ''),
+          whatsappNumber: whatsappNumber.trim() ? (/^\d{10}$/.test(whatsappNumber.trim()) ? `91${whatsappNumber.trim()}` : whatsappNumber.trim()) : null,
           email: email.trim() || null,
           address: address.trim() || null,
           interestedIn: interestedIn.trim() || null,
@@ -123,8 +139,8 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         const result = await enquiryApi.createEnquiry({
           prospectName: prospectName.trim(),
           guardianName: guardianName.trim() || undefined,
-          mobileNumber: mobileNumber.trim().replace(/^\+/, ''),
-          whatsappNumber: whatsappNumber.trim() || undefined,
+          mobileNumber: /^\d{10}$/.test(mobileNumber.trim()) ? `91${mobileNumber.trim()}` : mobileNumber.trim().replace(/^\+/, ''),
+          whatsappNumber: whatsappNumber.trim() ? (/^\d{10}$/.test(whatsappNumber.trim()) ? `91${whatsappNumber.trim()}` : whatsappNumber.trim()) : undefined,
           email: email.trim() || undefined,
           address: address.trim() || undefined,
           interestedIn: interestedIn.trim() || undefined,
@@ -174,21 +190,26 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         <Input
           label="Prospect Name *"
           value={prospectName}
-          onChangeText={setProspectName}
+          onChangeText={(text) => setProspectName(text.replace(/[^a-zA-Z\s'.,-]/g, ''))}
           placeholder="Full name"
           maxLength={100}
+          autoCapitalize="words"
           testID={`${testIdPrefix}prospect-name`}
         />
         <Input
           label="Mobile Number *"
           value={mobileNumber}
-          onChangeText={setMobileNumber}
+          onChangeText={(text) => {
+            const digits = text.replace(/[^0-9]/g, '');
+            if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+            setMobileNumber(digits);
+          }}
           prefix="+91"
           placeholder="9876543210"
           keyboardType="phone-pad"
           autoComplete="tel"
           textContentType="telephoneNumber"
-          maxLength={15}
+          maxLength={10}
           testID={`${testIdPrefix}mobile-number`}
         />
       </View>

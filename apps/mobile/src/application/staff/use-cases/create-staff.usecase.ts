@@ -10,14 +10,8 @@ export type CreateStaffDeps = {
   staffApi: CreateStaffApiPort;
 };
 
-/** Normalize a phone number to E.164 before validation */
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/[^\d]/g, '');
-  if (/^\d{10}$/.test(digits)) return `+91${digits}`;
-  if (raw.startsWith('+')) return raw;
-  if (/^\d{12}$/.test(digits) && digits.startsWith('91')) return `+${digits}`;
-  return raw;
-}
+const NAME_RE = /^[a-zA-Z\s'.,-]+$/;
+
 
 export function validateCreateStaffForm(fields: {
   fullName: string;
@@ -27,8 +21,13 @@ export function validateCreateStaffForm(fields: {
 }): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!fields.fullName.trim()) {
+  const trimmedName = fields.fullName.trim();
+  if (!trimmedName) {
     errors['fullName'] = 'Full name is required';
+  } else if (trimmedName.length < 2) {
+    errors['fullName'] = 'Name must be at least 2 characters';
+  } else if (!NAME_RE.test(trimmedName)) {
+    errors['fullName'] = 'Name can only contain letters, spaces, and punctuation';
   }
 
   if (!fields.email.trim()) {
@@ -37,16 +36,19 @@ export function validateCreateStaffForm(fields: {
     errors['email'] = 'Invalid email format';
   }
 
-  if (!fields.phoneNumber.trim()) {
+  const phone = fields.phoneNumber.trim();
+  if (!phone) {
     errors['phoneNumber'] = 'Phone number is required';
-  } else if (!/^\+[1-9]\d{6,14}$/.test(normalizePhone(fields.phoneNumber.trim()))) {
-    errors['phoneNumber'] = 'Please enter a valid 10-digit phone number';
+  } else if (!/^[6-9]\d{9}$/.test(phone)) {
+    errors['phoneNumber'] = 'Please enter a valid 10-digit phone number starting with 6-9';
   }
 
   if (!fields.password) {
     errors['password'] = 'Password is required';
   } else if (fields.password.length < 8) {
     errors['password'] = 'Password must be at least 8 characters';
+  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])/.test(fields.password)) {
+    errors['password'] = 'Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character';
   }
 
   return errors;
@@ -60,8 +62,13 @@ export function validateUpdateStaffForm(fields: {
 }): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!fields.fullName.trim()) {
+  const trimmedName = fields.fullName.trim();
+  if (!trimmedName) {
     errors['fullName'] = 'Full name is required';
+  } else if (trimmedName.length < 2) {
+    errors['fullName'] = 'Name must be at least 2 characters';
+  } else if (!NAME_RE.test(trimmedName)) {
+    errors['fullName'] = 'Name can only contain letters, spaces, and punctuation';
   }
 
   if (!fields.email.trim()) {
@@ -70,14 +77,17 @@ export function validateUpdateStaffForm(fields: {
     errors['email'] = 'Invalid email format';
   }
 
-  if (!fields.phoneNumber.trim()) {
+  const phone = fields.phoneNumber.trim();
+  if (!phone) {
     errors['phoneNumber'] = 'Phone number is required';
-  } else if (!/^\+[1-9]\d{6,14}$/.test(normalizePhone(fields.phoneNumber.trim()))) {
-    errors['phoneNumber'] = 'Please enter a valid 10-digit phone number';
+  } else if (!/^[6-9]\d{9}$/.test(phone)) {
+    errors['phoneNumber'] = 'Please enter a valid 10-digit phone number starting with 6-9';
   }
 
   if (fields.password && fields.password.length < 8) {
     errors['password'] = 'Password must be at least 8 characters';
+  } else if (fields.password && !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])/.test(fields.password)) {
+    errors['password'] = 'Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character';
   }
 
   return errors;

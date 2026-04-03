@@ -41,6 +41,8 @@ export const StudentErrors = {
     new AppError('ACADEMY_SETUP_REQUIRED', 'Please complete academy setup first'),
   notInAcademy: () => AppError.forbidden('Student does not belong to your academy'),
   alreadyDeleted: () => AppError.conflict('Student has already been deleted'),
+  duplicateEmail: () => AppError.conflict('A student with this email already exists in your academy'),
+  duplicatePhone: () => AppError.conflict('A student with this phone number already exists in your academy'),
   feeChangeNotAllowed: () => AppError.forbidden('Only owners can change student fees'),
   statusChangeNotAllowed: () => AppError.forbidden('Only owners can change student status'),
   deleteNotAllowed: () => AppError.forbidden('Only owners can delete students'),

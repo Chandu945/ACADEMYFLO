@@ -96,7 +96,7 @@ export function StaffDashboardScreen() {
         enquirySummary: enquiryRes.ok ? enquiryRes.value : null,
         birthdayStudents: birthdayRes.ok ? birthdayRes.value.students : [],
       });
-    } catch (_e) {
+    } catch {
       if (!mountedRef.current) return;
       setError('Failed to load dashboard data. Please try again.');
     }
@@ -174,10 +174,12 @@ export function StaffDashboardScreen() {
                 <AppIcon name="calendar-check-outline" size={22} color={colors.success} />
               </View>
               <Text style={styles.statValue}>
-                {attendance ? attendance.presentCount : '–'}
+                {attendance ? (attendance.isHoliday ? '🏖' : attendance.presentCount) : '–'}
               </Text>
-              <Text style={styles.statLabel}>Present Today</Text>
-              {attendance && attendance.absentCount > 0 && (
+              <Text style={styles.statLabel}>
+                {attendance?.isHoliday ? 'Holiday Today' : 'Present Today'}
+              </Text>
+              {attendance && !attendance.isHoliday && attendance.absentCount > 0 && (
                 <View style={styles.statSub}>
                   <Text style={styles.statSubText}>
                     {attendance.absentCount} absent
@@ -361,7 +363,11 @@ export function StaffDashboardScreen() {
                 />
               </View>
               <Text style={styles.progressLabel}>
-                {totalStudents > 0 ? `${attendancePct}% attendance rate` : 'No attendance data'}
+                {attendance.isHoliday
+                  ? 'Today is a holiday — no attendance required'
+                  : totalStudents > 0
+                    ? `${attendancePct}% attendance rate`
+                    : 'No attendance data'}
               </Text>
 
               {attendance.absentCount > 0 && (

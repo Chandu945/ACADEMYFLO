@@ -21,6 +21,8 @@ export interface BirthdayStudent {
 export interface StudentRepository {
   save(student: Student): Promise<void>;
   findById(id: string): Promise<Student | null>;
+  findByEmailInAcademy(academyId: string, email: string, excludeId?: string): Promise<Student | null>;
+  findByPhoneInAcademy(academyId: string, phone: string, excludeId?: string): Promise<Student | null>;
   list(
     filter: StudentListFilter,
     page: number,

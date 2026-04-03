@@ -44,6 +44,9 @@ function StaffRowComponent({ staff, onPress, onToggleStatus }: StaffRowProps) {
           <StaffStatusBadge status={staff.status} />
           <Text style={styles.phone}>{staff.phoneNumber}</Text>
         </View>
+        {staff.qualificationInfo?.position ? (
+          <Text style={styles.position} numberOfLines={1}>{staff.qualificationInfo.position}</Text>
+        ) : null}
       </View>
       <Pressable
         style={[
@@ -111,6 +114,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   phone: {
     fontSize: fontSizes.sm,
     color: colors.textDisabled,
+  },
+  position: {
+    fontSize: fontSizes.sm,
+    color: colors.primary,
+    fontWeight: fontWeights.medium,
+    marginTop: 2,
   },
   toggleButton: {
     paddingHorizontal: spacing.md,

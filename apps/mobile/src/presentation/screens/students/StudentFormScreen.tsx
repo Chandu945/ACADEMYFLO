@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ScrollView, View, Text, TextInput, StyleSheet, Pressable, Keyboard } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Keyboard } from 'react-native';
+import type { TextInput } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -51,6 +52,14 @@ function normalizeToDigits(raw: string): string {
   return digits;
 }
 
+/** Strip country code prefix to get bare 10-digit number for display */
+function stripCountryCode(phone: string): string {
+  if (!phone) return '';
+  const stripped = phone.replace(/^\+91/, '').replace(/^\+/, '');
+  if (/^91\d{10}$/.test(stripped)) return stripped.slice(2);
+  return stripped;
+}
+
 export function StudentFormScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -66,7 +75,7 @@ export function StudentFormScreen() {
   const [dateOfBirth, setDateOfBirth] = useState(student?.dateOfBirth ?? '');
   const [gender, setGender] = useState<Gender | ''>(student?.gender ?? '');
   const [guardianName, setGuardianName] = useState(student?.guardian?.name ?? '');
-  const [guardianMobile, setGuardianMobile] = useState(student?.guardian?.mobile ?? '');
+  const [guardianMobile, setGuardianMobile] = useState(stripCountryCode(student?.guardian?.mobile ?? ''));
   const [guardianEmail, setGuardianEmail] = useState(student?.email ?? student?.guardian?.email ?? '');
   const [joiningDate, setJoiningDate] = useState(student?.joiningDate ?? '');
   const [monthlyFee, setMonthlyFee] = useState(
@@ -74,8 +83,8 @@ export function StudentFormScreen() {
   );
   const [fatherName, setFatherName] = useState(student?.fatherName ?? '');
   const [motherName, setMotherName] = useState(student?.motherName ?? '');
-  const [whatsappNumber, setWhatsappNumber] = useState(student?.whatsappNumber ?? '');
-  const [mobileNumber, setMobileNumber] = useState(student?.mobileNumber ?? '');
+  const [whatsappNumber, setWhatsappNumber] = useState(stripCountryCode(student?.whatsappNumber ?? ''));
+  const [mobileNumber, setMobileNumber] = useState(stripCountryCode(student?.mobileNumber ?? ''));
   const [addressText, setAddressText] = useState(
     student?.addressText ??
       (student?.address
@@ -183,15 +192,40 @@ export function StudentFormScreen() {
     [clearFieldError],
   );
 
-  const handleFullNameChange = useMemo(() => makeChangeHandler(setFullName, 'fullName'), [makeChangeHandler]);
-  const handleFatherNameChange = useMemo(() => makeChangeHandler(setFatherName), [makeChangeHandler]);
-  const handleMotherNameChange = useMemo(() => makeChangeHandler(setMotherName), [makeChangeHandler]);
-  const handleWhatsappChange = useMemo(() => makeChangeHandler(setWhatsappNumber), [makeChangeHandler]);
-  const handleMobileChange = useMemo(() => makeChangeHandler(setMobileNumber), [makeChangeHandler]);
+  const handleFullNameChange = useMemo(() => (text: string) => {
+    setFullName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
+    clearFieldError('fullName');
+  }, [clearFieldError]);
+  const handleFatherNameChange = useMemo(() => (text: string) => {
+    setFatherName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
+    clearFieldError('fatherName');
+  }, [clearFieldError]);
+  const handleMotherNameChange = useMemo(() => (text: string) => {
+    setMotherName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
+    clearFieldError('motherName');
+  }, [clearFieldError]);
+  const handleWhatsappChange = useMemo(() => (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '');
+    if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+    setWhatsappNumber(digits);
+  }, []);
+  const handleMobileChange = useMemo(() => (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '');
+    if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+    setMobileNumber(digits);
+  }, []);
   const handleEmailChange = useMemo(() => makeChangeHandler(setGuardianEmail, 'guardianEmail'), [makeChangeHandler]);
   const handleAddressChange = useMemo(() => makeChangeHandler(setAddressText), [makeChangeHandler]);
-  const handleGuardianNameChange = useMemo(() => makeChangeHandler(setGuardianName), [makeChangeHandler]);
-  const handleGuardianMobileChange = useMemo(() => makeChangeHandler(setGuardianMobile, 'guardianMobile'), [makeChangeHandler]);
+  const handleGuardianNameChange = useMemo(() => (text: string) => {
+    setGuardianName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
+    clearFieldError('guardianName');
+  }, [clearFieldError]);
+  const handleGuardianMobileChange = useMemo(() => (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '');
+    if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+    setGuardianMobile(digits);
+    clearFieldError('guardianMobile');
+  }, [clearFieldError]);
   const handleMonthlyFeeChange = useMemo(() => makeChangeHandler(setMonthlyFee, 'monthlyFee'), [makeChangeHandler]);
 
   const handleGenderChange = useCallback((value: Gender) => {
@@ -244,6 +278,8 @@ export function StudentFormScreen() {
 
     const fields: Record<string, string> = {
       fullName: f.fullName,
+      fatherName: f.fatherName,
+      motherName: f.motherName,
       dateOfBirth: f.dateOfBirth,
       gender: f.gender,
       addressLine1: f.addressText.trim().slice(0, 100) || '',
@@ -287,9 +323,9 @@ export function StudentFormScreen() {
     const guardianEmailVal = f.guardianEmail.trim();
     if (guardianNameVal || guardianMobileVal || guardianEmailVal) {
       const guardian: Record<string, string> = {};
-      if (guardianNameVal) guardian.name = guardianNameVal;
-      if (guardianMobileVal) guardian.mobile = guardianMobileVal;
-      if (guardianEmailVal) guardian.email = guardianEmailVal;
+      if (guardianNameVal) guardian['name'] = guardianNameVal;
+      if (guardianMobileVal) guardian['mobile'] = guardianMobileVal;
+      if (guardianEmailVal) guardian['email'] = guardianEmailVal;
       data.guardian = guardian as any;
     }
 
@@ -345,10 +381,16 @@ export function StudentFormScreen() {
 
         navigation.goBack();
       } else {
-        if (result.error.fieldErrors) {
+        const msg = result.error.message;
+        if (result.error.fieldErrors && Object.keys(result.error.fieldErrors).length > 0) {
           setFieldErrors(result.error.fieldErrors);
+        } else if (/email already exists/i.test(msg)) {
+          setFieldErrors({ guardianEmail: msg });
+        } else if (/phone.*already exists/i.test(msg)) {
+          setFieldErrors({ guardianMobile: msg });
+        } else {
+          setServerError(msg);
         }
-        setServerError(result.error.message);
       }
     } catch {
       if (__DEV__) console.error('[StudentFormScreen] Submit failed');
@@ -400,6 +442,7 @@ export function StudentFormScreen() {
         label="Father Name"
         value={fatherName}
         onChangeText={handleFatherNameChange}
+        error={fieldErrors['fatherName']}
         maxLength={100}
         autoCapitalize="words"
         returnKeyType="next"
@@ -412,6 +455,7 @@ export function StudentFormScreen() {
         label="Mother Name"
         value={motherName}
         onChangeText={handleMotherNameChange}
+        error={fieldErrors['motherName']}
         maxLength={100}
         autoCapitalize="words"
         returnKeyType="next"
@@ -457,7 +501,7 @@ export function StudentFormScreen() {
 
       <Input
         ref={whatsappRef}
-        label="WhatsApp"
+        label="WhatsApp (Optional)"
         value={whatsappNumber}
         onChangeText={handleWhatsappChange}
         keyboardType="phone-pad"
@@ -465,7 +509,7 @@ export function StudentFormScreen() {
         textContentType="telephoneNumber"
         prefix="+91"
         placeholder="9876543210"
-        maxLength={15}
+        maxLength={10}
         returnKeyType="next"
         onSubmitEditing={() => mobileRef.current?.focus()}
         testID="input-whatsappNumber"
@@ -473,7 +517,7 @@ export function StudentFormScreen() {
 
       <Input
         ref={mobileRef}
-        label="Mobile Number"
+        label="Mobile Number (Optional)"
         value={mobileNumber}
         onChangeText={handleMobileChange}
         keyboardType="phone-pad"
@@ -481,7 +525,7 @@ export function StudentFormScreen() {
         textContentType="telephoneNumber"
         prefix="+91"
         placeholder="9876543210"
-        maxLength={15}
+        maxLength={10}
         returnKeyType="next"
         onSubmitEditing={() => emailRef.current?.focus()}
         testID="input-mobileNumber"
@@ -489,7 +533,7 @@ export function StudentFormScreen() {
 
       <Input
         ref={emailRef}
-        label="Email"
+        label="Email (Optional)"
         value={guardianEmail}
         onChangeText={handleEmailChange}
         error={fieldErrors['guardianEmail']}
@@ -504,7 +548,7 @@ export function StudentFormScreen() {
 
       <Input
         ref={addressRef}
-        label="Address"
+        label="Address (Optional)"
         value={addressText}
         onChangeText={handleAddressChange}
         placeholder="456 Park Lane, Mumbai"
@@ -523,6 +567,7 @@ export function StudentFormScreen() {
         label="Guardian Name (Optional)"
         value={guardianName}
         onChangeText={handleGuardianNameChange}
+        error={fieldErrors['guardianName']}
         maxLength={100}
         autoCapitalize="words"
         returnKeyType="next"
@@ -541,7 +586,7 @@ export function StudentFormScreen() {
         keyboardType="phone-pad"
         autoComplete="tel"
         textContentType="telephoneNumber"
-        maxLength={16}
+        maxLength={10}
         returnKeyType="next"
         onSubmitEditing={() => monthlyFeeRef.current?.focus()}
         testID="input-guardianMobile"

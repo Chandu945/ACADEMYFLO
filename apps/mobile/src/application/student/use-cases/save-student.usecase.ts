@@ -17,6 +17,7 @@ export type SaveStudentDeps = {
 
 const E164_RE = /^\+[1-9]\d{6,14}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const NAME_RE = /^[a-zA-Z\s'.,-]+$/;
 
 export function validateStudentForm(
   fields: Record<string, string>,
@@ -24,8 +25,28 @@ export function validateStudentForm(
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!fields['fullName']?.trim()) {
+  const fullName = fields['fullName']?.trim();
+  if (!fullName) {
     errors['fullName'] = 'Full name is required';
+  } else if (fullName.length < 2) {
+    errors['fullName'] = 'Name must be at least 2 characters';
+  } else if (!NAME_RE.test(fullName)) {
+    errors['fullName'] = 'Name can only contain letters, spaces, and punctuation';
+  }
+
+  const fatherName = fields['fatherName']?.trim();
+  if (fatherName && !NAME_RE.test(fatherName)) {
+    errors['fatherName'] = 'Name can only contain letters, spaces, and punctuation';
+  }
+
+  const motherName = fields['motherName']?.trim();
+  if (motherName && !NAME_RE.test(motherName)) {
+    errors['motherName'] = 'Name can only contain letters, spaces, and punctuation';
+  }
+
+  const guardianName = fields['guardianName']?.trim();
+  if (guardianName && !NAME_RE.test(guardianName)) {
+    errors['guardianName'] = 'Name can only contain letters, spaces, and punctuation';
   }
 
   if (fields['dateOfBirth'] && !isValidDate(fields['dateOfBirth'])) {

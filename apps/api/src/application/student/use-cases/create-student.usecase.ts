@@ -113,6 +113,24 @@ export class CreateStudentUseCase {
       }
     }
 
+    // Duplicate email check
+    const emailToCheck = input.email || input.guardian?.email;
+    if (emailToCheck) {
+      const existingByEmail = await this.studentRepo.findByEmailInAcademy(actor.academyId, emailToCheck);
+      if (existingByEmail) {
+        return err(StudentErrors.duplicateEmail());
+      }
+    }
+
+    // Duplicate phone check
+    const phoneToCheck = input.mobileNumber || input.guardian?.mobile;
+    if (phoneToCheck) {
+      const existingByPhone = await this.studentRepo.findByPhoneInAcademy(actor.academyId, phoneToCheck);
+      if (existingByPhone) {
+        return err(StudentErrors.duplicatePhone());
+      }
+    }
+
     const student = Student.create({
       id: randomUUID(),
       academyId: actor.academyId,

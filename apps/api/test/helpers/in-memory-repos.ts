@@ -469,6 +469,23 @@ export class InMemoryStudentRepository implements StudentRepository {
     return this.students.get(id) ?? null;
   }
 
+  async findByEmailInAcademy(academyId: string, email: string, excludeId?: string): Promise<Student | null> {
+    const normalizedEmail = email.toLowerCase();
+    return Array.from(this.students.values()).find(
+      (s) => s.academyId === academyId && !s.isDeleted() &&
+        s.email?.toLowerCase() === normalizedEmail &&
+        (!excludeId || s.id.toString() !== excludeId),
+    ) ?? null;
+  }
+
+  async findByPhoneInAcademy(academyId: string, phone: string, excludeId?: string): Promise<Student | null> {
+    return Array.from(this.students.values()).find(
+      (s) => s.academyId === academyId && !s.isDeleted() &&
+        (s.mobileNumber === phone || s.whatsappNumber === phone || s.guardian?.mobile === phone) &&
+        (!excludeId || s.id.toString() !== excludeId),
+    ) ?? null;
+  }
+
   async list(
     filter: StudentListFilter,
     page: number,

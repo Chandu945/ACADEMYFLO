@@ -137,6 +137,28 @@ export class UpdateStudentUseCase {
       }
     }
 
+    // Duplicate email check (exclude current student)
+    const newEmail = input.email !== undefined ? input.email : student.email;
+    const newGuardianEmail = input.guardian?.email !== undefined ? input.guardian.email : student.guardian?.email;
+    const emailToCheck = newEmail || newGuardianEmail;
+    if (emailToCheck) {
+      const existingByEmail = await this.studentRepo.findByEmailInAcademy(actor.academyId, emailToCheck, input.studentId);
+      if (existingByEmail) {
+        return err(StudentErrors.duplicateEmail());
+      }
+    }
+
+    // Duplicate phone check (exclude current student)
+    const newMobile = input.mobileNumber !== undefined ? input.mobileNumber : student.mobileNumber;
+    const newGuardianMobile = input.guardian?.mobile !== undefined ? input.guardian.mobile : student.guardian?.mobile;
+    const phoneToCheck = newMobile || newGuardianMobile;
+    if (phoneToCheck) {
+      const existingByPhone = await this.studentRepo.findByPhoneInAcademy(actor.academyId, phoneToCheck, input.studentId);
+      if (existingByPhone) {
+        return err(StudentErrors.duplicatePhone());
+      }
+    }
+
     const newAddress = {
       line1: input.address?.line1 ?? student.address.line1,
       line2:

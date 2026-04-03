@@ -26,6 +26,13 @@ function normalizeToE164(raw: string): string {
   return raw;
 }
 
+function stripCountryCode(phone: string): string {
+  if (!phone) return '';
+  const stripped = phone.replace(/^\+91/, '').replace(/^\+/, '');
+  if (/^91\d{10}$/.test(stripped)) return stripped.slice(2);
+  return stripped;
+}
+
 export function ParentProfileScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -48,7 +55,7 @@ export function ParentProfileScreen() {
       if (result.ok) {
         setFullName(result.value.fullName);
         setEmail(result.value.email);
-        setPhoneNumber(result.value.phoneNumber);
+        setPhoneNumber(stripCountryCode(result.value.phoneNumber));
         setProfilePhotoUrl(result.value.profilePhotoUrl ?? null);
       } else {
         setError(result.error.message);
@@ -70,8 +77,22 @@ export function ParentProfileScreen() {
   }, [load]);
 
   const handleSave = useCallback(async () => {
-    if (!fullName.trim()) {
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
       setError('Full name is required');
+      return;
+    }
+    if (trimmedName.length < 2) {
+      setError('Name must be at least 2 characters');
+      return;
+    }
+    if (!/^[a-zA-Z\s'.,-]+$/.test(trimmedName)) {
+      setError('Name can only contain letters, spaces, and punctuation');
+      return;
+    }
+    const phone = phoneNumber.trim();
+    if (phone && !/^[6-9]\d{9}$/.test(phone)) {
+      setError('Please enter a valid 10-digit phone number starting with 6-9');
       return;
     }
     setSaving(true);
@@ -135,8 +156,9 @@ export function ParentProfileScreen() {
         <Input
           label="Full Name"
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(text) => setFullName(text.replace(/[^a-zA-Z\s'.,-]/g, ''))}
           autoCapitalize="words"
+          maxLength={100}
           testID="profile-fullname"
         />
 
@@ -156,12 +178,17 @@ export function ParentProfileScreen() {
         <Input
           label="Phone Number"
           value={phoneNumber}
-          onChangeText={setPhoneNumber}
+          onChangeText={(text) => {
+            const digits = text.replace(/[^0-9]/g, '');
+            if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
+            setPhoneNumber(digits);
+          }}
           prefix="+91"
           placeholder="9876543210"
           keyboardType="phone-pad"
           autoComplete="tel"
           textContentType="telephoneNumber"
+          maxLength={10}
           testID="profile-phone"
         />
 

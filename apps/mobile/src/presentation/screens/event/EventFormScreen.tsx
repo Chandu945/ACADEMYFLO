@@ -69,7 +69,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
   const [endDate, setEndDate] = useState(event?.endDate ?? '');
   const [startTime, setStartTime] = useState(event?.startTime ?? '');
   const [endTime, setEndTime] = useState(event?.endTime ?? '');
-  const [isAllDay, setIsAllDay] = useState(event?.isAllDay ?? true);
+  const [isAllDay, setIsAllDay] = useState(event?.isAllDay ?? false);
   const [location, setLocation] = useState(event?.location ?? '');
   const [targetAudience, setTargetAudience] = useState<TargetAudience | ''>(
     (event?.targetAudience as TargetAudience) ?? '',
@@ -261,6 +261,16 @@ export function EventFormScreen(props: EventFormScreenProps) {
           testID="input-startDate"
         />
 
+        {!isAllDay && (
+          <TimePickerInput
+            label="Start Time *"
+            value={startTime}
+            onChange={setStartTime}
+            placeholder="Select start time"
+            testID="input-startTime"
+          />
+        )}
+
         <DatePickerInput
           label="End Date (optional)"
           value={endDate}
@@ -270,22 +280,13 @@ export function EventFormScreen(props: EventFormScreenProps) {
         />
 
         {!isAllDay && (
-          <>
-            <TimePickerInput
-              label="Start Time *"
-              value={startTime}
-              onChange={setStartTime}
-              placeholder="Select start time"
-              testID="input-startTime"
-            />
-            <TimePickerInput
-              label="End Time (optional)"
-              value={endTime}
-              onChange={setEndTime}
-              placeholder="Select end time"
-              testID="input-endTime"
-            />
-          </>
+          <TimePickerInput
+            label="End Time (optional)"
+            value={endTime}
+            onChange={setEndTime}
+            placeholder="Select end time"
+            testID="input-endTime"
+          />
         )}
       </View>
 

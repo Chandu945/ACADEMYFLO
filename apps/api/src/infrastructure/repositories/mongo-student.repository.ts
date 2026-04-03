@@ -73,6 +73,28 @@ export class MongoStudentRepository implements StudentRepository {
     return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;
   }
 
+  async findByEmailInAcademy(academyId: string, email: string, excludeId?: string): Promise<Student | null> {
+    const query: Record<string, unknown> = {
+      academyId,
+      email: email.toLowerCase(),
+      deletedAt: null,
+    };
+    if (excludeId) query['_id'] = { $ne: excludeId };
+    const doc = await this.model.findOne(query).lean().exec();
+    return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;
+  }
+
+  async findByPhoneInAcademy(academyId: string, phone: string, excludeId?: string): Promise<Student | null> {
+    const query: Record<string, unknown> = {
+      academyId,
+      $or: [{ mobileNumber: phone }, { whatsappNumber: phone }, { 'guardian.mobile': phone }],
+      deletedAt: null,
+    };
+    if (excludeId) query['_id'] = { $ne: excludeId };
+    const doc = await this.model.findOne(query).lean().exec();
+    return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;
+  }
+
   async list(
     filter: StudentListFilter,
     page: number,
