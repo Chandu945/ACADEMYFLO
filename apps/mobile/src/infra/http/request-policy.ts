@@ -3,7 +3,7 @@
  * Adds timeout + GET-only retry for idempotent requests.
  */
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRY_BACKOFF_MS = 500;
 
 export class RequestTimeoutError extends Error {

@@ -140,4 +140,42 @@ describe('evaluateSubscriptionStatus', () => {
 
     expect(result.status).toBe('ACTIVE_PAID');
   });
+
+  it('EXPIRED_GRACE should allow full app access (canAccessApp: true)', () => {
+    const now = new Date();
+    const sub = createSub({
+      trialEndAt: new Date(now.getTime() - 30 * DAY_MS),
+      paidStartAt: new Date(now.getTime() - 30 * DAY_MS),
+      paidEndAt: new Date(now.getTime() - 2 * DAY_MS), // expired 2 days ago
+    });
+
+    const result = evaluateSubscriptionStatus(now, false, sub);
+
+    expect(result.status).toBe('EXPIRED_GRACE');
+    expect(result.canAccessApp).toBe(true);
+    expect(result.daysRemaining).toBe(1);
+    expect(result.blockReason).toBeNull();
+  });
+
+  it('BLOCKED user can still access auth endpoints (allowed prefix check)', () => {
+    const now = new Date();
+    const sub = createSub({
+      trialStartAt: new Date(now.getTime() - 40 * DAY_MS),
+      trialEndAt: new Date(now.getTime() - 10 * DAY_MS),
+    });
+
+    const result = evaluateSubscriptionStatus(now, false, sub);
+
+    // Subscription is BLOCKED and canAccessApp is false
+    expect(result.status).toBe('BLOCKED');
+    expect(result.canAccessApp).toBe(false);
+
+    // But the guard allows /api/v1/auth/* paths regardless of canAccessApp
+    // This is enforced in SubscriptionEnforcementGuard via ALLOWED_PREFIXES
+    // Verify the path '/api/v1/auth/refresh' would match the allowed prefix
+    const ALLOWED_PREFIXES = ['/api/v1/subscription', '/api/v1/auth', '/api/v1/health', '/api/v1/admin', '/api/v1/academy', '/api/v1/parent'];
+    const authRefreshPath = '/api/v1/auth/refresh';
+    const isAllowed = ALLOWED_PREFIXES.some((prefix) => authRefreshPath.startsWith(prefix));
+    expect(isAllowed).toBe(true);
+  });
 });

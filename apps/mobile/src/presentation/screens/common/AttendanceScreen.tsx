@@ -30,6 +30,7 @@ import { HolidayBanner } from '../../components/attendance/HolidayBanner';
 import { AttendanceHeader } from '../../components/attendance/AttendanceHeader';
 import { AttendanceRow } from '../../components/attendance/AttendanceRow';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
+import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -376,6 +377,7 @@ export function AttendanceScreen() {
           keyExtractor={keyExtractor}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
+          ListHeaderComponent={<SubscriptionBanner />}
           ListFooterComponent={renderFooter}
           refreshControl={
             <RefreshControl

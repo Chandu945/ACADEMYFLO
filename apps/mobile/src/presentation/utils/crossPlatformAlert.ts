@@ -1,4 +1,5 @@
 import { Alert, Platform } from 'react-native';
+import { getGlobalAlert } from '../context/AlertContext';
 
 type AlertButton = {
   text: string;
@@ -10,8 +11,7 @@ type AlertButton = {
  * Cross-platform alert that works on both native and web.
  *
  * On native: uses React Native's Alert.alert with full button support.
- * On web: Alert.alert with button callbacks doesn't work — falls back to
- *   window.confirm for confirmation dialogs or window.alert for info dialogs.
+ * On web: uses a custom styled modal via AlertContext (no more ugly browser alerts).
  */
 export function crossAlert(
   title: string,
@@ -23,36 +23,13 @@ export function crossAlert(
     return;
   }
 
-  // Web fallback — use globalThis to access window.alert/confirm safely
-  const g = globalThis as unknown as { alert: (msg: string) => void; confirm: (msg: string) => boolean };
-  const displayMsg = message ? `${title}\n\n${message}` : title;
-
-  if (!buttons || buttons.length === 0) {
-    g.alert(displayMsg);
-    return;
-  }
-
-  // Find the action button (non-cancel)
-  const cancelButton = buttons.find((b) => b.style === 'cancel');
-  const actionButton = buttons.find((b) => b.style !== 'cancel') ?? buttons[buttons.length - 1];
-
-  if (cancelButton && actionButton) {
-    // Confirmation dialog
-    const confirmed = g.confirm(displayMsg);
-    if (confirmed) {
-      actionButton?.onPress?.();
-    } else {
-      cancelButton?.onPress?.();
-    }
-  } else if (buttons.length === 1) {
-    // Single button (OK-style)
-    g.alert(displayMsg);
-    buttons[0]?.onPress?.();
+  // Web — use styled modal
+  const showAlert = getGlobalAlert();
+  if (showAlert) {
+    showAlert(title, message, buttons);
   } else {
-    // Multiple non-cancel buttons — show confirm for first action
-    const confirmed = g.confirm(displayMsg);
-    if (confirmed) {
-      actionButton?.onPress?.();
-    }
+    // Fallback if AlertProvider not mounted yet
+    const g = globalThis as unknown as { alert: (msg: string) => void };
+    g.alert(message ? `${title}\n\n${message}` : title);
   }
 }

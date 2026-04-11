@@ -17,7 +17,7 @@ export const studentListItemSchema = z.object({
     name: z.string(),
     mobile: z.string(),
     email: z.string(),
-  }),
+  }).nullable(),
   joiningDate: z.string(),
   monthlyFee: z.number(),
   mobileNumber: z.string().nullable(),

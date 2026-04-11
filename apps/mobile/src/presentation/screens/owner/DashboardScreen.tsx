@@ -12,6 +12,7 @@ import { AttendanceSummaryWidget } from '../../components/dashboard/AttendanceSu
 import { AttendanceMarkingCards } from '../../components/dashboard/AttendanceMarkingCards';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
+import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import { BirthdayWidget } from '../../components/dashboard/BirthdayWidget';
 import { MonthlyChartWidget } from '../../components/dashboard/MonthlyChartWidget';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
@@ -66,6 +67,7 @@ export function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         testID="dashboard-scroll"
       >
+        <SubscriptionBanner />
         {error && (
           <InlineError
             message={data ? 'Could not refresh data. Showing last known values.' : error.message}

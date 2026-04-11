@@ -10,6 +10,7 @@ import { useTheme } from '../../context/ThemeContext';
 import type { ThemeMode } from '../../context/ThemeContext';
 import { Screen } from '../../components/ui/Screen';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
+import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 
@@ -114,6 +115,7 @@ export function MoreScreen() {
     <Screen scroll={false}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.screenTitle} testID="more-title">More</Text>
+        <SubscriptionBanner />
 
         {/* Profile Card */}
         {user && (

@@ -400,25 +400,6 @@ export function ParentDashboardScreen() {
             </View>
           )}
 
-          {/* ── Academy Info Card ── */}
-          <TouchableOpacity
-            style={styles.academyCard}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('More', { screen: 'AcademyInfo' })}
-          >
-            <View style={styles.sectionHeaderLeft}>
-              <View style={[styles.sectionHeaderIcon, { backgroundColor: colors.infoBg }]}>
-                
-                <AppIcon name="school-outline" size={18} color={colors.info} />
-              </View>
-              <View>
-                <Text style={styles.sectionTitle}>Academy Information</Text>
-                <Text style={styles.academySubtitle}>View academy details and contact info</Text>
-              </View>
-            </View>
-            
-            <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
         </View>
       )}
     </ScrollView>

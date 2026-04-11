@@ -241,24 +241,6 @@ export function InstituteInfoScreen() {
         />
       </View>
 
-      {/* ── Payment QR Code ──────────────────────────── */}
-      <View style={styles.sectionHeader}>
-        
-        <AppIcon name="qrcode" size={20} color={colors.primary} />
-        <Text style={styles.sectionTitle} accessibilityRole="header">Payment QR Code</Text>
-      </View>
-      <View style={styles.card}>
-        <ImageUploadCard
-          imageUrl={info?.qrCodeImageUrl ?? null}
-          label="Upload QR Code"
-          icon="qrcode"
-          uploading={uploading === 'qrcode'}
-          onPick={() => handlePickImage('qrcode')}
-          onDelete={() => handleDeleteImage('qrcode')}
-          testID="qrcode"
-        />
-      </View>
-
       {/* ── Bank Details ─────────────────────────────── */}
       <View style={styles.sectionHeader}>
         

@@ -7,6 +7,7 @@ import { AuthProvider } from './presentation/context/AuthContext';
 import { NotificationProvider } from './presentation/context/NotificationContext';
 import { ThemeProvider, useTheme } from './presentation/context/ThemeContext';
 import { ToastProvider } from './presentation/context/ToastContext';
+import { AlertProvider } from './presentation/context/AlertContext';
 import { RootNavigator } from './presentation/navigation/RootNavigator';
 import { AppErrorBoundary } from './presentation/components/system/AppErrorBoundary';
 import { OfflineBanner } from './presentation/components/global/OfflineBanner';
@@ -60,13 +61,15 @@ export default function App() {
     <GestureHandlerRootView style={rootStyle}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <ToastProvider>
-            <AuthProvider>
-              <NotificationProvider>
-                <AppInner />
-              </NotificationProvider>
-            </AuthProvider>
-          </ToastProvider>
+          <AlertProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <NotificationProvider>
+                  <AppInner />
+                </NotificationProvider>
+              </AuthProvider>
+            </ToastProvider>
+          </AlertProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

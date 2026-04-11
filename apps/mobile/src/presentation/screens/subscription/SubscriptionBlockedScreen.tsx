@@ -10,8 +10,9 @@ import { useTheme } from '../../context/ThemeContext';
 export function SubscriptionBlockedScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { subscription, logout, refreshSubscription } = useAuth();
+  const { user, logout, refreshSubscription } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const isParent = user?.role === 'PARENT';
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -23,24 +24,19 @@ export function SubscriptionBlockedScreen() {
     <Screen scroll={false}>
       <View style={styles.container}>
         <Text style={styles.icon}>!</Text>
-        <Text style={styles.title}>Subscription {subscription?.status ?? 'Blocked'}</Text>
-
-        {subscription?.blockReason ? (
-          <Text style={styles.reason}>{subscription.blockReason}</Text>
-        ) : null}
-
-        {subscription?.daysRemaining !== undefined ? (
-          <Text style={styles.info}>Days remaining: {subscription.daysRemaining}</Text>
-        ) : null}
+        <Text style={styles.title}>
+          {isParent ? 'Academy Unavailable' : 'Academy Access Suspended'}
+        </Text>
 
         <Text style={styles.body}>
-          Your subscription does not allow access to the app. Please contact the administrator or
-          renew your subscription.
+          {isParent
+            ? "Your child's academy is currently unavailable. Please contact the academy for more information."
+            : "Your academy's subscription has expired. Please contact your academy owner to renew the subscription."}
         </Text>
 
         <View style={styles.actions}>
           <Button
-            title="Refresh Status"
+            title="Try Again"
             onPress={handleRefresh}
             loading={refreshing}
             testID="blocked-refresh"

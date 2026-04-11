@@ -200,9 +200,10 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
           label="Mobile Number *"
           value={mobileNumber}
           onChangeText={(text) => {
-            const digits = text.replace(/[^0-9]/g, '');
+            let digits = text.replace(/[^0-9]/g, '');
+            if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
             if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
-            setMobileNumber(digits);
+            setMobileNumber(digits.slice(0, 10));
           }}
           prefix="+91"
           placeholder="9876543210"

@@ -18,6 +18,7 @@ import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
 import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
+import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
 import { listBatchStudents } from '../../../infra/batch/batch-api';
 import { UnpaidDuesScreen } from './UnpaidDuesScreen';
@@ -308,6 +309,7 @@ export function FeesHomeScreen() {
         )}
       </View>
 
+      <SubscriptionBanner />
       {/* ── Active Filter Pills (visible when panel closed) ── */}
       {!showFilters && showSearchAndFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />}
 

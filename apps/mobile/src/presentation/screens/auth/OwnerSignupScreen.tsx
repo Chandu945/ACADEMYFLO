@@ -92,9 +92,10 @@ export function OwnerSignupScreen() {
   }, [clearFieldError, error]);
 
   const handlePhoneChange = useCallback((text: string) => {
-    const digitsOnly = text.replace(/[^0-9]/g, '');
+    let digitsOnly = text.replace(/[^0-9]/g, '');
+    if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) digitsOnly = digitsOnly.slice(2);
     if (digitsOnly.length > 0 && !/^[6-9]/.test(digitsOnly)) return;
-    setPhoneNumber(digitsOnly);
+    setPhoneNumber(digitsOnly.slice(0, 10));
     clearFieldError('phoneNumber');
     if (error) setError(null);
   }, [clearFieldError, error]);

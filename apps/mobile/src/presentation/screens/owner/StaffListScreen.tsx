@@ -14,6 +14,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { StaffRow } from '../../components/staff/StaffRow';
+import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import { spacing, fontSizes, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -140,6 +141,7 @@ export function StaffListScreen() {
           keyExtractor={keyExtractor}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
+          ListHeaderComponent={<SubscriptionBanner />}
           ListFooterComponent={renderFooter}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           contentContainerStyle={styles.listContent}

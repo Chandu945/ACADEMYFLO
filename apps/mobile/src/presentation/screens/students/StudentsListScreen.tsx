@@ -28,6 +28,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StudentRow } from '../../components/students/StudentRow';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
+import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
 import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
 import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
@@ -73,6 +74,8 @@ export function StudentsListScreen() {
   const [month] = useState(getCurrentMonth);
   const [refreshing, setRefreshing] = useState(false);
   const [actionMenuStudent, setActionMenuStudent] = useState<StudentListItem | null>(null);
+  const lastActionMenuStudentRef = useRef<StudentListItem | null>(null);
+  if (actionMenuStudent) lastActionMenuStudentRef.current = actionMenuStudent;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
   const fabScale = useRef(new Animated.Value(1)).current;
@@ -420,6 +423,7 @@ export function StudentsListScreen() {
           keyExtractor={keyExtractor}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
+          ListHeaderComponent={<SubscriptionBanner />}
           ListFooterComponent={renderFooter}
           refreshControl={
             <RefreshControl
@@ -450,19 +454,19 @@ export function StudentsListScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {actionMenuStudent && (
+      {lastActionMenuStudentRef.current && (
         <StudentActionMenu
           visible={!!actionMenuStudent}
-          student={actionMenuStudent}
+          student={lastActionMenuStudentRef.current}
           onClose={() => setActionMenuStudent(null)}
           onEdit={() => {
-            if (actionMenuStudent) {
-              navigation.navigate('StudentForm', { mode: 'edit', student: actionMenuStudent });
+            if (lastActionMenuStudentRef.current) {
+              navigation.navigate('StudentForm', { mode: 'edit', student: lastActionMenuStudentRef.current });
             }
           }}
           onAssignBatch={() => {
-            if (actionMenuStudent) {
-              navigation.navigate('StudentForm', { mode: 'edit', student: actionMenuStudent });
+            if (lastActionMenuStudentRef.current) {
+              navigation.navigate('StudentForm', { mode: 'edit', student: lastActionMenuStudentRef.current });
             }
           }}
           onDeleted={refetch}

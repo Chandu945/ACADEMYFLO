@@ -23,7 +23,7 @@ export type StudentListItem = {
   dateOfBirth: string;
   gender: Gender;
   address: StudentAddress;
-  guardian: StudentGuardian;
+  guardian: StudentGuardian | null;
   joiningDate: string;
   monthlyFee: number;
   mobileNumber: string | null;

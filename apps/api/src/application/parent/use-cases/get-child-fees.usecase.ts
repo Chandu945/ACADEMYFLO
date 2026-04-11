@@ -55,20 +55,27 @@ export class GetChildFeesUseCase {
       : undefined;
 
     const dtos: ChildFeeDueDto[] = dues.map((d) => {
+      // Convert to YYYY-MM-DD string for computeLateFee (handle both Date and string)
+      const rawDate = d.dueDate as unknown as Date | string;
+      const dueDateStr = typeof rawDate === 'string'
+        ? rawDate.slice(0, 10)
+        : new Date(rawDate).toISOString().slice(0, 10);
+
       let lateFee = 0;
       if (d.status === 'PAID') {
         lateFee = d.lateFeeApplied ?? 0;
       } else {
         const effectiveConfig = d.lateFeeConfigSnapshot ?? config;
         if (effectiveConfig) {
-          lateFee = computeLateFee(d.dueDate, today, effectiveConfig);
+          const computed = computeLateFee(dueDateStr, today, effectiveConfig);
+          lateFee = Number.isFinite(computed) ? computed : 0;
         }
       }
       return {
         id: d.id.toString(),
         studentId: d.studentId,
         monthKey: d.monthKey,
-        dueDate: d.dueDate,
+        dueDate: dueDateStr,
         amount: d.amount,
         lateFee,
         totalPayable: d.amount + lateFee,

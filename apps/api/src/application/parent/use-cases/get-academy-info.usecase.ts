@@ -32,14 +32,23 @@ export class GetAcademyInfoUseCase {
 
     return ok({
       academyName: academy.academyName,
-      address: {
-        line1: academy.address.line1,
-        line2: academy.address.line2,
-        city: academy.address.city,
-        state: academy.address.state,
-        pincode: academy.address.pincode,
-        country: academy.address.country,
-      },
+      address: academy.address
+        ? {
+            line1: academy.address.line1,
+            line2: academy.address.line2,
+            city: academy.address.city,
+            state: academy.address.state,
+            pincode: academy.address.pincode,
+            country: academy.address.country,
+          }
+        : {
+            line1: '',
+            line2: undefined,
+            city: '',
+            state: '',
+            pincode: '',
+            country: '',
+          },
     });
   }
 }

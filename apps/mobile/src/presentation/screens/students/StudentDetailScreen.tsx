@@ -321,7 +321,7 @@ export function StudentDetailScreen() {
 
       </ScrollView>
 
-      {actionMenuVisible && (
+      {student && (
         <StudentActionMenu
           visible={actionMenuVisible}
           student={student}

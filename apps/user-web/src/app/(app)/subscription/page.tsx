@@ -7,10 +7,36 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import styles from './page.module.css';
 
 type SubscriptionStatus = 'TRIAL' | 'ACTIVE_PAID' | 'EXPIRED_GRACE' | 'BLOCKED' | 'DISABLED' | string;
+
+type TierPricing = {
+  tierKey: string;
+  min: number;
+  max: number | null;
+  priceInr: number;
+};
+
+type PendingTierChange = {
+  tierKey: string;
+  effectiveAt: string;
+};
+
+type SubscriptionData = {
+  status: SubscriptionStatus;
+  trialEndAt: string;
+  paidEndAt: string | null;
+  tierKey: string | null;
+  daysRemaining: number;
+  canAccessApp: boolean;
+  blockReason: string | null;
+  activeStudentCount: number;
+  currentTierKey: string | null;
+  requiredTierKey: string;
+  pendingTierChange: PendingTierChange | null;
+  tiers: TierPricing[];
+};
 
 function statusBadgeVariant(status: SubscriptionStatus): 'info' | 'success' | 'warning' | 'danger' | 'default' {
   switch (status) {
@@ -34,48 +60,31 @@ function statusLabel(status: SubscriptionStatus): string {
   }
 }
 
-type SubscriptionData = {
-  status: string;
-  tier: string;
-  daysRemaining: number;
-  studentCount: number;
-  maxStudents: number;
-  expiresAt: string;
-};
+function tierLabel(tierKey: string): string {
+  switch (tierKey) {
+    case 'TIER_0_50': return '0–50 students';
+    case 'TIER_51_100': return '51–100 students';
+    case 'TIER_101_PLUS': return '101–∞ students';
+    default: return tierKey;
+  }
+}
 
-const TIERS = [
-  {
-    name: 'Starter',
-    price: 'Free',
-    features: ['Up to 25 students', 'Basic attendance', 'Fee management', 'Email support'],
-  },
-  {
-    name: 'Growth',
-    price: '499/mo',
-    features: ['Up to 100 students', 'All Starter features', 'Batch management', 'Reports & analytics', 'Staff management'],
-  },
-  {
-    name: 'Pro',
-    price: '999/mo',
-    features: ['Up to 500 students', 'All Growth features', 'Audit logs', 'Priority support', 'Custom branding'],
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    features: ['Unlimited students', 'All Pro features', 'Dedicated support', 'API access', 'White-label options'],
-  },
-];
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return iso;
+  }
+}
 
 export default function SubscriptionPage() {
   const router = useRouter();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-  const [upgradeError, setUpgradeError] = useState<string | null>(null);
-  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
-  const [upgradeConfirm, setUpgradeConfirm] = useState<{ name: string; price: string } | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const fetchSubscription = useCallback(async () => {
     setLoading(true);
@@ -101,92 +110,97 @@ export default function SubscriptionPage() {
     fetchSubscription();
   }, [fetchSubscription]);
 
-  // Redirect to blocked page for BLOCKED/DISABLED statuses
   useEffect(() => {
     if (subscription && (subscription.status === 'BLOCKED' || subscription.status === 'DISABLED')) {
       router.replace('/subscription-blocked');
     }
   }, [subscription, router]);
 
-  const handleUpgrade = useCallback(async (tier: string) => {
-    setUpgradeLoading(true);
-    setUpgradeError(null);
-    setUpgradeSuccess(false);
+  const handlePayment = useCallback(async () => {
+    setPaymentLoading(true);
+    setPaymentError(null);
     try {
-      const res = await fetch('/api/subscription/upgrade', {
+      const res = await fetch('/api/subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ tier }),
+        body: JSON.stringify({}),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        setUpgradeError(body?.error || `Failed to upgrade to ${tier}`);
-        setUpgradeLoading(false);
+        setPaymentError(body?.error || 'Failed to initiate payment');
         return;
       }
-      setUpgradeSuccess(true);
-      setTimeout(() => setUpgradeSuccess(false), 5000);
-      fetchSubscription();
+      const data = await res.json();
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        setPaymentError('Payment gateway unavailable. Please try again later.');
+      }
     } catch {
-      setUpgradeError('Network error. Please try again.');
+      setPaymentError('Network error. Please try again.');
     } finally {
-      setUpgradeLoading(false);
+      setPaymentLoading(false);
     }
-  }, [accessToken, fetchSubscription]);
-
-  const handleUpgradeConfirm = useCallback(async () => {
-    if (!upgradeConfirm) return;
-    await handleUpgrade(upgradeConfirm.name);
-    setUpgradeConfirm(null);
-  }, [upgradeConfirm, handleUpgrade]);
+  }, [accessToken]);
 
   if (loading) return <Spinner centered size="lg" />;
+
+  const isOwner = user?.role === 'OWNER';
+  const needsUpgrade = subscription && subscription.requiredTierKey !== subscription.currentTierKey;
+  const showPayButton = isOwner && subscription && subscription.status !== 'ACTIVE_PAID' && subscription.status !== 'DISABLED';
 
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Subscription</h1>
 
       {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: fetchSubscription }} />}
-      {upgradeError && <Alert variant="error" message={upgradeError} />}
-      {upgradeSuccess && <Alert variant="success" message="Subscription upgraded successfully!" />}
+      {paymentError && <Alert variant="error" message={paymentError} />}
 
       {/* Trial Banner */}
-      {subscription?.status === 'TRIAL' && (
-        <div className={styles.trialBanner}>
-          <div className={styles.trialBannerContent}>
-            <Badge variant="info">Trial</Badge>
-            <span className={styles.trialBannerText}>
-              You have <strong>{subscription.daysRemaining}</strong> day{subscription.daysRemaining !== 1 ? 's' : ''} remaining in your trial.
-            </span>
-          </div>
-          <Button variant="primary" size="sm" onClick={() => {
-            const tierSection = document.querySelector(`.${styles.tierSection}`);
-            tierSection?.scrollIntoView({ behavior: 'smooth' });
-          }}>
-            Upgrade Now
-          </Button>
-        </div>
-      )}
-
-      {/* Expired/Grace Warning Banner */}
-      {subscription?.status === 'EXPIRED_GRACE' && (
+      {subscription?.status === 'TRIAL' && subscription.daysRemaining <= 7 && (
         <Alert
-          variant="warning"
-          message="Your subscription has expired. You are in a grace period. Please upgrade to continue using all features."
-          action={{
-            label: 'Upgrade Now',
-            onClick: () => {
-              const tierSection = document.querySelector(`.${styles.tierSection}`);
-              tierSection?.scrollIntoView({ behavior: 'smooth' });
-            },
-          }}
+          variant={subscription.daysRemaining <= 3 ? 'error' : 'warning'}
+          message={
+            subscription.daysRemaining <= 0
+              ? 'Your free trial has ended. Subscribe now to continue.'
+              : subscription.daysRemaining === 1
+                ? 'Your free trial ends tomorrow. Subscribe now to continue.'
+                : `Your free trial ends in ${subscription.daysRemaining} days. Subscribe now.`
+          }
         />
       )}
 
-      {/* Current Plan */}
+      {/* Grace Period Banner */}
+      {subscription?.status === 'EXPIRED_GRACE' && (
+        <Alert
+          variant="error"
+          message={
+            subscription.daysRemaining <= 0
+              ? 'Your subscription expired. Renew now to keep access.'
+              : subscription.daysRemaining === 1
+                ? 'Your subscription expired. You have 1 day left to renew.'
+                : `Your subscription expired. You have ${subscription.daysRemaining} days left to renew.`
+          }
+        />
+      )}
+
+      {/* Tier Upgrade Required Banner */}
+      {needsUpgrade && (
+        <div className={styles.upgradeBanner}>
+          <strong>Tier Change Required</strong>
+          <p>
+            Your active student count ({subscription!.activeStudentCount}) requires the <strong>{tierLabel(subscription!.requiredTierKey)}</strong> tier.
+            {subscription!.pendingTierChange && (
+              <> Change to {tierLabel(subscription!.pendingTierChange.tierKey)} effective {formatDate(subscription!.pendingTierChange.effectiveAt)}.</>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Current Plan Info */}
       {subscription && (
         <div className={styles.currentPlan}>
           <div className={styles.planHeader}>
@@ -195,68 +209,72 @@ export default function SubscriptionPage() {
           </div>
           <div className={styles.planStats}>
             <div className={styles.planStat}>
-              <div className={styles.planStatValue}>{subscription.tier}</div>
-              <div className={styles.planStatLabel}>Plan Tier</div>
-            </div>
-            <div className={styles.planStat}>
               <div className={styles.planStatValue}>{subscription.daysRemaining}</div>
               <div className={styles.planStatLabel}>Days Remaining</div>
             </div>
             <div className={styles.planStat}>
-              <div className={styles.planStatValue}>{subscription.studentCount}/{subscription.maxStudents}</div>
-              <div className={styles.planStatLabel}>Students</div>
+              <div className={styles.planStatValue}>{subscription.activeStudentCount}</div>
+              <div className={styles.planStatLabel}>Active Students</div>
             </div>
+            <div className={styles.planStat}>
+              <div className={styles.planStatValue}>{subscription.currentTierKey ? tierLabel(subscription.currentTierKey) : '—'}</div>
+              <div className={styles.planStatLabel}>Current Tier</div>
+            </div>
+            <div className={styles.planStat}>
+              <div className={styles.planStatValue}>{tierLabel(subscription.requiredTierKey)}</div>
+              <div className={styles.planStatLabel}>Required Tier</div>
+            </div>
+          </div>
+          {subscription.trialEndAt && (
+            <div className={styles.planDetail}>Trial Ends: {formatDate(subscription.trialEndAt)}</div>
+          )}
+          {subscription.paidEndAt && (
+            <div className={styles.planDetail}>Paid Until: {formatDate(subscription.paidEndAt)}</div>
+          )}
+        </div>
+      )}
+
+      {/* Pricing Plans */}
+      {subscription && (
+        <div className={styles.tierSection}>
+          <h2 className={styles.tierTitle}>Pricing Plans</h2>
+          <div className={styles.tierGrid}>
+            {subscription.tiers.map((tier) => {
+              const isCurrent = tier.tierKey === subscription.currentTierKey;
+              const isRequired = tier.tierKey === subscription.requiredTierKey;
+              return (
+                <div key={tier.tierKey} className={`${styles.tierCard} ${isCurrent ? styles.current : ''} ${isRequired && !isCurrent ? styles.required : ''}`}>
+                  <div className={styles.tierName}>
+                    {tierLabel(tier.tierKey)}
+                    {isCurrent && <Badge variant="info">Current</Badge>}
+                    {isRequired && !isCurrent && <Badge variant="warning">Required</Badge>}
+                  </div>
+                  <div className={styles.tierPrice}>₹{tier.priceInr}/mo</div>
+                  <div className={styles.tierRange}>{tier.min}–{tier.max ?? '∞'} students</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Tier Comparison */}
-      <div className={styles.tierSection}>
-        <h2 className={styles.tierTitle}>Available Plans</h2>
-        <div className={styles.tierGrid}>
-          {TIERS.map((tier) => {
-            const isCurrent = subscription?.tier === tier.name;
-            return (
-              <div key={tier.name} className={`${styles.tierCard} ${isCurrent ? styles.current : ''}`}>
-                <div className={styles.tierName}>{tier.name}</div>
-                <div className={styles.tierPrice}>{tier.price}</div>
-                <ul className={styles.tierFeatures}>
-                  {tier.features.map((f, i) => (
-                    <li key={i}>{f}</li>
-                  ))}
-                </ul>
-                <div className={styles.tierAction}>
-                  {isCurrent ? (
-                    <Button variant="outline" size="sm" fullWidth disabled>Current Plan</Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      fullWidth
-                      loading={upgradeLoading && upgradeConfirm?.name === tier.name}
-                      disabled={upgradeLoading}
-                      onClick={() => setUpgradeConfirm({ name: tier.name, price: tier.price })}
-                    >
-                      {tier.price === 'Free' ? 'Downgrade' : 'Upgrade'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Pay / Subscribe Button */}
+      {showPayButton && (
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          loading={paymentLoading}
+          onClick={handlePayment}
+        >
+          Subscribe — ₹{subscription!.tiers.find((t) => t.tierKey === subscription!.requiredTierKey)?.priceInr ?? 299}/mo
+        </Button>
+      )}
 
-      {/* Upgrade Confirmation */}
-      <ConfirmDialog
-        open={!!upgradeConfirm}
-        onClose={() => setUpgradeConfirm(null)}
-        onConfirm={handleUpgradeConfirm}
-        title={`${upgradeConfirm?.price === 'Free' ? 'Downgrade' : 'Upgrade'} Plan`}
-        message={`Upgrade to ${upgradeConfirm?.name} for ${upgradeConfirm?.price}?`}
-        confirmLabel={upgradeConfirm?.price === 'Free' ? 'Downgrade' : 'Upgrade'}
-        loading={upgradeLoading}
-      />
+      {/* Refresh */}
+      <Button variant="outline" size="md" fullWidth onClick={fetchSubscription} style={{ marginTop: '1rem' }}>
+        Refresh Status
+      </Button>
     </div>
   );
 }

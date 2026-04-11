@@ -179,9 +179,10 @@ export function ParentProfileScreen() {
           label="Phone Number"
           value={phoneNumber}
           onChangeText={(text) => {
-            const digits = text.replace(/[^0-9]/g, '');
+            let digits = text.replace(/[^0-9]/g, '');
+            if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
             if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
-            setPhoneNumber(digits);
+            setPhoneNumber(digits.slice(0, 10));
           }}
           prefix="+91"
           placeholder="9876543210"

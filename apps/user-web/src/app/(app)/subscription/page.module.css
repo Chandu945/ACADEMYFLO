@@ -180,6 +180,54 @@
   margin-top: var(--space-4);
 }
 
+/* ── Upgrade Banner ─────────────────────────────────────────────────── */
+.upgradeBanner {
+  background: var(--color-warning-bg, #fff7ed);
+  border: 1px solid var(--color-warning-border, #fed7aa);
+  border-left: 4px solid var(--color-warning, #f59e0b);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+
+.upgradeBanner strong {
+  color: var(--color-warning, #f59e0b);
+  font-size: var(--text-base);
+}
+
+.upgradeBanner p {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-medium);
+  line-height: 1.5;
+}
+
+/* ── Required Tier Card ─────────────────────────────────────────────── */
+.tierCard.required {
+  border-color: var(--color-warning, #f59e0b);
+  background: var(--color-warning-bg, #fff7ed);
+}
+
+/* ── Plan Detail Row ────────────────────────────────────────────────── */
+.planDetail {
+  font-size: var(--text-sm);
+  opacity: 0.85;
+  margin-top: var(--space-3);
+}
+
+/* ── Tier Range ─────────────────────────────────────────────────────── */
+.tierRange {
+  font-size: var(--text-sm);
+  color: var(--color-text-medium);
+}
+
+.tierName {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
   .page {
     padding: var(--space-4);

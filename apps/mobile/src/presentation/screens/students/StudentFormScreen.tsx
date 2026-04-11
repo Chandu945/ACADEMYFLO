@@ -205,14 +205,16 @@ export function StudentFormScreen() {
     clearFieldError('motherName');
   }, [clearFieldError]);
   const handleWhatsappChange = useMemo(() => (text: string) => {
-    const digits = text.replace(/[^0-9]/g, '');
+    let digits = text.replace(/[^0-9]/g, '');
+    if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
     if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
-    setWhatsappNumber(digits);
+    setWhatsappNumber(digits.slice(0, 10));
   }, []);
   const handleMobileChange = useMemo(() => (text: string) => {
-    const digits = text.replace(/[^0-9]/g, '');
+    let digits = text.replace(/[^0-9]/g, '');
+    if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
     if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
-    setMobileNumber(digits);
+    setMobileNumber(digits.slice(0, 10));
   }, []);
   const handleEmailChange = useMemo(() => makeChangeHandler(setGuardianEmail, 'guardianEmail'), [makeChangeHandler]);
   const handleAddressChange = useMemo(() => makeChangeHandler(setAddressText), [makeChangeHandler]);
@@ -221,9 +223,10 @@ export function StudentFormScreen() {
     clearFieldError('guardianName');
   }, [clearFieldError]);
   const handleGuardianMobileChange = useMemo(() => (text: string) => {
-    const digits = text.replace(/[^0-9]/g, '');
+    let digits = text.replace(/[^0-9]/g, '');
+    if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
     if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
-    setGuardianMobile(digits);
+    setGuardianMobile(digits.slice(0, 10));
     clearFieldError('guardianMobile');
   }, [clearFieldError]);
   const handleMonthlyFeeChange = useMemo(() => makeChangeHandler(setMonthlyFee, 'monthlyFee'), [makeChangeHandler]);

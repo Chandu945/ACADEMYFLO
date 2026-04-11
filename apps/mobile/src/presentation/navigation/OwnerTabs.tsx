@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AppIcon } from '../components/ui/AppIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,9 +45,26 @@ function OwnerTabsInner() {
         screenOptions={({ route }) => ({
           ...makeTabScreenOptions(colors, insets.bottom),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            
+
             <AppIcon name={TAB_ICONS[route.name] ?? 'circle'} size={size} color={color} />
           ),
+        })}
+        screenListeners={({ navigation }) => ({
+          tabPress: (e) => {
+            const state = navigation.getState();
+            const currentRoute = state?.routes[state.index];
+            const targetName = (e.target ?? '').split('-')[0];
+            // If tapping the already-active tab that has a nested stack, reset to first screen
+            if (currentRoute?.name === targetName && currentRoute?.state && (currentRoute.state.index ?? 0) > 0) {
+              e.preventDefault();
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: targetName }],
+                }),
+              );
+            }
+          },
         })}
       >
         <Tab.Screen

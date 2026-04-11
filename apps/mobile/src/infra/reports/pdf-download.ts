@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
@@ -58,8 +59,37 @@ async function attemptDownload(
   }
 
   const fullUrl = `${env.API_BASE_URL}${options.endpoint}`;
-
   const filename = buildPdfFilename(options.reportType, options.monthKey);
+
+  // Web: use fetch + Blob + browser download
+  if (Platform.OS === 'web') {
+    try {
+      const res = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/pdf',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        if (res.status === 401) return err({ code: 'FORBIDDEN', message: 'Session expired. Please log in again.' });
+        if (res.status === 403) return err({ code: 'FORBIDDEN', message: 'Access denied. Only owners can export reports.' });
+        return err({ code: 'UNKNOWN', message: `Failed to download report. (HTTP ${res.status})` });
+      }
+      const blob = await res.blob();
+      const g = globalThis as unknown as { URL: { createObjectURL: (b: Blob) => string; revokeObjectURL: (u: string) => void }; document: { createElement: (tag: string) => { href: string; download: string; click: () => void } } };
+      const url = g.URL.createObjectURL(blob);
+      const link = g.document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      g.URL.revokeObjectURL(url);
+      return ok({ uri: url, filename, size: blob.size, mimeType: 'application/pdf' } as FileMetadata);
+    } catch {
+      return err({ code: 'NETWORK', message: 'Network timeout. Please try again.' });
+    }
+  }
+
   const tempPath = getTempPath(filename);
 
   try {
