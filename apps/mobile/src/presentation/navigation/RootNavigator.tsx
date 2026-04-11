@@ -34,7 +34,7 @@ export function RootNavigator() {
 
   switch (phase) {
     case 'initializing':
-      content = <LoadingOverlay message="Starting PlayConnect..." />;
+      content = <LoadingOverlay message="Starting Academyflo..." />;
       break;
 
     case 'updateRequired':

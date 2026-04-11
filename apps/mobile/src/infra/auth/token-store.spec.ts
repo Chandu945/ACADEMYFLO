@@ -22,7 +22,7 @@ describe('tokenStore', () => {
     expect(Keychain.setGenericPassword).toHaveBeenCalledWith(
       'session',
       JSON.stringify({ refreshToken: 'refresh-tok', user: mockUser }),
-      { service: 'com.playconnect.session' },
+      { service: 'com.academyflo.session' },
     );
   });
 
@@ -61,7 +61,7 @@ describe('tokenStore', () => {
     await tokenStore.clearSession();
 
     expect(Keychain.resetGenericPassword).toHaveBeenCalledWith({
-      service: 'com.playconnect.session',
+      service: 'com.academyflo.session',
     });
   });
 });

@@ -1,6 +1,6 @@
 import * as Keychain from 'react-native-keychain';
 
-const SERVICE_KEY = 'com.playconnect.deviceId';
+const SERVICE_KEY = 'com.academyflo.deviceId';
 
 let _cachedDeviceId: string | null = null;
 

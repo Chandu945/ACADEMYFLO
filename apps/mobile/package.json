@@ -2,7 +2,7 @@
   "name": "@playconnect/mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "PlayConnect Mobile — React Native (Owner + Staff)",
+  "description": "Academyflo Mobile — React Native (Owner + Staff)",
   "scripts": {
     "start": "react-native start",
     "android": "react-native run-android",

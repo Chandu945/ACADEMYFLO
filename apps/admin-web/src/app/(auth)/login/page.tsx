@@ -55,7 +55,8 @@ export default function LoginPage() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.brandPanel}>
-        <div className={styles.brandLogo}>PlayConnect</div>
+        <img src="/logo.png" alt="Academyflo" className={styles.brandIcon} />
+        <div className={styles.brandLogo}>Academyflo</div>
         <div className={styles.brandTagline}>Academy Management Platform</div>
       </div>
       <div className={styles.formPanel}>

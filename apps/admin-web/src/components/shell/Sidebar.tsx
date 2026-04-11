@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, GraduationCap, LogOut, ChevronsLeft, ChevronsRight } from 'lucide-react';
@@ -21,7 +22,14 @@ export function Sidebar() {
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
       <div className={styles.brand}>
-        {collapsed ? 'PC' : 'PlayConnect'}
+        <Image
+          src="/logo.png"
+          alt="Academyflo"
+          width={collapsed ? 28 : 32}
+          height={collapsed ? 28 : 32}
+          priority
+        />
+        {!collapsed && <span className={styles.brandName}>Academyflo</span>}
       </div>
       <nav className={styles.nav}>
         {NAV_ITEMS.map((item) => {

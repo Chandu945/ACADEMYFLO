@@ -190,7 +190,7 @@ export default function ReceiptPage() {
                 <polygon points="10 8 16 12 10 16 10 8" />
               </svg>
             </div>
-            <span className={styles.brandName}>PlayConnect</span>
+            <span className={styles.brandName}>Academyflo</span>
           </div>
           <span className={styles.receiptLabel}>Payment Receipt</span>
         </div>

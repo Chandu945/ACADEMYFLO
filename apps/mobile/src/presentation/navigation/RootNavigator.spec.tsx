@@ -75,12 +75,12 @@ function renderWithAuth(authValue: AuthContextValue) {
 describe('RootNavigator', () => {
   it('shows loading during initialization', () => {
     renderWithAuth(makeAuthValue({ phase: 'initializing' }));
-    expect(screen.getByText('Starting PlayConnect...')).toBeTruthy();
+    expect(screen.getByText('Starting Academyflo...')).toBeTruthy();
   });
 
   it('shows Login screen when unauthenticated', () => {
     renderWithAuth(makeAuthValue({ phase: 'unauthenticated' }));
-    expect(screen.getByText('PlayConnect')).toBeTruthy();
+    expect(screen.getByText('Academyflo')).toBeTruthy();
     expect(screen.getByText('Sign in to continue')).toBeTruthy();
   });
 

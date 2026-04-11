@@ -23,7 +23,7 @@ export function TopHeader() {
             <Menu size={20} />
           </button>
         )}
-        <span className={styles.title}>PlayConnect Admin</span>
+        <span className={styles.title}>Academyflo Admin</span>
       </div>
       {user && <span className={styles.userEmail}>{user.email}</span>}
     </header>

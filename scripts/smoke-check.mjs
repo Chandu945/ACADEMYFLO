@@ -64,7 +64,7 @@ async function checkEndpoint(check) {
 }
 
 async function main() {
-  console.log('PlayConnect Smoke Check');
+  console.log('Academyflo Smoke Check');
   console.log(`  API:   ${API_URL}`);
   console.log(`  Admin: ${ADMIN_URL}`);
   console.log('');

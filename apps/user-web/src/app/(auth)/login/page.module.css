@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Login Page — Centered card with PlayConnect branding
+   Login Page — Centered card with Academyflo branding
    Matches mobile LoginScreen cyan theme
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -25,22 +25,13 @@
   margin-bottom: var(--space-8);
 }
 
-.logoBadge {
-  width: 76px;
-  height: 76px;
+.logoImg {
+  width: 88px;
+  height: 88px;
   border-radius: 22px;
-  background-color: var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: contain;
   margin-bottom: var(--space-4);
-  box-shadow: var(--shadow-lg);
-}
-
-.logoBadge svg {
-  width: 36px;
-  height: 36px;
-  color: var(--color-white);
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.12));
 }
 
 .brandName {
@@ -208,14 +199,9 @@
     margin-bottom: var(--space-6);
   }
 
-  .logoBadge {
-    width: 64px;
-    height: 64px;
+  .logoImg {
+    width: 72px;
+    height: 72px;
     border-radius: 18px;
-  }
-
-  .logoBadge svg {
-    width: 30px;
-    height: 30px;
   }
 }

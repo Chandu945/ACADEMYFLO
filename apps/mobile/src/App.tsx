@@ -13,7 +13,7 @@ import { AppErrorBoundary } from './presentation/components/system/AppErrorBound
 import { OfflineBanner } from './presentation/components/global/OfflineBanner';
 
 /**
- * Deep linking configuration for PlayConnect.
+ * Deep linking configuration for Academyflo.
  * Expand the `screens` map as new linkable routes are added.
  */
 const linking = {

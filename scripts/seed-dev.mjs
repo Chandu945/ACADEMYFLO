@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * PlayConnect — Comprehensive Development Seed Script
+ * Academyflo — Comprehensive Development Seed Script
  *
  * Seeds the database with realistic dummy data across ALL modules:
  * - Owner signup + academy setup
@@ -87,7 +87,7 @@ const OWNER = {
 };
 
 const ACADEMY = {
-  academyName: 'PlayConnect Sports Academy',
+  academyName: 'Academyflo Sports Academy',
   address: {
     line1: '42 MG Road',
     line2: 'Near City Mall',
@@ -164,7 +164,7 @@ function makeStudent(i) {
 
 async function main() {
   console.log('\n==========================================');
-  console.log('  PlayConnect Dev Seed Script');
+  console.log('  Academyflo Dev Seed Script');
   console.log('==========================================\n');
 
   // ── Step 1: Owner Signup ───────────────────────────────────────────────────

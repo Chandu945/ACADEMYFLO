@@ -1,7 +1,7 @@
 import * as Keychain from 'react-native-keychain';
 import type { AuthUser } from '../../domain/auth/auth.types';
 
-const SERVICE_KEY = 'com.playconnect.session';
+const SERVICE_KEY = 'com.academyflo.session';
 
 type StoredSession = {
   refreshToken: string;

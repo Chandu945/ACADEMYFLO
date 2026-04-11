@@ -118,7 +118,7 @@ export function PhotoViewerScreen() {
 
     const url = resolveUrl(currentPhoto.url);
     const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
-    const destPath = `${RNFS.DocumentDirectoryPath}/PlayConnect_${currentPhoto.id}.${ext}`;
+    const destPath = `${RNFS.DocumentDirectoryPath}/Academyflo_${currentPhoto.id}.${ext}`;
 
     try {
       const token = getAccessToken();

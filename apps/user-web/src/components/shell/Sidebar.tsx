@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -195,28 +196,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* ── Brand ─────────────────────────────────────────────────── */}
         <div className={styles.brand}>
           <div className={styles.logoMark}>
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 32 32"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect width="32" height="32" rx="8" fill="#0891b2" />
-              <text
-                x="16"
-                y="22"
-                textAnchor="middle"
-                fill="#fff"
-                fontSize="18"
-                fontWeight="700"
-                fontFamily="Inter, sans-serif"
-              >
-                P
-              </text>
-            </svg>
+            <Image
+              src="/logo.png"
+              alt="Academyflo"
+              width={32}
+              height={32}
+              priority
+            />
           </div>
-          {!collapsed && <span className={styles.brandName}>PlayConnect</span>}
+          {!collapsed && <span className={styles.brandName}>Academyflo</span>}
         </div>
 
         {/* ── Navigation ────────────────────────────────────────────── */}

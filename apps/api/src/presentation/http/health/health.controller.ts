@@ -36,7 +36,7 @@ export class HealthController {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'ok' },
-        service: { type: 'string', example: 'playconnect-api' },
+        service: { type: 'string', example: 'academyflo-api' },
         time: { type: 'string', format: 'date-time' },
         requestId: { type: 'string' },
       },
@@ -45,7 +45,7 @@ export class HealthController {
   liveness(@Req() req: Request) {
     return {
       status: 'ok',
-      service: 'playconnect-api',
+      service: 'academyflo-api',
       time: new Date().toISOString(),
       requestId: getRequestId(req),
     };
@@ -60,7 +60,7 @@ export class HealthController {
       type: 'object',
       properties: {
         status: { type: 'string', enum: ['ok', 'unavailable'] },
-        service: { type: 'string', example: 'playconnect-api' },
+        service: { type: 'string', example: 'academyflo-api' },
         time: { type: 'string', format: 'date-time' },
         dependencies: {
           type: 'object',
@@ -84,7 +84,7 @@ export class HealthController {
 
     return {
       status: isDown ? 'unavailable' : 'ok',
-      service: 'playconnect-api',
+      service: 'academyflo-api',
       time: new Date().toISOString(),
       dependencies: {
         mongodb: mongoStatus,
@@ -119,8 +119,8 @@ export class HealthController {
       : this.config.minAppVersionIos;
 
     const storeUrl = isAndroid
-      ? 'https://play.google.com/store/apps/details?id=com.playconnect'
-      : 'https://apps.apple.com/app/playconnect/id000000000';
+      ? 'https://play.google.com/store/apps/details?id=com.academyflo'
+      : 'https://apps.apple.com/app/academyflo/id000000000';
 
     const updateRequired = !compareVersions(version || '0.0.0', minVersion);
 

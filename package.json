@@ -2,7 +2,7 @@
   "name": "playconnect",
   "version": "0.0.0",
   "private": true,
-  "description": "PlayConnect — Academy Management Application",
+  "description": "Academyflo — Academy Management Application",
   "workspaces": [
     "apps/*",
     "packages/*"

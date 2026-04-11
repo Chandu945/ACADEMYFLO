@@ -72,7 +72,7 @@ async function bootstrap() {
 
   const port = config.port;
   await app.listen(port);
-  logger.info(`PlayConnect API running on port ${port}`, {
+  logger.info(`Academyflo API running on port ${port}`, {
     port,
     env: config.appEnv,
   });

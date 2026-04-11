@@ -5,7 +5,7 @@ describe('exportRevenuePdfUseCase', () => {
   it('calls pdfDownload with correct endpoint and returns metadata', async () => {
     const metadata = {
       filePath: '/exports/revenue.pdf',
-      filename: 'playconnect_revenue_2026-03_20260304_1200.pdf',
+      filename: 'academyflo_revenue_2026-03_20260304_1200.pdf',
       sizeBytes: 2048,
       createdAt: new Date(),
     };

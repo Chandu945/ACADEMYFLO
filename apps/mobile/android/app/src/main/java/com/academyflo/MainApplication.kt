@@ -1,4 +1,4 @@
-package com.playconnect
+package com.academyflo
 
 import android.app.Application
 import android.app.NotificationChannel
@@ -48,8 +48,8 @@ class MainApplication : Application(), ReactApplication {
   private fun createNotificationChannel() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val channel = NotificationChannel(
-        "playconnect_default",
-        "PlayConnect Notifications",
+        "academyflo_default",
+        "Academyflo Notifications",
         NotificationManager.IMPORTANCE_HIGH
       ).apply {
         description = "Notifications for fees, attendance, and payment updates"

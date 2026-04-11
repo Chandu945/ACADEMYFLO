@@ -127,7 +127,7 @@ describe('Navigation Regression', () => {
   describe('Phase → Screen mapping', () => {
     it('initializing → LoadingOverlay', () => {
       renderWithAuth(makeAuthValue({ phase: 'initializing' }));
-      expect(screen.getByText('Starting PlayConnect...')).toBeTruthy();
+      expect(screen.getByText('Starting Academyflo...')).toBeTruthy();
     });
 
     it('unauthenticated → AuthStack (Login)', () => {
@@ -193,7 +193,7 @@ describe('Navigation Regression', () => {
       const auth = makeAuthValue({ phase: 'initializing' });
       const { rerender } = renderWithAuth(auth);
 
-      expect(screen.getByText('Starting PlayConnect...')).toBeTruthy();
+      expect(screen.getByText('Starting Academyflo...')).toBeTruthy();
 
       rerender(
         <AuthContext.Provider value={{ ...auth, phase: 'unauthenticated' }}>

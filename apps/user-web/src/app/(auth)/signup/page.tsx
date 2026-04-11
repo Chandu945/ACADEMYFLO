@@ -3,7 +3,7 @@ import SignupForm from './SignupForm';
 
 export const metadata: Metadata = {
   title: 'Sign Up',
-  description: 'Create your PlayConnect academy management account',
+  description: 'Create your Academyflo academy management account',
 };
 
 export default function SignupPage() {

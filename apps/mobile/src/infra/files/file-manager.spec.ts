@@ -18,7 +18,7 @@ describe('file-manager', () => {
       const dir = await ensureExportsDir();
 
       expect(mockRNFS.mkdir).toHaveBeenCalled();
-      expect(dir).toContain('PlayConnect/exports');
+      expect(dir).toContain('Academyflo/exports');
     });
 
     it('skips mkdir if directory exists', async () => {
@@ -36,7 +36,7 @@ describe('file-manager', () => {
     });
 
     it('returns final path in exports dir', () => {
-      expect(getFinalPath('test.pdf')).toContain('PlayConnect/exports/test.pdf');
+      expect(getFinalPath('test.pdf')).toContain('Academyflo/exports/test.pdf');
     });
   });
 

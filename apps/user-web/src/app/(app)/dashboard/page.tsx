@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import DashboardContent from './DashboardContent';
 
 export const metadata: Metadata = {
-  title: 'Dashboard — PlayConnect',
+  title: 'Dashboard — Academyflo',
   description: 'Academy management dashboard — KPIs, finances, and birthdays at a glance',
 };
 

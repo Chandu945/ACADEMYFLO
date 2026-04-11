@@ -177,22 +177,12 @@ export default function LoginForm() {
       <div className={styles.wrapper}>
         {/* Brand Section */}
         <div className={styles.brand}>
-          <div className={styles.logoBadge}>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M8 12l2-6 4 10 2-6" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </div>
-          <h1 className={styles.brandName}>PlayConnect</h1>
+          <img
+            src="/logo.png"
+            alt="Academyflo"
+            className={styles.logoImg}
+          />
+          <h1 className={styles.brandName}>Academyflo</h1>
           <p className={styles.tagline}>Academy Management, Simplified</p>
         </div>
 

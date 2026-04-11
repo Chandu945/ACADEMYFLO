@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TextInput,
+  Image,
   StyleSheet,
   TouchableOpacity,
   StatusBar,
@@ -10,7 +11,6 @@ import {
   Pressable,
   Platform,
 } from 'react-native';
-import { AppIcon } from '../../components/ui/AppIcon';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
@@ -162,9 +162,13 @@ export function LoginScreen() {
         {/* Logo / Brand Section */}
         <View style={styles.brandSection}>
           <View style={styles.logoContainer}>
-            <AppIcon name="badminton" size={36} color={colors.white} />
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.brandName} accessibilityRole="header">PlayConnect</Text>
+          <Text style={styles.brandName} accessibilityRole="header">Academyflo</Text>
           <Text style={styles.tagline}>Academy Management, Simplified</Text>
         </View>
 
@@ -258,14 +262,18 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing['2xl'],
   },
   logoContainer: {
-    width: 76,
-    height: 76,
+    width: 88,
+    height: 88,
     borderRadius: 22,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.base,
+    overflow: 'hidden',
     ...shadows.lg,
+  },
+  logoImage: {
+    width: 88,
+    height: 88,
   },
   brandName: {
     fontSize: 32,

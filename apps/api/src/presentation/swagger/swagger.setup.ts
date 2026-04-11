@@ -76,7 +76,7 @@ export function setupSwagger(
  */
 export function buildOpenApiDocument(app: INestApplication) {
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('PlayConnect API')
+    .setTitle('Academyflo API')
     .setDescription('Academy Management Application API — v1')
     .setVersion('1.0')
     .addBearerAuth(

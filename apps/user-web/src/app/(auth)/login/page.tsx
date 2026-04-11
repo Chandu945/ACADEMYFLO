@@ -3,7 +3,7 @@ import LoginForm from './LoginForm';
 
 export const metadata: Metadata = {
   title: 'Sign In',
-  description: 'Sign in to your PlayConnect academy management account',
+  description: 'Sign in to your Academyflo academy management account',
 };
 
 export default function LoginPage() {

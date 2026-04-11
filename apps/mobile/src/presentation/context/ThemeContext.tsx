@@ -13,7 +13,7 @@ type ThemeContextValue = {
   setMode: (mode: ThemeMode) => void;
 };
 
-const SERVICE = 'playconnect_theme';
+const SERVICE = 'academyflo_theme';
 
 const ThemeContext = createContext<ThemeContextValue>({
   colors: lightColors,

@@ -1,6 +1,6 @@
 /**
  * Build a safe PDF filename for export.
- * Pattern: playconnect_<report>_<YYYY-MM>_<YYYYMMDD_HHmm>.pdf
+ * Pattern: academyflo_<report>_<YYYY-MM>_<YYYYMMDD_HHmm>.pdf
  * No PII in filenames.
  */
 export function buildPdfFilename(reportType: string, monthKey: string): string {
@@ -17,7 +17,7 @@ export function buildPdfFilename(reportType: string, monthKey: string): string {
   const safeType = reportType.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
   const safeMonth = monthKey.replace(/[^0-9-]/g, '');
 
-  return `playconnect_${safeType}_${safeMonth}_${ts}.pdf`;
+  return `academyflo_${safeType}_${safeMonth}_${ts}.pdf`;
 }
 
 /**

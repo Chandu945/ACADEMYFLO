@@ -15,7 +15,7 @@
       android:supportsRtl="true">
       <meta-data
         android:name="com.google.firebase.messaging.default_notification_channel_id"
-        android:value="playconnect_default"
+        android:value="academyflo_default"
         tools:replace="android:value" />
       <activity
         android:name=".MainActivity"

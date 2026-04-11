@@ -10,7 +10,7 @@ jest.mock('react-native-share', () => ({
 
 const successResult: PdfExportResult = {
   filePath: '/mock/exports/test.pdf',
-  filename: 'playconnect_revenue_2026-03.pdf',
+  filename: 'academyflo_revenue_2026-03.pdf',
   sizeBytes: 2048,
   createdAt: new Date(),
 };

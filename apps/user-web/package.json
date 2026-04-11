@@ -2,7 +2,7 @@
   "name": "@playconnect/user-web",
   "version": "0.0.0",
   "private": true,
-  "description": "PlayConnect User Web — Academy Management (Owner / Staff / Parent)",
+  "description": "Academyflo User Web — Academy Management (Owner / Staff / Parent)",
   "scripts": {
     "dev": "next dev --port 3003",
     "build": "next build",

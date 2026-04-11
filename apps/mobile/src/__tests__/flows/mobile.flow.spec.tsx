@@ -197,7 +197,7 @@ describe('Mobile Flow', () => {
   describe('Step 1: Unauthenticated → Login screen', () => {
     it('should show login screen when unauthenticated', () => {
       renderWithAuth(makeAuthValue({ phase: 'unauthenticated' }));
-      expect(screen.getByText('PlayConnect')).toBeTruthy();
+      expect(screen.getByText('Academyflo')).toBeTruthy();
       expect(screen.getByText('Sign in to continue')).toBeTruthy();
     });
   });
@@ -205,7 +205,7 @@ describe('Mobile Flow', () => {
   describe('Step 2: Initializing → Loading', () => {
     it('should show loading overlay during initialization', () => {
       renderWithAuth(makeAuthValue({ phase: 'initializing' }));
-      expect(screen.getByText('Starting PlayConnect...')).toBeTruthy();
+      expect(screen.getByText('Starting Academyflo...')).toBeTruthy();
     });
   });
 

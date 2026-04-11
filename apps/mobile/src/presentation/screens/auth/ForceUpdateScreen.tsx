@@ -19,7 +19,7 @@ export function ForceUpdateScreen({ storeUrl, minVersion }: Props) {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Update Required</Text>
       <Text style={styles.message}>
-        A new version ({minVersion}) of PlayConnect is available. Please update to continue using
+        A new version ({minVersion}) of Academyflo is available. Please update to continue using
         the app.
       </Text>
       <Button

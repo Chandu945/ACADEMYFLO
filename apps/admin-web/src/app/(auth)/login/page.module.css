@@ -27,6 +27,17 @@
   pointer-events: none;
 }
 
+.brandIcon {
+  width: 120px;
+  height: 120px;
+  border-radius: 28px;
+  object-fit: contain;
+  margin-bottom: var(--space-5);
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.15));
+}
+
 .brandLogo {
   font-size: 48px;
   font-weight: var(--font-bold);

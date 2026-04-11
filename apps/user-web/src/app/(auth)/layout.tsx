@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: {
-    template: '%s — PlayConnect',
-    default: 'PlayConnect',
+    template: '%s — Academyflo',
+    default: 'Academyflo',
   },
 };
 

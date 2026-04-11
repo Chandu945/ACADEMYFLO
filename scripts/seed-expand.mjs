@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * PlayConnect — Expanded Development Seed Script
+ * Academyflo — Expanded Development Seed Script
  *
  * Adds 50 new students + 6 months of comprehensive data across ALL features:
  *   - 50 students (total ~75 with existing)
@@ -551,7 +551,7 @@ function makeEnquiries(academyId, ownerUserId, staffIds, convertibleStudentIds) 
 
 async function main() {
   console.log('\n══════════════════════════════════════════════');
-  console.log('  PlayConnect — Expanded Seed (50 students + 6 mo)');
+  console.log('  Academyflo — Expanded Seed (50 students + 6 mo)');
   console.log('══════════════════════════════════════════════\n');
 
   // ── Phase 1: Login & fetch existing data ─────────────────────────────────

@@ -1,6 +1,6 @@
 import RNFS from 'react-native-fs';
 
-const EXPORTS_DIR = `${RNFS.DocumentDirectoryPath}/PlayConnect/exports`;
+const EXPORTS_DIR = `${RNFS.DocumentDirectoryPath}/Academyflo/exports`;
 const MAX_FILES = 20;
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
