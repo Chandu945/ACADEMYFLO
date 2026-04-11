@@ -80,6 +80,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       findByPaymentRequestId: jest.fn(),
       listByAcademy: jest.fn(),
       countByAcademyAndPrefix: jest.fn(),
+      incrementReceiptCounter: jest.fn(),
       sumRevenueByAcademyAndDateRange: jest.fn(),
       listByAcademyAndDateRange: jest.fn(),
       findByFeeDueId: jest.fn(),
@@ -90,6 +91,8 @@ describe('ApprovePaymentRequestUseCase', () => {
     studentRepo = {
       save: jest.fn(),
       findById: jest.fn(),
+      findByEmailInAcademy: jest.fn(),
+      findByPhoneInAcademy: jest.fn(),
       list: jest.fn(),
       listActiveByAcademy: jest.fn(),
       countActiveByAcademy: jest.fn(),
@@ -169,6 +172,7 @@ describe('ApprovePaymentRequestUseCase', () => {
     feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDue());
     academyRepo.findById.mockResolvedValue(makeAcademy());
     txLogRepo.countByAcademyAndPrefix.mockResolvedValue(0);
+    txLogRepo.incrementReceiptCounter.mockResolvedValue(1);
 
     const result = await useCase.execute({
       actorUserId: 'owner-1',

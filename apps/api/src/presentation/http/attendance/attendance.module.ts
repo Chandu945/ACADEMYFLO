@@ -18,6 +18,8 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
 import { MongoHolidayRepository } from '@infrastructure/repositories/mongo-holiday.repository';
 import { MongoStudentRepository } from '@infrastructure/repositories/mongo-student.repository';
 import { MongoStudentBatchRepository } from '@infrastructure/repositories/mongo-student-batch.repository';
+import { MongoBatchRepository } from '@infrastructure/repositories/mongo-batch.repository';
+import { BatchModel, BatchSchema } from '@infrastructure/database/schemas/batch.schema';
 import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
 import { MongoTransactionService } from '@infrastructure/database/mongo-transaction.service';
 import {
@@ -29,6 +31,8 @@ import { STUDENT_ATTENDANCE_REPOSITORY } from '@domain/attendance/ports/student-
 import { HOLIDAY_REPOSITORY } from '@domain/attendance/ports/holiday.repository';
 import { STUDENT_REPOSITORY } from '@domain/student/ports/student.repository';
 import { STUDENT_BATCH_REPOSITORY } from '@domain/batch/ports/student-batch.repository';
+import { BATCH_REPOSITORY } from '@domain/batch/ports/batch.repository';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { GetDailyAttendanceViewUseCase } from '@application/attendance/use-cases/get-daily-attendance-view.usecase';
 import { MarkStudentAttendanceUseCase } from '@application/attendance/use-cases/mark-student-attendance.usecase';
@@ -60,6 +64,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
       { name: HolidayModel.name, schema: HolidaySchema },
       { name: StudentModel.name, schema: StudentSchema },
       { name: StudentBatchModel.name, schema: StudentBatchSchema },
+      { name: BatchModel.name, schema: BatchSchema },
       { name: ParentStudentLinkModel.name, schema: ParentStudentLinkSchema },
     ]),
   ],
@@ -69,6 +74,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
     { provide: HOLIDAY_REPOSITORY, useClass: MongoHolidayRepository },
     { provide: STUDENT_REPOSITORY, useClass: MongoStudentRepository },
     { provide: STUDENT_BATCH_REPOSITORY, useClass: MongoStudentBatchRepository },
+    { provide: BATCH_REPOSITORY, useClass: MongoBatchRepository },
     { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
@@ -79,13 +85,15 @@ import type { TransactionPort } from '@application/common/transaction.port';
         ar: StudentAttendanceRepository,
         hr: HolidayRepository,
         sbr: StudentBatchRepository,
-      ) => new GetDailyAttendanceViewUseCase(ur, sr, ar, hr, sbr),
+        br: BatchRepository,
+      ) => new GetDailyAttendanceViewUseCase(ur, sr, ar, hr, sbr, br),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
         STUDENT_ATTENDANCE_REPOSITORY,
         HOLIDAY_REPOSITORY,
         STUDENT_BATCH_REPOSITORY,
+        BATCH_REPOSITORY,
       ],
     },
     {

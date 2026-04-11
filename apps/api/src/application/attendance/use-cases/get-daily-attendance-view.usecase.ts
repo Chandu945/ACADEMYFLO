@@ -7,6 +7,7 @@ import type { StudentAttendanceRepository } from '@domain/attendance/ports/stude
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance, validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
 import type { DailyAttendanceViewItem } from '../dtos/attendance.dto';
@@ -41,6 +42,7 @@ export class GetDailyAttendanceViewUseCase {
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
     private readonly studentBatchRepo?: StudentBatchRepository,
+    private readonly batchRepo?: BatchRepository,
   ) {}
 
   async execute(
@@ -68,6 +70,14 @@ export class GetDailyAttendanceViewUseCase {
     let total: number;
 
     if (input.batchId && this.studentBatchRepo) {
+      // Verify batch ownership before reading students (prevent IDOR / cross-tenant access)
+      if (this.batchRepo) {
+        const batch = await this.batchRepo.findById(input.batchId);
+        if (!batch || batch.academyId !== actor.academyId) {
+          return err(AttendanceErrors.batchNotInAcademy());
+        }
+      }
+
       // Filter by batch: get student IDs in batch, then fetch ACTIVE students
       const batchAssignments = await this.studentBatchRepo.findByBatchId(input.batchId);
       const studentIds = batchAssignments.map((a) => a.studentId);

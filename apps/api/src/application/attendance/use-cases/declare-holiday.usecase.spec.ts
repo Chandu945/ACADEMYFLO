@@ -72,7 +72,10 @@ describe('DeclareHolidayUseCase', () => {
       expect(result.value.reason).toBe('Republic Day');
     }
     expect(holidayRepo.save).toHaveBeenCalled();
-    expect(attendanceRepo.deleteByAcademyAndDate).toHaveBeenCalledWith('academy-1', '2024-03-26');
+    // Absences are intentionally preserved when declaring a holiday (so they can be
+    // restored if the holiday is later removed). The cleanup that used to delete
+    // attendance records was removed to prevent data loss.
+    expect(attendanceRepo.deleteByAcademyAndDate).not.toHaveBeenCalled();
   });
 
   it('should be idempotent when holiday already exists', async () => {
