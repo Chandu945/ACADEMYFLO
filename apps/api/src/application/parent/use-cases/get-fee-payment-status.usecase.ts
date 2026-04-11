@@ -80,8 +80,8 @@ export class GetFeePaymentStatusUseCase {
 
             const academy = await this.academyRepo.findById(payment.academyId);
             const prefix = academy?.receiptPrefix ?? DEFAULT_RECEIPT_PREFIX;
-            const count = await this.transactionLogRepo.countByAcademyAndPrefix(payment.academyId, prefix);
-            const receiptNumber = generateReceiptNumber(prefix, count + 1);
+            const next = await this.transactionLogRepo.incrementReceiptCounter(payment.academyId, prefix);
+            const receiptNumber = generateReceiptNumber(prefix, next);
 
             const txLog = TransactionLog.create({
               id: randomUUID(),

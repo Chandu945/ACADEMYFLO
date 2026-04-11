@@ -27,8 +27,11 @@ export class DeclareHolidayUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly holidayRepo: HolidayRepository,
-    private readonly attendanceRepo: StudentAttendanceRepository,
-  ) {}
+    // Kept for DI compatibility — absences are intentionally preserved when declaring a holiday
+    private readonly _attendanceRepo: StudentAttendanceRepository,
+  ) {
+    void this._attendanceRepo;
+  }
 
   async execute(input: DeclareHolidayInput): Promise<Result<HolidayDto, AppError>> {
     const roleCheck = canDeclareHoliday(input.actorRole);
@@ -76,8 +79,8 @@ export class DeclareHolidayUseCase {
 
     await this.holidayRepo.save(holiday);
 
-    // Data hygiene: clean up absent records for this date
-    await this.attendanceRepo.deleteByAcademyAndDate(actor.academyId, input.date);
+    // Note: We intentionally preserve absent records — they will be hidden
+    // while the holiday is active and restored if the holiday is removed.
 
     return ok({
       id: holiday.id.toString(),

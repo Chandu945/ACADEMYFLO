@@ -71,6 +71,38 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
     });
   }
 
+  async incrementReceiptCounter(academyId: string, prefix: string): Promise<number> {
+    // Use a separate counter document inside the receipt_counters collection.
+    // findOneAndUpdate with $inc is atomic at the document level — guaranteed unique
+    // numbers even under concurrent transactions.
+    const counterId = `${academyId}:${prefix}`;
+    const session = getTransactionSession();
+    const counters = this.model.db.collection<{ _id: string; value: number }>('receipt_counters');
+
+    // First-time seed: if no counter exists, initialize from existing receipt count.
+    // This makes the migration safe — old academies continue from their current max.
+    const existing = await counters.findOne({ _id: counterId }, { session: session ?? undefined });
+    if (!existing) {
+      const seed = await this.model.countDocuments({
+        academyId,
+        receiptNumber: { $regex: `^${escapeRegex(prefix)}-` },
+      });
+      await counters.updateOne(
+        { _id: counterId },
+        { $setOnInsert: { value: seed } },
+        { upsert: true, session: session ?? undefined },
+      );
+    }
+
+    const result = await counters.findOneAndUpdate(
+      { _id: counterId },
+      { $inc: { value: 1 } },
+      { returnDocument: 'after', upsert: true, session: session ?? undefined },
+    );
+
+    return result?.value ?? 1;
+  }
+
   async sumRevenueByAcademyAndDateRange(academyId: string, from: Date, to: Date): Promise<number> {
     const result = await this.model.aggregate([
       {

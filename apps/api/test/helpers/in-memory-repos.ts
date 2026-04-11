@@ -894,6 +894,21 @@ export class InMemoryTransactionLogRepository implements TransactionLogRepositor
     ).length;
   }
 
+  private receiptCounters: Map<string, number> = new Map();
+  async incrementReceiptCounter(academyId: string, prefix: string): Promise<number> {
+    const key = `${academyId}:${prefix}`;
+    if (!this.receiptCounters.has(key)) {
+      // Seed from existing receipts (matches Mongo behavior)
+      const seed = Array.from(this.logs.values()).filter(
+        (l) => l.academyId === academyId && l.receiptNumber.startsWith(`${prefix}-`),
+      ).length;
+      this.receiptCounters.set(key, seed);
+    }
+    const next = (this.receiptCounters.get(key) ?? 0) + 1;
+    this.receiptCounters.set(key, next);
+    return next;
+  }
+
   async sumRevenueByAcademyAndDateRange(academyId: string, from: Date, to: Date): Promise<number> {
     return Array.from(this.logs.values())
       .filter(

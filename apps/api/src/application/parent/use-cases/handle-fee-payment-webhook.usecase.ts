@@ -140,8 +140,8 @@ export class HandleFeePaymentWebhookUseCase {
         // Mark fee due as paid and create transaction log atomically
         const paidDue = feeDue.markPaidByParentOnline(payment.parentUserId, now, payment.lateFeeSnapshot);
 
-        const count = await this.transactionLogRepo.countByAcademyAndPrefix(payment.academyId, prefix);
-        receiptNumber = generateReceiptNumber(prefix, count + 1);
+        const next = await this.transactionLogRepo.incrementReceiptCounter(payment.academyId, prefix);
+        receiptNumber = generateReceiptNumber(prefix, next);
 
         const txLog = TransactionLog.create({
           id: randomUUID(),

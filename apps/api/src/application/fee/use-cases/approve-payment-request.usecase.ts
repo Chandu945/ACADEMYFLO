@@ -107,8 +107,8 @@ export class ApprovePaymentRequestUseCase {
         );
       }
 
-      const count = await this.transactionLogRepo.countByAcademyAndPrefix(request.academyId, prefix);
-      const receiptNumber = generateReceiptNumber(prefix, count + 1);
+      const next = await this.transactionLogRepo.incrementReceiptCounter(request.academyId, prefix);
+      const receiptNumber = generateReceiptNumber(prefix, next);
 
       const txLog = TransactionLog.create({
         id: randomUUID(),

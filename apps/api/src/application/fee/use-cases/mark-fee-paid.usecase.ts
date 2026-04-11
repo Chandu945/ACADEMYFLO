@@ -83,8 +83,8 @@ export class MarkFeePaidUseCase {
     const paid = due.markPaid(input.actorUserId, now, input.paymentLabel, lateFeeApplied);
 
     await this.transaction.run(async () => {
-      const count = await this.transactionLogRepo.countByAcademyAndPrefix(academyId, prefix);
-      const receiptNumber = generateReceiptNumber(prefix, count + 1);
+      const next = await this.transactionLogRepo.incrementReceiptCounter(academyId, prefix);
+      const receiptNumber = generateReceiptNumber(prefix, next);
 
       const txLog = TransactionLog.create({
         id: randomUUID(),
