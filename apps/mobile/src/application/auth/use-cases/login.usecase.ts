@@ -22,6 +22,14 @@ export async function loginUseCase(
 
   if (!result.ok) return result;
 
+  // Defensive: validate response shape before trusting it
+  if (!result.value.accessToken || !result.value.refreshToken || !result.value.user) {
+    return {
+      ok: false,
+      error: { code: 'UNKNOWN', message: 'Invalid login response. Please try again.' },
+    };
+  }
+
   await deps.tokenStore.setSession(result.value.refreshToken, result.value.user);
   deps.accessToken.set(result.value.accessToken);
 

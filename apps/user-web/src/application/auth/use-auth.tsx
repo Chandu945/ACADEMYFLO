@@ -185,8 +185,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) {
         return { ok: false, error: data.message || 'Login failed' };
       }
-      _initPromise = null; // Reset so post-login navigation gets a fresh refresh
+      if (!data.accessToken) {
+        return { ok: false, error: 'Login response missing token. Please try again.' };
+      }
       const user = data.user ?? decodeUserFromToken(data.accessToken);
+      if (!user) {
+        return { ok: false, error: 'Invalid login response. Please try again.' };
+      }
+      _initPromise = null; // Reset so post-login navigation gets a fresh refresh
       setState({
         user,
         accessToken: data.accessToken,
