@@ -91,8 +91,6 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append('file', photoFile);
 
-      // TODO: Create /api/uploads/image BFF route that proxies to the backend upload endpoint.
-      // For now, this calls the placeholder path. Once the BFF route is implemented, this will work.
       const res = await fetch('/api/uploads/image', {
         method: 'POST',
         headers: {
