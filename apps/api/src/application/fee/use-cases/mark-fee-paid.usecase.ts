@@ -16,6 +16,7 @@ import type { FeeDueDto } from '../dtos/fee-due.dto';
 import { toFeeDueDto } from '../dtos/fee-due.dto';
 import type { UserRole, PaymentLabel, LateFeeConfig, LateFeeRepeatInterval } from '@playconnect/contracts';
 import { DEFAULT_RECEIPT_PREFIX, computeLateFee } from '@playconnect/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { randomUUID } from 'crypto';
 
 export interface MarkFeePaidInput {
@@ -35,6 +36,7 @@ export class MarkFeePaidUseCase {
     private readonly academyRepo: AcademyRepository,
     private readonly clock: ClockPort,
     private readonly transaction: TransactionPort,
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: MarkFeePaidInput): Promise<Result<FeeDueDto, AppError>> {
@@ -103,6 +105,18 @@ export class MarkFeePaidUseCase {
       await this.feeDueRepo.save(paid);
       await this.transactionLogRepo.save(txLog);
     });
+
+    // Audit log (non-transactional, fire after main save)
+    if (this.auditRecorder) {
+      await this.auditRecorder.record({
+        academyId,
+        actorUserId: input.actorUserId,
+        action: 'FEE_MARKED_PAID',
+        entityType: 'FEE_DUE',
+        entityId: due.id.toString(),
+        context: { studentId: input.studentId, monthKey: input.monthKey },
+      });
+    }
 
     return ok(toFeeDueDto(paid));
   }

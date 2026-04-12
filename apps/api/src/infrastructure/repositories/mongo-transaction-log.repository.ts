@@ -72,16 +72,22 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
   }
 
   async incrementReceiptCounter(academyId: string, prefix: string): Promise<number> {
-    // Use a separate counter document inside the receipt_counters collection.
-    // findOneAndUpdate with $inc is atomic at the document level — guaranteed unique
-    // numbers even under concurrent transactions.
+    // Atomic counter using a separate receipt_counters collection.
+    // Uses findOneAndUpdate with $inc — guaranteed unique numbers even under
+    // concurrent transactions.
+    //
+    // Note: We do NOT use the transaction session here because:
+    // 1. MongoDB Atlas requires primary read preference inside transactions,
+    //    but db.collection() inherits secondaryPreferred from the connection.
+    // 2. The counter increment is itself atomic (findOneAndUpdate) so it doesn't
+    //    need to be inside the outer transaction for correctness.
+    // 3. If the outer transaction rolls back, we "waste" one counter value —
+    //    this is acceptable (receipt numbers may have gaps but never duplicates).
     const counterId = `${academyId}:${prefix}`;
-    const session = getTransactionSession();
     const counters = this.model.db.collection<{ _id: string; value: number }>('receipt_counters');
 
     // First-time seed: if no counter exists, initialize from existing receipt count.
-    // This makes the migration safe — old academies continue from their current max.
-    const existing = await counters.findOne({ _id: counterId }, { session: session ?? undefined });
+    const existing = await counters.findOne({ _id: counterId });
     if (!existing) {
       const seed = await this.model.countDocuments({
         academyId,
@@ -90,14 +96,14 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
       await counters.updateOne(
         { _id: counterId },
         { $setOnInsert: { value: seed } },
-        { upsert: true, session: session ?? undefined },
+        { upsert: true },
       );
     }
 
     const result = await counters.findOneAndUpdate(
       { _id: counterId },
       { $inc: { value: 1 } },
-      { returnDocument: 'after', upsert: true, session: session ?? undefined },
+      { returnDocument: 'after', upsert: true },
     );
 
     return result?.value ?? 1;

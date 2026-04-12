@@ -34,12 +34,16 @@ import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { ClockPort } from '@application/common/clock.port';
 import type { TransactionPort } from '@application/common/transaction.port';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 
 @Module({
   imports: [
     AuthModule,
     AcademyOnboardingModule,
     SubscriptionModule,
+    AuditLogsModule,
     MongooseModule.forFeature([
       { name: FeeDueModel.name, schema: FeeDueSchema },
       { name: StudentModel.name, schema: StudentSchema },
@@ -86,8 +90,9 @@ import type { TransactionPort } from '@application/common/transaction.port';
         academyRepo: AcademyRepository,
         clock: ClockPort,
         tx: TransactionPort,
+        auditRecorder: AuditRecorderPort,
       ) =>
-        new MarkFeePaidUseCase(userRepo, studentRepo, feeDueRepo, tlRepo, academyRepo, clock, tx),
+        new MarkFeePaidUseCase(userRepo, studentRepo, feeDueRepo, tlRepo, academyRepo, clock, tx, auditRecorder),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
@@ -96,6 +101,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
         ACADEMY_REPOSITORY,
         CLOCK_PORT,
         TRANSACTION_PORT,
+        AUDIT_RECORDER_PORT,
       ],
     },
     {

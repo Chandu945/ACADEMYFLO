@@ -73,7 +73,9 @@ export class ListUnpaidDuesUseCase {
       const uniqueIds = [...new Set(paged.map((d) => d.studentId))];
       const students = await this.studentRepo.findByIds(uniqueIds);
       for (const s of students) {
-        nameMap[s.id.toString()] = s.fullName;
+        if (!s.isDeleted()) {
+          nameMap[s.id.toString()] = s.fullName;
+        }
       }
     }
 
