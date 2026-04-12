@@ -377,32 +377,20 @@ export function ChildDetailScreen() {
                 </View>
               ) : null;
             })()}
-            {fee.status === 'DUE' && (
-              <TouchableOpacity
-                style={styles.payButton}
-                onPress={() =>
-                  navigation.navigate('FeePayment', {
-                    feeDueId: fee.id,
-                    monthKey: fee.monthKey,
-                    amount: fee.amount,
-                    lateFee: fee.lateFee,
-                  })
-                }
-              >
-                
-                <AppIcon name="credit-card-outline" size={16} color={colors.white} />
-                <Text style={styles.payButtonText}>
-                  {fee.lateFee > 0
-                    ? `Pay ${formatCurrency(fee.amount + fee.lateFee)}`
-                    : 'Pay Now'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            {/* Online payment disabled — parents pay at academy, owner/staff marks as paid */}
           </View>
         ))}
         {fees.length === 0 && (
           <View style={styles.sectionCard}>
             <Text style={styles.noData}>No fee records found</Text>
+          </View>
+        )}
+        {fees.some((f) => f.status === 'DUE') && (
+          <View style={styles.payAtAcademyNote}>
+            <Text style={styles.payAtAcademyStar}>*</Text>
+            <Text style={styles.payAtAcademyText}>
+              Please visit the academy to pay your pending fees. Once paid, it will be updated here automatically.
+            </Text>
           </View>
         )}
       </View>
@@ -574,5 +562,26 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.white,
     fontWeight: fontWeights.semibold,
     fontSize: fontSizes.sm,
+  },
+  payAtAcademyNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  payAtAcademyStar: {
+    color: colors.warning,
+    fontWeight: fontWeights.bold,
+    fontSize: fontSizes.lg,
+    marginRight: spacing.xs,
+    lineHeight: 20,
+  },
+  payAtAcademyText: {
+    flex: 1,
+    color: colors.textSecondary,
+    fontSize: fontSizes.sm,
+    lineHeight: 20,
+    fontStyle: 'italic' as const,
   },
 });

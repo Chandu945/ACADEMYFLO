@@ -206,14 +206,7 @@ function FeesContent({ studentId }: { studentId: string }) {
               <div className={styles.feeRight}>
                 <span className={styles.feeTotal}>{currencyFormatter.format(totalDue)}</span>
                 <Badge variant={feeBadgeVariant(status)}>{status}</Badge>
-                {status === 'DUE' && (
-                  <Link
-                    href={`/children/${studentId}/pay?dueId=${id}`}
-                    className={styles.payBtn}
-                  >
-                    Pay Now
-                  </Link>
-                )}
+                {/* Online payment disabled — parents pay at academy, owner/staff marks as paid */}
               </div>
             </div>
           );
