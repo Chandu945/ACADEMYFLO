@@ -46,7 +46,7 @@ export function useStudents(
       let result;
       try {
         result = await listStudentsUseCase({ studentApi }, filters, targetPage, PAGE_SIZE);
-      } catch (e) {
+      } catch {
         if (!mountedRef.current || requestId !== requestIdRef.current) return;
         setError({ code: 'UNKNOWN', message: 'Failed to load students. Pull to retry.' });
         setLoading(false);

@@ -12,6 +12,7 @@ export interface ListExpensesInput {
   actorRole: UserRole;
   month: string;
   categoryId?: string;
+  search?: string;
   page: number;
   pageSize: number;
 }
@@ -52,6 +53,7 @@ export class ListExpensesUseCase {
     const { data, total } = await this.expenseRepo.listByAcademy(user.academyId, {
       month: input.month,
       categoryId: input.categoryId,
+      search: input.search,
       page: input.page,
       pageSize: input.pageSize,
     });

@@ -53,8 +53,15 @@ export async function PUT(request: NextRequest) {
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
-  const staffId = String(body['staffUserId'] ?? body['staffId'] ?? '');
-  const result = await apiPut(`/api/v1/staff-attendance/${encodeURIComponent(staffId)}?date=${encodeURIComponent(String(body['date']))}`, { status: body['status'] }, { accessToken });
+  const staffId = body['staffUserId'] ?? body['staffId'];
+  if (!staffId || typeof staffId !== 'string') {
+    return NextResponse.json({ message: 'staffUserId or staffId is required' }, { status: 400 });
+  }
+  const date = body['date'];
+  if (!date || typeof date !== 'string') {
+    return NextResponse.json({ message: 'date is required' }, { status: 400 });
+  }
+  const result = await apiPut(`/api/v1/staff-attendance/${encodeURIComponent(staffId)}?date=${encodeURIComponent(date)}`, { status: body['status'] }, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

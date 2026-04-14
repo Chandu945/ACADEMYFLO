@@ -28,7 +28,7 @@ function formatTier(tierKey: string | null): string {
 
 function formatDate(iso: string | null): string {
   if (!iso) return DASH;
-  return new Date(iso).toLocaleDateString();
+  return new Date(iso).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
 function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'info' | 'default' {

@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger, Inject } from '@nestjs/common';
+import type { Worker } from 'bullmq';
 import { AppConfigService } from '@shared/config/config.service';
 import type { PushNotificationService } from '@application/notifications/push-notification.service';
 import { PUSH_NOTIFICATION_SERVICE } from '../../../presentation/http/device-tokens/device-tokens.module';
@@ -6,7 +7,7 @@ import { PUSH_NOTIFICATION_SERVICE } from '../../../presentation/http/device-tok
 @Injectable()
 export class NotificationQueueProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationQueueProcessor.name);
-  private worker: import('bullmq').Worker | null = null;
+  private worker: Worker | null = null;
 
   constructor(
     private readonly config: AppConfigService,

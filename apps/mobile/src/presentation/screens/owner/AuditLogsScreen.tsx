@@ -127,6 +127,8 @@ function AuditLogsContent() {
     }
   }, [refetch]);
 
+  const keyExtractor = useCallback((item: AuditLogItem) => item.id, []);
+
   const renderItem = useCallback(
     ({ item }: { item: AuditLogItem }) => (
       <AuditLogRow item={item} testID={`audit-row-${item.id}`} />
@@ -223,7 +225,7 @@ function AuditLogsContent() {
       ) : (
         <FlatList
           data={items}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -250,6 +252,9 @@ function AuditLogsContent() {
           ListFooterComponent={renderFooter}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
           testID="audit-list"
         />
       )}

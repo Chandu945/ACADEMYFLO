@@ -1,6 +1,5 @@
-export type EventStatus = 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
-export type EventType = 'TOURNAMENT' | 'MEETING' | 'DEMO_CLASS' | 'HOLIDAY' | 'ANNUAL_DAY' | 'TRAINING_CAMP' | 'OTHER';
-export type TargetAudience = 'ALL' | 'STUDENTS' | 'STAFF' | 'PARENTS';
+import type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
+export type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
 
 export type EventListItem = {
   id: string;

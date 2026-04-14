@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import type { AuthUser, AcademySetupRequest } from '../../domain/auth/auth.types';
@@ -132,8 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (__DEV__) console.warn('[AuthContext] Logout use case failed (proceeding anyway):', e);
     }
     // Clear cached dashboard data to prevent cross-user data leak
-    try { clearAttendanceSummaryCache(); } catch { /* ignore */ }
-    try { clearMonthlyChartCache(); } catch { /* ignore */ }
+    clearAttendanceSummaryCache();
+    clearMonthlyChartCache();
     // Always transition to unauthenticated regardless of errors above
     if (mountedRef.current) {
       setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
@@ -144,7 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mountedRef.current = true;
 
     registerAuthFailureHandler(() => {
-      setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+      if (mountedRef.current) {
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+      }
     });
 
     (async () => {
@@ -209,15 +211,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Best effort — don't block on subscription check failure
             }
           })
-          .catch((err) => {
+          .catch(async (err) => {
             if (__DEV__) console.warn(
               '[AuthContext] Background token refresh failed:',
               err instanceof Error ? err.message : 'unknown',
             );
-            // Don't change phase — let the next API call trigger proper auth failure handling
-            // But clear the stale access token so api-client will attempt refresh
             if (!mountedRef.current) return;
-            accessTokenStore.set(null);
+            // If the stored session was already cleared (permanent auth failure),
+            // transition to unauthenticated immediately instead of waiting for the next API call
+            const session = await tokenStore.getSession();
+            if (!session) {
+              setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+            } else {
+              accessTokenStore.set(null);
+            }
           });
       }
     };
@@ -263,14 +270,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await resolvePhase(state.user);
   }, [state.user, resolvePhase]);
 
-  const value: AuthContextValue = {
-    ...state,
-    login,
-    signup,
-    setupAcademy,
-    logout: doLogout,
-    refreshSubscription,
-  };
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      ...state,
+      login,
+      signup,
+      setupAcademy,
+      logout: doLogout,
+      refreshSubscription,
+    }),
+    [state, login, signup, setupAcademy, doLogout, refreshSubscription],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

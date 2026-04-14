@@ -116,6 +116,7 @@ export class ExpensesController {
       actorRole: user.role,
       month: query.month,
       categoryId: query.categoryId,
+      search: query.search,
       page: query.page,
       pageSize: query.pageSize,
     });

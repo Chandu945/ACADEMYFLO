@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TIER_RANGES } from '@playconnect/contracts';
 import type { TierKey } from '@playconnect/contracts';
@@ -40,10 +40,4 @@ export class SetLoginDisabledDto {
   @ApiProperty()
   @IsBoolean()
   disabled!: boolean;
-}
-
-export class ResetOwnerPasswordParamDto {
-  @IsString()
-  @IsNotEmpty()
-  academyId!: string;
 }

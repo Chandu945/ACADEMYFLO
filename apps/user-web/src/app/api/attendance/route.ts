@@ -72,13 +72,27 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
 
+  const date = body['date'];
+  if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ message: 'date is required and must be in YYYY-MM-DD format' }, { status: 400 });
+  }
+
   if (body['bulk']) {
-    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(String(body['date']))}`, { updates: body['updates'] }, { accessToken });
+    const updates = body['updates'] as { studentId: string; status: string }[] | undefined;
+    const absentStudentIds = Array.isArray(updates)
+      ? updates.filter((u) => u.status === 'ABSENT').map((u) => u.studentId)
+      : [];
+    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(date)}`, { absentStudentIds }, { accessToken });
     if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
-  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(String(body['studentId']))}?date=${encodeURIComponent(String(body['date']))}`, { status: body['status'] }, { accessToken });
+  const studentId = body['studentId'];
+  if (!studentId || typeof studentId !== 'string') {
+    return NextResponse.json({ message: 'studentId is required' }, { status: 400 });
+  }
+
+  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(studentId)}?date=${encodeURIComponent(date)}`, { status: body['status'] }, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

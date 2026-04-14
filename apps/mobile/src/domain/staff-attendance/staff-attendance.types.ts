@@ -1,4 +1,5 @@
-export type StaffAttendanceStatus = 'PRESENT' | 'ABSENT';
+import type { StaffAttendanceStatus } from '@playconnect/contracts';
+export type { StaffAttendanceStatus } from '@playconnect/contracts';
 
 export type DailyStaffAttendanceItem = {
   staffUserId: string;

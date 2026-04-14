@@ -192,44 +192,44 @@ export function StudentFormScreen() {
     [clearFieldError],
   );
 
-  const handleFullNameChange = useMemo(() => (text: string) => {
+  const handleFullNameChange = useCallback((text: string) => {
     setFullName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
     clearFieldError('fullName');
   }, [clearFieldError]);
-  const handleFatherNameChange = useMemo(() => (text: string) => {
+  const handleFatherNameChange = useCallback((text: string) => {
     setFatherName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
     clearFieldError('fatherName');
   }, [clearFieldError]);
-  const handleMotherNameChange = useMemo(() => (text: string) => {
+  const handleMotherNameChange = useCallback((text: string) => {
     setMotherName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
     clearFieldError('motherName');
   }, [clearFieldError]);
-  const handleWhatsappChange = useMemo(() => (text: string) => {
+  const handleWhatsappChange = useCallback((text: string) => {
     let digits = text.replace(/[^0-9]/g, '');
     if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
     if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
     setWhatsappNumber(digits.slice(0, 10));
   }, []);
-  const handleMobileChange = useMemo(() => (text: string) => {
+  const handleMobileChange = useCallback((text: string) => {
     let digits = text.replace(/[^0-9]/g, '');
     if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
     if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
     setMobileNumber(digits.slice(0, 10));
   }, []);
-  const handleEmailChange = useMemo(() => makeChangeHandler(setGuardianEmail, 'guardianEmail'), [makeChangeHandler]);
-  const handleAddressChange = useMemo(() => makeChangeHandler(setAddressText), [makeChangeHandler]);
-  const handleGuardianNameChange = useMemo(() => (text: string) => {
+  const handleEmailChange = useCallback(makeChangeHandler(setGuardianEmail, 'guardianEmail'), [makeChangeHandler]);
+  const handleAddressChange = useCallback(makeChangeHandler(setAddressText), [makeChangeHandler]);
+  const handleGuardianNameChange = useCallback((text: string) => {
     setGuardianName(text.replace(/[^a-zA-Z\s'.,-]/g, ''));
     clearFieldError('guardianName');
   }, [clearFieldError]);
-  const handleGuardianMobileChange = useMemo(() => (text: string) => {
+  const handleGuardianMobileChange = useCallback((text: string) => {
     let digits = text.replace(/[^0-9]/g, '');
     if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
     if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
     setGuardianMobile(digits.slice(0, 10));
     clearFieldError('guardianMobile');
   }, [clearFieldError]);
-  const handleMonthlyFeeChange = useMemo(() => makeChangeHandler(setMonthlyFee, 'monthlyFee'), [makeChangeHandler]);
+  const handleMonthlyFeeChange = useCallback(makeChangeHandler(setMonthlyFee, 'monthlyFee'), [makeChangeHandler]);
 
   const handleGenderChange = useCallback((value: Gender) => {
     setGender(value);

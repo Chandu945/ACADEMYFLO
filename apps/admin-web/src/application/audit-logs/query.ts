@@ -43,8 +43,3 @@ export function validateFromTo(from?: string, to?: string): boolean {
   return true;
 }
 
-export const DEFAULT_QUERY: AuditLogsQuery = {
-  page: 1,
-  pageSize: 50,
-  ...getDefaultDateRange(),
-};

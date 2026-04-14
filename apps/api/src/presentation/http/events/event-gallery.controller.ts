@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -69,13 +70,17 @@ export class EventGalleryController {
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
     const result = await this.uploadPhoto.execute({
       actorUserId: user.userId,
       actorRole: user.role,
       eventId,
-      buffer: file?.buffer,
-      mimeType: file?.mimetype,
-      originalName: file?.originalname,
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+      originalName: file.originalname,
     });
     return mapResultToResponse(result, req);
   }

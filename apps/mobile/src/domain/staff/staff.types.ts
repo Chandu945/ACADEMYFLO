@@ -1,4 +1,5 @@
-export type StaffStatus = 'ACTIVE' | 'INACTIVE';
+import type { StaffStatus } from '@playconnect/contracts';
+export type { StaffStatus } from '@playconnect/contracts';
 
 export type SalaryFrequency = 'MONTHLY' | 'WEEKLY' | 'DAILY';
 

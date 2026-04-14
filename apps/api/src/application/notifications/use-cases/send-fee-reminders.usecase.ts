@@ -68,9 +68,14 @@ export class SendFeeRemindersUseCase {
     }
 
     const messages: EmailMessage[] = [];
+    const academyCache = new Map<string, Awaited<ReturnType<typeof this.academyRepo.findById>>>();
 
     for (const [academyId, dues] of byAcademy) {
-      const academy = await this.academyRepo.findById(academyId);
+      let academy = academyCache.get(academyId);
+      if (academy === undefined) {
+        academy = await this.academyRepo.findById(academyId);
+        academyCache.set(academyId, academy);
+      }
       if (!academy) {
         this.logger.warn('Fee reminders: academy not found, skipping', { academyId });
         summary.academiesSkipped++;
@@ -164,7 +169,7 @@ export class SendFeeRemindersUseCase {
     if (this.pushService) {
       const ownerIds = [...byAcademy.keys()];
       for (const academyId of ownerIds) {
-        const academy = await this.academyRepo.findById(academyId);
+        const academy = academyCache.get(academyId);
         if (!academy) continue;
         const dueCount = byAcademy.get(academyId)?.length ?? 0;
         this.pushService

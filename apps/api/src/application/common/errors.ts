@@ -1,18 +1,5 @@
 import { AppError } from '@shared/kernel';
 
-export const SubscriptionErrors = {
-  academySetupRequired: () =>
-    new AppError('ACADEMY_SETUP_REQUIRED', 'Please complete academy setup first'),
-  subscriptionBlocked: (status: string) =>
-    new AppError(
-      'SUBSCRIPTION_BLOCKED',
-      'Subscription inactive. Access limited to subscription management.',
-      {
-        status,
-      },
-    ),
-} as const;
-
 export const StaffErrors = {
   notFound: (id: string) => AppError.notFound('Staff', id),
   notStaff: () => AppError.notFound('Staff'),

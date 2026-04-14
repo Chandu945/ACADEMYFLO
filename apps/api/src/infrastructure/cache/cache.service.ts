@@ -1,11 +1,12 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import type { Redis } from 'ioredis';
 import { AppConfigService } from '@shared/config/config.service';
 
 @Injectable()
 export class CacheService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CacheService.name);
   private readonly store = new Map<string, { value: string; expiresAt: number }>();
-  private redis: import('ioredis').Redis | null = null;
+  private redis: Redis | null = null;
   private defaultTtl: number;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private readonly MAX_MEMORY_ENTRIES = 10_000;
@@ -106,8 +107,16 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   async delByPrefix(prefix: string): Promise<void> {
     try {
       if (this.redis) {
-        const keys = await this.redis.keys(`${prefix}*`);
-        if (keys.length > 0) await this.redis.del(...keys);
+        const stream = this.redis.scanStream({ match: `${prefix}*`, count: 100 });
+        const pipeline = this.redis.pipeline();
+        let count = 0;
+        await new Promise<void>((resolve, reject) => {
+          stream.on('data', (keys: string[]) => {
+            for (const key of keys) { pipeline.del(key); count++; }
+          });
+          stream.on('end', () => { if (count > 0) pipeline.exec().then(() => resolve()).catch(reject); else resolve(); });
+          stream.on('error', reject);
+        });
         return;
       }
       for (const key of this.store.keys()) {

@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { apiPut } from '@/infra/http/api-client';
 import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { manualSubscriptionSchema } from '@/application/academy-detail/academy-actions.schemas';
 
 export async function POST(
   request: NextRequest,
@@ -20,16 +21,21 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: unknown;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
+  const parsed = manualSubscriptionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
+  }
+
   const result = await apiPut(
     `/api/v1/admin/academies/${encodeURIComponent(academyId)}/subscription`,
-    body,
+    parsed.data,
     { accessToken },
   );
 

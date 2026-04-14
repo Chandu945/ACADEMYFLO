@@ -187,6 +187,9 @@ export function AttendanceMonthlySummaryScreen() {
           keyExtractor={keyExtractor}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
           ListFooterComponent={renderFooter}
           contentContainerStyle={styles.listContent}
           testID="monthly-summary-list"

@@ -277,7 +277,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
     );
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe('VALIDATION_ERROR');
+    if (!result.ok) expect(result.error.code).toBe('VALIDATION');
     expect(deps.paymentRepo.save).not.toHaveBeenCalled();
   });
 

@@ -12,7 +12,7 @@ import type {
 import type { EnquiryListApiResponse } from '../../domain/enquiry/enquiry.schemas';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
-import { apiGet, apiPost, apiPut, apiPatch } from '../http/api-client';
+import { apiGet, apiPost, apiPut } from '../http/api-client';
 
 export function listEnquiries(
   query: EnquiryListQuery,

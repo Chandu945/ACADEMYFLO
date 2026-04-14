@@ -28,6 +28,7 @@ export function useEnquiries(
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -77,9 +78,9 @@ export function useEnquiries(
   }, [load]);
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true).finally(() => { fetchingMoreRef.current = false; });
   }, [loading, loadingMore, hasMore, page, load]);
 
   useEffect(() => {

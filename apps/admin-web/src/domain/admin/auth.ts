@@ -5,11 +5,6 @@ export type AdminUser = {
   role: 'SUPER_ADMIN';
 };
 
-export type LoginCredentials = {
-  email: string;
-  password: string;
-};
-
 export type AuthSession = {
   accessToken: string;
   user: AdminUser;

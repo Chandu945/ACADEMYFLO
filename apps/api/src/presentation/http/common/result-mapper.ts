@@ -15,7 +15,7 @@ import { getRequestId } from '@shared/logging/request-id.interceptor';
 import type { Request } from 'express';
 
 const ERROR_STATUS_MAP: Record<string, HttpStatus> = {
-  VALIDATION_ERROR: HttpStatus.BAD_REQUEST,
+  VALIDATION: HttpStatus.BAD_REQUEST,
   UNAUTHORIZED: HttpStatus.UNAUTHORIZED,
   FORBIDDEN: HttpStatus.FORBIDDEN,
   NOT_FOUND: HttpStatus.NOT_FOUND,

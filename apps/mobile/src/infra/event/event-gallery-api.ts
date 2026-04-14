@@ -3,7 +3,7 @@ import type { GalleryPhoto } from '../../domain/event/event-gallery.types';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
 import { ok, err } from '../../domain/common/result';
-import { apiGet, apiDelete, getAccessToken } from '../http/api-client';
+import { apiGet, apiDelete, getAccessToken, tryRefresh } from '../http/api-client';
 import { mapHttpError } from '../http/error-mapper';
 import { generateRequestId } from '../http/request-id';
 import { env } from '../env';
@@ -12,6 +12,24 @@ export function listGalleryPhotos(
   eventId: string,
 ): Promise<Result<GalleryPhoto[], AppError>> {
   return apiGet<GalleryPhoto[]>(`/api/v1/events/${eventId}/gallery`);
+}
+
+async function doGalleryUpload(
+  eventId: string,
+  formData: FormData,
+  token: string | null,
+): Promise<Response> {
+  return fetch(
+    `${env.API_BASE_URL}/api/v1/events/${eventId}/gallery`,
+    {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'X-Request-Id': generateRequestId(),
+      },
+      body: formData,
+    },
+  );
 }
 
 export async function uploadGalleryPhoto(
@@ -23,7 +41,6 @@ export async function uploadGalleryPhoto(
 ): Promise<Result<GalleryPhoto, AppError>> {
   const formData = new FormData();
   if (Platform.OS === 'web') {
-    // On web, convert data URI to proper File object
     const response = await fetch(uri);
     const blob = await response.blob();
     formData.append('file', new File([blob], fileName, { type: mimeType }));
@@ -38,19 +55,17 @@ export async function uploadGalleryPhoto(
     formData.append('caption', caption);
   }
 
-  const token = getAccessToken();
   try {
-    const res = await fetch(
-      `${env.API_BASE_URL}/api/v1/events/${eventId}/gallery`,
-      {
-        method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'X-Request-Id': generateRequestId(),
-        },
-        body: formData,
-      },
-    );
+    let res = await doGalleryUpload(eventId, formData, getAccessToken());
+
+    if (res.status === 401) {
+      const newToken = await tryRefresh();
+      if (newToken) {
+        res = await doGalleryUpload(eventId, formData, newToken);
+      } else {
+        return err({ code: 'UNAUTHORIZED', message: 'Session expired' });
+      }
+    }
 
     if (!res.ok) {
       const json = await res.json().catch(() => null);

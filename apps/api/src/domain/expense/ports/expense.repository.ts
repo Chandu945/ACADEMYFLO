@@ -10,6 +10,7 @@ export interface ExpenseRepository {
     filter: {
       month: string;
       categoryId?: string;
+      search?: string;
       page: number;
       pageSize: number;
     },

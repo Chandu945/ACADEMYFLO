@@ -5,8 +5,8 @@ export type MonthlyRevenueItem = {
   amount: number;
   source: string;
   receiptNumber: string;
-  collectedByUserId: string;
-  approvedByUserId: string;
+  collectedByUserId: string | null;
+  approvedByUserId: string | null;
   createdAt: string;
 };
 

@@ -114,53 +114,7 @@ export function EventGalleryScreen() {
     load(true);
   }, [load]);
 
-  const openGalleryPicker = useCallback(() => {
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        maxWidth: 1920,
-        maxHeight: 1920,
-        quality: 0.8,
-        selectionLimit: 5,
-      },
-      (response) => {
-        if (response.assets && response.assets.length > 0) {
-          void handleBatchUpload(response.assets);
-        }
-      },
-    );
-  }, [handleBatchUpload]);
-
-  const pickAndUpload = useCallback(() => {
-    // On web, directly open file picker (no Camera option)
-    if (Platform.OS === 'web') {
-      openGalleryPicker();
-      return;
-    }
-
-    crossAlert('Add Photo', 'Choose an option', [
-      {
-        text: 'Camera',
-        onPress: () => {
-          launchCamera(
-            { mediaType: 'photo', maxWidth: 1920, maxHeight: 1920, quality: 0.8 },
-            (response) => {
-              if (response.assets?.[0]) {
-                void handleUpload(response.assets[0]);
-              }
-            },
-          );
-        },
-      },
-      {
-        text: 'Gallery',
-        onPress: () => openGalleryPicker(),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }, [eventId, openGalleryPicker, handleUpload]);
-
-  const handleUpload = async (asset: {
+  const handleUpload = useCallback(async (asset: {
     uri?: string;
     fileName?: string;
     type?: string;
@@ -190,9 +144,9 @@ export function EventGalleryScreen() {
     } finally {
       setUploading(false);
     }
-  };
+  }, [eventId, load, showToast]);
 
-  const handleBatchUpload = async (
+  const handleBatchUpload = useCallback(async (
     assets: { uri?: string; fileName?: string; type?: string }[],
   ) => {
     setUploading(true);
@@ -243,7 +197,53 @@ export function EventGalleryScreen() {
     } finally {
       setUploading(false);
     }
-  };
+  }, [eventId, load, showToast]);
+
+  const openGalleryPicker = useCallback(() => {
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        maxWidth: 1920,
+        maxHeight: 1920,
+        quality: 0.8,
+        selectionLimit: 5,
+      },
+      (response) => {
+        if (response.assets && response.assets.length > 0) {
+          void handleBatchUpload(response.assets);
+        }
+      },
+    );
+  }, [handleBatchUpload]);
+
+  const pickAndUpload = useCallback(() => {
+    // On web, directly open file picker (no Camera option)
+    if (Platform.OS === 'web') {
+      openGalleryPicker();
+      return;
+    }
+
+    crossAlert('Add Photo', 'Choose an option', [
+      {
+        text: 'Camera',
+        onPress: () => {
+          launchCamera(
+            { mediaType: 'photo', maxWidth: 1920, maxHeight: 1920, quality: 0.8 },
+            (response) => {
+              if (response.assets?.[0]) {
+                void handleUpload(response.assets[0]);
+              }
+            },
+          );
+        },
+      },
+      {
+        text: 'Gallery',
+        onPress: () => openGalleryPicker(),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [openGalleryPicker, handleUpload]);
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;

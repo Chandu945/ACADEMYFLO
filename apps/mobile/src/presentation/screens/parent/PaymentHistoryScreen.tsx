@@ -103,6 +103,8 @@ export function PaymentHistoryScreen() {
     [navigation],
   );
 
+  const keyExtractor = useCallback((item: PaymentHistoryItem) => item.receiptNumber, []);
+
   const renderItem = useCallback(({ item }: { item: PaymentHistoryItem }) => {
     const src = getSourceConfig(item.source, colors);
 
@@ -177,7 +179,7 @@ export function PaymentHistoryScreen() {
   return (
     <FlatList
       data={items}
-      keyExtractor={(item) => item.receiptNumber}
+      keyExtractor={keyExtractor}
       renderItem={renderItem}
       contentContainerStyle={styles.list}
       refreshControl={

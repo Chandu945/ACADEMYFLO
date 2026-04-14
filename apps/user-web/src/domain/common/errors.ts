@@ -1,12 +1,5 @@
-export type AppErrorCode =
-  | 'UNAUTHORIZED'
-  | 'VALIDATION'
-  | 'NOT_FOUND'
-  | 'FORBIDDEN'
-  | 'NETWORK'
-  | 'CONFLICT'
-  | 'RATE_LIMITED'
-  | 'UNKNOWN';
+export type { AppErrorCode } from '@playconnect/contracts';
+import type { AppErrorCode } from '@playconnect/contracts';
 
 export class AppError extends Error {
   readonly code: AppErrorCode;

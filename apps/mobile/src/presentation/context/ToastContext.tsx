@@ -174,7 +174,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-const makeStyles = (colors: Colors, isDark: boolean) => StyleSheet.create({
+const makeStyles = (_colors: Colors, _isDark: boolean) => StyleSheet.create({
   toastContainer: {
     position: 'absolute',
     left: 0,

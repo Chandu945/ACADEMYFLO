@@ -2,17 +2,20 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { z } from 'zod';
 
 import { publicEnv, serverEnv } from '@/infra/env';
 
 const COOKIE_NAME = 'pc_admin_session';
 const ALGORITHM = 'aes-256-gcm';
 
-type SessionPayload = {
-  refreshToken: string;
-  deviceId: string;
-  userId: string;
-};
+const sessionPayloadSchema = z.object({
+  refreshToken: z.string().min(1),
+  deviceId: z.string().min(1),
+  userId: z.string().min(1),
+});
+
+type SessionPayload = z.infer<typeof sessionPayloadSchema>;
 
 function getDerivedKey(): Buffer {
   const { COOKIE_SECRET, COOKIE_SALT } = serverEnv();
@@ -63,8 +66,10 @@ export async function getSessionCookie(): Promise<SessionPayload | null> {
 
   try {
     const decrypted = decrypt(cookie.value);
-    return JSON.parse(decrypted) as SessionPayload;
+    return sessionPayloadSchema.parse(JSON.parse(decrypted));
   } catch {
+    // Auto-clear corrupt/tampered cookies to prevent stuck auth state
+    cookieStore.delete(COOKIE_NAME);
     return null;
   }
 }

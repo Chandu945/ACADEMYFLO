@@ -1,5 +1,5 @@
 import { LoginAttemptTracker } from './login-attempt-tracker';
-import { CacheService } from '@infrastructure/cache/cache.service';
+import type { CacheService } from '@infrastructure/cache/cache.service';
 
 describe('LoginAttemptTracker', () => {
   let tracker: LoginAttemptTracker;

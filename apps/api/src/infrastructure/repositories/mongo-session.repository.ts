@@ -78,6 +78,17 @@ export class MongoSessionRepository implements SessionRepository {
     return result.modifiedCount > 0;
   }
 
+  async deleteExpiredAndRevoked(): Promise<number> {
+    const now = new Date();
+    const result = await this.model.deleteMany({
+      $or: [
+        { expiresAt: { $lt: now } },
+        { revokedAt: { $ne: null } },
+      ],
+    });
+    return result.deletedCount;
+  }
+
   private toDomain(doc: unknown): Session {
     const d = doc as {
       _id: string;

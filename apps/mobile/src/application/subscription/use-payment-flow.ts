@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   PaymentFlowStatus,
   InitiatePaymentResponse,
@@ -30,7 +30,7 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
   const mountedRef = useRef(true);
   const startingRef = useRef(false);
 
-  const deps = useMemo(() => ({ subscriptionApi }), []);
+  const deps = { subscriptionApi };
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -66,7 +66,13 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
       if (!mountedRef.current) return;
 
       if (!result.ok) {
-        // Network error — retry (only if still mounted)
+        const code = result.error.code;
+        if (code === 'FORBIDDEN' || code === 'NOT_FOUND' || code === 'VALIDATION') {
+          setStatus('failed');
+          setError(result.error.message);
+          return;
+        }
+        // Transient error — retry (only if still mounted)
         if (mountedRef.current) {
           pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
         }

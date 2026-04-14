@@ -15,6 +15,9 @@ import type { AdminUser } from '@/domain/admin/auth';
 import { AppError } from '@/domain/common/errors';
 import * as authService from '@/application/auth/admin-auth.service';
 
+/** Refresh interval — 8 minutes (well within 15-min JWT TTL). */
+const REFRESH_INTERVAL_MS = 8 * 60 * 1000;
+
 type AdminAuthContextValue = {
   user: AdminUser | null;
   accessToken: string | null;
@@ -26,40 +29,84 @@ type AdminAuthContextValue = {
 
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 
+function decodeAdminUser(token: string): AdminUser | null {
+  try {
+    const base64Url = token.split('.')[1] ?? '';
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(base64));
+    return {
+      id: payload.sub ?? '',
+      email: payload.email ?? '',
+      fullName: payload.fullName ?? '',
+      role: 'SUPER_ADMIN',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshAuth = useCallback(async () => {
+    try {
+      const result = await authService.refreshAccessToken();
+      const decoded = decodeAdminUser(result.accessToken);
+      setAccessToken(result.accessToken);
+      if (decoded) setUser(decoded);
+    } catch {
+      setUser(null);
+      setAccessToken(null);
+    }
+  }, []);
+
+  // Initial auth — try sessionStorage first (set during login) to avoid redundant refresh
   useEffect(() => {
     let cancelled = false;
 
-    async function tryRefresh() {
+    // Check if we just came from the login page
+    let freshData: { accessToken?: string; user?: AdminUser } | null = null;
+    try {
+      const raw = sessionStorage.getItem('pc_admin_fresh_login');
+      if (raw) {
+        sessionStorage.removeItem('pc_admin_fresh_login');
+        freshData = JSON.parse(raw);
+      }
+    } catch { /* ignore */ }
+
+    if (freshData?.accessToken && freshData?.user) {
+      setAccessToken(freshData.accessToken);
+      setUser(freshData.user);
+      setIsLoading(false);
+      return;
+    }
+
+    (async () => {
       try {
         const result = await authService.refreshAccessToken();
         if (!cancelled) {
           setAccessToken(result.accessToken);
-          // Decode user from token payload (base64 JWT)
-          const payload = JSON.parse(atob(result.accessToken.split('.')[1]!));
-          setUser({
-            id: payload.sub,
-            email: payload.email,
-            fullName: payload.fullName,
-            role: 'SUPER_ADMIN',
-          });
+          const decoded = decodeAdminUser(result.accessToken);
+          if (decoded) setUser(decoded);
         }
       } catch {
         // Not authenticated — that's fine
       } finally {
         if (!cancelled) setIsLoading(false);
       }
-    }
+    })();
 
-    tryRefresh();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
+
+  // Periodic refresh to keep the access token alive
+  useEffect(() => {
+    if (!accessToken) return;
+    const interval = setInterval(() => { refreshAuth(); }, REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [accessToken, refreshAuth]);
 
   const loginFn = useCallback(async (email: string, password: string): Promise<AppError | null> => {
     try {

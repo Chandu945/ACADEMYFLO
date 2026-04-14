@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
 import type { AuthUser } from '../../../domain/auth/auth.types';
-import type { SubscriptionInfo, TierKey } from '../../../domain/subscription/subscription.types';
+import type { SubscriptionInfo } from '../../../domain/subscription/subscription.types';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';

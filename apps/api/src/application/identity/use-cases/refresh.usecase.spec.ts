@@ -36,6 +36,7 @@ function buildDeps() {
     revokeByUserAndDevice: jest.fn(),
     updateRefreshToken: jest.fn(),
     revokeAllByUserIds: jest.fn(),
+    deleteExpiredAndRevoked: jest.fn(),
   };
 
   const userRepo: jest.Mocked<UserRepository> = {

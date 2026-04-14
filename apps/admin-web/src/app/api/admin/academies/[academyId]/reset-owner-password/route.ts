@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { apiPost } from '@/infra/http/api-client';
 import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { resetPasswordSchema } from '@/application/academy-detail/academy-actions.schemas';
 
 type BackendResetResult = {
   temporaryPassword: string;
@@ -24,16 +25,21 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: unknown;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    body = {};
+    raw = {};
+  }
+
+  const parsed = resetPasswordSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
   }
 
   const result = await apiPost<BackendResetResult>(
     `/api/v1/admin/academies/${encodeURIComponent(academyId)}/reset-password`,
-    body,
+    parsed.data,
     { accessToken },
   );
 

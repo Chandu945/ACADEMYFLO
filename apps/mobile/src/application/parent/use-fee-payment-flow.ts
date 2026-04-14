@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   FeePaymentFlowStatus,
   InitiateFeePaymentResponse,
@@ -30,7 +30,7 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
   const mountedRef = useRef(true);
   const startingRef = useRef(false);
 
-  const deps = useMemo(() => ({ parentApi }), []);
+  const deps = { parentApi };
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -68,6 +68,12 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
       const data = result.ok ? result.value : null;
 
       if (!result.ok) {
+        const code = result.error.code;
+        if (code === 'FORBIDDEN' || code === 'NOT_FOUND' || code === 'VALIDATION') {
+          setStatus('failed');
+          setError(result.error.message);
+          return;
+        }
         pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
         return;
       }

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+import { randomUUID } from 'crypto';
 import { apiPost } from '@/infra/http/api-client';
-import { setSessionCookie } from '@/infra/auth/session-cookie';
+import { getSessionCookie, setSessionCookie } from '@/infra/auth/session-cookie';
+import { isOriginValid } from '@/infra/auth/csrf';
 
 type BackendLoginResponse = {
   accessToken: string;
@@ -16,7 +18,32 @@ type BackendLoginResponse = {
   };
 };
 
+// Rate limiting: 10 attempts per minute per IP
+const WINDOW_MS = 60_000;
+const MAX_ATTEMPTS = 10;
+const attempts = new Map<string, { count: number; windowStart: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = attempts.get(ip);
+  if (!entry || now - entry.windowStart > WINDOW_MS) {
+    attempts.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  entry.count++;
+  return entry.count > MAX_ATTEMPTS;
+}
+
 export async function POST(request: NextRequest) {
+  if (!isOriginValid(request)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many login attempts. Please try again later.' }, { status: 429 });
+  }
+
   let body: { email?: string; password?: string };
   try {
     body = await request.json();
@@ -28,9 +55,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
   }
 
+  // Reuse existing deviceId from session cookie if available, otherwise generate a new one
+  const existingSession = await getSessionCookie();
+  const clientDeviceId = existingSession?.deviceId ?? randomUUID();
+
   const result = await apiPost<BackendLoginResponse>('/api/v1/admin/auth/login', {
     email: body.email,
     password: body.password,
+    deviceId: clientDeviceId,
   });
 
   if (!result.ok) {

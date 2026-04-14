@@ -15,6 +15,14 @@ export interface RefreshInput {
 export interface RefreshOutput {
   accessToken: string;
   refreshToken: string;
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    role: string;
+    profilePhotoUrl: string | null;
+  };
 }
 
 export class RefreshUseCase {
@@ -84,6 +92,14 @@ export class RefreshUseCase {
     return ok({
       accessToken,
       refreshToken: newRefreshToken,
+      user: {
+        id: user.id.toString(),
+        fullName: user.fullName,
+        email: user.emailNormalized,
+        phoneNumber: user.phoneE164,
+        role: user.role,
+        profilePhotoUrl: user.profilePhotoUrl,
+      },
     });
   }
 }

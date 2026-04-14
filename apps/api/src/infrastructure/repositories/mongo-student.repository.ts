@@ -132,7 +132,6 @@ export class MongoStudentRepository implements StudentRepository {
   async listActiveByAcademy(academyId: string): Promise<Student[]> {
     const docs = await this.model
       .find({ academyId, status: 'ACTIVE', deletedAt: null })
-      .limit(1000)
       .lean()
       .exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));

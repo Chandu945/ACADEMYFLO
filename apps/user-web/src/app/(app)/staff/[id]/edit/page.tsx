@@ -23,11 +23,8 @@ function toDateInputValue(raw: unknown): string {
   return !isNaN(d.getTime()) ? d.toISOString().split('T')[0]! : '';
 }
 
-const GENDERS = [
-  { value: 'MALE', label: 'Male' },
-  { value: 'FEMALE', label: 'Female' },
-  { value: 'OTHER', label: 'Other' },
-] as const;
+import { GENDERS } from '@playconnect/contracts';
+const GENDER_OPTIONS = GENDERS.map((g) => ({ value: g, label: g.charAt(0) + g.slice(1).toLowerCase() }));
 
 const SALARY_FREQUENCIES = [
   { value: 'MONTHLY', label: 'Monthly' },
@@ -247,7 +244,7 @@ export default function EditStaffPage() {
           <div>
             <label className={styles.fieldLabel}>Gender</label>
             <div className={styles.chipGroup}>
-              {GENDERS.map((g) => (
+              {GENDER_OPTIONS.map((g) => (
                 <Chip key={g.value} label={g.label} selected={form.gender === g.value} onSelect={() => set('gender', g.value)} />
               ))}
             </div>

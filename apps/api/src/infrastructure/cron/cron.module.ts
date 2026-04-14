@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MonthlyDuesCronService } from './monthly-dues.cron';
+import { SessionPurgeCronService } from './session-purge.cron';
+import { SessionModel, SessionSchema } from '@infrastructure/database/schemas/session.schema';
+import { MongoSessionRepository } from '@infrastructure/repositories/mongo-session.repository';
+import { SESSION_REPOSITORY } from '@domain/identity/ports/session.repository';
 import { AcademyModel, AcademySchema } from '@infrastructure/database/schemas/academy.schema';
 import { FeeDueModel, FeeDueSchema } from '@infrastructure/database/schemas/fee-due.schema';
 import { StudentModel, StudentSchema } from '@infrastructure/database/schemas/student.schema';
@@ -32,6 +36,7 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
       { name: FeeDueModel.name, schema: FeeDueSchema },
       { name: StudentModel.name, schema: StudentSchema },
       { name: AuditLogModel.name, schema: AuditLogSchema },
+      { name: SessionModel.name, schema: SessionSchema },
     ]),
   ],
   providers: [
@@ -54,7 +59,9 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
       ) => new RunMonthlyDuesEngineUseCase(academyRepo, studentRepo, feeDueRepo),
       inject: [ACADEMY_REPOSITORY, STUDENT_REPOSITORY, FEE_DUE_REPOSITORY],
     },
+    { provide: SESSION_REPOSITORY, useClass: MongoSessionRepository },
     MonthlyDuesCronService,
+    SessionPurgeCronService,
   ],
 })
 export class CronModule {}

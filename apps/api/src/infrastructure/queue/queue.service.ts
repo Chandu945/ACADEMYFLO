@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import type { Queue } from 'bullmq';
 import { AppConfigService } from '@shared/config/config.service';
 
 export interface EmailJobData {
@@ -18,8 +19,8 @@ export interface NotificationJobData {
 @Injectable()
 export class QueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(QueueService.name);
-  private emailQueue: import('bullmq').Queue | null = null;
-  private notificationQueue: import('bullmq').Queue | null = null;
+  private emailQueue: Queue | null = null;
+  private notificationQueue: Queue | null = null;
   private isQueueAvailable = false;
 
   // Fallback handlers for when Redis is not available

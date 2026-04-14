@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import type { SubscriptionStatus, TierKey } from '@playconnect/contracts';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -9,10 +10,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import styles from './page.module.css';
 
-type SubscriptionStatus = 'TRIAL' | 'ACTIVE_PAID' | 'EXPIRED_GRACE' | 'BLOCKED' | 'DISABLED' | string;
-
 type TierPricing = {
-  tierKey: string;
+  tierKey: TierKey;
   min: number;
   max: number | null;
   priceInr: number;

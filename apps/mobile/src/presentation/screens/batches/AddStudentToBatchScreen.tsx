@@ -220,6 +220,9 @@ export function AddStudentToBatchScreen() {
           ListFooterComponent={renderFooter}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
           contentContainerStyle={styles.listContent}
           testID="add-student-list"
         />

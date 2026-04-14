@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
+import type { TextInput } from 'react-native';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   StatusBar,

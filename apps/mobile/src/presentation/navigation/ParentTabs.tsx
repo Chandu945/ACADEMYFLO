@@ -29,7 +29,7 @@ export function ParentTabs() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    
+    // @ts-expect-error React Navigation 7 bottom-tabs type mismatch with React 18
     <Tab.Navigator
       screenOptions={({ route }) => ({
         ...makeTabScreenOptions(colors, insets.bottom),

@@ -141,6 +141,9 @@ export function UnpaidDuesScreen({
           }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.footer}>

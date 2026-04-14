@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import styles from './ToastHost.module.css';
@@ -24,16 +24,26 @@ let nextId = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Clear all timers on unmount
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => { for (const t of timers.values()) clearTimeout(t); timers.clear(); };
+  }, []);
 
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+    const timer = timersRef.current.get(id);
+    if (timer) { clearTimeout(timer); timersRef.current.delete(id); }
   }, []);
 
   const show = useCallback(
     (message: string, type: ToastType = 'info') => {
       const id = ++nextId;
       setToasts((prev) => [...prev, { id, message, type }]);
-      setTimeout(() => dismiss(id), 5000);
+      const timer = setTimeout(() => { timersRef.current.delete(id); dismiss(id); }, 5000);
+      timersRef.current.set(id, timer);
     },
     [dismiss],
   );

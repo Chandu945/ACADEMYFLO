@@ -1,5 +1,7 @@
 import { listAcademies } from './academies.service';
-import { serializeQuery, parseQuery, DEFAULT_QUERY } from './query';
+import { serializeQuery, parseQuery } from './query';
+
+const DEFAULT_QUERY = { page: 1, pageSize: 20 } as const;
 
 const mockFetch = jest.fn() as jest.MockedFunction<typeof global.fetch>;
 global.fetch = mockFetch;

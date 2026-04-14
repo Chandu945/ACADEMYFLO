@@ -1,4 +1,5 @@
 import type { UserRole } from '@playconnect/contracts';
+import { ALLOWED_REPEAT_INTERVALS } from '@playconnect/contracts';
 
 /**
  * Domain rules for academy setup and settings.
@@ -52,7 +53,7 @@ export function validateLateFeeAmountInr(amount: number): { valid: boolean; reas
 }
 
 export function validateLateFeeRepeatIntervalDays(interval: number): { valid: boolean; reason?: string } {
-  if (![1, 3, 5].includes(interval))
-    return { valid: false, reason: 'Repeat interval must be 1, 3, or 5 days' };
+  if (!(ALLOWED_REPEAT_INTERVALS as readonly number[]).includes(interval))
+    return { valid: false, reason: `Repeat interval must be one of: ${ALLOWED_REPEAT_INTERVALS.join(', ')} days` };
   return { valid: true };
 }

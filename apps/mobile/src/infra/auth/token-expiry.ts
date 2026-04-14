@@ -1,9 +1,4 @@
-// atob is available at runtime in React Native but not in the ES2022 lib types
-declare function atob(data: string): string;
-
-const decodeBase64 = typeof atob === 'function'
-  ? atob
-  : (s: string) => Buffer.from(s, 'base64').toString('binary');
+const decodeBase64 = atob;
 
 /**
  * Decode JWT expiry without verifying signature (client-side check only).

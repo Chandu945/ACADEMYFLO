@@ -32,11 +32,14 @@ export async function POST(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-  let body: unknown;
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await request.json() as Record<string, unknown>;
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+  }
+  if (!body['fullName'] || typeof body['fullName'] !== 'string') {
+    return NextResponse.json({ message: 'fullName is required' }, { status: 400 });
   }
   const result = await apiPost('/api/v1/students', body, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);

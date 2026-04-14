@@ -12,6 +12,12 @@ export function mapApiError(status: number, body?: Record<string, unknown>): App
       return AppError.forbidden(message ?? 'Forbidden');
     case 404:
       return AppError.notFound(message ?? 'Not found');
+    case 409:
+      return AppError.conflict(message ?? 'Conflict');
+    case 429:
+      return AppError.rateLimited(message ?? 'Too many requests');
+    case 503:
+      return AppError.unknown(message ?? 'Service temporarily unavailable');
     default:
       return AppError.unknown(message ?? 'Something went wrong');
   }

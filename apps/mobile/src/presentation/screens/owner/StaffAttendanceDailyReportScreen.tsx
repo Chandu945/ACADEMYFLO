@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -107,8 +107,6 @@ export function StaffAttendanceDailyReportScreen() {
     [styles],
   );
 
-  const keyExtractor = useCallback((item: { staffUserId: string }) => item.staffUserId, []);
-
   if (loading && !refreshing) {
     return (
       <View style={styles.screen}>
@@ -193,13 +191,13 @@ export function StaffAttendanceDailyReportScreen() {
             <AppIcon name="account-alert-outline" size={18} color={colors.danger} />
             <Text style={styles.sectionTitle}>Absent Staff ({report.absentStaff.length})</Text>
           </View>
-          <FlatList
-            data={report.absentStaff}
-            renderItem={renderAbsentItem}
-            keyExtractor={keyExtractor}
-            scrollEnabled={false}
-            testID="absent-staff-list"
-          />
+          <View testID="absent-staff-list">
+            {report.absentStaff.map((item) => (
+              <React.Fragment key={item.staffUserId}>
+                {renderAbsentItem({ item })}
+              </React.Fragment>
+            ))}
+          </View>
         </>
       )}
 

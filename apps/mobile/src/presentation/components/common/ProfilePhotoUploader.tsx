@@ -12,7 +12,7 @@ import { crossAlert } from '../../utils/crossPlatformAlert';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
-import { getAccessToken } from '../../../infra/http/api-client';
+import { getAccessToken, tryRefresh } from '../../../infra/http/api-client';
 import { env } from '../../../infra/env';
 import { generateRequestId } from '../../../infra/http/request-id';
 import { useTheme } from '../../context/ThemeContext';
@@ -69,14 +69,27 @@ export function ProfilePhotoUploader({
       }
 
       const token = getAccessToken();
-      const res = await fetch(`${env.API_BASE_URL}${effectivePath}`, {
+      const makeHeaders = (t: string | null) => ({
+        ...(t ? { Authorization: `Bearer ${t}` } : {}),
+        'X-Request-Id': generateRequestId(),
+      });
+
+      let res = await fetch(`${env.API_BASE_URL}${effectivePath}`, {
         method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'X-Request-Id': generateRequestId(),
-        },
+        headers: makeHeaders(token),
         body: formData,
       });
+
+      if (res.status === 401) {
+        const newToken = await tryRefresh();
+        if (newToken) {
+          res = await fetch(`${env.API_BASE_URL}${effectivePath}`, {
+            method: 'POST',
+            headers: makeHeaders(newToken),
+            body: formData,
+          });
+        }
+      }
 
       if (!res.ok) {
         const json = await res.json().catch(() => null);

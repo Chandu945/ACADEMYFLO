@@ -1,6 +1,7 @@
 // HTTP contracts
 export type { ApiSuccess, ApiError, ApiResponse, ValidationErrorDetail } from './http/api-envelope';
 export type { PageMeta, Paginated } from './http/pagination';
+export type { AppErrorCode } from './http/errors';
 
 // Role constants
 export type { UserRole } from './constants/roles';
@@ -76,3 +77,11 @@ export { EXPENSE_CATEGORIES } from './models/expense';
 // Admin models
 export type { AdminAcademyStatus } from './models/admin';
 export { ADMIN_ACADEMY_STATUSES } from './models/admin';
+
+// Event constants
+export type { EventStatus, EventType, TargetAudience } from './constants/event';
+export { EVENT_STATUSES, EVENT_TYPES, TARGET_AUDIENCES } from './constants/event';
+
+// Enquiry constants
+export type { EnquiryStatus, EnquirySource, ClosureReason } from './constants/enquiry';
+export { ENQUIRY_STATUSES, ENQUIRY_SOURCES, CLOSURE_REASONS } from './constants/enquiry';

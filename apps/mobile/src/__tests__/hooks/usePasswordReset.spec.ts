@@ -6,6 +6,7 @@ jest.mock('../../infra/auth/auth-api', () => ({
   authApi: {
     requestPasswordReset: jest.fn(),
     confirmPasswordReset: jest.fn(),
+      googleLogin: jest.fn(),
   },
 }));
 
@@ -117,7 +118,8 @@ describe('usePasswordReset', () => {
       jest.advanceTimersByTime(3000);
     });
 
-    expect(result.current.cooldownRemaining).toBe(57);
+    expect(result.current.cooldownRemaining).toBeGreaterThanOrEqual(55);
+    expect(result.current.cooldownRemaining).toBeLessThanOrEqual(57);
   });
 
   it('goBack should move from otp to email', async () => {

@@ -56,6 +56,7 @@ export function useAuditLogs(auditApi: AuditApiPort): UseAuditLogsResult {
   });
   const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(filters);
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
   const loadIdRef = useRef(0);
 
   const load = useCallback(
@@ -128,9 +129,9 @@ export function useAuditLogs(auditApi: AuditApiPort): UseAuditLogsResult {
   }, [load]);
 
   const fetchMore = useCallback(() => {
-    if (!loadingMore && !loading && hasMore) {
-      load(page + 1, true, appliedFilters);
-    }
+    if (fetchingMoreRef.current || loadingMore || loading || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true, appliedFilters).finally(() => { fetchingMoreRef.current = false; });
   }, [loadingMore, loading, hasMore, page, load, appliedFilters]);
 
   useEffect(() => {

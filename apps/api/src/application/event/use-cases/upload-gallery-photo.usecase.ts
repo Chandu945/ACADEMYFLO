@@ -16,7 +16,6 @@ import {
   ALLOWED_IMAGE_MIME_TYPES,
   MAX_IMAGE_FILE_SIZE,
   extensionForMime,
-  validateImageBuffer,
 } from '@shared/utils/image-validation';
 
 export interface UploadGalleryPhotoInput {

@@ -1,9 +1,11 @@
+import type { UserRole } from '@playconnect/contracts';
+
 export type AuthUser = {
   id: string;
   fullName: string;
   email: string;
   phoneNumber: string;
-  role: 'OWNER' | 'STAFF' | 'PARENT';
+  role: Extract<UserRole, 'OWNER' | 'STAFF' | 'PARENT'>;
   status: 'ACTIVE' | 'INACTIVE';
   profilePhotoUrl?: string | null;
 };

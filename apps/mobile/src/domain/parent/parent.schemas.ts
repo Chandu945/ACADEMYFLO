@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-export type FeeDueStatus = 'UPCOMING' | 'DUE' | 'PAID';
-export type PaidSource = 'OWNER_DIRECT' | 'STAFF_APPROVED' | 'PARENT_ONLINE' | 'MANUAL';
-export type PaymentLabel = 'CASH' | 'UPI' | 'CARD' | 'NET_BANKING' | 'ONLINE';
+export type { FeeDueStatus, PaidSource, PaymentLabel } from '@playconnect/contracts';
 
 export const childSummarySchema = z.object({
   studentId: z.string(),

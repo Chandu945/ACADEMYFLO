@@ -14,6 +14,9 @@ type RefreshResult = {
   refreshToken: string;
 };
 
+// Deduplication map: prevents concurrent refresh calls from racing
+const _refreshPromises = new Map<string, Promise<string | null>>();
+
 /**
  * Extract access token from the request Authorization header,
  * or attempt a refresh using the session cookie.
@@ -30,20 +33,46 @@ export async function resolveAccessToken(request: NextRequest): Promise<string |
   const session = await getSessionCookie();
   if (!session) return null;
 
-  const result = await apiPost<RefreshResult>('/api/v1/admin/auth/refresh', {
-    refreshToken: session.refreshToken,
-    deviceId: session.deviceId,
-    userId: session.userId,
-  });
+  // Deduplicate concurrent refreshes by userId
+  const existing = _refreshPromises.get(session.userId);
+  if (existing) return existing;
 
-  if (!result.ok) {
-    await clearSessionCookie();
-    return null;
+  const promise = refreshFromCookie(session);
+  _refreshPromises.set(session.userId, promise);
+  return promise;
+}
+
+async function refreshFromCookie(session: {
+  refreshToken: string;
+  deviceId: string;
+  userId: string;
+}): Promise<string | null> {
+  try {
+    const result = await apiPost<RefreshResult>('/api/v1/admin/auth/refresh', {
+      refreshToken: session.refreshToken,
+      deviceId: session.deviceId,
+      userId: session.userId,
+    });
+
+    if (!result.ok) {
+      // Only clear cookie for permanent auth failures, not transient errors
+      const code = result.error.code;
+      if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') {
+        await clearSessionCookie();
+      }
+      return null;
+    }
+
+    // Rotate cookie
+    await setSessionCookie(
+      result.data.refreshToken ?? session.refreshToken,
+      session.deviceId,
+      session.userId,
+    );
+    return result.data.accessToken;
+  } finally {
+    _refreshPromises.delete(session.userId);
   }
-
-  // Rotate cookie
-  await setSessionCookie(result.data.refreshToken ?? session.refreshToken, session.deviceId, session.userId);
-  return result.data.accessToken;
 }
 
 /**

@@ -41,7 +41,10 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const date = searchParams.get('date');
-  const result = await apiDelete(`/api/v1/attendance/holidays/${encodeURIComponent(date || '')}`, { accessToken });
+  if (!date) {
+    return NextResponse.json({ message: 'date query parameter is required' }, { status: 400 });
+  }
+  const result = await apiDelete(`/api/v1/attendance/holidays/${encodeURIComponent(date)}`, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json({ ok: true });
 }

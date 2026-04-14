@@ -15,7 +15,7 @@ type Props = {
   testID?: string;
 };
 
-export function GalleryThumbnail({
+export const GalleryThumbnail = React.memo(function GalleryThumbnail({
   url,
   size,
   onPress,
@@ -53,9 +53,9 @@ export function GalleryThumbnail({
       <View style={styles.innerShadow} />
     </Pressable>
   );
-}
+});
 
-export function AddPhotoTile({
+export const AddPhotoTile = React.memo(function AddPhotoTile({
   size,
   onPress,
   testID,
@@ -85,7 +85,7 @@ export function AddPhotoTile({
       <Text style={styles.addLabel}>Add Photo</Text>
     </Pressable>
   );
-}
+});
 
 const makeStyles = (colors: Colors) =>
   StyleSheet.create({

@@ -53,6 +53,7 @@ function buildDeps() {
     revokeByUserAndDevice: jest.fn(),
     updateRefreshToken: jest.fn(),
     revokeAllByUserIds: jest.fn(),
+    deleteExpiredAndRevoked: jest.fn(),
   };
 
   const hasher: jest.Mocked<PasswordHasher> = {

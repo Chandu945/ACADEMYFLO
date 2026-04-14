@@ -5,9 +5,19 @@ import { apiPost } from '@/infra/http/api-client';
 import { getSessionCookie, setSessionCookie, clearSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
 
+type RefreshUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  role: string;
+  profilePhotoUrl: string | null;
+};
+
 type RefreshResponse = {
   accessToken: string;
   refreshToken: string;
+  user?: RefreshUser;
 };
 
 export async function POST(request: NextRequest) {
@@ -31,20 +41,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Session expired' }, { status: 401 });
   }
 
+  const backendUser = result.data.user;
+
   await setSessionCookie({
     ...session,
     refreshToken: result.data.refreshToken ?? session.refreshToken,
+    fullName: backendUser?.fullName ?? session.fullName,
+    email: backendUser?.email ?? session.email,
+    phoneNumber: backendUser?.phoneNumber ?? session.phoneNumber,
+    profilePhotoUrl: backendUser?.profilePhotoUrl ?? session.profilePhotoUrl,
   });
 
   return NextResponse.json({
     accessToken: result.data.accessToken,
     user: {
       id: session.userId,
-      fullName: session.fullName ?? '',
-      email: session.email ?? '',
-      phoneNumber: session.phoneNumber ?? '',
+      fullName: backendUser?.fullName ?? session.fullName ?? '',
+      email: backendUser?.email ?? session.email ?? '',
+      phoneNumber: backendUser?.phoneNumber ?? session.phoneNumber ?? '',
       role: session.role,
-      profilePhotoUrl: session.profilePhotoUrl ?? null,
+      profilePhotoUrl: backendUser?.profilePhotoUrl ?? session.profilePhotoUrl ?? null,
     },
   });
 }

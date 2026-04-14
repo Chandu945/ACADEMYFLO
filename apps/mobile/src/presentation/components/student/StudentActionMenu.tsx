@@ -6,7 +6,6 @@ import {
   Modal,
   ScrollView,
   TextInput,
-  Alert,
   Share,
   ActivityIndicator,
   StyleSheet,

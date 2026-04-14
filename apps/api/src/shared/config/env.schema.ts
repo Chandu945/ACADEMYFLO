@@ -100,7 +100,7 @@ export const envSchema = z
     MIN_APP_VERSION_IOS: z.string().default('1.0.0'),
 
     // CORS
-    CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:8081'),
+    CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3002,http://localhost:3003,http://localhost:8081'),
 
     // Redis Cache
     REDIS_URL: z.string().url().optional(),

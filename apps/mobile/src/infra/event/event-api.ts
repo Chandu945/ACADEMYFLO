@@ -9,7 +9,7 @@ import type {
 } from '../../domain/event/event.types';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
-import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '../http/api-client';
+import { apiGet, apiPost, apiPut, apiDelete } from '../http/api-client';
 
 interface EventListResponse {
   data: EventListItem[];
@@ -51,7 +51,7 @@ export function createEvent(req: CreateEventRequest): Promise<Result<EventDetail
 }
 
 export function updateEvent(id: string, req: UpdateEventRequest): Promise<Result<EventDetail, AppError>> {
-  return apiPatch<EventDetail>(`/api/v1/events/${id}`, req);
+  return apiPut<EventDetail>(`/api/v1/events/${id}`, req);
 }
 
 export function deleteEvent(id: string): Promise<Result<{ deleted: boolean }, AppError>> {

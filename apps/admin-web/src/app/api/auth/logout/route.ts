@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
       {
         refreshToken: session.refreshToken,
         deviceId: session.deviceId,
+        userId: session.userId,
       },
       { accessToken: accessToken ?? undefined },
     );

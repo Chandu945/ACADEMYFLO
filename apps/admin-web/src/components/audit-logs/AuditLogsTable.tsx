@@ -18,7 +18,7 @@ const MAX_VALUE_LENGTH = 40;
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString();
+  return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 }
 
 function formatAction(action: string): string {

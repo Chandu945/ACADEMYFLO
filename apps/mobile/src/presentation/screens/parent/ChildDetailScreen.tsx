@@ -141,6 +141,7 @@ export function ChildDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const todayMs = useMemo(() => { const d = nowIST(); d.setHours(0, 0, 0, 0); return d.getTime(); }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -362,21 +363,16 @@ export function ChildDetailScreen() {
                 </Text>
               </View>
             )}
-            {fee.status === 'DUE' && fee.lateFee === 0 && (() => {
-              const dueDateMs = new Date(fee.dueDate + 'T00:00:00').getTime();
-              const todayMs = nowIST().setHours(0, 0, 0, 0);
-              const dayMs = 24 * 60 * 60 * 1000;
-              const daysPastDue = Math.floor((todayMs - dueDateMs) / dayMs);
-              return daysPastDue > 0 ? (
+            {fee.status === 'DUE' && fee.lateFee === 0 &&
+              todayMs > new Date(fee.dueDate + 'T00:00:00').getTime() && (
                 <View style={styles.graceNotice}>
-                  
+
                   <AppIcon name="clock-alert-outline" size={14} color={colors.warning} />
                   <Text style={styles.graceNoticeText}>
                     Pay soon to avoid late fees
                   </Text>
                 </View>
-              ) : null;
-            })()}
+            )}
             {/* Online payment disabled — parents pay at academy, owner/staff marks as paid */}
           </View>
         ))}

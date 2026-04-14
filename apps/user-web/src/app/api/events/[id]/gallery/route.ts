@@ -55,6 +55,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
       body: outgoingForm,
+      signal: AbortSignal.timeout(30_000),
     });
   } catch {
     return NextResponse.json({ message: 'Network error' }, { status: 502 });

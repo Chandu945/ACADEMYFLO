@@ -65,7 +65,15 @@ export class OwnerSignupUseCase {
       passwordHash,
     });
 
-    await this.userRepo.save(user);
+    try {
+      await this.userRepo.save(user);
+    } catch (e: unknown) {
+      // Handle MongoDB duplicate key error (E11000) from concurrent signups
+      if (e instanceof Error && e.message.includes('E11000')) {
+        return err(AuthErrors.duplicateEmail());
+      }
+      throw e;
+    }
 
     const deviceId = input.deviceId || randomUUID();
     const refreshToken = this.tokenService.generateRefreshToken();

@@ -10,8 +10,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-
-type UserRole = 'OWNER' | 'STAFF' | 'PARENT';
+import type { UserRole } from '@playconnect/contracts';
 
 type AuthUser = {
   id: string;
@@ -50,11 +49,11 @@ function initAuth(): Promise<AuthResponse | null> {
   if (_initPromise) return _initPromise;
   _initPromise = fetch('/api/auth/refresh', { method: 'POST' })
     .then((res) => {
-      if (!res.ok) { _initPromise = null; return null; }
+      _initPromise = null;
+      if (!res.ok) return null;
       return res.json() as Promise<AuthResponse>;
     })
-    .catch((err) => {
-      console.error('[AuthContext] initAuth refresh failed:', err);
+    .catch(() => {
       _initPromise = null;
       return null;
     });
@@ -115,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     isAuthenticated: false,
   });
+  const [initialAuthDone, setInitialAuthDone] = useState(false);
 
   const refreshAuth = useCallback(async () => {
     try {
@@ -131,8 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         isAuthenticated: true,
       });
-    } catch (err) {
-      console.error('[AuthContext] refreshAuth failed:', err);
+    } catch {
       setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
     }
   }, []);
@@ -152,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isLoading: false,
           isAuthenticated: true,
         });
+        setInitialAuthDone(true);
         return;
       }
     }
@@ -170,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
       }
+      setInitialAuthDone(true);
     });
     return () => { cancelled = true; };
   }, []);
@@ -224,9 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state.isAuthenticated) return;
     const interval = setInterval(() => {
-      refreshAuth().catch((err) => {
-        console.error('[AuthContext] Periodic refresh failed:', err);
-      });
+      refreshAuth().catch(() => {});
     }, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [state.isAuthenticated, refreshAuth]);
@@ -235,11 +234,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // This handles expired sessions where the cookie exists (middleware let us through)
   // but the refresh token is no longer valid.
   useEffect(() => {
-    if (!state.isLoading && !state.isAuthenticated) {
+    if (initialAuthDone && !state.isLoading && !state.isAuthenticated) {
       const returnTo = pathname && pathname !== '/login' ? `?returnTo=${encodeURIComponent(pathname)}` : '';
       router.replace(`/login${returnTo}`);
     }
-  }, [state.isLoading, state.isAuthenticated, pathname, router]);
+  }, [initialAuthDone, state.isLoading, state.isAuthenticated, pathname, router]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

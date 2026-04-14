@@ -278,6 +278,9 @@ export function StaffAttendanceMonthlySummaryScreen() {
           ListHeaderComponent={listHeader}
           onEndReached={fetchMore}
           onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
           ListFooterComponent={renderFooter}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           contentContainerStyle={styles.listContent}

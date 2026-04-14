@@ -17,7 +17,8 @@ import styles from './page.module.css';
 
 const CLOSE_REASONS = ['CONVERTED', 'NOT_INTERESTED', 'OTHER'] as const;
 type CloseReasonType = (typeof CLOSE_REASONS)[number];
-const GENDER_OPTIONS = ['Male', 'Female', 'Other'] as const;
+import { GENDERS } from '@playconnect/contracts';
+const GENDER_OPTIONS = GENDERS.map((g) => g.charAt(0) + g.slice(1).toLowerCase());
 
 function statusBadgeVariant(status: string) {
   switch (status) {

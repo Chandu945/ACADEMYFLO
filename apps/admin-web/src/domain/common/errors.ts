@@ -1,10 +1,5 @@
-export type AppErrorCode =
-  | 'UNAUTHORIZED'
-  | 'VALIDATION'
-  | 'NOT_FOUND'
-  | 'FORBIDDEN'
-  | 'NETWORK'
-  | 'UNKNOWN';
+import type { AppErrorCode } from '@playconnect/contracts';
+export type { AppErrorCode } from '@playconnect/contracts';
 
 export class AppError extends Error {
   readonly code: AppErrorCode;
@@ -31,6 +26,14 @@ export class AppError extends Error {
 
   static forbidden(message = 'Forbidden'): AppError {
     return new AppError('FORBIDDEN', message);
+  }
+
+  static conflict(message = 'Conflict'): AppError {
+    return new AppError('CONFLICT', message);
+  }
+
+  static rateLimited(message = 'Too many requests'): AppError {
+    return new AppError('RATE_LIMITED', message);
   }
 
   static network(message = 'Network error'): AppError {

@@ -1,13 +1,18 @@
 import type { TierKey } from '@playconnect/contracts';
+import { TIER_KEYS, TIER_PRICING_INR, TIER_RANGES } from '@playconnect/contracts';
 
 /**
  * Determine the required tier based on active student count.
- * Pure domain rule — no infrastructure dependencies.
+ * Derives boundaries from the shared TIER_RANGES constant.
  */
 export function requiredTierForCount(activeStudentCount: number): TierKey {
-  if (activeStudentCount <= 50) return 'TIER_0_50';
-  if (activeStudentCount <= 100) return 'TIER_51_100';
-  return 'TIER_101_PLUS';
+  for (const key of TIER_KEYS) {
+    const range = TIER_RANGES[key];
+    if (range.max === null || activeStudentCount <= range.max) {
+      return key;
+    }
+  }
+  return TIER_KEYS[TIER_KEYS.length - 1]!;
 }
 
 export interface PendingTierChange {
@@ -39,9 +44,10 @@ export function computePendingTierChange(
   };
 }
 
-/** Static tier pricing metadata for API responses */
-export const TIER_TABLE = [
-  { tierKey: 'TIER_0_50' as TierKey, min: 0, max: 50, priceInr: 299 },
-  { tierKey: 'TIER_51_100' as TierKey, min: 51, max: 100, priceInr: 499 },
-  { tierKey: 'TIER_101_PLUS' as TierKey, min: 101, max: null as number | null, priceInr: 699 },
-];
+/** Static tier pricing metadata for API responses, derived from contracts. */
+export const TIER_TABLE = TIER_KEYS.map((tierKey) => ({
+  tierKey,
+  min: TIER_RANGES[tierKey].min,
+  max: TIER_RANGES[tierKey].max,
+  priceInr: TIER_PRICING_INR[tierKey],
+}));

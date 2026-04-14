@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger, Inject } from '@nestjs/common';
+import type { Worker } from 'bullmq';
 import { AppConfigService } from '@shared/config/config.service';
 import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
 import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
@@ -6,7 +7,7 @@ import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender
 @Injectable()
 export class EmailQueueProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EmailQueueProcessor.name);
-  private worker: import('bullmq').Worker | null = null;
+  private worker: Worker | null = null;
 
   constructor(
     private readonly config: AppConfigService,

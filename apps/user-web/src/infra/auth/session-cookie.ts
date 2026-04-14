@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 import { z } from 'zod';
 
+import { USER_ROLES } from '@playconnect/contracts';
 import { publicEnv, serverEnv } from '@/infra/env';
 
 const COOKIE_NAME = 'pc_user_session';
@@ -13,7 +14,7 @@ const sessionPayloadSchema = z.object({
   refreshToken: z.string(),
   deviceId: z.string(),
   userId: z.string(),
-  role: z.enum(['OWNER', 'STAFF', 'PARENT']),
+  role: z.enum(USER_ROLES as unknown as [string, ...string[]]),
   academyId: z.string().optional(),
   fullName: z.string().optional(),
   email: z.string().optional(),

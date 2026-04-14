@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { ManualSubscriptionInput } from '@/domain/admin/academy-detail';
 import { TIER_KEYS } from '@playconnect/contracts';
@@ -59,6 +59,11 @@ export function ManualSubscriptionModal({
     setPaymentReference('');
     setErrors({});
   }, []);
+
+  // Reset form when modal opens to prevent stale values from previous submission
+  useEffect(() => {
+    if (open) resetForm();
+  }, [open, resetForm]);
 
   const handleClose = useCallback(() => {
     resetForm();

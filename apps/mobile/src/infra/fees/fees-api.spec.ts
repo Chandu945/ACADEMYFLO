@@ -61,7 +61,7 @@ describe('fees-api', () => {
 
       await markFeePaid('s1', '2026-03');
 
-      expect(mockApiPut).toHaveBeenCalledWith('/api/v1/fees/students/s1/2026-03/pay');
+      expect(mockApiPut).toHaveBeenCalledWith('/api/v1/fees/students/s1/2026-03/pay', undefined);
     });
   });
 });

@@ -1,6 +1,5 @@
-export type EnquirySource = 'WALK_IN' | 'PHONE' | 'REFERRAL' | 'SOCIAL_MEDIA' | 'WEBSITE' | 'OTHER';
-export type EnquiryStatus = 'ACTIVE' | 'CLOSED';
-export type ClosureReason = 'CONVERTED' | 'NOT_INTERESTED' | 'OTHER';
+import type { EnquirySource, EnquiryStatus, ClosureReason } from '@playconnect/contracts';
+export type { EnquirySource, EnquiryStatus, ClosureReason } from '@playconnect/contracts';
 
 export type FollowUp = {
   id: string;

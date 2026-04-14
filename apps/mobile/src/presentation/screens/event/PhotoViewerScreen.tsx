@@ -48,7 +48,7 @@ export function PhotoViewerScreen() {
   const canDelete = user?.role === 'OWNER' || user?.role === 'STAFF';
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const [photos] = useState(initialPhotos);
+  const [photos, setPhotos] = useState(initialPhotos);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [deleteTarget, setDeleteTarget] = useState<GalleryPhoto | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -147,9 +147,17 @@ export function PhotoViewerScreen() {
       const result = await galleryApi.deleteGalleryPhoto(eventId, deleteTarget.id);
 
       if (result.ok) {
+        const remaining = photos.filter((p) => p.id !== deleteTarget.id);
+        setPhotos(remaining);
         setDeleteTarget(null);
         showToast('Photo deleted');
-        navigation.goBack();
+        if (remaining.length === 0) {
+          navigation.goBack();
+          return;
+        }
+        if (currentIndex >= remaining.length) {
+          setCurrentIndex(remaining.length - 1);
+        }
       } else {
         setDeleteError(result.error.message);
       }

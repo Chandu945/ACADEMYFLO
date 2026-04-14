@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../theme';
 import type { Colors } from '../theme';
 import { useTheme } from './ThemeContext';
@@ -67,11 +67,13 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const dismiss = useCallback(() => {
-    setAlert((prev) => ({ ...prev, visible: false }));
-    // Call cancel button's onPress if exists
-    const cancelBtn = alert.buttons.find((b) => b.style === 'cancel');
-    cancelBtn?.onPress?.();
-  }, [alert.buttons]);
+    setAlert((prev) => {
+      // Call cancel button's onPress if exists
+      const cancelBtn = prev.buttons.find((b) => b.style === 'cancel');
+      cancelBtn?.onPress?.();
+      return { ...prev, visible: false };
+    });
+  }, []);
 
   const value = useMemo(() => ({ showAlert }), [showAlert]);
 

@@ -1,13 +1,12 @@
-export type LocalDate = string; // YYYY-MM-DD
-export type MonthKey = string; // YYYY-MM
+export type { LocalDate, MonthKey } from '@playconnect/contracts';
+import type { StudentAttendanceStatus } from '@playconnect/contracts';
 
-export type AttendanceStatus = 'PRESENT' | 'ABSENT';
-export type AttendanceDisplayStatus = 'PRESENT' | 'ABSENT' | 'HOLIDAY';
+export type AttendanceStatus = StudentAttendanceStatus;
 
 export type DailyAttendanceItem = {
   studentId: string;
   fullName: string;
-  status: AttendanceDisplayStatus;
+  status: AttendanceStatus | 'HOLIDAY';
 };
 
 export type DailyAttendancePage = {
@@ -22,18 +21,10 @@ export type DailyAttendancePage = {
   };
 };
 
-export type MarkAttendanceRequest = {
-  status: AttendanceStatus;
-};
-
 export type MarkAttendanceResult = {
   studentId: string;
   date: string;
   status: AttendanceStatus;
-};
-
-export type BulkSetAbsencesRequest = {
-  absentStudentIds: string[];
 };
 
 export type BulkSetAbsencesResult = {

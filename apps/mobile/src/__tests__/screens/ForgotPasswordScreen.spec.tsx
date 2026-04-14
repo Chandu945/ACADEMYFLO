@@ -12,6 +12,7 @@ jest.mock('../../infra/auth/auth-api', () => ({
   authApi: {
     requestPasswordReset: jest.fn(),
     confirmPasswordReset: jest.fn(),
+      googleLogin: jest.fn(),
   },
 }));
 

@@ -16,7 +16,8 @@ import { OfflineBanner } from './presentation/components/global/OfflineBanner';
  * Deep linking configuration for Academyflo.
  * Expand the `screens` map as new linkable routes are added.
  */
-const linking = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const linking: any = {
   prefixes: ['playconnect://', 'https://playconnect.app'],
   config: {
     screens: {

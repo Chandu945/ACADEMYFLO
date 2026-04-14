@@ -39,7 +39,10 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await authService.login(parsed.data.email, parsed.data.password);
+      const session = await authService.login(parsed.data.email, parsed.data.password);
+      try {
+        sessionStorage.setItem('pc_admin_fresh_login', JSON.stringify(session));
+      } catch { /* sessionStorage may be unavailable in some contexts */ }
       router.push('/dashboard');
     } catch (err) {
       if (err instanceof AppError) {

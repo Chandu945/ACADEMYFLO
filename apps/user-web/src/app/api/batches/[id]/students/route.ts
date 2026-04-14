@@ -26,19 +26,25 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ message: 'studentIds must be a non-empty array' }, { status: 400 });
   }
 
+  const results = await Promise.allSettled(
+    studentIds.map((studentId) =>
+      apiPost(
+        `/api/v1/batches/${encodeURIComponent(id)}/students/${encodeURIComponent(String(studentId))}`,
+        {},
+        { accessToken },
+      ).then((result) => ({ studentId: String(studentId), result })),
+    ),
+  );
+
   const errors: string[] = [];
   const succeeded: string[] = [];
 
-  for (const studentId of studentIds) {
-    const result = await apiPost(
-      `/api/v1/batches/${encodeURIComponent(id)}/students/${encodeURIComponent(String(studentId))}`,
-      {},
-      { accessToken },
-    );
-    if (result.ok) {
-      succeeded.push(String(studentId));
+  for (const entry of results) {
+    if (entry.status === 'fulfilled' && entry.value.result.ok) {
+      succeeded.push(entry.value.studentId);
     } else {
-      errors.push(`Failed to add student ${studentId}`);
+      const sid = entry.status === 'fulfilled' ? entry.value.studentId : 'unknown';
+      errors.push(`Failed to add student ${sid}`);
     }
   }
 

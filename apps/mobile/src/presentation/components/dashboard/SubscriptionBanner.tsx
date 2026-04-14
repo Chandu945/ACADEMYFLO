@@ -76,7 +76,7 @@ export function SubscriptionBanner() {
   );
 }
 
-const makeStyles = (colors: Colors) =>
+const makeStyles = (_colors: Colors) =>
   StyleSheet.create({
     banner: {
       flexDirection: 'row',

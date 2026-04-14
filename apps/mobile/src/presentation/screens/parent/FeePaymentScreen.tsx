@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useRoute, useNavigation } from '@react-navigation/native';

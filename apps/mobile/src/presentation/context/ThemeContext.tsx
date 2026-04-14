@@ -29,7 +29,6 @@ export function useTheme(): ThemeContextValue {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
   const [mode, setModeState] = useState<ThemeMode>('system');
-  const [loaded, setLoaded] = useState(false);
 
   // Load persisted preference
   useEffect(() => {
@@ -38,9 +37,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (result && (result.password === 'light' || result.password === 'dark' || result.password === 'system')) {
           setModeState(result.password as ThemeMode);
         }
-        setLoaded(true);
       })
-      .catch(() => setLoaded(true));
+      .catch(() => {});
   }, []);
 
   const setMode = useCallback((newMode: ThemeMode) => {

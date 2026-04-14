@@ -45,6 +45,8 @@ export function mapApiError(status: number, body?: Record<string, unknown>): App
       return AppError.conflict(message ?? 'Conflict');
     case 429:
       return AppError.rateLimited(message ?? 'Too many requests');
+    case 503:
+      return AppError.unknown(message ?? 'Service temporarily unavailable');
     default:
       return AppError.unknown(message ?? 'Something went wrong');
   }

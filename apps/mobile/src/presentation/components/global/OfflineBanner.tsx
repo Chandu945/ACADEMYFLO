@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
+import { View, Text, StyleSheet, AppState, Platform } from 'react-native';
+import type { AppStateStatus } from 'react-native';
 
 /**
  * Lightweight offline banner that works without @react-native-community/netinfo.

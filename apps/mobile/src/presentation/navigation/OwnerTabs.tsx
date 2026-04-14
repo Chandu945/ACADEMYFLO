@@ -53,7 +53,7 @@ function OwnerTabsInner() {
           tabPress: (e) => {
             const state = navigation.getState();
             const currentRoute = state?.routes[state.index];
-            const targetName = (e.target ?? '').split('-')[0];
+            const targetName = (e.target ?? '').split('-')[0]!;
             // If tapping the already-active tab that has a nested stack, reset to first screen
             if (currentRoute?.name === targetName && currentRoute?.state && (currentRoute.state.index ?? 0) > 0) {
               e.preventDefault();

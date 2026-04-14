@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import type { TextInput } from 'react-native';
 import {
   View,
   Text,
-  TextInput,
   Image,
   StyleSheet,
   TouchableOpacity,
@@ -163,6 +163,7 @@ export function LoginScreen() {
         <View style={styles.brandSection}>
           <View style={styles.logoContainer}>
             <Image
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
               source={require('../../../assets/logo.png')}
               style={styles.logoImage}
               resizeMode="contain"

@@ -128,6 +128,8 @@ export function ReportsHomeScreen() {
     );
   }, [month]);
 
+  const dueKeyExtractor = useCallback((item: StudentWiseDueItem) => `${item.studentId}-${item.monthKey}`, []);
+
   const renderDueItem = useCallback(
     ({ item }: { item: StudentWiseDueItem }) => {
       const avatarBg = getAvatarColor(item.studentName, isDark);
@@ -265,10 +267,13 @@ export function ReportsHomeScreen() {
           ) : (
             <FlatList
               data={pendingDues}
-              keyExtractor={(item) => `${item.studentId}-${item.monthKey}`}
+              keyExtractor={dueKeyExtractor}
               renderItem={renderDueItem}
               onEndReached={fetchMoreDues}
               onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
               contentContainerStyle={styles.listContent}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
               ListHeaderComponent={

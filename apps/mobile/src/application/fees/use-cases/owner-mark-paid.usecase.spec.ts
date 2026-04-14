@@ -33,7 +33,7 @@ describe('ownerMarkPaidUseCase', () => {
       expect(result.value.status).toBe('PAID');
       expect(result.value.paidSource).toBe('OWNER_DIRECT');
     }
-    expect(mockApi.markFeePaid).toHaveBeenCalledWith('s1', '2026-03');
+    expect(mockApi.markFeePaid).toHaveBeenCalledWith('s1', '2026-03', undefined);
   });
 
   it('propagates API errors', async () => {

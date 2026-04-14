@@ -8,6 +8,7 @@ const STATUS_MAP: Record<number, AppErrorCode> = {
   409: 'CONFLICT',
   422: 'VALIDATION',
   429: 'RATE_LIMITED',
+  503: 'UNKNOWN',
 };
 
 /**
@@ -54,7 +55,7 @@ function extractFieldErrors(details: unknown[]): Record<string, string> | undefi
     if (typeof detail !== 'string') continue;
 
     // Match: "fieldName <constraint message>"
-    const match = detail.match(/^([a-zA-Z0-9_.\[\]-]+)\s+(.+)$/);
+    const match = detail.match(/^([a-zA-Z0-9_.[\\]-]+)\s+(.+)$/);
     if (match) {
       const rawField = match[1]!;
       const constraintMessage = match[2]!;

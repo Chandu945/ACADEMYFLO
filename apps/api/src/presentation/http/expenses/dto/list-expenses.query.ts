@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Matches } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.query';
 
 export class ListExpensesQueryDto extends PaginationQueryDto {
@@ -9,4 +9,9 @@ export class ListExpensesQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
 }

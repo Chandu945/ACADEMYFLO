@@ -116,7 +116,7 @@ export function ExpensesHomeScreen() {
   const navigation = useNavigation<Nav>();
   const [month, setMonth] = useState(currentMonth());
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
-  const stableApi = useMemo(() => expenseApi, []);
+  const stableApi = expenseApi;
 
   const [showFilters, setShowFilters] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
@@ -274,6 +274,8 @@ export function ExpensesHomeScreen() {
       ],
     );
   }, [stableApi, refetch, loadSummary]);
+
+  const keyExtractor = useCallback((item: ExpenseItem) => item.id, []);
 
   const renderItem = useCallback(({ item }: { item: ExpenseItem }) => {
     const catColor = getCategoryColor(item.categoryName, isDark);
@@ -503,7 +505,7 @@ export function ExpensesHomeScreen() {
       <FlatList
         data={filteredItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={
           !loading ? (
@@ -525,6 +527,9 @@ export function ExpensesHomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         onEndReached={hasMore ? fetchMore : undefined}
         onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
         contentContainerStyle={styles.listContent}
         testID="expenses-list"
       />

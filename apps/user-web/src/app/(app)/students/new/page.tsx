@@ -14,11 +14,8 @@ import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
 import styles from './page.module.css';
 
-const GENDERS = [
-  { value: 'MALE', label: 'Male' },
-  { value: 'FEMALE', label: 'Female' },
-  { value: 'OTHER', label: 'Other' },
-] as const;
+import { GENDERS } from '@playconnect/contracts';
+const GENDER_OPTIONS = GENDERS.map((g) => ({ value: g, label: g.charAt(0) + g.slice(1).toLowerCase() }));
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const E164_RE = /^\+[1-9]\d{6,14}$/;
@@ -217,7 +214,7 @@ export default function NewStudentPage() {
               Gender <span className={styles.required}>*</span>
             </label>
             <div className={styles.chipGroup}>
-              {GENDERS.map((g) => (
+              {GENDER_OPTIONS.map((g) => (
                 <Chip key={g.value} label={g.label} selected={form.gender === g.value} onSelect={() => set('gender', g.value)} />
               ))}
             </div>

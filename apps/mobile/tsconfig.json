@@ -12,7 +12,7 @@
     },
     "typeRoots": ["./node_modules/@types", "../../node_modules/@types"],
     "types": ["jest", "react-native-vector-icons"],
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "noEmit": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false

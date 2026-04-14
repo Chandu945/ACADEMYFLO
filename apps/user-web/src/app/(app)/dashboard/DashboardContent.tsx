@@ -139,7 +139,7 @@ export default function DashboardContent() {
   const userRole = user?.role ?? 'OWNER';
 
   const visibleKpis = useMemo(
-    () => KPI_CONFIG.filter((cfg) => cfg.roles.includes(userRole)),
+    () => KPI_CONFIG.filter((cfg) => (cfg.roles as readonly string[]).includes(userRole)),
     [userRole],
   );
 

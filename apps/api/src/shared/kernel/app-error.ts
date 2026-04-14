@@ -14,7 +14,7 @@ export class AppError {
   }
 
   static validation(message: string, details?: Record<string, unknown>): AppError {
-    return new AppError('VALIDATION_ERROR', message, details);
+    return new AppError('VALIDATION', message, details);
   }
 
   static notFound(entity: string, id?: string): AppError {

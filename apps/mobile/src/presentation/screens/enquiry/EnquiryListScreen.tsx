@@ -63,7 +63,7 @@ export function EnquiryListScreen() {
     activeTab === 'ACTIVE' ? 'ACTIVE' : activeTab === 'CLOSED' ? 'CLOSED' : undefined;
   const followUpToday = activeTab === 'TODAY';
 
-  const stableApi = useMemo(() => enquiryApi, []);
+  const stableApi = enquiryApi;
   const { items, loading, loadingMore, error, hasMore, refetch, fetchMore } = useEnquiries(
     stableApi,
     status,
@@ -126,7 +126,9 @@ export function EnquiryListScreen() {
     }
   }, [extractDate]);
 
-  const renderItem = ({ item }: { item: EnquiryListItem }) => (
+  const keyExtractor = useCallback((item: EnquiryListItem) => item.id, []);
+
+  const renderItem = useCallback(({ item }: { item: EnquiryListItem }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => navigation.navigate('EnquiryDetail', { enquiryId: item.id })}
@@ -177,7 +179,7 @@ export function EnquiryListScreen() {
         )}
       </View>
     </TouchableOpacity>
-  );
+  ), [styles, colors, navigation, isOverdue, formatDate]);
 
   return (
     <View style={styles.screen}>
@@ -298,7 +300,7 @@ export function EnquiryListScreen() {
       <FlatList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           !loading ? (
@@ -320,6 +322,9 @@ export function EnquiryListScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
         onEndReached={hasMore ? fetchMore : undefined}
         onEndReachedThreshold={0.3}
+          removeClippedSubviews
+          windowSize={11}
+          maxToRenderPerBatch={5}
         testID="enquiry-list"
       />
 

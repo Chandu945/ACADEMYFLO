@@ -53,16 +53,32 @@ export async function tryRefresh(): Promise<string | null> {
       });
       clearTimeout(timer);
 
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // On permanent auth failure (401/403), clear stored session to prevent stale-token loops
+        if (res.status === 401 || res.status === 403) {
+          await tokenStore.clearSession();
+        }
+        return null;
+      }
 
-      const json = (await res.json()) as { data: { accessToken: string; refreshToken: string } };
+      const json = (await res.json()) as { data: { accessToken: string; refreshToken: string; user?: Record<string, unknown> } };
       const data = json.data;
 
       _accessToken = data.accessToken;
-      await tokenStore.setSession(data.refreshToken, session.user);
+      const updatedUser = data.user
+        ? {
+            ...session.user,
+            fullName: (data.user['fullName'] as string) ?? session.user.fullName,
+            email: (data.user['email'] as string) ?? session.user.email,
+            phoneNumber: (data.user['phoneNumber'] as string) ?? session.user.phoneNumber,
+            profilePhotoUrl: data.user['profilePhotoUrl'] as string | null | undefined ?? session.user.profilePhotoUrl,
+          }
+        : session.user;
+      await tokenStore.setSession(data.refreshToken, updatedUser);
 
       return data.accessToken;
     } catch {
+      // Network error — return null but DON'T clear session (transient failure)
       return null;
     }
   })();

@@ -61,18 +61,6 @@ export function AttendanceDailyReportScreen() {
     };
   }, [load]);
 
-  const renderAbsentItem = useCallback(
-    ({ item }: { item: { studentId: string; fullName: string } }) => (
-      <View style={styles.absentRow} testID={`absent-${item.studentId}`} accessibilityLabel={`${item.fullName}, absent`}>
-        <Text style={styles.absentName}>{item.fullName}</Text>
-        <Badge label="ABSENT" variant="danger" />
-      </View>
-    ),
-    [styles],
-  );
-
-  const keyExtractor = useCallback((item: { studentId: string }) => item.studentId, []);
-
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {

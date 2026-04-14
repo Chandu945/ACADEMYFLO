@@ -43,6 +43,7 @@ export class MongoExpenseRepository implements ExpenseRepository {
     filter: {
       month: string;
       categoryId?: string;
+      search?: string;
       page: number;
       pageSize: number;
     },
@@ -54,6 +55,10 @@ export class MongoExpenseRepository implements ExpenseRepository {
     };
     if (filter.categoryId) {
       query['categoryId'] = filter.categoryId;
+    }
+    if (filter.search) {
+      const searchRegex = { $regex: escapeRegex(filter.search), $options: 'i' };
+      query['$or'] = [{ notes: searchRegex }, { category: searchRegex }];
     }
 
     const skip = (filter.page - 1) * filter.pageSize;

@@ -158,6 +158,8 @@ export function ChildrenListScreen() {
     [user, styles, colors],
   );
 
+  const keyExtractor = useCallback((item: ChildSummary) => item.studentId, []);
+
   const renderChild = useCallback(
     ({ item, index }: { item: ChildSummary; index: number }) => (
       <TouchableOpacity
@@ -235,7 +237,7 @@ export function ChildrenListScreen() {
   return (
     <FlatList
       data={children}
-      keyExtractor={(item) => item.studentId}
+      keyExtractor={keyExtractor}
       renderItem={renderChild}
       ListHeaderComponent={renderHeader}
       contentContainerStyle={styles.list}

@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { Alert } from 'react-native';
 import { crossAlert } from '../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 

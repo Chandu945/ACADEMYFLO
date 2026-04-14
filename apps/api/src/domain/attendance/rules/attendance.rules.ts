@@ -1,4 +1,5 @@
 import type { UserRole } from '@playconnect/contracts';
+import { STUDENT_ATTENDANCE_STATUSES } from '@playconnect/contracts';
 import { isValidLocalDate, isValidMonthKey } from '../value-objects/local-date.vo';
 import { formatLocalDate } from '@shared/date-utils';
 
@@ -38,8 +39,8 @@ export function validateMonthKey(value: string): { valid: boolean; reason?: stri
 }
 
 export function validateAttendanceStatus(status: string): { valid: boolean; reason?: string } {
-  if (status !== 'PRESENT' && status !== 'ABSENT') {
-    return { valid: false, reason: 'Status must be PRESENT or ABSENT' };
+  if (!(STUDENT_ATTENDANCE_STATUSES as readonly string[]).includes(status)) {
+    return { valid: false, reason: `Status must be one of: ${STUDENT_ATTENDANCE_STATUSES.join(', ')}` };
   }
   return { valid: true };
 }

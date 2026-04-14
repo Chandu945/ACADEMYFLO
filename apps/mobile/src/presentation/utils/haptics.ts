@@ -8,8 +8,3 @@ export function lightHaptic() {
   }
 }
 
-export function mediumHaptic() {
-  if (isNative) {
-    try { Vibration.vibrate(25); } catch { /* permission missing */ }
-  }
-}

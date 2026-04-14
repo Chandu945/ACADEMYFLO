@@ -1,4 +1,5 @@
-export type PaymentRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+import type { PaymentRequestStatus } from '@playconnect/contracts';
+export type { PaymentRequestStatus } from '@playconnect/contracts';
 
 export type PaymentRequestItem = {
   id: string;

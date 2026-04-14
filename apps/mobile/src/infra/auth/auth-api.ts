@@ -101,4 +101,8 @@ export const authApi: AuthApiPort = {
   confirmPasswordReset(req: PasswordResetConfirmInput) {
     return post<PasswordResetResponse>('/api/v1/auth/password-reset/confirm', req);
   },
+
+  googleLogin(idToken: string, deviceId: string) {
+    return post<AuthResponse>('/api/v1/auth/google', { idToken, deviceId });
+  },
 };

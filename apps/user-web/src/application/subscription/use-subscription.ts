@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { SubscriptionStatus, TierKey } from '@playconnect/contracts';
 import { useAuth } from '@/application/auth/use-auth';
 
-type SubscriptionInfo = { status: string; trialEndAt: string; paidEndAt: string | null; tierKey: string | null; daysRemaining: number; canAccessApp: boolean; blockReason: string | null; activeStudentCount: number; currentTierKey: string | null; requiredTierKey: string; tiers: { key: string; label: string; priceInr: number; maxStudents: number | null }[] };
+type SubscriptionInfo = { status: SubscriptionStatus; trialEndAt: string; paidEndAt: string | null; tierKey: TierKey | null; daysRemaining: number; canAccessApp: boolean; blockReason: string | null; activeStudentCount: number; currentTierKey: TierKey | null; requiredTierKey: TierKey; tiers: { key: TierKey; label: string; priceInr: number; maxStudents: number | null }[] };
 
 async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
   try { return await res.json(); } catch { return null; }

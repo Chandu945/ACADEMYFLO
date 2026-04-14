@@ -28,6 +28,7 @@ export interface AuthApiPort {
   confirmPasswordReset(
     req: PasswordResetConfirmInput,
   ): Promise<Result<PasswordResetResponse, AppError>>;
+  googleLogin(idToken: string, deviceId: string): Promise<Result<AuthResponse, AppError>>;
 }
 
 export interface TokenStorePort {

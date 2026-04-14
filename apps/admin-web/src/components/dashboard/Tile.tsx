@@ -10,7 +10,7 @@ type TileProps = {
 export function Tile({ label, count }: TileProps) {
   return (
     <div className={styles.tile} aria-label={`${label}: ${count}`}>
-      <span className={styles.count}>{count.toLocaleString()}</span>
+      <span className={styles.count}>{count.toLocaleString('en-IN')}</span>
       <span className={styles.label}>{label}</span>
     </div>
   );

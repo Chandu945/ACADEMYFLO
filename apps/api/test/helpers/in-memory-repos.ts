@@ -220,6 +220,17 @@ export class InMemorySessionRepository implements SessionRepository {
     }
   }
 
+  async deleteExpiredAndRevoked(): Promise<number> {
+    let count = 0;
+    for (const [key, session] of this.sessions) {
+      if (session.isRevoked() || session.isExpired()) {
+        this.sessions.delete(key);
+        count++;
+      }
+    }
+    return count;
+  }
+
   clear(): void {
     this.sessions.clear();
   }

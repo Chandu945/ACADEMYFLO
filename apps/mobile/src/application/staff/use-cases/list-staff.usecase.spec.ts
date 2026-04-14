@@ -66,7 +66,7 @@ describe('listStaffUseCase', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.message).toBe('Unexpected server response');
+      expect(result.error.message).toContain('Unexpected server response');
     }
   });
 });

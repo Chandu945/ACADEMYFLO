@@ -42,6 +42,10 @@ export class RunMonthlyDuesEngineUseCase {
 
     const students = await this.studentRepo.listActiveByAcademy(input.academyId);
 
+    // Batch-fetch all existing dues for this academy+month to avoid N+1 queries
+    const existingDues = await this.feeDueRepo.listByAcademyAndMonth(input.academyId, monthKey);
+    const existingStudentIds = new Set(existingDues.map((d) => d.studentId));
+
     const toCreate: FeeDue[] = [];
     for (const student of students) {
       if (
@@ -55,12 +59,7 @@ export class RunMonthlyDuesEngineUseCase {
         continue;
       }
 
-      const existing = await this.feeDueRepo.findByAcademyStudentMonth(
-        input.academyId,
-        student.id.toString(),
-        monthKey,
-      );
-      if (existing) continue;
+      if (existingStudentIds.has(student.id.toString())) continue;
 
       const dueDate = computeDueDate(monthKey, dueDateDay);
       toCreate.push(

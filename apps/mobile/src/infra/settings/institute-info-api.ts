@@ -2,7 +2,7 @@ import type { InstituteInfo, UpdateInstituteInfoRequest } from '../../domain/set
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
 import { ok, err } from '../../domain/common/result';
-import { apiGet, apiPut, apiDelete, getAccessToken } from '../http/api-client';
+import { apiGet, apiPut, apiDelete, getAccessToken, tryRefresh } from '../http/api-client';
 import { mapHttpError } from '../http/error-mapper';
 import { generateRequestId } from '../http/request-id';
 import { policyFetch } from '../http/request-policy';
@@ -43,11 +43,21 @@ export async function uploadInstituteImage(
   }
 
   try {
-    const res = await policyFetch(url, {
+    let res = await policyFetch(url, {
       method: 'POST',
       headers,
       body: formData,
     });
+
+    if (res.status === 401) {
+      const newToken = await tryRefresh();
+      if (newToken) {
+        headers['Authorization'] = `Bearer ${newToken}`;
+        res = await policyFetch(url, { method: 'POST', headers, body: formData });
+      } else {
+        return err({ code: 'UNAUTHORIZED', message: 'Session expired' });
+      }
+    }
 
     if (!res.ok) {
       const json = await res.json().catch(() => null);

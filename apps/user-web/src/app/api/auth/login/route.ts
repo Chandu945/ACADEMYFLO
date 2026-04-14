@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import type { UserRole } from '@playconnect/contracts';
 import { apiPost } from '@/infra/http/api-client';
 import { setSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
@@ -30,7 +31,7 @@ type LoginResponse = {
     fullName: string;
     email: string;
     phoneNumber: string;
-    role: 'OWNER' | 'STAFF' | 'PARENT';
+    role: UserRole;
     status: string;
     profilePhotoUrl?: string | null;
   };

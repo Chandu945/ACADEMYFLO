@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import {
@@ -122,7 +122,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [registerToken]);
 
   return (
-    <NotificationContext.Provider value={{ requestPermission: doRequestPermission }}>
+    <NotificationContext.Provider value={useMemo(() => ({ requestPermission: doRequestPermission }), [doRequestPermission])}>
       {children}
     </NotificationContext.Provider>
   );

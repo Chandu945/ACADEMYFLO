@@ -9,4 +9,5 @@ export interface SessionRepository {
   revokeByUserAndDevice(userId: string, deviceId: string): Promise<void>;
   updateRefreshToken(sessionId: string, newHash: string, expiresAt: Date, expectedCurrentHash?: string): Promise<boolean>;
   revokeAllByUserIds(userIds: string[]): Promise<void>;
+  deleteExpiredAndRevoked(): Promise<number>;
 }

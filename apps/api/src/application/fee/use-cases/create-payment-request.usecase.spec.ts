@@ -36,6 +36,8 @@ describe('CreatePaymentRequestUseCase', () => {
       countActiveByAcademy: jest.fn(),
       findByIds: jest.fn(),
       findBirthdaysByAcademy: jest.fn(),
+    findByEmailInAcademy: jest.fn(),
+    findByPhoneInAcademy: jest.fn(),
       countInactiveByAcademy: jest.fn(),
       countNewAdmissionsByAcademyAndDateRange: jest.fn(),
     } as jest.Mocked<StudentRepository>;

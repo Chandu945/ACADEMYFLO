@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { AuditActionType } from '@/domain/admin/audit-logs';
 import { AUDIT_ACTION_TYPES } from '@playconnect/contracts';
@@ -42,6 +42,11 @@ export function AuditLogsFilters({
   const [localFrom, setLocalFrom] = useState(from ?? '');
   const [localTo, setLocalTo] = useState(to ?? '');
   const [localAction, setLocalAction] = useState(actionType ?? '');
+
+  // Sync local state when props change (e.g., browser back/forward)
+  useEffect(() => { setLocalFrom(from ?? ''); }, [from]);
+  useEffect(() => { setLocalTo(to ?? ''); }, [to]);
+  useEffect(() => { setLocalAction(actionType ?? ''); }, [actionType]);
 
   const handleApply = useCallback(() => {
     onApply({

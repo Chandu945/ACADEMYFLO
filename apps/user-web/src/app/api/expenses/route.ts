@@ -59,7 +59,10 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
   const { id, ...data } = body;
-  const result = await apiPut(`/api/v1/expenses/${encodeURIComponent(String(id))}`, data, { accessToken });
+  if (!id || typeof id !== 'string') {
+    return NextResponse.json({ message: 'id is required' }, { status: 400 });
+  }
+  const result = await apiPut(`/api/v1/expenses/${encodeURIComponent(id)}`, data, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }
@@ -71,7 +74,10 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const id = searchParams.get('id');
-  const result = await apiDelete(`/api/v1/expenses/${encodeURIComponent(id || '')}`, { accessToken });
+  if (!id) {
+    return NextResponse.json({ message: 'id query parameter is required' }, { status: 400 });
+  }
+  const result = await apiDelete(`/api/v1/expenses/${encodeURIComponent(id)}`, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json({ ok: true });
 }

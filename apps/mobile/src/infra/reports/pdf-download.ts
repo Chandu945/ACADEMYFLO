@@ -3,7 +3,7 @@ import RNFS from 'react-native-fs';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
 import { ok, err } from '../../domain/common/result';
-import { getAccessToken } from '../http/api-client';
+import { getAccessToken, tryRefresh } from '../http/api-client';
 import { env } from '../env';
 import { buildPdfFilename, isValidMonthKey } from '../files/file-naming';
 import { getTempPath, moveToExports, cleanupExports, type FileMetadata } from '../files/file-manager';
@@ -64,15 +64,26 @@ async function attemptDownload(
   // Web: use fetch + Blob + browser download
   if (Platform.OS === 'web') {
     try {
-      const res = await fetch(fullUrl, {
+      let activeToken = token;
+      let res = await fetch(fullUrl, {
         method: 'GET',
         headers: {
           Accept: 'application/pdf',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${activeToken}`,
         },
       });
+      if (res.status === 401) {
+        const newToken = await tryRefresh();
+        if (newToken) {
+          activeToken = newToken;
+          res = await fetch(fullUrl, {
+            method: 'GET',
+            headers: { Accept: 'application/pdf', Authorization: `Bearer ${activeToken}` },
+          });
+        }
+      }
       if (!res.ok) {
-        if (res.status === 401) return err({ code: 'FORBIDDEN', message: 'Session expired. Please log in again.' });
+        if (res.status === 401) return err({ code: 'UNAUTHORIZED', message: 'Session expired. Please log in again.' });
         if (res.status === 403) return err({ code: 'FORBIDDEN', message: 'Access denied. Only owners can export reports.' });
         return err({ code: 'UNKNOWN', message: `Failed to download report. (HTTP ${res.status})` });
       }
@@ -84,7 +95,7 @@ async function attemptDownload(
       link.download = filename;
       link.click();
       g.URL.revokeObjectURL(url);
-      return ok({ uri: url, filename, size: blob.size, mimeType: 'application/pdf' } as FileMetadata);
+      return ok({ filePath: url, filename, sizeBytes: blob.size, createdAt: new Date() });
     } catch {
       return err({ code: 'NETWORK', message: 'Network timeout. Please try again.' });
     }
@@ -93,24 +104,42 @@ async function attemptDownload(
   const tempPath = getTempPath(filename);
 
   try {
-    const { promise } = RNFS.downloadFile({
+    let activeToken = token;
+    let { promise } = RNFS.downloadFile({
       fromUrl: fullUrl,
       toFile: tempPath,
       connectionTimeout: DOWNLOAD_TIMEOUT_MS,
       readTimeout: DOWNLOAD_TIMEOUT_MS,
       headers: {
         Accept: 'application/pdf',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${activeToken}`,
       },
     });
 
-    const res = await promise;
+    let res = await promise;
+
+    // On 401, refresh token and retry once
+    if (res.statusCode === 401) {
+      await safeUnlink(tempPath);
+      const newToken = await tryRefresh();
+      if (newToken) {
+        activeToken = newToken;
+        ({ promise } = RNFS.downloadFile({
+          fromUrl: fullUrl,
+          toFile: tempPath,
+          connectionTimeout: DOWNLOAD_TIMEOUT_MS,
+          readTimeout: DOWNLOAD_TIMEOUT_MS,
+          headers: { Accept: 'application/pdf', Authorization: `Bearer ${activeToken}` },
+        }));
+        res = await promise;
+      }
+    }
 
     // Validate HTTP status
     if (res.statusCode !== 200) {
       await safeUnlink(tempPath);
       if (res.statusCode === 401) {
-        return err({ code: 'FORBIDDEN', message: 'Session expired. Please log in again.' });
+        return err({ code: 'UNAUTHORIZED', message: 'Session expired. Please log in again.' });
       }
       if (res.statusCode === 403) {
         return err({ code: 'FORBIDDEN', message: 'Access denied. Only owners can export reports.' });

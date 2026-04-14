@@ -12,7 +12,7 @@ import type {
   PendingTierChange,
   TierKey,
 } from '../../../domain/subscription/subscription.types';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 

@@ -43,6 +43,8 @@ function buildDeps() {
     countActiveByAcademy: jest.fn(),
     findByIds: jest.fn(),
     findBirthdaysByAcademy: jest.fn(),
+    findByEmailInAcademy: jest.fn(),
+    findByPhoneInAcademy: jest.fn(),
     countInactiveByAcademy: jest.fn(),
     countNewAdmissionsByAcademyAndDateRange: jest.fn(),
   };
@@ -149,7 +151,7 @@ describe('CreateStudentUseCase', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe('VALIDATION_ERROR');
+      expect(result.error.code).toBe('VALIDATION');
     }
   });
 
@@ -162,7 +164,7 @@ describe('CreateStudentUseCase', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe('VALIDATION_ERROR');
+      expect(result.error.code).toBe('VALIDATION');
     }
   });
 
@@ -178,7 +180,7 @@ describe('CreateStudentUseCase', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe('VALIDATION_ERROR');
+      expect(result.error.code).toBe('VALIDATION');
     }
   });
 });

@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
       body: outgoingForm,
+      signal: AbortSignal.timeout(30_000),
     });
   } catch {
     return NextResponse.json({ message: 'Upload failed. Please try again.' }, { status: 502 });

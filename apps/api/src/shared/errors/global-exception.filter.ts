@@ -81,6 +81,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     response.setHeader(REQUEST_ID_HEADER, requestId);
 
     const envelope: ErrorEnvelope = {
+      success: false,
       statusCode,
       error,
       message,

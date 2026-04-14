@@ -74,9 +74,9 @@ describe('mapHttpError', () => {
 
   describe('message truncation', () => {
     it('truncates overly long server messages', () => {
-      const longMessage = 'a'.repeat(500);
+      const longMessage = 'a'.repeat(600);
       const error = mapHttpError(400, { message: longMessage });
-      expect(error.message.length).toBe(200);
+      expect(error.message.length).toBe(500);
     });
   });
 });

@@ -478,7 +478,7 @@ function CloseEnquiryModal({
   );
 }
 
-function ConvertToStudentModal({
+function _ConvertToStudentModal({
   visible, enquiryId, onClose, onConverted,
 }: { visible: boolean; enquiryId: string; onClose: () => void; onConverted: () => void }) {
   const { colors } = useTheme();

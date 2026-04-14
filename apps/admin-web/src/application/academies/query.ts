@@ -28,7 +28,3 @@ export function parseQuery(searchParams: URLSearchParams): AcademiesQuery {
   };
 }
 
-export const DEFAULT_QUERY: AcademiesQuery = {
-  page: 1,
-  pageSize: 20,
-};

@@ -42,6 +42,7 @@ export function useStaffAttendance(
   const [error, setError] = useState<AppError | null>(null);
   const [isHoliday, setIsHoliday] = useState(false);
   const mountedRef = useRef(true);
+  const fetchingMoreRef = useRef(false);
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
@@ -96,9 +97,9 @@ export function useStaffAttendance(
   }, [load]);
 
   const fetchMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      load(page + 1, true);
-    }
+    if (fetchingMoreRef.current || loading || loadingMore || !hasMore) return;
+    fetchingMoreRef.current = true;
+    load(page + 1, true).finally(() => { fetchingMoreRef.current = false; });
   }, [loading, loadingMore, hasMore, page, load]);
 
   const toggleStatus = useCallback(

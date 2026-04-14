@@ -149,5 +149,6 @@ export class CreateStudentDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
+  @Matches(/^https?:\/\//, { message: 'profilePhotoUrl must be a valid HTTP or HTTPS URL' })
   profilePhotoUrl?: string;
 }
