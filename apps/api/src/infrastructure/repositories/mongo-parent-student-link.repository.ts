@@ -55,6 +55,11 @@ export class MongoParentStudentLinkRepository implements ParentStudentLinkReposi
     await this.model.deleteOne({ parentUserId, studentId }, { session: getTransactionSession() });
   }
 
+  async deleteAllByParentUserId(parentUserId: string): Promise<number> {
+    const res = await this.model.deleteMany({ parentUserId }, { session: getTransactionSession() });
+    return res.deletedCount ?? 0;
+  }
+
   private toDomain(doc: unknown): ParentStudentLink {
     const d = doc as {
       _id: string;

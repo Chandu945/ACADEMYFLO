@@ -32,6 +32,7 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
+      anonymizeAndSoftDelete: jest.fn(),
   };
   const holidayRepo: jest.Mocked<HolidayRepository> = {
     save: jest.fn(),

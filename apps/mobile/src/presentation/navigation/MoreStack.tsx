@@ -32,6 +32,8 @@ import { StaffAttendanceScreen } from '../screens/owner/StaffAttendanceScreen';
 import { StaffAttendanceDailyReportScreen } from '../screens/owner/StaffAttendanceDailyReportScreen';
 import { StaffAttendanceMonthlySummaryScreen } from '../screens/owner/StaffAttendanceMonthlySummaryScreen';
 import { ReportsHomeScreen } from '../screens/owner/ReportsHomeScreen';
+import { DeleteAccountScreen } from '../screens/account/DeleteAccountScreen';
+import { HeaderBackButton } from '../components/ui/HeaderBackButton';
 import type { ExpenseItem } from '../../domain/expense/expense.types';
 import type { EventDetail } from '../../domain/event/event.types';
 import type { GalleryPhoto } from '../../domain/event/event-gallery.types';
@@ -71,6 +73,7 @@ export type MoreStackParamList = {
   StaffAttendanceDailyReport: { date: string };
   StaffAttendanceMonthlySummary: { month: string };
   ReportsHome: undefined;
+  DeleteAccount: undefined;
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -88,7 +91,12 @@ export function MoreStack() {
       <Stack.Screen
         name="AcademySettings"
         component={AcademySettingsScreen}
-        options={{ title: 'Academy Settings' }}
+        options={({ navigation }) => ({
+          title: 'Academy Settings',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="ExpensesHome"
@@ -98,14 +106,24 @@ export function MoreStack() {
       <Stack.Screen
         name="ExpenseForm"
         component={ExpenseFormScreen}
-        options={({ route }) => ({
+        options={({ route, navigation }) => ({
           title: (route.params as { mode: string }).mode === 'create' ? 'Add Expense' : 'Edit Expense',
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('ExpensesHome')}
+            />
+          ),
         })}
       />
       <Stack.Screen
         name="InstituteInfo"
         component={InstituteInfoScreen}
-        options={{ title: 'Institute Information' }}
+        options={({ navigation }) => ({
+          title: 'Institute Information',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="EnquiryList"
@@ -115,17 +133,41 @@ export function MoreStack() {
       <Stack.Screen
         name="AddEnquiry"
         component={AddEnquiryScreen}
-        options={{ title: 'Add Enquiry', headerBackVisible: true }}
+        options={({ navigation }) => ({
+          title: 'Add Enquiry',
+          headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('EnquiryList')}
+            />
+          ),
+        })}
       />
       <Stack.Screen
         name="EnquiryDetail"
         component={EnquiryDetailScreen}
-        options={{ title: 'Enquiry Detail', headerBackVisible: true }}
+        options={({ navigation }) => ({
+          title: 'Enquiry Detail',
+          headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('EnquiryList')}
+            />
+          ),
+        })}
       />
       <Stack.Screen
         name="EditEnquiry"
         component={EditEnquiryScreen}
-        options={{ title: 'Edit Enquiry', headerBackVisible: true }}
+        options={({ navigation }) => ({
+          title: 'Edit Enquiry',
+          headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('EnquiryList')}
+            />
+          ),
+        })}
       />
       <Stack.Screen
         name="EventList"
@@ -135,22 +177,54 @@ export function MoreStack() {
       <Stack.Screen
         name="AddEvent"
         component={AddEventScreen}
-        options={{ title: 'Add Event', headerBackVisible: true }}
+        options={({ navigation }) => ({
+          title: 'Add Event',
+          headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('EventList')}
+            />
+          ),
+        })}
       />
       <Stack.Screen
         name="EditEvent"
         component={EditEventScreen}
-        options={{ title: 'Edit Event', headerBackVisible: true }}
+        options={({ navigation }) => ({
+          title: 'Edit Event',
+          headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('EventList')}
+            />
+          ),
+        })}
       />
       <Stack.Screen
         name="EventDetail"
         component={EventDetailScreen}
-        options={{ title: 'Event Detail', headerBackVisible: true }}
+        options={({ navigation }) => ({
+          title: 'Event Detail',
+          headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('EventList')}
+            />
+          ),
+        })}
       />
       <Stack.Screen
         name="EventGallery"
         component={EventGalleryScreen}
-        options={{ title: 'Photo Gallery', headerBackVisible: true }}
+        options={({ navigation }) => ({
+          title: 'Photo Gallery',
+          headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('EventList')}
+            />
+          ),
+        })}
       />
       <Stack.Screen
         name="PhotoViewer"
@@ -165,32 +239,62 @@ export function MoreStack() {
       <Stack.Screen
         name="AuditLogs"
         component={AuditLogsScreen}
-        options={{ title: 'Audit Logs' }}
+        options={({ navigation }) => ({
+          title: 'Audit Logs',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="Subscription"
         component={SubscriptionScreen}
-        options={{ title: 'Subscription' }}
+        options={({ navigation }) => ({
+          title: 'Subscription',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="ParentProfile"
         component={ParentProfileScreen}
-        options={{ title: 'My Profile' }}
+        options={({ navigation }) => ({
+          title: 'My Profile',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}
-        options={{ title: 'Change Password' }}
+        options={({ navigation }) => ({
+          title: 'Change Password',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('ParentProfile')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="AcademyInfo"
         component={AcademyInfoScreen}
-        options={{ title: 'Academy Info' }}
+        options={({ navigation }) => ({
+          title: 'Academy Info',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="PaymentHistory"
         component={PaymentHistoryScreen}
-        options={{ title: 'Payment History' }}
+        options={({ navigation }) => ({
+          title: 'Payment History',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="BatchesList"
@@ -200,8 +304,13 @@ export function MoreStack() {
       <Stack.Screen
         name="BatchForm"
         component={BatchFormScreen}
-        options={({ route }) => ({
+        options={({ route, navigation }) => ({
           title: route.params.mode === 'create' ? 'Add Batch' : 'Edit Batch',
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('BatchesList')}
+            />
+          ),
         })}
       />
       <Stack.Screen
@@ -217,35 +326,75 @@ export function MoreStack() {
       <Stack.Screen
         name="StaffList"
         component={StaffListScreen}
-        options={{ title: 'Staff' }}
+        options={({ navigation }) => ({
+          title: 'Staff',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="StaffForm"
         component={StaffFormScreen}
-        options={({ route }) => ({
+        options={({ route, navigation }) => ({
           title: route.params.mode === 'create' ? 'Add Staff' : 'Edit Staff',
           headerBackVisible: true,
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('StaffList')}
+            />
+          ),
         })}
       />
       <Stack.Screen
         name="StaffAttendance"
         component={StaffAttendanceScreen}
-        options={{ title: 'Staff Attendance' }}
+        options={({ navigation }) => ({
+          title: 'Staff Attendance',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="StaffAttendanceDailyReport"
         component={StaffAttendanceDailyReportScreen}
-        options={{ title: 'Staff Daily Report' }}
+        options={({ navigation }) => ({
+          title: 'Staff Daily Report',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('StaffAttendance')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="StaffAttendanceMonthlySummary"
         component={StaffAttendanceMonthlySummaryScreen}
-        options={{ title: 'Staff Monthly Summary' }}
+        options={({ navigation }) => ({
+          title: 'Staff Monthly Summary',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('StaffAttendance')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="ReportsHome"
         component={ReportsHomeScreen}
-        options={{ title: 'Reports' }}
+        options={({ navigation }) => ({
+          title: 'Reports',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="DeleteAccount"
+        component={DeleteAccountScreen}
+        options={({ navigation }) => ({
+          title: 'Delete Account',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
       />
     </Stack.Navigator>
   );

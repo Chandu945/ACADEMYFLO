@@ -69,7 +69,7 @@ export class UploadStaffPhotoUseCase {
     const filename = `${uuidv4()}.${ext}`;
     const folder = `staff/${actor.academyId}`;
 
-    const url = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
+    const { url } = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
 
     const updated = User.reconstitute(staff.id.toString(), {
       ...staff['props'],

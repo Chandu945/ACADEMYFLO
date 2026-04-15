@@ -16,6 +16,7 @@ export interface GetEventsInput {
   eventType?: EventType;
   fromDate?: string;
   toDate?: string;
+  search?: string;
   page: number;
   pageSize: number;
 }
@@ -59,6 +60,7 @@ export class GetEventsUseCase {
       eventType: input.eventType,
       fromDate: input.fromDate,
       toDate: input.toDate,
+      search: input.search?.trim() || undefined,
     };
 
     const { events, total } = await this.eventRepo.list(filter, input.page, input.pageSize);

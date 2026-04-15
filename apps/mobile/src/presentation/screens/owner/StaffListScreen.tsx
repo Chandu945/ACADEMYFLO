@@ -121,10 +121,6 @@ export function StaffListScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <SectionHeader title="Staff" />
-      </View>
-
       {error && <InlineError message={error.message} onRetry={refetch} />}
 
       {loading && !refreshing ? (
@@ -201,6 +197,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.base,
+    paddingTop: spacing.base,
     paddingBottom: listDefaults.contentPaddingBottom,
   },
   footer: {

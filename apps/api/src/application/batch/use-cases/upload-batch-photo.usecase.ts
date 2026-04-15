@@ -75,7 +75,7 @@ export class UploadBatchPhotoUseCase {
     const filename = `${uuidv4()}.${ext}`;
     const folder = `batches/${actor.academyId}`;
 
-    const url = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
+    const { url } = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
 
     const updated = Batch.reconstitute(input.batchId, {
       academyId: batch.academyId,

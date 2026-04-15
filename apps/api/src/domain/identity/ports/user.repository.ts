@@ -19,4 +19,15 @@ export interface UserRepository {
   incrementTokenVersionByAcademyId(academyId: string): Promise<string[]>;
   incrementTokenVersionByUserId(userId: string, expectedVersion: number): Promise<boolean>;
   listByAcademyId(academyId: string): Promise<User[]>;
+  /**
+   * Anonymize PII and mark the user as soft-deleted. Also bumps tokenVersion
+   * so any outstanding refresh tokens are invalidated.
+   */
+  anonymizeAndSoftDelete(params: {
+    userId: string;
+    anonymizedEmail: string;
+    anonymizedPhoneE164: string;
+    anonymizedFullName: string;
+    deletedBy: string;
+  }): Promise<void>;
 }

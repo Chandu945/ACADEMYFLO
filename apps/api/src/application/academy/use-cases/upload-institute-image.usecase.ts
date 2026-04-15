@@ -60,7 +60,7 @@ export class UploadInstituteImageUseCase {
       await this.fileStorage.delete(oldUrl);
     }
 
-    const url = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
+    const { url } = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
 
     const updateParams = input.imageType === 'signature'
       ? { signatureStampUrl: url }

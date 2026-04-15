@@ -29,6 +29,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -92,6 +93,7 @@ const OWNER_NAV: NavSection[] = [
     items: [
       { label: 'Settings', href: '/settings', icon: Settings },
       { label: 'Subscription', href: '/subscription', icon: CreditCard },
+      { label: 'Delete Account', href: '/delete-account', icon: Trash2 },
     ],
   },
 ];

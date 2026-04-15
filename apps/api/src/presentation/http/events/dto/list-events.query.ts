@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsIn, IsInt, Min, Max, Matches } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsInt, Min, Max, Matches, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 const EVENT_STATUSES = ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'] as const;
@@ -40,4 +40,9 @@ export class ListEventsQuery {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  search?: string;
 }

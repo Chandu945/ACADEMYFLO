@@ -382,7 +382,11 @@ export function StudentFormScreen() {
           }
         }
 
-        navigation.goBack();
+        if (mode === 'create') {
+          (navigation as unknown as { navigate: (name: string) => void }).navigate('StudentsList');
+        } else {
+          navigation.goBack();
+        }
       } else {
         const msg = result.error.message;
         if (result.error.fieldErrors && Object.keys(result.error.fieldErrors).length > 0) {

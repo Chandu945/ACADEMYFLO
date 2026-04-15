@@ -80,6 +80,18 @@ export class MongoEventRepository implements EventRepository {
       }
     }
 
+    if (filter.search) {
+      const escaped = filter.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rx = { $regex: escaped, $options: 'i' };
+      const searchClauses = [{ title: rx }, { location: rx }];
+      if (Array.isArray(query['$or'])) {
+        query['$and'] = [{ $or: query['$or'] }, { $or: searchClauses }];
+        delete query['$or'];
+      } else {
+        query['$or'] = searchClauses;
+      }
+    }
+
     const [docs, total] = await Promise.all([
       this.model
         .find(query)

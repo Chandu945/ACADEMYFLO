@@ -9,4 +9,5 @@ export interface ParentStudentLinkRepository {
   findByStudentId(studentId: string): Promise<ParentStudentLink[]>;
   findByAcademyId(academyId: string): Promise<ParentStudentLink[]>;
   deleteByParentAndStudent(parentUserId: string, studentId: string): Promise<void>;
+  deleteAllByParentUserId(parentUserId: string): Promise<number>;
 }

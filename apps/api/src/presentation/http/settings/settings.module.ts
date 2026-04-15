@@ -6,7 +6,7 @@ import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboardin
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
-import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-storage.service';
+import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 import { GetAcademySettingsUseCase } from '@application/academy/use-cases/get-academy-settings.usecase';
 import { UpdateAcademySettingsUseCase } from '@application/academy/use-cases/update-academy-settings.usecase';
 import { GetInstituteInfoUseCase } from '@application/academy/use-cases/get-institute-info.usecase';
@@ -21,7 +21,7 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
   imports: [AuthModule, AcademyOnboardingModule],
   controllers: [SettingsController, InstituteInfoController],
   providers: [
-    { provide: FILE_STORAGE_PORT, useClass: CloudinaryStorageService },
+    { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     {
       provide: 'GET_ACADEMY_SETTINGS_USE_CASE',
       useFactory: (userRepo: UserRepository, academyRepo: AcademyRepository) =>

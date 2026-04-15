@@ -52,6 +52,12 @@ const OWNER_SECTIONS: MenuSection[] = [
       { key: 'subscription', icon: 'card-account-details-outline', label: 'Subscription', screen: 'Subscription' },
     ],
   },
+  {
+    title: 'Account',
+    items: [
+      { key: 'delete-account', icon: 'trash-can-outline', label: 'Delete Account', screen: 'DeleteAccount' },
+    ],
+  },
 ];
 
 const STAFF_SECTIONS: MenuSection[] = [
@@ -135,12 +141,10 @@ export function MoreScreen() {
                 <Text style={styles.profileRoleBadgeText}>{user.role}</Text>
               </View>
               <View style={styles.profileContactRow}>
-                
                 <AppIcon name="email-outline" size={14} color={colors.textSecondary} />
                 <Text style={styles.profileContactText} numberOfLines={1}>{user.email}</Text>
               </View>
               <View style={styles.profileContactRow}>
-                
                 <AppIcon name="phone-outline" size={14} color={colors.textSecondary} />
                 <Text style={styles.profileContactText}>{user.phoneNumber}</Text>
               </View>
@@ -162,11 +166,9 @@ export function MoreScreen() {
                   testID={`menu-${item.key}`}
                 >
                   <View style={styles.iconContainer}>
-                    
                     <AppIcon name={item.icon} size={20} color={colors.primary} />
                   </View>
                   <Text style={styles.menuLabel}>{item.label}</Text>
-                  
                   <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
                 </TouchableOpacity>
               ))}
@@ -189,12 +191,10 @@ export function MoreScreen() {
                 testID={`theme-${opt.key}`}
               >
                 <View style={styles.iconContainer}>
-                  
                   <AppIcon name={opt.icon} size={20} color={colors.primary} />
                 </View>
                 <Text style={styles.menuLabel}>{opt.label}</Text>
                 {mode === opt.key && (
-                  
                   <AppIcon name="check" size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
@@ -209,7 +209,6 @@ export function MoreScreen() {
           accessibilityRole="button"
           testID="more-logout"
         >
-          
           <AppIcon name="logout" size={20} color={colors.danger} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>

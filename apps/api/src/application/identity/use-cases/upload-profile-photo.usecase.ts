@@ -64,7 +64,7 @@ export class UploadProfilePhotoUseCase {
     const filename = `${uuidv4()}.${ext}`;
     const folder = user.academyId ? `profiles/${user.academyId}` : `profiles/${input.actorUserId}`;
 
-    const url = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
+    const { url } = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
 
     // Update user profile photo
     const updatedUser = user.updateProfilePhoto(url);

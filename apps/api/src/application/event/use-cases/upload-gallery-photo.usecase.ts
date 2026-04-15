@@ -95,7 +95,8 @@ export class UploadGalleryPhotoUseCase {
 
     let url: string;
     try {
-      url = await this.fileStorage.upload(folder, filename, input.buffer, actualMime);
+      const result = await this.fileStorage.upload(folder, filename, input.buffer, actualMime);
+      url = result.url;
     } catch {
       return err(GalleryErrors.uploadFailed());
     }

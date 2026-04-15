@@ -4,6 +4,7 @@ import type { StudentListItem } from '../../domain/student/student.types';
 import { StudentsListScreen } from '../screens/students/StudentsListScreen';
 import { StudentFormScreen } from '../screens/students/StudentFormScreen';
 import { StudentDetailScreen } from '../screens/students/StudentDetailScreen';
+import { HeaderBackButton } from '../components/ui/HeaderBackButton';
 
 export type StudentsStackParamList = {
   StudentsList: undefined;
@@ -25,8 +26,13 @@ export function StudentsStack() {
       <Stack.Screen
         name="StudentForm"
         component={StudentFormScreen}
-        options={({ route }) => ({
+        options={({ route, navigation }) => ({
           title: route.params.mode === 'create' ? 'Add Student' : 'Edit Student',
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('StudentsList')}
+            />
+          ),
         })}
       />
       <Stack.Screen

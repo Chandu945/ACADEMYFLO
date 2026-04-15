@@ -123,6 +123,30 @@ export class InMemoryUserRepository implements UserRepository {
     );
   }
 
+  async anonymizeAndSoftDelete(params: {
+    userId: string;
+    anonymizedEmail: string;
+    anonymizedPhoneE164: string;
+    anonymizedFullName: string;
+    deletedBy: string;
+  }): Promise<void> {
+    const user = this.users.get(params.userId);
+    if (!user) return;
+    const { User: UserClass } = await import('../../src/domain/identity/entities/user.entity');
+    const { Email } = await import('../../src/domain/identity/value-objects/email.vo');
+    const { Phone } = await import('../../src/domain/identity/value-objects/phone.vo');
+    const updated = UserClass.reconstitute(params.userId, {
+      ...user['props'],
+      fullName: params.anonymizedFullName,
+      email: Email.create(params.anonymizedEmail),
+      phone: Phone.create(params.anonymizedPhoneE164),
+      status: 'INACTIVE',
+      tokenVersion: user.tokenVersion + 1,
+      softDelete: { deletedAt: new Date(), deletedBy: params.deletedBy },
+    });
+    this.users.set(params.userId, updated);
+  }
+
   clear(): void {
     this.users.clear();
   }

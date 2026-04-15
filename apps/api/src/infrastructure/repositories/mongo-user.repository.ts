@@ -8,9 +8,9 @@ import { Email } from '@domain/identity/value-objects/email.vo';
 import { Phone } from '@domain/identity/value-objects/phone.vo';
 import { UserModel } from '../database/schemas/user.schema';
 import type { UserDocument } from '../database/schemas/user.schema';
+import { getTransactionSession } from '../database/transaction-context';
 import type { UserRole } from '@playconnect/contracts';
 import type { StaffQualificationInfo, SalaryFrequency } from '@domain/identity/entities/user.entity';
-import { getTransactionSession } from '../database/transaction-context';
 
 @Injectable()
 export class MongoUserRepository implements UserRepository {
@@ -109,6 +109,34 @@ export class MongoUserRepository implements UserRepository {
   async listByAcademyId(academyId: string): Promise<User[]> {
     const docs = await this.model.find({ academyId, deletedAt: null }).lean().exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
+  }
+
+  async anonymizeAndSoftDelete(params: {
+    userId: string;
+    anonymizedEmail: string;
+    anonymizedPhoneE164: string;
+    anonymizedFullName: string;
+    deletedBy: string;
+  }): Promise<void> {
+    await this.model.updateOne(
+      { _id: params.userId },
+      {
+        $set: {
+          fullName: params.anonymizedFullName,
+          emailNormalized: params.anonymizedEmail,
+          phoneE164: params.anonymizedPhoneE164,
+          status: 'INACTIVE',
+          deletedAt: new Date(),
+          deletedBy: params.deletedBy,
+          profilePhotoUrl: null,
+          whatsappNumber: null,
+          mobileNumber: null,
+          address: null,
+        },
+        $inc: { tokenVersion: 1, version: 1 },
+      },
+      { session: getTransactionSession() },
+    );
   }
 
   private toDomain(doc: unknown): User {

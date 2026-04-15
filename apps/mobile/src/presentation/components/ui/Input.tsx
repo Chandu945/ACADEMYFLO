@@ -52,7 +52,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.inputWrapper, error ? styles.inputWrapperError : undefined]}>
+      <View style={styles.inputWrapper}>
         {prefix ? (
           <View style={styles.prefixContainer}>
             <Text style={styles.prefixText}>{prefix}</Text>
@@ -97,7 +97,12 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({
           </Pressable>
         ) : null}
       </View>
-      {error ? <Text style={styles.error} accessibilityLiveRegion="polite" accessibilityRole="alert">{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorRow} accessibilityLiveRegion="polite" accessibilityRole="alert">
+          <AppIcon name="alert-circle-outline" size={14} color={colors.danger} />
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 });
@@ -121,10 +126,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
-  },
-  inputWrapperError: {
-    borderColor: colors.danger,
-    backgroundColor: colors.dangerBg,
   },
   input: {
     flex: 1,
@@ -162,9 +163,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 2,
+  },
   error: {
+    flex: 1,
     fontSize: fontSizes.sm,
     color: colors.danger,
-    marginTop: spacing.xs,
+    fontWeight: fontWeights.medium,
   },
 });

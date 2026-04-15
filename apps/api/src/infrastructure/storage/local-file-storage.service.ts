@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import type { FileStoragePort } from '@application/common/ports/file-storage.port';
+import type { FileStoragePort, UploadResult } from '@application/common/ports/file-storage.port';
 
 @Injectable()
 export class LocalFileStorageService implements FileStoragePort {
@@ -12,7 +12,7 @@ export class LocalFileStorageService implements FileStoragePort {
     filename: string,
     buffer: Buffer,
     _mimeType: string,
-  ): Promise<string> {
+  ): Promise<UploadResult> {
     // Sanitize folder and filename to prevent path traversal
     const safeFolder = folder.split('/').map((s) => path.basename(s)).join('/');
     const safeFilename = path.basename(filename);
@@ -28,7 +28,7 @@ export class LocalFileStorageService implements FileStoragePort {
 
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(filePath, buffer);
-    return `/uploads/${safeFolder}/${safeFilename}`;
+    return { url: `/uploads/${safeFolder}/${safeFilename}`, thumbnailUrl: null };
   }
 
   async delete(fileUrl: string): Promise<void> {

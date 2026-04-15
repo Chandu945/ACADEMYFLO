@@ -9,6 +9,8 @@ export interface EventListFilter {
   eventType?: EventType;
   fromDate?: string; // YYYY-MM-DD
   toDate?: string; // YYYY-MM-DD
+  /** Case-insensitive substring match on title or location. */
+  search?: string;
 }
 
 export interface EventRepository {

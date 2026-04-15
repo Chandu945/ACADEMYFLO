@@ -86,10 +86,13 @@ export const envSchema = z
     // Google OAuth
     GOOGLE_CLIENT_ID: z.string().default(''),
 
-    // Cloudinary
-    CLOUDINARY_CLOUD_NAME: z.string().default(''),
-    CLOUDINARY_API_KEY: z.string().default(''),
-    CLOUDINARY_API_SECRET: z.string().default(''),
+    // Cloudflare R2 (S3-compatible image storage)
+    R2_ACCOUNT_ID: z.string().default(''),
+    R2_ACCESS_KEY_ID: z.string().default(''),
+    R2_SECRET_ACCESS_KEY: z.string().default(''),
+    R2_BUCKET_NAME: z.string().default(''),
+    R2_ENDPOINT: z.string().default(''),
+    R2_PUBLIC_BASE_URL: z.string().default(''),
 
     // Firebase (Push Notifications)
     FIREBASE_PROJECT_ID: z.string().default(''),

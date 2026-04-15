@@ -98,6 +98,7 @@ export class EventsController {
       eventType: query.eventType as EventType | undefined,
       fromDate: query.fromDate,
       toDate: query.toDate,
+      search: query.search,
       page: query.page ?? 1,
       pageSize: query.limit ?? 20,
     });

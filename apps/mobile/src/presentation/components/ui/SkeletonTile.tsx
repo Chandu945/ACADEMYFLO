@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated, Platform, StyleSheet } from 'react-native';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 import { spacing, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -16,12 +18,12 @@ export function SkeletonTile() {
         Animated.timing(opacity, {
           toValue: 1,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(opacity, {
           toValue: 0.3,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]),
     );

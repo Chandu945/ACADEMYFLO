@@ -79,8 +79,8 @@ export class UploadsController {
     const folder = `temp/${user.userId}`;
 
     try {
-      const url = await this.fileStorage.upload(folder, filename, file.buffer, file.mimetype);
-      return mapResultToResponse(ok({ url }), req);
+      const result = await this.fileStorage.upload(folder, filename, file.buffer, file.mimetype);
+      return mapResultToResponse(ok(result), req);
     } catch {
       return mapResultToResponse(
         err(AppError.validation('Upload failed. Please try again.')),

@@ -140,6 +140,17 @@ class InMemoryParentStudentLinkRepository implements ParentStudentLinkRepository
     }
   }
 
+  async deleteAllByParentUserId(parentUserId: string): Promise<number> {
+    let count = 0;
+    for (const [key, l] of this.links.entries()) {
+      if (l.parentUserId === parentUserId) {
+        this.links.delete(key);
+        count += 1;
+      }
+    }
+    return count;
+  }
+
   clear(): void {
     this.links.clear();
   }

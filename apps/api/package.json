@@ -21,6 +21,7 @@
     "test:payments": "jest --config jest.config.cjs --testPathPattern '(subscription-payment|fee-payment|cashfree).*\\.spec\\.ts$'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1030.0",
     "@nestjs/common": "^11.1.16",
     "@nestjs/core": "^11.1.16",
     "@nestjs/jwt": "^11.0.2",
@@ -33,7 +34,6 @@
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
-    "cloudinary": "^2.9.0",
     "compression": "^1.8.0",
     "dotenv": "^17.3.1",
     "firebase-admin": "^13.7.0",
@@ -48,6 +48,7 @@
     "pino-pretty": "^13.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.34.5",
     "uuid": "^11.0.5",
     "zod": "^3.24.1"
   },

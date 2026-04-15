@@ -6,6 +6,7 @@ import { StaffFormScreen } from '../screens/owner/StaffFormScreen';
 import { StaffAttendanceScreen } from '../screens/owner/StaffAttendanceScreen';
 import { StaffAttendanceDailyReportScreen } from '../screens/owner/StaffAttendanceDailyReportScreen';
 import { StaffAttendanceMonthlySummaryScreen } from '../screens/owner/StaffAttendanceMonthlySummaryScreen';
+import { HeaderBackButton } from '../components/ui/HeaderBackButton';
 
 export type StaffStackParamList = {
   StaffList: undefined;
@@ -25,8 +26,13 @@ export function StaffStack() {
       <Stack.Screen
         name="StaffForm"
         component={StaffFormScreen}
-        options={({ route }) => ({
+        options={({ route, navigation }) => ({
           title: route.params.mode === 'create' ? 'Add Staff' : 'Edit Staff',
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('StaffList')}
+            />
+          ),
         })}
       />
       <Stack.Screen

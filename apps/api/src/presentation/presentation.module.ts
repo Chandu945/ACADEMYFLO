@@ -27,6 +27,7 @@ import { MetricsModule } from './http/metrics/metrics.module';
 import { ParentModule } from './http/parent/parent.module';
 import { UploadsModule } from './http/uploads/uploads.module';
 import { ProfileModule } from './http/profile/profile.module';
+import { AccountDeletionModule } from './http/account-deletion/account-deletion.module';
 import { DeviceTokensModule } from './http/device-tokens/device-tokens.module';
 import { SeedingModule } from '@infrastructure/seeding/seeding.module';
 import { SubscriptionEnforcementGuard } from './http/common/guards/subscription-enforcement.guard';
@@ -64,6 +65,7 @@ import { HttpLoggingInterceptor } from './http/common/interceptors/http-logging.
     ParentModule,
     UploadsModule,
     ProfileModule,
+    AccountDeletionModule,
     DeviceTokensModule,
     SeedingModule,
   ],

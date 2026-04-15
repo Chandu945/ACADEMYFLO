@@ -28,7 +28,7 @@ import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.por
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
-import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-storage.service';
+import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 
 @Module({
   imports: [
@@ -43,7 +43,7 @@ import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-sto
   providers: [
     { provide: EVENT_REPOSITORY, useClass: MongoEventRepository },
     { provide: GALLERY_PHOTO_REPOSITORY, useClass: MongoGalleryPhotoRepository },
-    { provide: FILE_STORAGE_PORT, useClass: CloudinaryStorageService },
+    { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     {
       provide: 'CREATE_EVENT_USE_CASE',
       useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>

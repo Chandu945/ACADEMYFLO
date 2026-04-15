@@ -29,6 +29,9 @@ export const AUDIT_ACTION_TYPES = [
   'FEE_MARKED_PAID',
   'GALLERY_PHOTO_UPLOADED',
   'GALLERY_PHOTO_DELETED',
+  'ACCOUNT_DELETION_REQUESTED',
+  'ACCOUNT_DELETION_CANCELED',
+  'ACCOUNT_DELETION_COMPLETED',
 ] as const;
 export type AuditActionType = (typeof AUDIT_ACTION_TYPES)[number];
 
@@ -44,5 +47,6 @@ export const AUDIT_ENTITY_TYPES = [
   'SUBSCRIPTION_PAYMENT',
   'EVENT',
   'GALLERY_PHOTO',
+  'USER',
 ] as const;
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];

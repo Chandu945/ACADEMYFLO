@@ -39,7 +39,7 @@ import { SetStudentBatchesUseCase } from '@application/batch/use-cases/set-stude
 import { GetStudentBatchesUseCase } from '@application/batch/use-cases/get-student-batches.usecase';
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
-import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-storage.service';
+import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
@@ -78,7 +78,7 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
   controllers: [StudentsController],
   providers: [
     { provide: FEE_DUE_REPOSITORY, useClass: MongoFeeDueRepository },
-    { provide: FILE_STORAGE_PORT, useClass: CloudinaryStorageService },
+    { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     { provide: STUDENT_REPOSITORY, useClass: MongoStudentRepository },
     { provide: STUDENT_QUERY_REPOSITORY, useClass: MongoStudentQueryRepository },
     { provide: STUDENT_BATCH_REPOSITORY, useClass: MongoStudentBatchRepository },

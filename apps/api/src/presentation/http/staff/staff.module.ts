@@ -11,7 +11,7 @@ import { SetStaffStatusUseCase } from '@application/staff/use-cases/set-staff-st
 import { UploadStaffPhotoUseCase } from '@application/staff/use-cases/upload-staff-photo.usecase';
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
-import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-storage.service';
+import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
@@ -20,7 +20,7 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
   imports: [AuthModule],
   controllers: [StaffController],
   providers: [
-    { provide: FILE_STORAGE_PORT, useClass: CloudinaryStorageService },
+    { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     {
       provide: 'CREATE_STAFF_USE_CASE',
       useFactory: (userRepo: UserRepository, hasher: PasswordHasher) =>

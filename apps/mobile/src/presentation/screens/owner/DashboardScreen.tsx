@@ -13,6 +13,7 @@ import { AttendanceMarkingCards } from '../../components/dashboard/AttendanceMar
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
+import { PendingDeletionBanner } from '../../components/dashboard/PendingDeletionBanner';
 import { BirthdayWidget } from '../../components/dashboard/BirthdayWidget';
 import { MonthlyChartWidget } from '../../components/dashboard/MonthlyChartWidget';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
@@ -68,6 +69,7 @@ export function DashboardScreen() {
         testID="dashboard-scroll"
       >
         <SubscriptionBanner />
+        <PendingDeletionBanner />
         {error && (
           <InlineError
             message={data ? 'Could not refresh data. Showing last known values.' : error.message}
@@ -171,9 +173,6 @@ export function DashboardScreen() {
                 expenses: data.totalExpenses,
               } : null}
             />
-            <AttendanceSummaryWidget
-              onPress={() => navigation.navigate('Attendance')}
-            />
             <AttendanceMarkingCards
               onStudentPress={() => navigation.navigate('Attendance')}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation
@@ -182,6 +181,9 @@ export function DashboardScreen() {
                 present: data.todayPresentCount,
                 total: data.todayPresentCount + data.todayAbsentCount,
               } : null}
+            />
+            <AttendanceSummaryWidget
+              onPress={() => navigation.navigate('Attendance')}
             />
             <MonthlyChartWidget
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation

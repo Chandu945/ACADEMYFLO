@@ -5,6 +5,7 @@ import { BatchesListScreen } from '../screens/batches/BatchesListScreen';
 import { BatchFormScreen } from '../screens/batches/BatchFormScreen';
 import { BatchDetailScreen } from '../screens/batches/BatchDetailScreen';
 import { AddStudentToBatchScreen } from '../screens/batches/AddStudentToBatchScreen';
+import { HeaderBackButton } from '../components/ui/HeaderBackButton';
 
 export type BatchesStackParamList = {
   BatchesList: undefined;
@@ -27,8 +28,13 @@ export function BatchesStack() {
       <Stack.Screen
         name="BatchForm"
         component={BatchFormScreen}
-        options={({ route }) => ({
+        options={({ route, navigation }) => ({
           title: route.params.mode === 'create' ? 'Add Batch' : 'Edit Batch',
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate('BatchesList')}
+            />
+          ),
         })}
       />
       <Stack.Screen

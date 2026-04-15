@@ -206,7 +206,6 @@ export function GlobalFAB() {
               >
                 <Text style={styles.menuLabel}>{item.label}</Text>
                 <View style={styles.menuIcon}>
-                  
                   <AppIcon name={item.icon} size={22} color={colors.primary} />
                 </View>
               </Pressable>
@@ -222,9 +221,9 @@ export function GlobalFAB() {
         accessibilityLabel={isOpen ? 'Close menu' : 'Add new item'}
         accessibilityRole="button"
       >
-        <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
-          
-          <AppIcon name="plus" size={28} color={colors.white} />
+        <Animated.View style={[styles.fabIconWrap, { transform: [{ rotate: rotateInterpolation }] }]}>
+          <View style={styles.plusHorizontal} />
+          <View style={styles.plusVertical} />
         </Animated.View>
       </Pressable>
     </>
@@ -257,6 +256,26 @@ const makeStyles = (colors: Colors) =>
     },
     fabOpen: {
       backgroundColor: colors.danger,
+    },
+    fabIconWrap: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    plusHorizontal: {
+      position: 'absolute',
+      width: 18,
+      height: 2.5,
+      backgroundColor: colors.white,
+      borderRadius: 2,
+    },
+    plusVertical: {
+      position: 'absolute',
+      width: 2.5,
+      height: 18,
+      backgroundColor: colors.white,
+      borderRadius: 2,
     },
     menuItemContainer: {
       position: 'absolute',

@@ -11,7 +11,7 @@ import { StudentModel, StudentSchema } from '@infrastructure/database/schemas/st
 
 import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
 import { MongoStudentRepository } from '@infrastructure/repositories/mongo-student.repository';
-import { CloudinaryStorageService } from '@infrastructure/storage/cloudinary-storage.service';
+import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 
 import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
 import { STUDENT_REPOSITORY } from '@domain/student/ports/student.repository';
@@ -37,7 +37,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
   providers: [
     { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
     { provide: STUDENT_REPOSITORY, useClass: MongoStudentRepository },
-    { provide: FILE_STORAGE_PORT, useClass: CloudinaryStorageService },
+    { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     {
       provide: 'UPLOAD_PROFILE_PHOTO_USE_CASE',
       useFactory: (

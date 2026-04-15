@@ -154,9 +154,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               bottom: Math.max(insets.bottom, spacing.base) + 60,
               opacity,
               transform: [{ translateY }],
+              pointerEvents: 'none',
             },
           ]}
-          pointerEvents="none"
           accessibilityRole="alert"
           accessibilityLiveRegion="assertive"
         >

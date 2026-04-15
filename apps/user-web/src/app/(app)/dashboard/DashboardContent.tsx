@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useDashboardKpis, useBirthdays } from '@/application/dashboard/use-dashboard';
 import type { DashboardKpis } from '@/application/dashboard/use-dashboard';
 import { useAuth } from '@/application/auth/use-auth';
+import { PendingDeletionBanner } from '@/components/account/PendingDeletionBanner';
 import { useChildren, usePaymentHistory } from '@/application/parent/use-parent';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -193,6 +194,8 @@ export default function DashboardContent() {
           Refresh
         </Button>
       </div>
+
+      <PendingDeletionBanner />
 
       {/* Owner Onboarding Card — when no students yet */}
       {showOnboarding && (
