@@ -8,9 +8,14 @@ import {
   PasswordResetChallengeModel,
   PasswordResetChallengeSchema,
 } from '@infrastructure/database/schemas/password-reset-challenge.schema';
+import {
+  DeviceTokenModel,
+  DeviceTokenSchema,
+} from '@infrastructure/database/schemas/device-token.schema';
 import { MongoUserRepository } from '@infrastructure/repositories/mongo-user.repository';
 import { MongoSessionRepository } from '@infrastructure/repositories/mongo-session.repository';
 import { MongoPasswordResetChallengeRepository } from '@infrastructure/repositories/mongo-password-reset-challenge.repository';
+import { MongoDeviceTokenRepository } from '@infrastructure/repositories/mongo-device-token.repository';
 import { BcryptPasswordHasher } from '@infrastructure/security/bcrypt-password-hasher';
 import { JwtTokenService } from '@infrastructure/security/jwt-token.service';
 import { CryptoOtpGenerator } from '@infrastructure/security/crypto-otp-generator';
@@ -19,6 +24,8 @@ import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { SESSION_REPOSITORY } from '@domain/identity/ports/session.repository';
 import { PASSWORD_RESET_CHALLENGE_REPOSITORY } from '@domain/identity/ports/password-reset-challenge.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '@domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
 import { TOKEN_SERVICE } from '@application/identity/ports/token-service.port';
 import { OTP_GENERATOR } from '@application/identity/ports/otp-generator.port';
@@ -55,6 +62,7 @@ import { AppConfigService } from '@shared/config/config.service';
       { name: UserModel.name, schema: UserSchema },
       { name: SessionModel.name, schema: SessionSchema },
       { name: PasswordResetChallengeModel.name, schema: PasswordResetChallengeSchema },
+      { name: DeviceTokenModel.name, schema: DeviceTokenSchema },
     ]),
     JwtModule.register({}),
   ],
@@ -64,6 +72,7 @@ import { AppConfigService } from '@shared/config/config.service';
     { provide: USER_REPOSITORY, useClass: MongoUserRepository },
     { provide: SESSION_REPOSITORY, useClass: MongoSessionRepository },
     { provide: PASSWORD_RESET_CHALLENGE_REPOSITORY, useClass: MongoPasswordResetChallengeRepository },
+    { provide: DEVICE_TOKEN_REPOSITORY, useClass: MongoDeviceTokenRepository },
     { provide: PASSWORD_HASHER, useClass: BcryptPasswordHasher },
     { provide: TOKEN_SERVICE, useClass: JwtTokenService },
     { provide: OTP_GENERATOR, useClass: CryptoOtpGenerator },
@@ -108,13 +117,15 @@ import { AppConfigService } from '@shared/config/config.service';
     },
     {
       provide: 'LOGOUT_USE_CASE',
-      useFactory: (sessionRepo: SessionRepository) => new LogoutUseCase(sessionRepo),
-      inject: [SESSION_REPOSITORY],
+      useFactory: (sessionRepo: SessionRepository, deviceTokenRepo: DeviceTokenRepository) =>
+        new LogoutUseCase(sessionRepo, deviceTokenRepo),
+      inject: [SESSION_REPOSITORY, DEVICE_TOKEN_REPOSITORY],
     },
     {
       provide: 'LOGOUT_ALL_USE_CASE',
-      useFactory: (sessionRepo: SessionRepository) => new LogoutAllUseCase(sessionRepo),
-      inject: [SESSION_REPOSITORY],
+      useFactory: (sessionRepo: SessionRepository, deviceTokenRepo: DeviceTokenRepository) =>
+        new LogoutAllUseCase(sessionRepo, deviceTokenRepo),
+      inject: [SESSION_REPOSITORY, DEVICE_TOKEN_REPOSITORY],
     },
     {
       provide: 'REQUEST_PASSWORD_RESET_USE_CASE',
@@ -153,6 +164,7 @@ import { AppConfigService } from '@shared/config/config.service';
         challengeRepo: PasswordResetChallengeRepository,
         otpHasher: OtpHasher,
         passwordHasher: PasswordHasher,
+        deviceTokenRepo: DeviceTokenRepository,
       ) =>
         new ConfirmPasswordResetUseCase(
           userRepo,
@@ -160,6 +172,7 @@ import { AppConfigService } from '@shared/config/config.service';
           challengeRepo,
           otpHasher,
           passwordHasher,
+          deviceTokenRepo,
         ),
       inject: [
         USER_REPOSITORY,
@@ -167,6 +180,7 @@ import { AppConfigService } from '@shared/config/config.service';
         PASSWORD_RESET_CHALLENGE_REPOSITORY,
         OTP_HASHER,
         PASSWORD_HASHER,
+        DEVICE_TOKEN_REPOSITORY,
       ],
     },
     {
@@ -181,6 +195,6 @@ import { AppConfigService } from '@shared/config/config.service';
       inject: [GOOGLE_TOKEN_VERIFIER, USER_REPOSITORY, SESSION_REPOSITORY, TOKEN_SERVICE, AppConfigService],
     },
   ],
-  exports: [TOKEN_SERVICE, USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, LOGIN_ATTEMPT_TRACKER],
+  exports: [TOKEN_SERVICE, USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, LOGIN_ATTEMPT_TRACKER, DEVICE_TOKEN_REPOSITORY],
 })
 export class AuthModule {}

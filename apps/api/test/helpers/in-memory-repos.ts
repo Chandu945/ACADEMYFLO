@@ -26,6 +26,10 @@ import type { PaymentRequest } from '../../src/domain/fee/entities/payment-reque
 import type { TransactionLog } from '../../src/domain/fee/entities/transaction-log.entity';
 import type { StaffAttendanceRepository } from '../../src/domain/staff-attendance/ports/staff-attendance.repository';
 import type { StaffAttendance } from '../../src/domain/staff-attendance/entities/staff-attendance.entity';
+import type {
+  DeviceToken,
+  DeviceTokenRepository,
+} from '../../src/domain/notification/ports/device-token.repository';
 import type { UserRole, FeeDueStatus, PaymentRequestStatus } from '@playconnect/contracts';
 
 export class InMemoryUserRepository implements UserRepository {
@@ -815,6 +819,33 @@ export class InMemoryFeeDueRepository implements FeeDueRepository {
     );
   }
 
+  async sumUnpaidAmountByAcademy(academyId: string): Promise<number> {
+    let total = 0;
+    for (const d of this.dues.values()) {
+      if (d.academyId === academyId && (d.status === 'UPCOMING' || d.status === 'DUE')) {
+        total += d.amount;
+      }
+    }
+    return total;
+  }
+
+  async countDistinctUnpaidStudentsByAcademyAndMonth(
+    academyId: string,
+    monthKey: string,
+  ): Promise<number> {
+    const studentIds = new Set<string>();
+    for (const d of this.dues.values()) {
+      if (
+        d.academyId === academyId &&
+        d.monthKey === monthKey &&
+        (d.status === 'UPCOMING' || d.status === 'DUE')
+      ) {
+        studentIds.add(d.studentId);
+      }
+    }
+    return studentIds.size;
+  }
+
   async findUnpaidByDueDate(dueDate: string): Promise<FeeDue[]> {
     return Array.from(this.dues.values()).filter(
       (d) => d.dueDate === dueDate && (d.status === 'UPCOMING' || d.status === 'DUE'),
@@ -1400,5 +1431,49 @@ export class InMemoryExpenseRepository implements ExpenseRepository {
 
   clear(): void {
     this.expenses = [];
+  }
+}
+
+export class InMemoryDeviceTokenRepository implements DeviceTokenRepository {
+  private tokens: DeviceToken[] = [];
+
+  async upsert(userId: string, fcmToken: string, platform: string): Promise<void> {
+    const existing = this.tokens.find((t) => t.userId === userId && t.fcmToken === fcmToken);
+    const now = new Date();
+    if (existing) {
+      existing.platform = platform;
+      existing.updatedAt = now;
+    } else {
+      this.tokens.push({
+        id: `${userId}-${fcmToken}`,
+        userId,
+        fcmToken,
+        platform,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
+  async removeByToken(fcmToken: string): Promise<void> {
+    this.tokens = this.tokens.filter((t) => t.fcmToken !== fcmToken);
+  }
+
+  async removeByUserIdAndToken(userId: string, fcmToken: string): Promise<void> {
+    this.tokens = this.tokens.filter((t) => !(t.userId === userId && t.fcmToken === fcmToken));
+  }
+
+  async removeByUserIds(userIds: string[]): Promise<number> {
+    const before = this.tokens.length;
+    this.tokens = this.tokens.filter((t) => !userIds.includes(t.userId));
+    return before - this.tokens.length;
+  }
+
+  async findByUserId(userId: string): Promise<DeviceToken[]> {
+    return this.tokens.filter((t) => t.userId === userId);
+  }
+
+  async findByUserIds(userIds: string[]): Promise<DeviceToken[]> {
+    return this.tokens.filter((t) => userIds.includes(t.userId));
   }
 }

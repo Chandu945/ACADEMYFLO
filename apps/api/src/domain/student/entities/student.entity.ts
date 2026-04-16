@@ -75,6 +75,17 @@ export class Student extends Entity<StudentProps> {
     addressText?: string | null;
   }): Student {
     const trimmedName = params.fullName.trim();
+    // Normalize email case on entry so duplicate-detection and lookups
+    // compare consistently. Without this, 'Foo@Bar.com' stored verbatim
+    // would not match a lowercased lookup — the in-app dedup check would
+    // silently miss case variants.
+    const normalizedEmail = params.email?.trim().toLowerCase() || null;
+    const normalizedGuardian = params.guardian
+      ? {
+          ...params.guardian,
+          email: params.guardian.email.trim().toLowerCase(),
+        }
+      : null;
     return new Student(new UniqueId(params.id), {
       academyId: params.academyId,
       fullName: trimmedName,
@@ -82,11 +93,11 @@ export class Student extends Entity<StudentProps> {
       dateOfBirth: params.dateOfBirth,
       gender: params.gender,
       address: params.address,
-      guardian: params.guardian ?? null,
+      guardian: normalizedGuardian,
       joiningDate: params.joiningDate,
       monthlyFee: params.monthlyFee,
       mobileNumber: params.mobileNumber ?? null,
-      email: params.email ?? null,
+      email: normalizedEmail,
       profilePhotoUrl: params.profilePhotoUrl ?? null,
       fatherName: params.fatherName ?? null,
       motherName: params.motherName ?? null,

@@ -2,6 +2,8 @@ import { ForceLogoutAcademyUseCase } from './force-logout-academy.usecase';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import { Academy } from '@domain/academy/entities/academy.entity';
 import { createAuditFields, initSoftDelete } from '@shared/kernel';
 
@@ -37,7 +39,20 @@ function buildDeps() {
     findAllIds: jest.fn(),
   };
 
-  return { userRepo, sessionRepo, academyRepo };
+  const auditRecorder: jest.Mocked<AuditRecorderPort> = {
+    record: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const deviceTokenRepo: jest.Mocked<DeviceTokenRepository> = {
+    upsert: jest.fn(),
+    removeByToken: jest.fn(),
+    removeByUserIdAndToken: jest.fn(),
+    removeByUserIds: jest.fn().mockResolvedValue(0),
+    findByUserId: jest.fn(),
+    findByUserIds: jest.fn(),
+  };
+
+  return { userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo };
 }
 
 function createAcademy(id = 'academy-1'): Academy {
@@ -60,14 +75,15 @@ function createAcademy(id = 'academy-1'): Academy {
 
 describe('ForceLogoutAcademyUseCase', () => {
   it('should increment token versions and revoke all sessions', async () => {
-    const { userRepo, sessionRepo, academyRepo } = buildDeps();
+    const { userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo } = buildDeps();
     academyRepo.findById.mockResolvedValue(createAcademy());
     userRepo.incrementTokenVersionByAcademyId.mockResolvedValue(['user-1', 'user-2']);
     sessionRepo.revokeAllByUserIds.mockResolvedValue(undefined);
 
-    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo);
+    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo);
     const result = await uc.execute({
       actorRole: 'SUPER_ADMIN',
+      actorUserId: 'admin-1',
       academyId: 'academy-1',
     });
 
@@ -80,10 +96,11 @@ describe('ForceLogoutAcademyUseCase', () => {
   });
 
   it('should reject non-SUPER_ADMIN', async () => {
-    const { userRepo, sessionRepo, academyRepo } = buildDeps();
-    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo);
+    const { userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo } = buildDeps();
+    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo);
     const result = await uc.execute({
       actorRole: 'OWNER',
+      actorUserId: 'user-1',
       academyId: 'academy-1',
     });
 
@@ -94,12 +111,13 @@ describe('ForceLogoutAcademyUseCase', () => {
   });
 
   it('should return NOT_FOUND if academy does not exist', async () => {
-    const { userRepo, sessionRepo, academyRepo } = buildDeps();
+    const { userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo } = buildDeps();
     academyRepo.findById.mockResolvedValue(null);
 
-    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo);
+    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo);
     const result = await uc.execute({
       actorRole: 'SUPER_ADMIN',
+      actorUserId: 'admin-1',
       academyId: 'missing',
     });
 
@@ -110,13 +128,14 @@ describe('ForceLogoutAcademyUseCase', () => {
   });
 
   it('should not call revokeAllByUserIds if no users affected', async () => {
-    const { userRepo, sessionRepo, academyRepo } = buildDeps();
+    const { userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo } = buildDeps();
     academyRepo.findById.mockResolvedValue(createAcademy());
     userRepo.incrementTokenVersionByAcademyId.mockResolvedValue([]);
 
-    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo);
+    const uc = new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo, auditRecorder, deviceTokenRepo);
     const result = await uc.execute({
       actorRole: 'SUPER_ADMIN',
+      actorUserId: 'admin-1',
       academyId: 'academy-1',
     });
 

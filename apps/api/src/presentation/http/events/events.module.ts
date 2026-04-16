@@ -27,6 +27,8 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
+import { LOGGER_PORT } from '@shared/logging/logger.port';
+import type { LoggerPort } from '@shared/logging/logger.port';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 
@@ -58,9 +60,30 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
     },
     {
       provide: 'DELETE_EVENT_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>
-        new DeleteEventUseCase(userRepo, eventRepo, auditRecorder),
-      inject: [USER_REPOSITORY, EVENT_REPOSITORY, AUDIT_RECORDER_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        eventRepo: EventRepository,
+        galleryPhotoRepo: GalleryPhotoRepository,
+        fileStorage: FileStoragePort,
+        auditRecorder: AuditRecorderPort,
+        logger: LoggerPort,
+      ) =>
+        new DeleteEventUseCase(
+          userRepo,
+          eventRepo,
+          galleryPhotoRepo,
+          fileStorage,
+          auditRecorder,
+          logger,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        EVENT_REPOSITORY,
+        GALLERY_PHOTO_REPOSITORY,
+        FILE_STORAGE_PORT,
+        AUDIT_RECORDER_PORT,
+        LOGGER_PORT,
+      ],
     },
     {
       provide: 'GET_EVENTS_USE_CASE',

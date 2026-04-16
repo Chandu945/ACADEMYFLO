@@ -8,6 +8,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canSetupAcademy } from '@domain/academy/rules/academy.rules';
 import type { UserRole } from '@playconnect/contracts';
 import type { CreateTrialSubscriptionUseCase } from '../../subscription/use-cases/create-trial-subscription.usecase';
+import type { TransactionPort } from '../../common/transaction.port';
 import { AuthErrors } from '../../common/errors';
 import { randomUUID } from 'crypto';
 
@@ -29,6 +30,7 @@ export class SetupAcademyUseCase {
     private readonly academyRepo: AcademyRepository,
     private readonly userRepo: UserRepository,
     private readonly createTrial: CreateTrialSubscriptionUseCase,
+    private readonly transaction: TransactionPort,
   ) {}
 
   async execute(input: SetupAcademyInput): Promise<Result<SetupAcademyOutput, AppError>> {
@@ -50,13 +52,15 @@ export class SetupAcademyUseCase {
       address: input.address,
     });
 
-    await this.academyRepo.save(academy);
-
-    // Set academyId on the owner user
-    await this.userRepo.updateAcademyId(input.ownerUserId, academyId);
-
-    // Create trial subscription
-    await this.createTrial.execute(academyId);
+    // Atomic: academy save + owner link + trial subscription creation all
+    // succeed together or all roll back. Each write is individually
+    // idempotent, so the transaction's auto-retry on TransientTransactionError
+    // is safe.
+    await this.transaction.run(async () => {
+      await this.academyRepo.save(academy);
+      await this.userRepo.updateAcademyId(input.ownerUserId, academyId);
+      await this.createTrial.execute(academyId);
+    });
 
     return ok({
       id: academy.id.toString(),

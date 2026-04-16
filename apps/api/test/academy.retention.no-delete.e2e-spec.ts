@@ -19,9 +19,13 @@ import { LoggingModule } from '../src/shared/logging/logging.module';
 import { AdminController } from '../src/presentation/http/admin/admin.controller';
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { SESSION_REPOSITORY } from '../src/domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '../src/domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '../src/domain/notification/ports/device-token.repository';
 import { ACADEMY_REPOSITORY } from '../src/domain/academy/ports/academy.repository';
 import { SUBSCRIPTION_REPOSITORY } from '../src/domain/subscription/ports/subscription.repository';
 import { AUDIT_LOG_REPOSITORY } from '../src/domain/audit/ports/audit-log.repository';
+import { AUDIT_RECORDER_PORT } from '../src/application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '../src/application/audit/ports/audit-recorder.port';
 import { ADMIN_QUERY_REPOSITORY } from '../src/domain/admin/ports/admin-query.repository';
 import { PASSWORD_HASHER } from '../src/application/identity/ports/password-hasher.port';
 import { PASSWORD_GENERATOR } from '../src/application/common/password-generator.port';
@@ -41,6 +45,7 @@ import {
   InMemoryAcademyRepository,
   InMemorySubscriptionRepository,
   InMemoryAuditLogRepository,
+  InMemoryDeviceTokenRepository,
 } from './helpers/in-memory-repos';
 import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
@@ -111,9 +116,14 @@ describe('Academy Data Retention (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: SESSION_REPOSITORY, useValue: sessionRepo },
+        { provide: DEVICE_TOKEN_REPOSITORY, useValue: new InMemoryDeviceTokenRepository() },
         { provide: ACADEMY_REPOSITORY, useValue: academyRepo },
         { provide: SUBSCRIPTION_REPOSITORY, useValue: subscriptionRepo },
         { provide: AUDIT_LOG_REPOSITORY, useValue: auditLogRepo },
+        {
+          provide: AUDIT_RECORDER_PORT,
+          useValue: { record: jest.fn().mockResolvedValue(undefined) } satisfies AuditRecorderPort,
+        },
         { provide: ADMIN_QUERY_REPOSITORY, useValue: adminQueryRepo },
         { provide: PASSWORD_HASHER, useValue: hasher },
         { provide: PASSWORD_GENERATOR, useValue: passwordGenerator },
@@ -135,25 +145,25 @@ describe('Academy Data Retention (e2e)', () => {
         },
         {
           provide: 'SET_SUBSCRIPTION_MANUAL_USE_CASE',
-          useFactory: (r: SubscriptionRepository) => new SetSubscriptionManualUseCase(r),
-          inject: [SUBSCRIPTION_REPOSITORY],
+          useFactory: (r: SubscriptionRepository, audit: AuditRecorderPort) => new SetSubscriptionManualUseCase(r, audit),
+          inject: [SUBSCRIPTION_REPOSITORY, AUDIT_RECORDER_PORT],
         },
         {
           provide: 'DEACTIVATE_SUBSCRIPTION_USE_CASE',
-          useFactory: (r: SubscriptionRepository) => new DeactivateSubscriptionUseCase(r),
-          inject: [SUBSCRIPTION_REPOSITORY],
+          useFactory: (r: SubscriptionRepository, audit: AuditRecorderPort) => new DeactivateSubscriptionUseCase(r, audit),
+          inject: [SUBSCRIPTION_REPOSITORY, AUDIT_RECORDER_PORT],
         },
         {
           provide: 'SET_ACADEMY_LOGIN_DISABLED_USE_CASE',
-          useFactory: (ar: AcademyRepository, ur: UserRepository, sr: SessionRepository) =>
-            new SetAcademyLoginDisabledUseCase(ar, ur, sr),
-          inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY],
+          useFactory: (ar: AcademyRepository, ur: UserRepository, sr: SessionRepository, audit: AuditRecorderPort) =>
+            new SetAcademyLoginDisabledUseCase(ar, ur, sr, audit),
+          inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY, AUDIT_RECORDER_PORT],
         },
         {
           provide: 'FORCE_LOGOUT_ACADEMY_USE_CASE',
-          useFactory: (ur: UserRepository, sr: SessionRepository, ar: AcademyRepository) =>
-            new ForceLogoutAcademyUseCase(ur, sr, ar),
-          inject: [USER_REPOSITORY, SESSION_REPOSITORY, ACADEMY_REPOSITORY],
+          useFactory: (ur: UserRepository, sr: SessionRepository, ar: AcademyRepository, audit: AuditRecorderPort, dtr: DeviceTokenRepository) =>
+            new ForceLogoutAcademyUseCase(ur, sr, ar, audit, dtr),
+          inject: [USER_REPOSITORY, SESSION_REPOSITORY, ACADEMY_REPOSITORY, AUDIT_RECORDER_PORT, DEVICE_TOKEN_REPOSITORY],
         },
         {
           provide: 'RESET_OWNER_PASSWORD_USE_CASE',
@@ -163,13 +173,17 @@ describe('Academy Data Retention (e2e)', () => {
             ar: AcademyRepository,
             h: PasswordHasher,
             g: PasswordGeneratorPort,
-          ) => new ResetOwnerPasswordUseCase(ur, sr, ar, h, g),
+            audit: AuditRecorderPort,
+            dtr: DeviceTokenRepository,
+          ) => new ResetOwnerPasswordUseCase(ur, sr, ar, h, g, audit, dtr),
           inject: [
             USER_REPOSITORY,
             SESSION_REPOSITORY,
             ACADEMY_REPOSITORY,
             PASSWORD_HASHER,
             PASSWORD_GENERATOR,
+            AUDIT_RECORDER_PORT,
+            DEVICE_TOKEN_REPOSITORY,
           ],
         },
         {

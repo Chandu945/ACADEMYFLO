@@ -94,16 +94,17 @@ export class CalendarEvent extends Entity<EventProps> {
 
 /** Derive event status from dates relative to today (IST). */
 export function deriveEventStatus(startDate: Date, endDate: Date | null): EventStatus {
-  const now = new Date();
-  // Use IST date boundaries
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const todayIST = new Date(now.getTime() + istOffset);
-  const todayStr = todayIST.toISOString().slice(0, 10);
+  // Process TZ is fixed to Asia/Kolkata (env.schema.ts TZ default + main.ts
+  // fallback), so local Date methods already return IST wall-clock values.
+  // If TZ is ever misconfigured, other subsystems (crons, date-utils, fees)
+  // break first — we deliberately fail along with them rather than silently
+  // masking the drift by hardcoding an offset.
+  const toLocalDateStr = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  const startIST = new Date(startDate.getTime() + istOffset);
-  const startStr = startIST.toISOString().slice(0, 10);
-  const endIST = endDate ? new Date(endDate.getTime() + istOffset) : null;
-  const endStr = endIST ? endIST.toISOString().slice(0, 10) : startStr;
+  const todayStr = toLocalDateStr(new Date());
+  const startStr = toLocalDateStr(startDate);
+  const endStr = endDate ? toLocalDateStr(endDate) : startStr;
 
   if (todayStr < startStr) return 'UPCOMING';
   if (todayStr > endStr) return 'COMPLETED';

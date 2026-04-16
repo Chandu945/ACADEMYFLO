@@ -71,28 +71,48 @@ export class AppErrorBoundary extends Component<Props, State> {
 }
 
 /**
- * Error capture function. Logs structured error data for diagnostics.
+ * Pluggable crash-reporter interface. Wire a real implementation (Sentry,
+ * Crashlytics) via `setErrorReporter` during app startup. Until wired, the
+ * default implementation just logs in dev and no-ops in production.
+ */
+export interface ErrorReporter {
+  captureException(error: unknown, context?: Record<string, unknown>): void;
+}
+
+const defaultReporter: ErrorReporter = {
+  captureException(error, context) {
+    if (!__DEV__) return;
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error('[AppErrorBoundary] Uncaught error:', { message, stack, ...context });
+  },
+};
+
+let activeReporter: ErrorReporter = defaultReporter;
+
+/**
+ * Install a real crash reporter. Call once at app startup (in App.tsx) after
+ * Sentry / Crashlytics has been initialized with a DSN.
  *
- * TODO: Integrate Sentry or Firebase Crashlytics for production crash reporting.
- * Replace the console.error calls below with:
- *   Sentry.captureException(error, { extra: context });
- * or:
- *   crashlytics().recordError(error instanceof Error ? error : new Error(String(error)));
+ * Example:
+ *   import * as Sentry from '@sentry/react-native';
+ *   Sentry.init({ dsn: env.SENTRY_DSN, enableInExpoDevelopment: false });
+ *   setErrorReporter({
+ *     captureException: (err, ctx) => Sentry.captureException(err, { extra: ctx }),
+ *   });
+ */
+export function setErrorReporter(reporter: ErrorReporter): void {
+  activeReporter = reporter;
+}
+
+/**
+ * Report an error through the active crash reporter. Safe to call at any time;
+ * falls back to the default (dev-only console log) when no reporter is wired.
  */
 export function captureError(error: unknown, context?: Record<string, unknown>): void {
   try {
-    const message = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : undefined;
-
-    // Always log structured error data — both dev and production.
-    // In production this ensures errors surface in device logs / log-drain services
-    // even before a dedicated crash reporter is wired up.
-    if (__DEV__) console.error('[AppErrorBoundary] Uncaught error:', {
-      message,
-      stack,
-      ...context,
-    });
+    activeReporter.captureException(error, context);
   } catch {
-    // Swallow to prevent infinite error loops in the error boundary
+    // Swallow — never let the reporter crash the error boundary.
   }
 }

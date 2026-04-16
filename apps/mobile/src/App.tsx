@@ -1,3 +1,11 @@
+// Initialize Sentry FIRST, before any other module loads, so unhandled
+// errors during app startup still get captured. Disabled in dev — see
+// sentry.ts for rationale.
+import { initSentry, sentryReporter } from './infra/observability/sentry';
+import { setErrorReporter } from './presentation/components/system/AppErrorBoundary';
+initSentry();
+setErrorReporter(sentryReporter);
+
 import React from 'react';
 import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,6 +19,12 @@ import { AlertProvider } from './presentation/context/AlertContext';
 import { RootNavigator } from './presentation/navigation/RootNavigator';
 import { AppErrorBoundary } from './presentation/components/system/AppErrorBoundary';
 import { OfflineBanner } from './presentation/components/global/OfflineBanner';
+// Sentry import kept ONLY for `Sentry.wrap(App)` below (automatic performance
+// tracing). Actual initialization is handled by `initSentry()` at the top of
+// this file, which applies PII-safe settings (no sendDefaultPii, no session
+// replay, no console-log piping). Do NOT add a second `Sentry.init(...)` call
+// here — it would override the safe defaults.
+import * as Sentry from '@sentry/react-native';
 
 /**
  * Deep linking configuration for Academyflo.
@@ -57,7 +71,7 @@ function AppInner() {
 
 const rootStyle = { flex: 1 } as const;
 
-export default function App() {
+export default Sentry.wrap(function App() {
   return (
     <GestureHandlerRootView style={rootStyle}>
       <SafeAreaProvider>
@@ -75,4 +89,4 @@ export default function App() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
-}
+});

@@ -41,9 +41,10 @@ jest.mock('../../components/batches/BatchMultiSelect', () => {
 });
 
 const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
-  useNavigation: () => ({ goBack: mockGoBack }),
+  useNavigation: () => ({ goBack: mockGoBack, navigate: mockNavigate }),
   useRoute: jest.fn(),
 }));
 
@@ -164,7 +165,7 @@ describe('StudentFormScreen', () => {
     });
   });
 
-  it('calls goBack on successful submit', async () => {
+  it('navigates to StudentsList on successful create', async () => {
     mockUseRoute.mockReturnValue({ params: { mode: 'create' } });
     mockCreateStudent.mockResolvedValue(ok({ id: 's-new' }));
 
@@ -182,7 +183,7 @@ describe('StudentFormScreen', () => {
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
-      expect(mockGoBack).toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith('StudentsList');
     });
   });
 });

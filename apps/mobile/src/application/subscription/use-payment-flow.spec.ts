@@ -1,30 +1,16 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { usePaymentFlow } from './use-payment-flow';
 
-// Mock the infra modules
-jest.mock('../../infra/subscription/subscription-api', () => ({
-  subscriptionApi: {
-    initiatePayment: jest.fn(),
-    getPaymentStatus: jest.fn(),
-    getMySubscription: jest.fn(),
-  },
-}));
-
-jest.mock('../../infra/http/api-client', () => ({
-  accessTokenStore: {
-    get: jest.fn().mockReturnValue('mock-token'),
-    set: jest.fn(),
-  },
-}));
-
-jest.mock('../../infra/payments/cashfree-web-checkout', () => ({
-  openCashfreeCheckout: jest.fn().mockResolvedValue(undefined),
-}));
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { subscriptionApi } = require('../../infra/subscription/subscription-api');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { openCashfreeCheckout } = require('../../infra/payments/cashfree-web-checkout');
+const subscriptionApi = {
+  getMySubscription: jest.fn(),
+  initiatePayment: jest.fn(),
+  getPaymentStatus: jest.fn(),
+};
+const openCashfreeCheckout = jest.fn().mockResolvedValue(undefined);
+const deps = {
+  subscriptionApi,
+  checkout: { openCheckout: openCashfreeCheckout },
+};
 
 describe('usePaymentFlow', () => {
   beforeEach(() => {
@@ -38,7 +24,7 @@ describe('usePaymentFlow', () => {
 
   it('starts in idle state', () => {
     const onSuccess = jest.fn();
-    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+    const { result } = renderHook(() => usePaymentFlow(deps, onSuccess));
     expect(result.current.status).toBe('idle');
     expect(result.current.error).toBeNull();
     expect(result.current.orderId).toBeNull();
@@ -71,7 +57,7 @@ describe('usePaymentFlow', () => {
     });
 
     const onSuccess = jest.fn();
-    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+    const { result } = renderHook(() => usePaymentFlow(deps, onSuccess));
 
     await act(async () => {
       await result.current.startPayment();
@@ -87,7 +73,7 @@ describe('usePaymentFlow', () => {
     });
 
     const onSuccess = jest.fn();
-    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+    const { result } = renderHook(() => usePaymentFlow(deps, onSuccess));
 
     await act(async () => {
       await result.current.startPayment();
@@ -104,7 +90,7 @@ describe('usePaymentFlow', () => {
     });
 
     const onSuccess = jest.fn();
-    const { result } = renderHook(() => usePaymentFlow(onSuccess));
+    const { result } = renderHook(() => usePaymentFlow(deps, onSuccess));
 
     await act(async () => {
       await result.current.startPayment();

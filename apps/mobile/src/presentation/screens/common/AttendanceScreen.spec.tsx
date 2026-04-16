@@ -23,11 +23,16 @@ jest.mock('../../../infra/attendance/holidays-api', () => ({
 }));
 
 const mockNavigate = jest.fn();
-jest.mock('@react-navigation/native', () => ({
-  ...jest.requireActual('@react-navigation/native'),
-  useNavigation: () => ({ navigate: mockNavigate }),
-  useFocusEffect: (cb: () => void) => { cb(); },
-}));
+jest.mock('@react-navigation/native', () => {
+  const React = jest.requireActual('react');
+  return {
+    ...jest.requireActual('@react-navigation/native'),
+    useNavigation: () => ({ navigate: mockNavigate }),
+    useFocusEffect: (cb: () => void | (() => void)) => {
+      React.useEffect(() => cb(), []);
+    },
+  };
+});
 
 jest.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ user: { role: 'OWNER' } }),

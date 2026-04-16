@@ -5,3 +5,7 @@ export interface PushTokenApiPort {
   registerToken(fcmToken: string, platform: string): Promise<Result<void, AppError>>;
   unregisterToken(fcmToken: string): Promise<Result<void, AppError>>;
 }
+
+export interface PushTokenProviderPort {
+  getCurrentToken(): Promise<string | null>;
+}

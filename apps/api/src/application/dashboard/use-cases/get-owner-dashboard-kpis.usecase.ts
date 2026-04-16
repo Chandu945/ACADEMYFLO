@@ -51,8 +51,8 @@ export class GetOwnerDashboardKpisUseCase {
       inactiveStudents,
       pendingPaymentRequests,
       totalCollected,
-      currentMonthUnpaid,
-      allUnpaidDues,
+      dueStudentsCount,
+      totalPendingAmount,
       todayAbsentCount,
       totalExpenses,
     ] = await Promise.all([
@@ -61,17 +61,12 @@ export class GetOwnerDashboardKpisUseCase {
       this.studentRepo.countInactiveByAcademy(academyId),
       this.paymentRequestRepo.countPendingByAcademy(academyId),
       this.transactionLogRepo.sumRevenueByAcademyAndDateRange(academyId, input.from, input.to),
-      this.feeDueRepo.listByAcademyMonthAndStatuses(academyId, currentMonthKey, [
-        'UPCOMING',
-        'DUE',
-      ]),
-      this.feeDueRepo.listUnpaidByAcademy(academyId),
+      this.feeDueRepo.countDistinctUnpaidStudentsByAcademyAndMonth(academyId, currentMonthKey),
+      this.feeDueRepo.sumUnpaidAmountByAcademy(academyId),
       this.attendanceRepo.countAbsentByAcademyAndDate(academyId, today),
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
     ]);
 
-    const totalPendingAmount = allUnpaidDues.reduce((sum, d) => sum + d.amount, 0);
-    const dueStudentsCount = new Set(currentMonthUnpaid.map((d) => d.studentId)).size;
     const todayPresentCount = totalStudents - todayAbsentCount;
 
     return ok({

@@ -5,6 +5,7 @@ import { User } from '@domain/identity/entities/user.entity';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { PasswordResetChallengeRepository } from '@domain/identity/ports/password-reset-challenge.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import type { OtpHasher } from '../ports/otp-hasher.port';
 import type { PasswordHasher } from '../ports/password-hasher.port';
 import { PasswordResetErrors } from '../../common/errors';
@@ -26,6 +27,7 @@ export class ConfirmPasswordResetUseCase {
     private readonly challengeRepo: PasswordResetChallengeRepository,
     private readonly otpHasher: OtpHasher,
     private readonly passwordHasher: PasswordHasher,
+    private readonly deviceTokenRepo: DeviceTokenRepository,
   ) {}
 
   async execute(
@@ -79,6 +81,9 @@ export class ConfirmPasswordResetUseCase {
     // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
 
     await this.sessionRepo.revokeAllByUserIds([userId]);
+    // Drop push tokens too — the password change may be a response to
+    // device compromise, and stale tokens would keep delivering PII to it.
+    await this.deviceTokenRepo.removeByUserIds([userId]);
     await this.challengeRepo.markUsed(challenge.id.toString());
 
     return ok({ message: 'Password reset successful.' });

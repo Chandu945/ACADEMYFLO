@@ -4,10 +4,12 @@ import type { AppError } from '@shared/kernel';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { AdminErrors } from '../../common/errors';
 
 interface SetAcademyLoginDisabledInput {
   actorRole: string;
+  actorUserId: string;
   academyId: string;
   disabled: boolean;
 }
@@ -33,6 +35,7 @@ export class SetAcademyLoginDisabledUseCase {
     private readonly academyRepo: AcademyRepository,
     private readonly userRepo: UserRepository,
     private readonly sessionRepo: SessionRepository,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(
@@ -64,6 +67,18 @@ export class SetAcademyLoginDisabledUseCase {
       }
       affectedUsers = affectedUserIds.length;
     }
+
+    await this.auditRecorder.record({
+      academyId: input.academyId,
+      actorUserId: input.actorUserId,
+      action: 'ADMIN_ACADEMY_LOGIN_DISABLED',
+      entityType: 'ACADEMY',
+      entityId: input.academyId,
+      context: {
+        disabled: String(input.disabled),
+        affectedUsers: String(affectedUsers),
+      },
+    });
 
     return ok({ loginDisabled: input.disabled, affectedUsers });
   }

@@ -1,7 +1,7 @@
 import type { SubscriptionStatus } from '@playconnect/contracts';
 import type { Subscription } from '../entities/subscription.entity';
 
-const GRACE_PERIOD_MS = 0; // No grace period — blocked immediately on expiry
+const GRACE_PERIOD_MS = 3 * 24 * 60 * 60 * 1000; // 3-day grace after paid expiry
 
 export interface SubscriptionEvaluation {
   status: SubscriptionStatus;

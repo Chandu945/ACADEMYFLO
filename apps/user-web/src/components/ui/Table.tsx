@@ -29,7 +29,7 @@ export function Table({ striped, compact, className, children, ...props }: Table
 }
 
 /* ── Thead ── */
-export interface TheadProps extends React.HTMLAttributes<HTMLTableSectionElement> {}
+export type TheadProps = React.HTMLAttributes<HTMLTableSectionElement>;
 
 export function Thead({ className, children, ...props }: TheadProps) {
   return (
@@ -40,7 +40,7 @@ export function Thead({ className, children, ...props }: TheadProps) {
 }
 
 /* ── Tbody ── */
-export interface TbodyProps extends React.HTMLAttributes<HTMLTableSectionElement> {}
+export type TbodyProps = React.HTMLAttributes<HTMLTableSectionElement>;
 
 export function Tbody({ className, children, ...props }: TbodyProps) {
   return (
@@ -83,7 +83,7 @@ export function Tr({ clickable, className, children, ...props }: TrProps) {
 }
 
 /* ── Th ── */
-export interface ThProps extends React.ThHTMLAttributes<HTMLTableCellElement> {}
+export type ThProps = React.ThHTMLAttributes<HTMLTableCellElement>;
 
 export function Th({ className, children, ...props }: ThProps) {
   return (
@@ -94,7 +94,7 @@ export function Th({ className, children, ...props }: ThProps) {
 }
 
 /* ── Td ── */
-export interface TdProps extends React.TdHTMLAttributes<HTMLTableCellElement> {}
+export type TdProps = React.TdHTMLAttributes<HTMLTableCellElement>;
 
 export function Td({ className, children, ...props }: TdProps) {
   return (

@@ -62,26 +62,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Initial auth — try sessionStorage first (set during login) to avoid redundant refresh
+  // Initial auth — always refresh from the httpOnly session cookie.
+  // Intentionally NO sessionStorage handoff from the login page: caching the
+  // accessToken in sessionStorage exposes it to any XSS, and saving ~100ms on
+  // first-page-load-after-login is not worth that trade.
   useEffect(() => {
     let cancelled = false;
-
-    // Check if we just came from the login page
-    let freshData: { accessToken?: string; user?: AdminUser } | null = null;
-    try {
-      const raw = sessionStorage.getItem('pc_admin_fresh_login');
-      if (raw) {
-        sessionStorage.removeItem('pc_admin_fresh_login');
-        freshData = JSON.parse(raw);
-      }
-    } catch { /* ignore */ }
-
-    if (freshData?.accessToken && freshData?.user) {
-      setAccessToken(freshData.accessToken);
-      setUser(freshData.user);
-      setIsLoading(false);
-      return;
-    }
 
     (async () => {
       try {

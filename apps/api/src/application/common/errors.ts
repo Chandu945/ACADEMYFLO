@@ -145,6 +145,8 @@ export const ParentErrors = {
   paymentAlreadyPending: () => AppError.conflict('A payment is already in progress for this fee'),
   paymentProviderUnavailable: () =>
     new AppError('PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is temporarily unavailable. Please try again.'),
+  onlinePaymentsDisabled: () =>
+    new AppError('FEATURE_DISABLED', 'Online fee payment is currently unavailable. Please pay at the academy.'),
   guardianEmailRequired: () => AppError.validation('Student guardian email is required to invite a parent'),
   guardianPhoneRequired: () => AppError.validation('Student guardian phone number is required to invite a parent'),
 } as const;

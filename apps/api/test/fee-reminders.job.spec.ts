@@ -9,8 +9,11 @@ import {
   InMemorySubscriptionRepository,
 } from './helpers/in-memory-repos';
 import type { EmailSenderPort } from '../src/application/notifications/ports/email-sender.port';
+import { EMAIL_SENDER_PORT } from '../src/application/notifications/ports/email-sender.port';
 import { LOGGER_PORT } from '../src/shared/logging/logger.port';
 import { JOB_LOCK_PORT } from '../src/application/common/ports/job-lock.port';
+import { PUSH_NOTIFICATION_SERVICE } from '../src/presentation/http/device-tokens/device-tokens.module';
+import { QueueService } from '../src/infrastructure/queue/queue.service';
 import { AppConfigService } from '../src/shared/config/config.service';
 import { Academy } from '../src/domain/academy/entities/academy.entity';
 import { Student } from '../src/domain/student/entities/student.entity';
@@ -70,6 +73,11 @@ describe('FeeRemindersCronService (integration)', () => {
     };
 
     const mockOverduePush = { execute: jest.fn().mockResolvedValue({ ok: true, value: {} }) };
+    const mockPushService = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
+    const mockQueueService = {
+      registerEmailFallback: jest.fn(),
+      registerNotificationFallback: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -79,6 +87,9 @@ describe('FeeRemindersCronService (integration)', () => {
         { provide: AppConfigService, useValue: mockConfig },
         { provide: JOB_LOCK_PORT, useValue: mockJobLock },
         { provide: LOGGER_PORT, useValue: logger },
+        { provide: EMAIL_SENDER_PORT, useValue: mockEmailSender },
+        { provide: PUSH_NOTIFICATION_SERVICE, useValue: mockPushService },
+        { provide: QueueService, useValue: mockQueueService },
       ],
     }).compile();
 
@@ -173,6 +184,12 @@ describe('FeeRemindersCronService (integration)', () => {
         {
           provide: LOGGER_PORT,
           useValue: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+        },
+        { provide: EMAIL_SENDER_PORT, useValue: { send: jest.fn() } },
+        { provide: PUSH_NOTIFICATION_SERVICE, useValue: { sendToUsers: jest.fn() } },
+        {
+          provide: QueueService,
+          useValue: { registerEmailFallback: jest.fn(), registerNotificationFallback: jest.fn() },
         },
       ],
     }).compile();

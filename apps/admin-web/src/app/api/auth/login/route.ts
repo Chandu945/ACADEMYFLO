@@ -18,30 +18,16 @@ type BackendLoginResponse = {
   };
 };
 
-// Rate limiting: 10 attempts per minute per IP
-const WINDOW_MS = 60_000;
-const MAX_ATTEMPTS = 10;
-const attempts = new Map<string, { count: number; windowStart: number }>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || now - entry.windowStart > WINDOW_MS) {
-    attempts.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count++;
-  return entry.count > MAX_ATTEMPTS;
-}
+// No BFF-layer rate limit: the in-memory map was per-process (useless across
+// replicas / after restarts) and `x-forwarded-for` is attacker-controllable
+// when the BFF is reachable without going through the trusted ingress.
+// Rate limiting is enforced at the backend: global ThrottlerGuard, per-route
+// Throttle on /auth/login, and Redis-backed LoginAttemptTracker for account
+// lockout. Edge-level protection, if needed, belongs at the reverse proxy.
 
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: 'Too many login attempts. Please try again later.' }, { status: 429 });
   }
 
   let body: { email?: string; password?: string };

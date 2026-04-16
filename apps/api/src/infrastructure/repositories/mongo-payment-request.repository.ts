@@ -7,6 +7,7 @@ import { PaymentRequestModel } from '../database/schemas/payment-request.schema'
 import type { PaymentRequestDocument } from '../database/schemas/payment-request.schema';
 import type { PaymentRequestStatus } from '@playconnect/contracts';
 import { getTransactionSession } from '../database/transaction-context';
+import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 
 @Injectable()
 export class MongoPaymentRequestRepository implements PaymentRequestRepository {
@@ -43,7 +44,7 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
     );
 
     if (!result && !isNew) {
-      throw new Error('Concurrent modification detected for PaymentRequest');
+      throw new ConcurrentModificationError('PaymentRequest');
     }
   }
 

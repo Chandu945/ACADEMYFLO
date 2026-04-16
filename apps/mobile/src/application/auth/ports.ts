@@ -45,3 +45,7 @@ export interface AccessTokenPort {
   set(token: string | null): void;
   get(): string | null;
 }
+
+export interface TokenRefresherPort {
+  tryRefresh(): Promise<string | null>;
+}

@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import type { UserRole } from '@playconnect/contracts';
 import type { Result } from '@shared/kernel';
 import { AppError, err, ok } from '@shared/kernel';
@@ -6,6 +7,29 @@ import type { AccountDeletionRequest } from '@domain/account-deletion/entities/a
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { AcademyTeardownService } from '@infrastructure/services/academy-teardown.service';
+
+/**
+ * Generate a deterministic, collision-resistant placeholder phone for an
+ * anonymized user.
+ *
+ *   Format: +9100XXXXXXXXXX (14 chars total, E.164-valid)
+ *   Prefix: `+9100` — real Indian mobiles start `+91[6-9]`, so the `00` tail
+ *           visually marks the value as a placeholder.
+ *   Digits: first 8 bytes of SHA-256(uid) → BigInt mod 10^10 → 10 decimal
+ *           digits zero-padded. Uses the full UUID entropy (vs. the old
+ *           "last 10 of stripped numerics" that threw most of it away).
+ *
+ * Properties: deterministic (retry-safe — re-anonymizing produces the same
+ * value, so no unique-index collision with itself), collision-resistant at
+ * 10^10 slots (birthday bound ~100k inputs, vs. the old algorithm which
+ * could collide within a single academy).
+ */
+export function anonymizedPhoneFor(uid: string): string {
+  const hash = createHash('sha256').update(uid).digest();
+  const bigint = BigInt('0x' + hash.subarray(0, 8).toString('hex'));
+  const tenDigits = (bigint % 10_000_000_000n).toString().padStart(10, '0');
+  return `+9100${tenDigits}`;
+}
 
 export interface DeletionStrategy {
   execute(request: AccountDeletionRequest): Promise<Result<void>>;
@@ -48,11 +72,10 @@ export class OwnerDeletionStrategy implements DeletionStrategy {
     const allUsers = await this.users.listByAcademyId(academyId);
     for (const u of allUsers) {
       const uid = u.id.toString();
-      const last10 = uid.replace(/[^0-9]/g, '').slice(-10).padStart(10, '0');
       await this.users.anonymizeAndSoftDelete({
         userId: uid,
         anonymizedEmail: `deleted-${uid}@anonymized.local`,
-        anonymizedPhoneE164: `+9100${last10}`,
+        anonymizedPhoneE164: anonymizedPhoneFor(uid),
         anonymizedFullName: 'Deleted User',
         deletedBy: request.userId,
       });

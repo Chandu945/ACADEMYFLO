@@ -67,7 +67,10 @@ import { HttpLoggingInterceptor } from './http/common/interceptors/http-logging.
     ProfileModule,
     AccountDeletionModule,
     DeviceTokensModule,
-    SeedingModule,
+    // Seeding runs OnModuleInit and mutates the super-admin user.
+    // Restricted to development so prod/staging provisioning is an
+    // explicit ops action rather than an implicit boot-time side effect.
+    ...(process.env['APP_ENV'] === 'development' ? [SeedingModule] : []),
   ],
   providers: [
     {

@@ -1,14 +1,7 @@
 import { restoreSessionUseCase } from './restore-session.usecase';
 import type { RestoreSessionDeps } from './restore-session.usecase';
 
-// Mock the shared tryRefresh from api-client
-jest.mock('../../../infra/http/api-client', () => ({
-  tryRefresh: jest.fn(),
-}));
-
-import { tryRefresh } from '../../../infra/http/api-client';
-
-const mockTryRefresh = tryRefresh as jest.MockedFunction<typeof tryRefresh>;
+const mockTryRefresh = jest.fn();
 
 function makeDeps(overrides?: Partial<RestoreSessionDeps>): RestoreSessionDeps {
   return {
@@ -20,6 +13,9 @@ function makeDeps(overrides?: Partial<RestoreSessionDeps>): RestoreSessionDeps {
     accessToken: {
       set: jest.fn(),
       get: jest.fn().mockReturnValue(null),
+    },
+    tokenRefresher: {
+      tryRefresh: mockTryRefresh,
     },
     ...overrides,
   };

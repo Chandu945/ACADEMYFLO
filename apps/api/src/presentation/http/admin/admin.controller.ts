@@ -115,6 +115,7 @@ export class AdminController {
   ) {
     const result = await this.setSubscriptionManual.execute({
       actorRole: user.role,
+      actorUserId: user.userId,
       academyId,
       paidStartAt: dto.paidStartAt,
       paidEndAt: dto.paidEndAt,
@@ -136,6 +137,7 @@ export class AdminController {
   ) {
     const result = await this.deactivateSubscription.execute({
       actorRole: user.role,
+      actorUserId: user.userId,
       academyId,
       manualNotes: dto.manualNotes,
     });
@@ -153,6 +155,7 @@ export class AdminController {
   ) {
     const result = await this.setLoginDisabled.execute({
       actorRole: user.role,
+      actorUserId: user.userId,
       academyId,
       disabled: dto.disabled,
     });
@@ -169,6 +172,7 @@ export class AdminController {
   ) {
     const result = await this.forceLogout.execute({
       actorRole: user.role,
+      actorUserId: user.userId,
       academyId,
     });
     return mapResultToResponse(result, req);
@@ -184,6 +188,7 @@ export class AdminController {
   ) {
     const result = await this.resetPassword.execute({
       actorRole: user.role,
+      actorUserId: user.userId,
       academyId,
     });
     return mapResultToResponse(result, req);

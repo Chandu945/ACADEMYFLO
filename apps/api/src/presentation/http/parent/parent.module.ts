@@ -213,6 +213,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         clock: ClockPort,
         logger: LoggerPort,
         auditRecorder: AuditRecorderPort,
+        config: AppConfigService,
       ) =>
         new InitiateFeePaymentUseCase(
           userRepo,
@@ -224,6 +225,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
           clock,
           logger,
           auditRecorder,
+          config.parentOnlinePaymentsEnabled,
         ),
       inject: [
         USER_REPOSITORY,
@@ -235,6 +237,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         CLOCK_PORT,
         LOGGER_PORT,
         AUDIT_RECORDER_PORT,
+        AppConfigService,
       ],
     },
     {

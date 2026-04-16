@@ -55,6 +55,8 @@ describe('CreatePaymentRequestUseCase', () => {
       listUpcomingByAcademyAndMonth: jest.fn(),
       listByAcademyAndMonth: jest.fn(),
       listUnpaidByAcademy: jest.fn(),
+      sumUnpaidAmountByAcademy: jest.fn(),
+      countDistinctUnpaidStudentsByAcademyAndMonth: jest.fn(),
       findUnpaidByDueDate: jest.fn(),
       findOverdueDues: jest.fn(),
       findDueWithoutSnapshot: jest.fn(),

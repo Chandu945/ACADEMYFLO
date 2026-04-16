@@ -7,6 +7,7 @@ import { FeeDueModel } from '../database/schemas/fee-due.schema';
 import type { FeeDueDocument } from '../database/schemas/fee-due.schema';
 import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeRepeatInterval } from '@playconnect/contracts';
 import { getTransactionSession } from '../database/transaction-context';
+import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 
 @Injectable()
 export class MongoFeeDueRepository implements FeeDueRepository {
@@ -49,7 +50,7 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     );
 
     if (!result && !isNew) {
-      throw new Error('Concurrent modification detected for FeeDue');
+      throw new ConcurrentModificationError('FeeDue');
     }
   }
 
@@ -177,6 +178,30 @@ export class MongoFeeDueRepository implements FeeDueRepository {
       .lean()
       .exec();
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
+  }
+
+  async sumUnpaidAmountByAcademy(academyId: string): Promise<number> {
+    const result = await this.model
+      .aggregate<{ total: number }>([
+        { $match: { academyId, status: { $in: ['UPCOMING', 'DUE'] } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ])
+      .exec();
+    return result[0]?.total ?? 0;
+  }
+
+  async countDistinctUnpaidStudentsByAcademyAndMonth(
+    academyId: string,
+    monthKey: string,
+  ): Promise<number> {
+    const result = await this.model
+      .aggregate<{ count: number }>([
+        { $match: { academyId, monthKey, status: { $in: ['UPCOMING', 'DUE'] } } },
+        { $group: { _id: '$studentId' } },
+        { $count: 'count' },
+      ])
+      .exec();
+    return result[0]?.count ?? 0;
   }
 
   async findUnpaidByDueDate(dueDate: string): Promise<FeeDue[]> {

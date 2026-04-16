@@ -27,7 +27,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json(result.data);
   }
 
-  const { statusChange, status, ...profileData } = body;
+  const { statusChange: _statusChange, status: _status, ...profileData } = body;
   const result = await apiPatch(`/api/v1/staff/${encodeURIComponent(id)}`, profileData, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);

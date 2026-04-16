@@ -7,6 +7,13 @@ import { Badge } from '../../components/ui/Badge';
 import { PaymentStatusBanner } from '../../components/subscription/PaymentStatusBanner';
 import { PayWithCashfreeButton } from '../../components/subscription/PayWithCashfreeButton';
 import { usePaymentFlow } from '../../../application/subscription/use-payment-flow';
+import { subscriptionApi } from '../../../infra/subscription/subscription-api';
+import { openCashfreeCheckout } from '../../../infra/payments/cashfree-web-checkout';
+
+const paymentDeps = {
+  subscriptionApi,
+  checkout: { openCheckout: openCashfreeCheckout },
+};
 import type {
   TierPricing,
   PendingTierChange,
@@ -178,7 +185,7 @@ export function SubscriptionScreen() {
     setRefreshing(false);
   }, [refreshSubscription]);
 
-  const paymentFlow = usePaymentFlow(handleRefresh);
+  const paymentFlow = usePaymentFlow(paymentDeps, handleRefresh);
 
   if (!subscription) {
     return (

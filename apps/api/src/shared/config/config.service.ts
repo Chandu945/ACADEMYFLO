@@ -229,6 +229,10 @@ export class AppConfigService {
     return this.config.CASHFREE_BASE_URL;
   }
 
+  get parentOnlinePaymentsEnabled(): boolean {
+    return this.config.PARENT_ONLINE_PAYMENTS_ENABLED;
+  }
+
   get minAppVersionAndroid(): string {
     return this.config.MIN_APP_VERSION_ANDROID;
   }

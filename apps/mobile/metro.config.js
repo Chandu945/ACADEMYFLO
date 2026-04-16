@@ -2,6 +2,10 @@ const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 const path = require('path');
 const exclusionList = require('metro-config/src/defaults/exclusionList');
 
+const {
+  withSentryConfig
+} = require("@sentry/react-native/metro");
+
 const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, '../..');
 
@@ -35,4 +39,4 @@ const config = {
   },
 };
 
-module.exports = mergeConfig(defaultConfig, config);
+module.exports = withSentryConfig(mergeConfig(defaultConfig, config));

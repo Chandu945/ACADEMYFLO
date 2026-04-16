@@ -12,6 +12,13 @@ import type { RouteProp, NavigationProp } from '@react-navigation/native';
 import type { ParentFeesStackParamList } from '../../navigation/ParentFeesStack';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useFeePaymentFlow } from '../../../application/parent/use-fee-payment-flow';
+import { parentApi } from '../../../infra/parent/parent-api';
+import { openCashfreeCheckout } from '../../../infra/payments/cashfree-web-checkout';
+
+const feePaymentDeps = {
+  parentApi,
+  checkout: { openCheckout: openCashfreeCheckout },
+};
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { formatMonthKey, formatCurrency } from '../../utils/format';
@@ -89,7 +96,7 @@ export function FeePaymentScreen() {
   const convenienceFee = Math.round(baseAmount * CONVENIENCE_FEE_RATE);
   const totalAmount = baseAmount + convenienceFee;
 
-  const { status, error, startPayment, reset } = useFeePaymentFlow(() => {
+  const { status, error, startPayment, reset } = useFeePaymentFlow(feePaymentDeps, () => {
     // Don't navigate away — let user see success state and receipt button.
     // User taps "Done" to dismiss.
   });

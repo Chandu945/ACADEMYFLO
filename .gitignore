@@ -80,5 +80,8 @@ apps/mobile/ios/build/
 *.aab
 *.ipa
 
+# Sentry — contains auth token, never commit
+**/sentry.properties
+
 # Uploads directory (user content, root-level only)
 /uploads/

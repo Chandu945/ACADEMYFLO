@@ -11,12 +11,16 @@ import { LoggingModule } from '../src/shared/logging/logging.module';
 import { AdminAuthController } from '../src/presentation/http/admin-auth/admin-auth.controller';
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { SESSION_REPOSITORY } from '../src/domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '../src/domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '../src/domain/notification/ports/device-token.repository';
 import { PASSWORD_HASHER } from '../src/application/identity/ports/password-hasher.port';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { AdminLoginUseCase } from '../src/application/admin-auth/use-cases/admin-login.usecase';
 import { RefreshUseCase } from '../src/application/identity/use-cases/refresh.usecase';
 import { LogoutUseCase } from '../src/application/identity/use-cases/logout.usecase';
-import { InMemoryUserRepository, InMemorySessionRepository } from './helpers/in-memory-repos';
+import { InMemoryUserRepository, InMemorySessionRepository,
+  InMemoryDeviceTokenRepository
+} from './helpers/in-memory-repos';
 import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -57,6 +61,7 @@ describe('Admin Auth (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: SESSION_REPOSITORY, useValue: sessionRepo },
+        { provide: DEVICE_TOKEN_REPOSITORY, useValue: new InMemoryDeviceTokenRepository() },
         { provide: PASSWORD_HASHER, useValue: hasher },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
@@ -77,7 +82,7 @@ describe('Admin Auth (e2e)', () => {
         },
         {
           provide: 'ADMIN_LOGOUT_USE_CASE',
-          useFactory: (sr: SessionRepository) => new LogoutUseCase(sr),
+          useFactory: (sr: SessionRepository, dtr: DeviceTokenRepository) => new LogoutUseCase(sr, dtr),
           inject: [SESSION_REPOSITORY],
         },
       ],

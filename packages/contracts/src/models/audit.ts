@@ -32,6 +32,14 @@ export const AUDIT_ACTION_TYPES = [
   'ACCOUNT_DELETION_REQUESTED',
   'ACCOUNT_DELETION_CANCELED',
   'ACCOUNT_DELETION_COMPLETED',
+  // Super-admin actions on an academy. actorUserId identifies the super admin;
+  // academyId is the target academy so owners can see these in their audit
+  // feed alongside their own actions.
+  'ADMIN_OWNER_PASSWORD_RESET',
+  'ADMIN_ACADEMY_FORCE_LOGOUT',
+  'ADMIN_SUBSCRIPTION_SET_MANUAL',
+  'ADMIN_SUBSCRIPTION_DEACTIVATED',
+  'ADMIN_ACADEMY_LOGIN_DISABLED',
 ] as const;
 export type AuditActionType = (typeof AUDIT_ACTION_TYPES)[number];
 
@@ -48,5 +56,7 @@ export const AUDIT_ENTITY_TYPES = [
   'EVENT',
   'GALLERY_PHOTO',
   'USER',
+  'ACADEMY',
+  'SUBSCRIPTION',
 ] as const;
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];

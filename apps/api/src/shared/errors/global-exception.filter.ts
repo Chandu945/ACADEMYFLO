@@ -9,6 +9,7 @@ import {
 import type { Request, Response } from 'express';
 import type { ErrorEnvelope } from './error.types';
 import { getRequestId, REQUEST_ID_HEADER } from '../logging/request-id.interceptor';
+import { ConcurrentModificationError } from './concurrent-modification.error';
 import { v4 as uuidv4 } from 'uuid';
 
 @Catch()
@@ -56,6 +57,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
 
       error = this.getErrorName(statusCode);
+    } else if (exception instanceof ConcurrentModificationError) {
+      statusCode = HttpStatus.CONFLICT;
+      message = exception.message;
+      error = 'ConcurrentModification';
+      details = [{ entityType: exception.entityType }];
     }
 
     // Log unexpected (500) errors server-side for debugging

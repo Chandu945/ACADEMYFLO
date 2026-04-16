@@ -6,8 +6,8 @@ import type {
 } from '../../domain/payments/cashfree.types';
 import { initiateSubscriptionPaymentUseCase } from './use-cases/initiate-subscription-payment.usecase';
 import { pollSubscriptionPaymentStatusUseCase } from './use-cases/poll-subscription-payment-status.usecase';
-import { subscriptionApi } from '../../infra/subscription/subscription-api';
-import { openCashfreeCheckout } from '../../infra/payments/cashfree-web-checkout';
+import type { SubscriptionApiPort } from './ports';
+import type { CheckoutPort } from '../payments/ports';
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 20;
@@ -21,7 +21,15 @@ export type UsePaymentFlowReturn = {
   reset: () => void;
 };
 
-export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
+export type UsePaymentFlowDeps = {
+  subscriptionApi: SubscriptionApiPort;
+  checkout: CheckoutPort;
+};
+
+export function usePaymentFlow(
+  deps: UsePaymentFlowDeps,
+  onSuccess: () => void,
+): UsePaymentFlowReturn {
   const [status, setStatus] = useState<PaymentFlowStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -29,8 +37,6 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const startingRef = useRef(false);
-
-  const deps = { subscriptionApi };
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -127,9 +133,9 @@ export function usePaymentFlow(onSuccess: () => void): UsePaymentFlowReturn {
       setOrderId(data.orderId);
       setStatus('checkout');
 
-      // Open web checkout
+      // Open checkout (web SDK or native fallback)
       try {
-        await openCashfreeCheckout(data.paymentSessionId, data.orderId);
+        await deps.checkout.openCheckout(data.paymentSessionId, data.orderId);
       } catch {
         // If browser open fails, still start polling
       }

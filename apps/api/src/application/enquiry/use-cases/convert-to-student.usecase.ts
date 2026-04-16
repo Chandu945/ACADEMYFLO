@@ -55,6 +55,20 @@ export class ConvertToStudentUseCase {
     }
 
     if (!enquiry.isActive) {
+      // Retry-safe: if this enquiry was previously converted and the resulting
+      // student still exists, return the existing conversion instead of
+      // erroring. Covers the case where a commit succeeded but the response
+      // was lost in transit, so the client's retry gets a clean ok() with the
+      // original studentId rather than a confusing alreadyClosed error.
+      if (enquiry.closureReason === 'CONVERTED' && enquiry.convertedStudentId) {
+        const existingStudent = await this.studentRepo.findById(enquiry.convertedStudentId);
+        if (existingStudent && !existingStudent.isDeleted()) {
+          return ok({
+            enquiry: toEnquiryDetail(enquiry),
+            studentId: enquiry.convertedStudentId,
+          });
+        }
+      }
       return err(EnquiryErrors.alreadyClosed());
     }
 

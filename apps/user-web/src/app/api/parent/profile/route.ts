@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(result.data);
   }
 
-  const { changePassword, currentPassword, newPassword, ...profileData } = body;
+  const { changePassword: _changePassword, currentPassword: _currentPassword, newPassword: _newPassword, ...profileData } = body;
   const result = await apiPut('/api/v1/parent/profile', profileData, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);

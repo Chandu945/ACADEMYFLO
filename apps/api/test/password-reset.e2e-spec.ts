@@ -11,6 +11,8 @@ import { LoggingModule } from '../src/shared/logging/logging.module';
 import { AuthController } from '../src/presentation/http/auth/auth.controller';
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { SESSION_REPOSITORY } from '../src/domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '../src/domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '../src/domain/notification/ports/device-token.repository';
 import { PASSWORD_HASHER } from '../src/application/identity/ports/password-hasher.port';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { PASSWORD_RESET_CHALLENGE_REPOSITORY } from '../src/domain/identity/ports/password-reset-challenge.repository';
@@ -27,6 +29,7 @@ import {
   InMemoryUserRepository,
   InMemorySessionRepository,
   InMemoryPasswordResetChallengeRepository,
+  InMemoryDeviceTokenRepository
 } from './helpers/in-memory-repos';
 import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -97,6 +100,7 @@ describe('Password Reset (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: SESSION_REPOSITORY, useValue: sessionRepo },
+        { provide: DEVICE_TOKEN_REPOSITORY, useValue: new InMemoryDeviceTokenRepository() },
         { provide: PASSWORD_RESET_CHALLENGE_REPOSITORY, useValue: challengeRepo },
         { provide: PASSWORD_HASHER, useValue: hasher },
         { provide: TOKEN_SERVICE, useValue: tokenService },
@@ -131,7 +135,7 @@ describe('Password Reset (e2e)', () => {
         },
         {
           provide: 'LOGOUT_USE_CASE',
-          useFactory: (sr: SessionRepository) => new LogoutUseCase(sr),
+          useFactory: (sr: SessionRepository, dtr: DeviceTokenRepository) => new LogoutUseCase(sr, dtr),
           inject: [SESSION_REPOSITORY],
         },
         {
@@ -159,7 +163,8 @@ describe('Password Reset (e2e)', () => {
             cr: PasswordResetChallengeRepository,
             oh: OtpHasher,
             ph: PasswordHasher,
-          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph),
+            dtr: DeviceTokenRepository,
+          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr),
           inject: [
             USER_REPOSITORY,
             SESSION_REPOSITORY,

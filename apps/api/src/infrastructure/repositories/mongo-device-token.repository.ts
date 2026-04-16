@@ -38,6 +38,12 @@ export class MongoDeviceTokenRepository implements DeviceTokenRepository {
     await this.model.deleteOne({ userId, fcmToken });
   }
 
+  async removeByUserIds(userIds: string[]): Promise<number> {
+    if (userIds.length === 0) return 0;
+    const result = await this.model.deleteMany({ userId: { $in: userIds } });
+    return result.deletedCount ?? 0;
+  }
+
   async findByUserId(userId: string): Promise<DeviceToken[]> {
     const docs = await this.model.find({ userId }).lean();
     return docs.map(this.toDomain);

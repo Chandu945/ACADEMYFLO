@@ -12,6 +12,8 @@ import { AuthController } from '../src/presentation/http/auth/auth.controller';
 import { AcademyOnboardingController } from '../src/presentation/http/academy-onboarding/academy-onboarding.controller';
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { SESSION_REPOSITORY } from '../src/domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '../src/domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '../src/domain/notification/ports/device-token.repository';
 import { ACADEMY_REPOSITORY } from '../src/domain/academy/ports/academy.repository';
 import { PASSWORD_HASHER } from '../src/application/identity/ports/password-hasher.port';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
@@ -22,12 +24,15 @@ import { LogoutUseCase } from '../src/application/identity/use-cases/logout.usec
 import { SetupAcademyUseCase } from '../src/application/academy/use-cases/setup-academy.usecase';
 import { SUBSCRIPTION_REPOSITORY } from '../src/domain/subscription/ports/subscription.repository';
 import { CLOCK_PORT } from '../src/application/common/clock.port';
+import { TRANSACTION_PORT } from '../src/application/common/transaction.port';
+import type { TransactionPort } from '../src/application/common/transaction.port';
 import { CreateTrialSubscriptionUseCase } from '../src/application/subscription/use-cases/create-trial-subscription.usecase';
 import {
   InMemoryUserRepository,
   InMemorySessionRepository,
   InMemoryAcademyRepository,
   InMemorySubscriptionRepository,
+  InMemoryDeviceTokenRepository
 } from './helpers/in-memory-repos';
 import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -86,6 +91,7 @@ describe('Academy Onboarding (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: SESSION_REPOSITORY, useValue: sessionRepo },
+        { provide: DEVICE_TOKEN_REPOSITORY, useValue: new InMemoryDeviceTokenRepository() },
         { provide: ACADEMY_REPOSITORY, useValue: academyRepo },
         { provide: SUBSCRIPTION_REPOSITORY, useValue: subscriptionRepo },
         { provide: CLOCK_PORT, useValue: clock },
@@ -119,7 +125,7 @@ describe('Academy Onboarding (e2e)', () => {
         },
         {
           provide: 'LOGOUT_USE_CASE',
-          useFactory: (sr: SessionRepository) => new LogoutUseCase(sr),
+          useFactory: (sr: SessionRepository, dtr: DeviceTokenRepository) => new LogoutUseCase(sr, dtr),
           inject: [SESSION_REPOSITORY],
         },
         { provide: PASSWORD_RESET_CHALLENGE_REPOSITORY, useValue: new InMemoryPasswordResetChallengeRepository() },
@@ -145,7 +151,8 @@ describe('Academy Onboarding (e2e)', () => {
             cr: PasswordResetChallengeRepository,
             oh: OtpHasher,
             ph: PasswordHasher,
-          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph),
+            dtr: DeviceTokenRepository,
+          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr),
           inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_RESET_CHALLENGE_REPOSITORY, OTP_HASHER, PASSWORD_HASHER],
         },
         {
@@ -155,13 +162,25 @@ describe('Academy Onboarding (e2e)', () => {
           inject: [SUBSCRIPTION_REPOSITORY, CLOCK_PORT],
         },
         {
+          provide: TRANSACTION_PORT,
+          useValue: {
+            run: async <T>(fn: () => Promise<T>): Promise<T> => fn(),
+          } satisfies TransactionPort,
+        },
+        {
           provide: 'SETUP_ACADEMY_USE_CASE',
           useFactory: (
             ar: AcademyRepository,
             ur: UserRepository,
             ct: CreateTrialSubscriptionUseCase,
-          ) => new SetupAcademyUseCase(ar, ur, ct),
-          inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, 'CREATE_TRIAL_SUBSCRIPTION_USE_CASE'],
+            transaction: TransactionPort,
+          ) => new SetupAcademyUseCase(ar, ur, ct, transaction),
+          inject: [
+            ACADEMY_REPOSITORY,
+            USER_REPOSITORY,
+            'CREATE_TRIAL_SUBSCRIPTION_USE_CASE',
+            TRANSACTION_PORT,
+          ],
         },
       ],
     }).compile();

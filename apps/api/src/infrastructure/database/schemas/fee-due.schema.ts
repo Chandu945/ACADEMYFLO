@@ -21,7 +21,10 @@ export class FeeDueModel {
   @Prop({ required: true })
   monthKey!: string;
 
-  @Prop({ required: true })
+  // Strict ISO 8601 short date format: YYYY-MM-DD (zero-padded).
+  // Range queries like $lte in findOverdueDues rely on lexicographic order,
+  // which only holds when every document uses this canonical format.
+  @Prop({ required: true, match: /^\d{4}-\d{2}-\d{2}$/ })
   dueDate!: string;
 
   @Prop({ required: true })

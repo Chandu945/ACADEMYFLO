@@ -16,9 +16,12 @@ import { tokenStore } from '../../infra/auth/token-store';
 import { deviceIdStore } from '../../infra/auth/device-id';
 import { subscriptionApi } from '../../infra/subscription/subscription-api';
 import { pushTokenApi } from '../../infra/notification/push-token-api';
-import { accessTokenStore, getAccessToken, registerAuthFailureHandler } from '../../infra/http/api-client';
+import { accessTokenStore, getAccessToken, registerAuthFailureHandler, tryRefresh } from '../../infra/http/api-client';
+import { getFcmToken } from '../../infra/notification/firebase-messaging';
 import { isTokenExpiredOrExpiring } from '../../infra/auth/token-expiry';
 import { checkAppVersionUseCase } from '../../application/auth/use-cases/check-app-version.usecase';
+import { APP_VERSION, APP_PLATFORM } from '../../infra/app-version';
+import { env } from '../../infra/env';
 import { clearAttendanceSummaryCache } from '../components/dashboard/AttendanceSummaryWidget';
 import { clearMonthlyChartCache } from '../components/dashboard/MonthlyChartWidget';
 
@@ -78,6 +81,8 @@ const deps = {
   deviceId: deviceIdStore,
   accessToken: accessTokenStore,
   pushTokenApi,
+  tokenRefresher: { tryRefresh },
+  pushTokenProvider: { getCurrentToken: getFcmToken },
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -151,7 +156,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       // Check if app version meets minimum requirement
-      const versionCheck = await checkAppVersionUseCase();
+      const versionCheck = await checkAppVersionUseCase({
+        apiBaseUrl: env.API_BASE_URL,
+        appVersion: APP_VERSION,
+        platform: APP_PLATFORM,
+      });
       if (!mountedRef.current) return;
       if (versionCheck?.updateRequired) {
         setState({

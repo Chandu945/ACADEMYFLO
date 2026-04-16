@@ -12,6 +12,14 @@ jest.mock('@react-navigation/native', () => ({
 
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 
+// Auto-confirm the destructive option in crossAlert so logout flows through in tests.
+jest.mock('../../utils/crossPlatformAlert', () => ({
+  crossAlert: (_title: string, _msg?: string, buttons?: Array<{ style?: string; onPress?: () => void }>) => {
+    const destructive = buttons?.find((b) => b.style === 'destructive');
+    destructive?.onPress?.();
+  },
+}));
+
 function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
     phase: 'ready' as AuthPhase,

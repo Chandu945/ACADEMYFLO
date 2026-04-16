@@ -5,9 +5,10 @@ import type {
   FeePaymentStatusResponse,
 } from '../../domain/parent/parent.types';
 import { initiateFeePaymentUseCase } from './use-cases/initiate-fee-payment.usecase';
+import type { InitiateFeePaymentApiPort } from './use-cases/initiate-fee-payment.usecase';
 import { pollFeePaymentStatusUseCase } from './use-cases/poll-fee-payment-status.usecase';
-import { parentApi } from '../../infra/parent/parent-api';
-import { openCashfreeCheckout } from '../../infra/payments/cashfree-web-checkout';
+import type { PollFeePaymentStatusApiPort } from './use-cases/poll-fee-payment-status.usecase';
+import type { CheckoutPort } from '../payments/ports';
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 20;
@@ -21,7 +22,15 @@ export type UseFeePaymentFlowReturn = {
   reset: () => void;
 };
 
-export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowReturn {
+export type UseFeePaymentFlowDeps = {
+  parentApi: InitiateFeePaymentApiPort & PollFeePaymentStatusApiPort;
+  checkout: CheckoutPort;
+};
+
+export function useFeePaymentFlow(
+  deps: UseFeePaymentFlowDeps,
+  onSuccess: () => void,
+): UseFeePaymentFlowReturn {
   const [status, setStatus] = useState<FeePaymentFlowStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -29,8 +38,6 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const startingRef = useRef(false);
-
-  const deps = { parentApi };
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -124,7 +131,7 @@ export function useFeePaymentFlow(onSuccess: () => void): UseFeePaymentFlowRetur
         setStatus('checkout');
 
         try {
-          await openCashfreeCheckout(data.paymentSessionId, data.orderId);
+          await deps.checkout.openCheckout(data.paymentSessionId, data.orderId);
         } catch {
           // If browser open fails, still start polling
         }

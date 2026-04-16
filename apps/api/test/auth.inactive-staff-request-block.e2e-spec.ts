@@ -12,6 +12,8 @@ import { AuthController } from '../src/presentation/http/auth/auth.controller';
 import { StaffController } from '../src/presentation/http/staff/staff.controller';
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { SESSION_REPOSITORY } from '../src/domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '../src/domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '../src/domain/notification/ports/device-token.repository';
 import { PASSWORD_HASHER } from '../src/application/identity/ports/password-hasher.port';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { OwnerSignupUseCase } from '../src/application/identity/use-cases/owner-signup.usecase';
@@ -22,7 +24,9 @@ import { CreateStaffUseCase } from '../src/application/staff/use-cases/create-st
 import { ListStaffUseCase } from '../src/application/staff/use-cases/list-staff.usecase';
 import { UpdateStaffUseCase } from '../src/application/staff/use-cases/update-staff.usecase';
 import { SetStaffStatusUseCase } from '../src/application/staff/use-cases/set-staff-status.usecase';
-import { InMemoryUserRepository, InMemorySessionRepository } from './helpers/in-memory-repos';
+import { InMemoryUserRepository, InMemorySessionRepository,
+  InMemoryDeviceTokenRepository
+} from './helpers/in-memory-repos';
 import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -74,6 +78,7 @@ describe('Inactive Staff Request-Time Block (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: SESSION_REPOSITORY, useValue: sessionRepo },
+        { provide: DEVICE_TOKEN_REPOSITORY, useValue: new InMemoryDeviceTokenRepository() },
         { provide: PASSWORD_HASHER, useValue: hasher },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         // Auth use-cases
@@ -105,7 +110,7 @@ describe('Inactive Staff Request-Time Block (e2e)', () => {
         },
         {
           provide: 'LOGOUT_USE_CASE',
-          useFactory: (sr: SessionRepository) => new LogoutUseCase(sr),
+          useFactory: (sr: SessionRepository, dtr: DeviceTokenRepository) => new LogoutUseCase(sr, dtr),
           inject: [SESSION_REPOSITORY],
         },
         { provide: PASSWORD_RESET_CHALLENGE_REPOSITORY, useValue: new InMemoryPasswordResetChallengeRepository() },
@@ -131,7 +136,8 @@ describe('Inactive Staff Request-Time Block (e2e)', () => {
             cr: PasswordResetChallengeRepository,
             oh: OtpHasher,
             ph: PasswordHasher,
-          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph),
+            dtr: DeviceTokenRepository,
+          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr),
           inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_RESET_CHALLENGE_REPOSITORY, OTP_HASHER, PASSWORD_HASHER],
         },
         // Staff use-cases

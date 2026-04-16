@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, GraduationCap, LogOut, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 import { useAdminAuth } from '@/application/auth/use-admin-auth';
-import { useSidebar } from './AdminShell';
+import { useSidebar } from './SidebarContext';
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [

@@ -35,11 +35,20 @@ export class InitiateFeePaymentUseCase {
     private readonly clock: ClockPort,
     private readonly logger: LoggerPort,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly paymentsEnabled: boolean = false,
   ) {}
 
   async execute(
     input: InitiateFeePaymentInput,
   ): Promise<Result<InitiateFeePaymentOutput, AppError>> {
+    if (!this.paymentsEnabled) {
+      this.logger.warn('Fee payment initiation blocked by kill-switch', {
+        parentUserId: input.parentUserId,
+        feeDueId: input.feeDueId,
+      });
+      return err(ParentErrors.onlinePaymentsDisabled());
+    }
+
     const check = canPayFeeOnline(input.parentRole);
     if (!check.allowed) return err(ParentErrors.payNotAllowed());
 

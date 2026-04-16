@@ -1,8 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 import { UnpaidDuesScreen } from './UnpaidDuesScreen';
-import * as feesApi from '../../../infra/fees/fees-api';
-import { ok } from '../../../domain/common/result';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 
 jest.mock('../../../infra/fees/fees-api', () => ({
@@ -11,8 +9,6 @@ jest.mock('../../../infra/fees/fees-api', () => ({
   getStudentFees: jest.fn(),
   markFeePaid: jest.fn(),
 }));
-
-const mockMarkFeePaid = feesApi.markFeePaid as jest.Mock;
 
 function makeFeeDue(overrides: Partial<FeeDueItem> = {}): FeeDueItem {
   return {
@@ -88,31 +84,13 @@ describe('UnpaidDuesScreen', () => {
     expect(screen.getByTestId('retry-button')).toBeTruthy();
   });
 
-  it('owner can mark paid with confirmation', async () => {
-    mockMarkFeePaid.mockResolvedValue(
-      ok({
-        ...makeFeeDue(),
-        status: 'PAID',
-        paidAt: '2026-03-04T10:00:00.000Z',
-        paidSource: 'OWNER_DIRECT',
-      }),
-    );
-
-    render(<UnpaidDuesScreen {...defaultProps} />);
+  it('owner taps row to navigate to student fee detail', () => {
+    const onRowPress = jest.fn();
+    render(<UnpaidDuesScreen {...defaultProps} isOwner={true} onRowPress={onRowPress} />);
 
     fireEvent.press(screen.getByTestId('fee-row-fd1'));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('mark-paid-confirm')).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('confirm-ok'));
-    });
-
-    await waitFor(() => {
-      expect(mockMarkFeePaid).toHaveBeenCalledWith('s1', '2026-03');
-    });
+    expect(onRowPress).toHaveBeenCalledWith('s1');
   });
 
   it('staff taps row to navigate', () => {

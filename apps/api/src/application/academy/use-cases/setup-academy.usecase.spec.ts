@@ -2,6 +2,7 @@ import { SetupAcademyUseCase } from './setup-academy.usecase';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { CreateTrialSubscriptionUseCase } from '../../subscription/use-cases/create-trial-subscription.usecase';
+import type { TransactionPort } from '../../common/transaction.port';
 import { Academy } from '@domain/academy/entities/academy.entity';
 import { createAuditFields, initSoftDelete, ok } from '@shared/kernel';
 
@@ -28,15 +29,25 @@ function buildDeps() {
       .fn()
       .mockResolvedValue(ok({ subscriptionId: 'sub-1', trialStartAt: '', trialEndAt: '' })),
   } as unknown as CreateTrialSubscriptionUseCase;
-  return { academyRepo, userRepo: userRepo as unknown as UserRepository, createTrial };
+  // Inline transaction for unit tests — runs the callback directly. Real
+  // MongoTransactionService behavior (commit/abort/retry) is exercised by e2e.
+  const transaction: TransactionPort = {
+    run: async <T>(fn: () => Promise<T>): Promise<T> => fn(),
+  };
+  return {
+    academyRepo,
+    userRepo: userRepo as unknown as UserRepository,
+    createTrial,
+    transaction,
+  };
 }
 
 describe('SetupAcademyUseCase', () => {
   it('should create academy for owner', async () => {
-    const { academyRepo, userRepo, createTrial } = buildDeps();
+    const { academyRepo, userRepo, createTrial, transaction } = buildDeps();
     academyRepo.findByOwnerUserId.mockResolvedValue(null);
 
-    const uc = new SetupAcademyUseCase(academyRepo, userRepo, createTrial);
+    const uc = new SetupAcademyUseCase(academyRepo, userRepo, createTrial, transaction);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',
@@ -53,9 +64,9 @@ describe('SetupAcademyUseCase', () => {
   });
 
   it('should reject non-owner role', async () => {
-    const { academyRepo, userRepo, createTrial } = buildDeps();
+    const { academyRepo, userRepo, createTrial, transaction } = buildDeps();
 
-    const uc = new SetupAcademyUseCase(academyRepo, userRepo, createTrial);
+    const uc = new SetupAcademyUseCase(academyRepo, userRepo, createTrial, transaction);
     const result = await uc.execute({
       ownerUserId: 'staff-1',
       ownerRole: 'STAFF',
@@ -70,7 +81,7 @@ describe('SetupAcademyUseCase', () => {
   });
 
   it('should reject duplicate academy setup', async () => {
-    const { academyRepo, userRepo, createTrial } = buildDeps();
+    const { academyRepo, userRepo, createTrial, transaction } = buildDeps();
     const existingAcademy = Academy.reconstitute('academy-1', {
       ownerUserId: 'owner-1',
       academyName: 'Existing Academy',
@@ -88,7 +99,7 @@ describe('SetupAcademyUseCase', () => {
     });
     academyRepo.findByOwnerUserId.mockResolvedValue(existingAcademy);
 
-    const uc = new SetupAcademyUseCase(academyRepo, userRepo, createTrial);
+    const uc = new SetupAcademyUseCase(academyRepo, userRepo, createTrial, transaction);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',

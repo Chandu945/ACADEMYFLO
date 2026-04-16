@@ -1,14 +1,14 @@
 import type { AuthUser } from '../../../domain/auth/auth.types';
 import type { AppError } from '../../../domain/common/errors';
 import type { Result } from '../../../domain/common/result';
-import type { TokenStorePort, AccessTokenPort } from '../ports';
-import { tryRefresh } from '../../../infra/http/api-client';
+import type { TokenStorePort, AccessTokenPort, TokenRefresherPort } from '../ports';
 
 export type RestoreResult = { user: AuthUser; accessToken: string };
 
 export type RestoreSessionDeps = {
   tokenStore: TokenStorePort;
   accessToken: AccessTokenPort;
+  tokenRefresher: TokenRefresherPort;
 };
 
 export async function restoreSessionUseCase(
@@ -19,7 +19,7 @@ export async function restoreSessionUseCase(
     return { ok: false, error: { code: 'UNAUTHORIZED', message: 'No stored session' } };
   }
 
-  const newToken = await tryRefresh();
+  const newToken = await deps.tokenRefresher.tryRefresh();
 
   if (!newToken) {
     await deps.tokenStore.clearSession();

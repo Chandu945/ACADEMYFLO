@@ -37,45 +37,16 @@ type LoginResponse = {
   };
 };
 
-/* ── Simple in-memory rate limiter ── */
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 10; // 10 attempts per window per IP
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  entry.count++;
-  return entry.count > RATE_LIMIT_MAX;
-}
-
-// Periodically clean up stale entries (every 5 minutes)
-if (typeof globalThis !== 'undefined') {
-  const CLEANUP_INTERVAL = 5 * 60_000;
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of rateLimitMap) {
-      if (now > entry.resetAt) rateLimitMap.delete(key);
-    }
-  }, CLEANUP_INTERVAL).unref?.();
-}
+// No BFF-layer rate limit: the in-memory map was per-process (useless across
+// replicas / after restarts) and `x-forwarded-for` is attacker-controllable
+// when the BFF is reachable without going through the trusted ingress.
+// Rate limiting is enforced at the backend: global ThrottlerGuard, per-route
+// Throttle on /auth/login, and Redis-backed LoginAttemptTracker for account
+// lockout. Edge-level protection, if needed, belongs at the reverse proxy.
 
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) {
     return NextResponse.json({ message: 'Invalid origin' }, { status: 403 });
-  }
-
-  // Rate limiting
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  if (isRateLimited(ip)) {
-    return NextResponse.json(
-      { message: 'Too many login attempts. Please wait a minute and try again.' },
-      { status: 429 },
-    );
   }
 
   let rawBody: unknown;

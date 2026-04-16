@@ -26,10 +26,14 @@ import { SESSION_REPOSITORY } from '@domain/identity/ports/session.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '@domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import { SUBSCRIPTION_REPOSITORY } from '@domain/subscription/ports/subscription.repository';
 import type { SubscriptionRepository } from '@domain/subscription/ports/subscription.repository';
 import { AUDIT_LOG_REPOSITORY } from '@domain/audit/ports/audit-log.repository';
 import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repository';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { PASSWORD_GENERATOR } from '@application/common/password-generator.port';
@@ -83,13 +87,15 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
     },
     {
       provide: 'SET_SUBSCRIPTION_MANUAL_USE_CASE',
-      useFactory: (repo: SubscriptionRepository) => new SetSubscriptionManualUseCase(repo),
-      inject: [SUBSCRIPTION_REPOSITORY],
+      useFactory: (repo: SubscriptionRepository, auditRecorder: AuditRecorderPort) =>
+        new SetSubscriptionManualUseCase(repo, auditRecorder),
+      inject: [SUBSCRIPTION_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'DEACTIVATE_SUBSCRIPTION_USE_CASE',
-      useFactory: (repo: SubscriptionRepository) => new DeactivateSubscriptionUseCase(repo),
-      inject: [SUBSCRIPTION_REPOSITORY],
+      useFactory: (repo: SubscriptionRepository, auditRecorder: AuditRecorderPort) =>
+        new DeactivateSubscriptionUseCase(repo, auditRecorder),
+      inject: [SUBSCRIPTION_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'SET_ACADEMY_LOGIN_DISABLED_USE_CASE',
@@ -97,8 +103,9 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         academyRepo: AcademyRepository,
         userRepo: UserRepository,
         sessionRepo: SessionRepository,
-      ) => new SetAcademyLoginDisabledUseCase(academyRepo, userRepo, sessionRepo),
-      inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY],
+        auditRecorder: AuditRecorderPort,
+      ) => new SetAcademyLoginDisabledUseCase(academyRepo, userRepo, sessionRepo, auditRecorder),
+      inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'FORCE_LOGOUT_ACADEMY_USE_CASE',
@@ -106,8 +113,23 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         userRepo: UserRepository,
         sessionRepo: SessionRepository,
         academyRepo: AcademyRepository,
-      ) => new ForceLogoutAcademyUseCase(userRepo, sessionRepo, academyRepo),
-      inject: [USER_REPOSITORY, SESSION_REPOSITORY, ACADEMY_REPOSITORY],
+        auditRecorder: AuditRecorderPort,
+        deviceTokenRepo: DeviceTokenRepository,
+      ) =>
+        new ForceLogoutAcademyUseCase(
+          userRepo,
+          sessionRepo,
+          academyRepo,
+          auditRecorder,
+          deviceTokenRepo,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        SESSION_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        DEVICE_TOKEN_REPOSITORY,
+      ],
     },
     {
       provide: 'RESET_OWNER_PASSWORD_USE_CASE',
@@ -117,13 +139,26 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         academyRepo: AcademyRepository,
         hasher: PasswordHasher,
         generator: PasswordGeneratorPort,
-      ) => new ResetOwnerPasswordUseCase(userRepo, sessionRepo, academyRepo, hasher, generator),
+        auditRecorder: AuditRecorderPort,
+        deviceTokenRepo: DeviceTokenRepository,
+      ) =>
+        new ResetOwnerPasswordUseCase(
+          userRepo,
+          sessionRepo,
+          academyRepo,
+          hasher,
+          generator,
+          auditRecorder,
+          deviceTokenRepo,
+        ),
       inject: [
         USER_REPOSITORY,
         SESSION_REPOSITORY,
         ACADEMY_REPOSITORY,
         PASSWORD_HASHER,
         PASSWORD_GENERATOR,
+        AUDIT_RECORDER_PORT,
+        DEVICE_TOKEN_REPOSITORY,
       ],
     },
     {

@@ -7,6 +7,7 @@ import { SubscriptionModel } from '../database/schemas/subscription.schema';
 import type { SubscriptionDocument } from '../database/schemas/subscription.schema';
 import type { TierKey } from '@playconnect/contracts';
 import { getTransactionSession } from '../database/transaction-context';
+import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 
 @Injectable()
 export class MongoSubscriptionRepository implements SubscriptionRepository {
@@ -42,12 +43,15 @@ export class MongoSubscriptionRepository implements SubscriptionRepository {
     );
 
     if (!result && !isNew) {
-      throw new Error('Concurrent modification detected for Subscription');
+      throw new ConcurrentModificationError('Subscription');
     }
   }
 
   async findByAcademyId(academyId: string): Promise<Subscription | null> {
-    const doc = await this.model.findOne({ academyId }).lean().exec();
+    const doc = await this.model
+      .findOne({ academyId }, null, { session: getTransactionSession() })
+      .lean()
+      .exec();
     return doc ? this.toDomain(doc) : null;
   }
 

@@ -14,6 +14,8 @@ import type { TokenService } from '@application/identity/ports/token-service.por
 import { TOKEN_SERVICE } from '@application/identity/ports/token-service.port';
 import type { LoginAttemptTrackerPort } from '@application/identity/services/login-attempt-tracker';
 import { LOGIN_ATTEMPT_TRACKER } from '@application/identity/services/login-attempt-tracker';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '@domain/notification/ports/device-token.repository';
 import { AppConfigService } from '@shared/config/config.service';
 
 @Module({
@@ -44,8 +46,9 @@ import { AppConfigService } from '@shared/config/config.service';
     },
     {
       provide: 'ADMIN_LOGOUT_USE_CASE',
-      useFactory: (sessionRepo: SessionRepository) => new LogoutUseCase(sessionRepo),
-      inject: [SESSION_REPOSITORY],
+      useFactory: (sessionRepo: SessionRepository, deviceTokenRepo: DeviceTokenRepository) =>
+        new LogoutUseCase(sessionRepo, deviceTokenRepo),
+      inject: [SESSION_REPOSITORY, DEVICE_TOKEN_REPOSITORY],
     },
   ],
 })

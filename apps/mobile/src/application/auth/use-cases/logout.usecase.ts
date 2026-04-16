@@ -1,6 +1,5 @@
 import type { AuthApiPort, TokenStorePort, DeviceIdPort, AccessTokenPort } from '../ports';
-import type { PushTokenApiPort } from '../../notification/ports';
-import { getFcmToken } from '../../../infra/notification/firebase-messaging';
+import type { PushTokenApiPort, PushTokenProviderPort } from '../../notification/ports';
 
 export type LogoutDeps = {
   authApi: AuthApiPort;
@@ -8,6 +7,7 @@ export type LogoutDeps = {
   deviceId: DeviceIdPort;
   accessToken: AccessTokenPort;
   pushTokenApi: PushTokenApiPort;
+  pushTokenProvider: PushTokenProviderPort;
 };
 
 export async function logoutUseCase(deps: LogoutDeps): Promise<void> {
@@ -16,7 +16,7 @@ export async function logoutUseCase(deps: LogoutDeps): Promise<void> {
 
   // Best-effort unregister push token before clearing session
   try {
-    const fcmToken = await getFcmToken();
+    const fcmToken = await deps.pushTokenProvider.getCurrentToken();
     if (fcmToken) {
       await deps.pushTokenApi.unregisterToken(fcmToken);
     }

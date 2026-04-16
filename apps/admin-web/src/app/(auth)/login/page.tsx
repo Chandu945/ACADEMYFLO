@@ -39,10 +39,12 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const session = await authService.login(parsed.data.email, parsed.data.password);
-      try {
-        sessionStorage.setItem('pc_admin_fresh_login', JSON.stringify(session));
-      } catch { /* sessionStorage may be unavailable in some contexts */ }
+      // Call the login service to set the httpOnly session cookie, then
+      // navigate. AdminAuthProvider on /dashboard will perform a normal
+      // refresh from the cookie — we deliberately do NOT cache the
+      // accessToken in sessionStorage, since that would expose it to
+      // any XSS for the brief window between login and provider mount.
+      await authService.login(parsed.data.email, parsed.data.password);
       router.push('/dashboard');
     } catch (err) {
       if (err instanceof AppError) {

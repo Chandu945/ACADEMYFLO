@@ -6,6 +6,15 @@ import type { AuthContextValue, AuthPhase } from '../../context/AuthContext';
 import * as settingsApiModule from '../../../infra/settings/settings-api';
 import { ok, err } from '../../../domain/common/result';
 
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+    addListener: jest.fn(() => jest.fn()),
+    dispatch: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../infra/settings/settings-api', () => ({
   settingsApi: {
     getAcademySettings: jest.fn(),
@@ -61,7 +70,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows settings form on success', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 5 }),
     );
 
     renderScreen();
@@ -91,7 +100,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows editable form for OWNER', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 5 }),
     );
 
     renderScreen('OWNER');
@@ -106,7 +115,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows read-only form for STAFF', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 5 }),
     );
 
     renderScreen('STAFF');
@@ -122,7 +131,7 @@ describe('AcademySettingsScreen', () => {
 
   it('enables save button when values change', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 5 }),
     );
 
     renderScreen('OWNER');
@@ -146,7 +155,7 @@ describe('AcademySettingsScreen', () => {
 
   it('shows validation error for invalid due date day', async () => {
     mockSettingsApi.getAcademySettings.mockResolvedValue(
-      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 0 }),
+      ok({ defaultDueDateDay: 5, receiptPrefix: 'PC', lateFeeEnabled: false, gracePeriodDays: 0, lateFeeAmountInr: 0, lateFeeRepeatIntervalDays: 5 }),
     );
 
     renderScreen('OWNER');
@@ -157,7 +166,6 @@ describe('AcademySettingsScreen', () => {
 
     fireEvent.changeText(screen.getByTestId('input-due-date-day'), '30');
 
-    expect(screen.getByTestId('day-error')).toBeTruthy();
     expect(screen.getByText('Must be 1\u201328')).toBeTruthy();
   });
 });

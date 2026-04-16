@@ -114,12 +114,15 @@ describe('usePasswordReset', () => {
 
     expect(result.current.cooldownRemaining).toBe(60);
 
-    act(() => {
-      jest.advanceTimersByTime(3000);
-    });
+    // Advance 1s at a time so React flushes the state update between ticks;
+    // the hook's setTimeout chain re-arms only after each re-render.
+    for (let i = 0; i < 3; i++) {
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+    }
 
-    expect(result.current.cooldownRemaining).toBeGreaterThanOrEqual(55);
-    expect(result.current.cooldownRemaining).toBeLessThanOrEqual(57);
+    expect(result.current.cooldownRemaining).toBe(57);
   });
 
   it('goBack should move from otp to email', async () => {

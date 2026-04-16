@@ -3,7 +3,7 @@
 import { Menu } from 'lucide-react';
 
 import { useAdminAuth } from '@/application/auth/use-admin-auth';
-import { useSidebar } from './AdminShell';
+import { useSidebar } from './SidebarContext';
 import styles from './TopHeader.module.css';
 
 export function TopHeader() {

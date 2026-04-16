@@ -4,6 +4,8 @@ import type { SessionRepository } from '@domain/identity/ports/session.repositor
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import type { PasswordGeneratorPort } from '../../common/password-generator.port';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import { User } from '@domain/identity/entities/user.entity';
 import { Academy } from '@domain/academy/entities/academy.entity';
 import { createAuditFields, initSoftDelete } from '@shared/kernel';
@@ -49,7 +51,20 @@ function buildDeps() {
     generate: jest.fn(),
   };
 
-  return { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator };
+  const auditRecorder: jest.Mocked<AuditRecorderPort> = {
+    record: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const deviceTokenRepo: jest.Mocked<DeviceTokenRepository> = {
+    upsert: jest.fn(),
+    removeByToken: jest.fn(),
+    removeByUserIdAndToken: jest.fn(),
+    removeByUserIds: jest.fn().mockResolvedValue(0),
+    findByUserId: jest.fn(),
+    findByUserIds: jest.fn(),
+  };
+
+  return { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator, auditRecorder, deviceTokenRepo };
 }
 
 function createOwner(): User {
@@ -83,7 +98,7 @@ function createAcademyEntity(id = 'academy-1'): Academy {
 
 describe('ResetOwnerPasswordUseCase', () => {
   it('should reset password, increment tokenVersion, and revoke sessions', async () => {
-    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator } = buildDeps();
+    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator, auditRecorder, deviceTokenRepo } = buildDeps();
     academyRepo.findById.mockResolvedValue(createAcademyEntity());
     userRepo.findById.mockResolvedValue(createOwner());
     passwordGenerator.generate.mockReturnValue('temp-pass-123');
@@ -95,9 +110,12 @@ describe('ResetOwnerPasswordUseCase', () => {
       academyRepo,
       passwordHasher,
       passwordGenerator,
+      auditRecorder,
+      deviceTokenRepo,
     );
     const result = await uc.execute({
       actorRole: 'SUPER_ADMIN',
+      actorUserId: 'admin-1',
       academyId: 'academy-1',
     });
 
@@ -118,16 +136,19 @@ describe('ResetOwnerPasswordUseCase', () => {
   });
 
   it('should reject non-SUPER_ADMIN', async () => {
-    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator } = buildDeps();
+    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator, auditRecorder, deviceTokenRepo } = buildDeps();
     const uc = new ResetOwnerPasswordUseCase(
       userRepo,
       sessionRepo,
       academyRepo,
       passwordHasher,
       passwordGenerator,
+      auditRecorder,
+      deviceTokenRepo,
     );
     const result = await uc.execute({
       actorRole: 'OWNER',
+      actorUserId: 'user-1',
       academyId: 'academy-1',
     });
 
@@ -138,7 +159,7 @@ describe('ResetOwnerPasswordUseCase', () => {
   });
 
   it('should return NOT_FOUND if academy does not exist', async () => {
-    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator } = buildDeps();
+    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator, auditRecorder, deviceTokenRepo } = buildDeps();
     academyRepo.findById.mockResolvedValue(null);
 
     const uc = new ResetOwnerPasswordUseCase(
@@ -147,9 +168,12 @@ describe('ResetOwnerPasswordUseCase', () => {
       academyRepo,
       passwordHasher,
       passwordGenerator,
+      auditRecorder,
+      deviceTokenRepo,
     );
     const result = await uc.execute({
       actorRole: 'SUPER_ADMIN',
+      actorUserId: 'admin-1',
       academyId: 'missing',
     });
 
@@ -160,7 +184,7 @@ describe('ResetOwnerPasswordUseCase', () => {
   });
 
   it('should return NOT_FOUND if owner does not exist', async () => {
-    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator } = buildDeps();
+    const { userRepo, sessionRepo, academyRepo, passwordHasher, passwordGenerator, auditRecorder, deviceTokenRepo } = buildDeps();
     academyRepo.findById.mockResolvedValue(createAcademyEntity());
     userRepo.findById.mockResolvedValue(null);
 
@@ -170,9 +194,12 @@ describe('ResetOwnerPasswordUseCase', () => {
       academyRepo,
       passwordHasher,
       passwordGenerator,
+      auditRecorder,
+      deviceTokenRepo,
     );
     const result = await uc.execute({
       actorRole: 'SUPER_ADMIN',
+      actorUserId: 'admin-1',
       academyId: 'academy-1',
     });
 

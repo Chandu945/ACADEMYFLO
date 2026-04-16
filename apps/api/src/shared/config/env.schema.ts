@@ -118,6 +118,13 @@ export const envSchema = z
     CASHFREE_WEBHOOK_SECRET: z.string().default(''),
     CASHFREE_API_VERSION: z.string().default('2025-01-01'),
     CASHFREE_BASE_URL: z.string().default('https://sandbox.cashfree.com/pg'),
+
+    // Parent online fee payments — authoritative kill-switch for Cashfree parent flow.
+    // Default is OFF so accidental deploys don't expose the flow.
+    PARENT_ONLINE_PAYMENTS_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
   })
   .superRefine((val, ctx) => {
     if (val.APP_ENV !== 'production' && val.APP_ENV !== 'staging') return;

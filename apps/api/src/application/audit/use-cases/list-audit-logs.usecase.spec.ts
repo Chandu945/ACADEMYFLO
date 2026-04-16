@@ -23,7 +23,7 @@ function buildDeps() {
   const userRepo: jest.Mocked<UserRepository> = {
     save: jest.fn(),
     findById: jest.fn(),
-    findByIds: jest.fn(),
+    findByIds: jest.fn().mockResolvedValue([]),
     findByEmail: jest.fn(),
     findByPhone: jest.fn(),
     updateAcademyId: jest.fn(),
@@ -46,6 +46,7 @@ describe('ListAuditLogsUseCase', () => {
   it('should return paginated audit logs for OWNER', async () => {
     const { userRepo, auditLogRepo } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
+    userRepo.findByIds.mockResolvedValue([createOwner()]);
 
     const log = AuditLog.create({
       academyId: 'academy-1',

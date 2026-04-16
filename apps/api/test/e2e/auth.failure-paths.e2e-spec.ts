@@ -11,13 +11,17 @@ import { LoggingModule } from '../../src/shared/logging/logging.module';
 import { AuthController } from '../../src/presentation/http/auth/auth.controller';
 import { USER_REPOSITORY } from '../../src/domain/identity/ports/user.repository';
 import { SESSION_REPOSITORY } from '../../src/domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '../../src/domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '../../src/domain/notification/ports/device-token.repository';
 import { PASSWORD_HASHER } from '../../src/application/identity/ports/password-hasher.port';
 import { TOKEN_SERVICE } from '../../src/application/identity/ports/token-service.port';
 import { OwnerSignupUseCase } from '../../src/application/identity/use-cases/owner-signup.usecase';
 import { LoginUseCase } from '../../src/application/identity/use-cases/login.usecase';
 import { RefreshUseCase } from '../../src/application/identity/use-cases/refresh.usecase';
 import { LogoutUseCase } from '../../src/application/identity/use-cases/logout.usecase';
-import { InMemoryUserRepository, InMemorySessionRepository } from '../helpers/in-memory-repos';
+import { InMemoryUserRepository, InMemorySessionRepository,
+  InMemoryDeviceTokenRepository
+} from '../helpers/in-memory-repos';
 import { createTestTokenService, createTestPasswordHasher } from '../helpers/test-services';
 import type { UserRepository } from '../../src/domain/identity/ports/user.repository';
 import type { SessionRepository } from '../../src/domain/identity/ports/session.repository';
@@ -68,6 +72,7 @@ describe('Auth Failure Paths (e2e)', () => {
       providers: [
         { provide: USER_REPOSITORY, useValue: userRepo },
         { provide: SESSION_REPOSITORY, useValue: sessionRepo },
+        { provide: DEVICE_TOKEN_REPOSITORY, useValue: new InMemoryDeviceTokenRepository() },
         { provide: PASSWORD_HASHER, useValue: hasher },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
@@ -98,7 +103,7 @@ describe('Auth Failure Paths (e2e)', () => {
         },
         {
           provide: 'LOGOUT_USE_CASE',
-          useFactory: (sr: SessionRepository) => new LogoutUseCase(sr),
+          useFactory: (sr: SessionRepository, dtr: DeviceTokenRepository) => new LogoutUseCase(sr, dtr),
           inject: [SESSION_REPOSITORY],
         },
         { provide: PASSWORD_RESET_CHALLENGE_REPOSITORY, useValue: new InMemoryPasswordResetChallengeRepository() },
@@ -124,7 +129,8 @@ describe('Auth Failure Paths (e2e)', () => {
             cr: PasswordResetChallengeRepository,
             oh: OtpHasher,
             ph: PasswordHasher,
-          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph),
+            dtr: DeviceTokenRepository,
+          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr),
           inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_RESET_CHALLENGE_REPOSITORY, OTP_HASHER, PASSWORD_HASHER],
         },
       ],

@@ -15,8 +15,9 @@
 import { execSync } from 'node:child_process';
 import { readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 
 /**
  * Collect all directories under apps/ and packages/ that contain

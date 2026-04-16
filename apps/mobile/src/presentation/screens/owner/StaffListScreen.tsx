@@ -8,7 +8,6 @@ import type { StaffListItem, StaffStatus } from '../../../domain/staff/staff.typ
 import { useStaff } from '../../../application/staff/use-staff';
 import { listStaff, setStaffStatus } from '../../../infra/staff/staff-api';
 import { setStaffStatusUseCase } from '../../../application/staff/use-cases/set-staff-status.usecase';
-import { SectionHeader } from '../../components/ui/SectionHeader';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';

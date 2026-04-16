@@ -54,12 +54,13 @@ export class ListAuditLogsUseCase {
 
     const result = await this.auditLogRepo.listByAcademy(actor.academyId, filter);
 
-    // Resolve actor names for display
+    // Resolve actor names for display — single `$in` query instead of N findById
+    // round-trips. `findByIds` short-circuits on empty input.
     const actorIds = [...new Set(result.items.map((l) => l.actorUserId))];
-    const actors = await Promise.all(actorIds.map((id) => this.userRepo.findById(id)));
+    const actors = await this.userRepo.findByIds(actorIds);
     const nameMap = new Map<string, string>();
     for (const u of actors) {
-      if (u) nameMap.set(u.id.toString(), u.fullName);
+      nameMap.set(u.id.toString(), u.fullName);
     }
 
     return ok({

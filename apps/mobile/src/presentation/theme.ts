@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { TextStyle } from 'react-native';
+import type { TextStyle, ViewStyle } from 'react-native';
 
 // ── Light Colors ─────────────────────────────────────────────────────────────
 export const lightColors = {
@@ -202,47 +202,48 @@ export const listDefaults = {
 // ── Shadows ────────────────────────────────────────────────────────────────
 // On web, RN 0.76 deprecated shadow* in favor of boxShadow. On native, keep
 // shadow* + elevation so iOS and Android render shadows correctly.
-const webShadow = (boxShadow: string) => ({ boxShadow });
+const shadow = (web: ViewStyle, native: ViewStyle): ViewStyle =>
+  Platform.OS === 'web' ? web : native;
 
 export const shadows = {
-  none: Platform.select({
-    web: webShadow('none'),
-    default: {
+  none: shadow(
+    { boxShadow: 'none' },
+    {
       shadowColor: lightColors.transparent,
       shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0,
       shadowRadius: 0,
       elevation: 0,
     },
-  }),
-  sm: Platform.select({
-    web: webShadow('0 1px 2px rgba(0,0,0,0.05)'),
-    default: {
+  ),
+  sm: shadow(
+    { boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+    {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 2,
       elevation: 1,
     },
-  }),
-  md: Platform.select({
-    web: webShadow('0 2px 6px rgba(0,0,0,0.08)'),
-    default: {
+  ),
+  md: shadow(
+    { boxShadow: '0 2px 6px rgba(0,0,0,0.08)' },
+    {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
       shadowRadius: 6,
       elevation: 3,
     },
-  }),
-  lg: Platform.select({
-    web: webShadow('0 4px 12px rgba(0,0,0,0.1)'),
-    default: {
+  ),
+  lg: shadow(
+    { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' },
+    {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.1,
       shadowRadius: 12,
       elevation: 6,
     },
-  }),
+  ),
 } as const;

@@ -1,5 +1,6 @@
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { ExternalCallPolicyPort } from '@application/common/ports/external-call-policy.port';
+import { redactPII } from '@shared/utils/redact-pii';
 
 export interface CashfreeConfig {
   clientId: string;
@@ -10,6 +11,16 @@ export interface CashfreeConfig {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_RETRY_BACKOFF_MS = 500;
+// Cap redacted error message length — long enough to preserve meaningful
+// Cashfree error text, short enough to avoid log bloat.
+const ERROR_MESSAGE_MAX_LEN = 200;
+
+/** Parsed Cashfree error response fields — only known-safe keys. */
+interface CashfreeErrorFields {
+  code?: string;
+  type?: string;
+  message?: string;
+}
 
 /**
  * Low-level HTTP client for Cashfree PG API.
@@ -76,14 +87,7 @@ export class CashfreeHttpClient {
     });
 
     if (!res.ok) {
-      const errorBody = await res.text().catch(() => 'Unknown error');
-      this.logger.error('Cashfree API error', {
-        path,
-        status: res.status,
-        response: errorBody.substring(0, 500),
-      });
-      const detail = this.parseErrorDetail(errorBody);
-      throw new Error(`Cashfree API error ${res.status}: ${detail}`);
+      throw await this.handleErrorResponse(path, res);
     }
 
     return (await res.json()) as T;
@@ -105,28 +109,50 @@ export class CashfreeHttpClient {
     });
 
     if (!res.ok) {
-      const errorBody = await res.text().catch(() => 'Unknown error');
-      this.logger.error('Cashfree API error', {
-        path,
-        status: res.status,
-        response: errorBody.substring(0, 500),
-      });
-      const detail = this.parseErrorDetail(errorBody);
-      throw new Error(`Cashfree API error ${res.status}: ${detail}`);
+      throw await this.handleErrorResponse(path, res);
     }
 
     return (await res.json()) as T;
   }
 
-  /** Extract a human-readable detail from Cashfree's JSON error body, or fall back to raw text. */
-  private parseErrorDetail(raw: string): string {
+  /**
+   * Read the error body, log a redacted structured summary, and return an
+   * Error whose message is also redacted. Raw body bytes never reach logs
+   * or thrown errors — only parsed `code`/`type` and a PII-scrubbed `message`.
+   */
+  private async handleErrorResponse(path: string, res: Response): Promise<Error> {
+    const errorBody = await res.text().catch(() => '');
+    const fields = this.parseCashfreeError(errorBody);
+    const redactedMessage = fields.message
+      ? redactPII(fields.message, ERROR_MESSAGE_MAX_LEN)
+      : undefined;
+
+    this.logger.error('Cashfree API error', {
+      path,
+      status: res.status,
+      bodyBytes: errorBody.length,
+      code: fields.code,
+      type: fields.type,
+      messageRedacted: redactedMessage,
+    });
+
+    const detailParts = [fields.code, fields.type, redactedMessage].filter(Boolean);
+    const detail = detailParts.length > 0 ? detailParts.join(' — ') : 'Unknown error';
+    return new Error(`Cashfree API error ${res.status}: ${detail}`);
+  }
+
+  /** Extract Cashfree's structured error fields. Returns empty object if not JSON. */
+  private parseCashfreeError(raw: string): CashfreeErrorFields {
+    if (!raw) return {};
     try {
-      const parsed = JSON.parse(raw) as { message?: string; code?: string; type?: string };
-      const parts = [parsed.code, parsed.type, parsed.message].filter(Boolean);
-      if (parts.length > 0) return parts.join(' — ');
+      const parsed = JSON.parse(raw) as CashfreeErrorFields;
+      return {
+        code: typeof parsed.code === 'string' ? parsed.code : undefined,
+        type: typeof parsed.type === 'string' ? parsed.type : undefined,
+        message: typeof parsed.message === 'string' ? parsed.message : undefined,
+      };
     } catch {
-      // Not JSON — use raw text
+      return {};
     }
-    return raw.substring(0, 200) || 'Unknown error';
   }
 }

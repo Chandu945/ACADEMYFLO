@@ -13,6 +13,8 @@ import { ACADEMY_REPOSITORY } from '../src/domain/academy/ports/academy.reposito
 import { USER_REPOSITORY } from '../src/domain/identity/ports/user.repository';
 import { SUBSCRIPTION_REPOSITORY } from '../src/domain/subscription/ports/subscription.repository';
 import { CLOCK_PORT } from '../src/application/common/clock.port';
+import { TRANSACTION_PORT } from '../src/application/common/transaction.port';
+import type { TransactionPort } from '../src/application/common/transaction.port';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { SetupAcademyUseCase } from '../src/application/academy/use-cases/setup-academy.usecase';
 import { CreateTrialSubscriptionUseCase } from '../src/application/subscription/use-cases/create-trial-subscription.usecase';
@@ -72,13 +74,25 @@ describe('RBAC (e2e)', () => {
           inject: [SUBSCRIPTION_REPOSITORY, CLOCK_PORT],
         },
         {
+          provide: TRANSACTION_PORT,
+          useValue: {
+            run: async <T>(fn: () => Promise<T>): Promise<T> => fn(),
+          } satisfies TransactionPort,
+        },
+        {
           provide: 'SETUP_ACADEMY_USE_CASE',
           useFactory: (
             ar: AcademyRepository,
             ur: UserRepository,
             ct: CreateTrialSubscriptionUseCase,
-          ) => new SetupAcademyUseCase(ar, ur, ct),
-          inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, 'CREATE_TRIAL_SUBSCRIPTION_USE_CASE'],
+            transaction: TransactionPort,
+          ) => new SetupAcademyUseCase(ar, ur, ct, transaction),
+          inject: [
+            ACADEMY_REPOSITORY,
+            USER_REPOSITORY,
+            'CREATE_TRIAL_SUBSCRIPTION_USE_CASE',
+            TRANSACTION_PORT,
+          ],
         },
       ],
     }).compile();
