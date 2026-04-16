@@ -12,13 +12,13 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Pagination } from '@/components/ui/Pagination';
 import styles from './page.module.css';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'ACTIVE', label: 'Active' },
   { value: 'CLOSED', label: 'Closed' },
-  { value: 'CONVERTED', label: 'Converted' },
 ];
 
 function statusBadgeVariant(status: string) {
@@ -34,12 +34,25 @@ export default function EnquiriesPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
 
-  const { data: enquiries, loading, error, refetch } = useEnquiries({
+  const { data: enquiries, pagination, loading, error, refetch } = useEnquiries({
     search: search || undefined,
     status: statusFilter || undefined,
+    page,
+    limit: 20,
   });
   const { data: summary, loading: summaryLoading } = useEnquirySummary();
+
+  // Reset to page 1 when filters change.
+  const prevFiltersRef = React.useRef({ search, statusFilter });
+  React.useEffect(() => {
+    const prev = prevFiltersRef.current;
+    if (prev.search !== search || prev.statusFilter !== statusFilter) {
+      prevFiltersRef.current = { search, statusFilter };
+      setPage(1);
+    }
+  }, [search, statusFilter]);
 
   return (
     <div className={styles.page}>
@@ -92,32 +105,42 @@ export default function EnquiriesPage() {
           action={!search ? <Button variant="primary" onClick={() => router.push('/enquiries/new')}>Add Enquiry</Button> : undefined}
         />
       ) : (
-        <Table striped>
-          <Thead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Mobile</Th>
-              <Th>Source</Th>
-              <Th>Status</Th>
-              <Th>Follow-up Date</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {enquiries.map((enq) => (
-              <Tr key={enq.id} clickable onClick={() => router.push(`/enquiries/${enq.id}`)}>
-                <Td style={{ fontWeight: 500 }}>{enq.prospectName}</Td>
-                <Td>{enq.mobileNumber}</Td>
-                <Td>{enq.source ?? '-'}</Td>
-                <Td><Badge variant={statusBadgeVariant(enq.status)} dot>{enq.status}</Badge></Td>
-                <Td>
-                  {enq.nextFollowUpDate
-                    ? new Date(enq.nextFollowUpDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : '-'}
-                </Td>
+        <>
+          <Table striped>
+            <Thead>
+              <Tr>
+                <Th>Name</Th>
+                <Th>Mobile</Th>
+                <Th>Source</Th>
+                <Th>Status</Th>
+                <Th>Follow-up Date</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {enquiries.map((enq) => (
+                <Tr key={enq.id} clickable onClick={() => router.push(`/enquiries/${enq.id}`)}>
+                  <Td style={{ fontWeight: 500 }}>{enq.prospectName}</Td>
+                  <Td>{enq.mobileNumber}</Td>
+                  <Td>{enq.source ?? '-'}</Td>
+                  <Td><Badge variant={statusBadgeVariant(enq.status)} dot>{enq.status}</Badge></Td>
+                  <Td>
+                    {enq.nextFollowUpDate
+                      ? new Date(enq.nextFollowUpDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                      : '-'}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+
+          {pagination.totalPages > 1 && (
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={setPage}
+            />
+          )}
+        </>
       )}
     </div>
   );

@@ -251,21 +251,23 @@ describe('Subscription Payments — Full Flow (e2e)', () => {
         },
         {
           provide: 'HANDLE_CASHFREE_WEBHOOK_USE_CASE',
-          useFactory: (pr: any, sr: any, sv: any, c: any, l: any, audit: any, tx: any) =>
-            new HandleCashfreeWebhookUseCase(pr, sr, sv, c, l, audit, tx),
+          useFactory: (pr: any, sr: any, sv: any, c: any, l: any, audit: any, tx: any, sc: any) =>
+            new HandleCashfreeWebhookUseCase(pr, sr, sv, c, l, audit, tx, sc),
           inject: [
             SUBSCRIPTION_PAYMENT_REPOSITORY, SUBSCRIPTION_REPOSITORY,
             WEBHOOK_SIGNATURE_VERIFIER, CLOCK_PORT, LOGGER_PORT, AUDIT_RECORDER_PORT, TRANSACTION_PORT,
+            ACTIVE_STUDENT_COUNTER,
           ],
         },
         {
           provide: 'GET_SUBSCRIPTION_PAYMENT_STATUS_USE_CASE',
-          useFactory: (ur: any, ar: any, sr: any, pr: any, c: any, gw: any, tx: any, l: any, audit: any) =>
-            new GetSubscriptionPaymentStatusUseCase(ur, ar, sr, pr, c, gw, tx, l, audit),
+          useFactory: (ur: any, ar: any, sr: any, pr: any, c: any, gw: any, tx: any, l: any, audit: any, sc: any) =>
+            new GetSubscriptionPaymentStatusUseCase(ur, ar, sr, pr, c, gw, tx, l, audit, sc),
           inject: [
             USER_REPOSITORY, ACADEMY_REPOSITORY, SUBSCRIPTION_REPOSITORY,
             SUBSCRIPTION_PAYMENT_REPOSITORY, CLOCK_PORT,
             CASHFREE_GATEWAY, TRANSACTION_PORT, LOGGER_PORT, AUDIT_RECORDER_PORT,
+            ACTIVE_STUDENT_COUNTER,
           ],
         },
       ],

@@ -34,6 +34,8 @@ export const StudentErrors = {
   statusChangeNotAllowed: () => AppError.forbidden('Only owners can change student status'),
   deleteNotAllowed: () => AppError.forbidden('Only owners can delete students'),
   manageNotAllowed: () => AppError.forbidden('Only owners and staff can manage students'),
+  concurrencyConflict: () =>
+    AppError.conflict('This student was modified by someone else. Please reload and try again.'),
 } as const;
 
 export const AttendanceErrors = {

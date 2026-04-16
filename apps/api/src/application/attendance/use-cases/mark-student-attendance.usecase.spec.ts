@@ -69,6 +69,7 @@ function buildDeps() {
     findByPhoneInAcademy: jest.fn(),
     countInactiveByAcademy: jest.fn(),
     countNewAdmissionsByAcademyAndDateRange: jest.fn(),
+    saveWithVersionPrecondition: jest.fn().mockResolvedValue(true),
   };
   const attendanceRepo: jest.Mocked<StudentAttendanceRepository> = {
     save: jest.fn(),

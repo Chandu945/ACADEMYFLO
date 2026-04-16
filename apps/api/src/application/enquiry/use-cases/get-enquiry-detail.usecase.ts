@@ -27,6 +27,8 @@ export interface EnquiryDetailOutput {
   status: string;
   closureReason: string | null;
   convertedStudentId: string | null;
+  closedBy: string | null;
+  closedAt: string | null;
   nextFollowUpDate: string | null;
   followUps: {
     id: string;
@@ -56,6 +58,8 @@ export function toEnquiryDetail(e: Enquiry): EnquiryDetailOutput {
     status: e.status,
     closureReason: e.closureReason,
     convertedStudentId: e.convertedStudentId,
+    closedBy: e.closedBy,
+    closedAt: e.closedAt?.toISOString() ?? null,
     nextFollowUpDate: e.nextFollowUpDate?.toISOString() ?? null,
     followUps: e.followUps.map((f) => ({
       id: f.id,

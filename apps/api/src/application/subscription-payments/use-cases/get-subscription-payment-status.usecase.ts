@@ -5,6 +5,7 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { SubscriptionRepository } from '@domain/subscription/ports/subscription.repository';
 import type { SubscriptionPaymentRepository } from '@domain/subscription-payments/ports/subscription-payment.repository';
 import type { CashfreeGatewayPort } from '@domain/subscription-payments/ports/cashfree-gateway.port';
+import type { ActiveStudentCounterPort } from '@application/subscription/ports/active-student-counter.port';
 import type { ClockPort } from '@application/common/clock.port';
 import type { TransactionPort } from '@application/common/transaction.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
@@ -12,6 +13,7 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
 import { evaluateSubscriptionStatus } from '@domain/subscription/rules/subscription.rules';
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import { computePaidDates } from '@domain/subscription-payments/rules/subscription-payment.rules';
+import { requiredTierForCount } from '@domain/subscription/rules/subscription-tier.rules';
 import type { PaymentStatusOutput } from '../dtos/subscription-payment.dto';
 import type { TierKey } from '@playconnect/contracts';
 
@@ -26,6 +28,7 @@ export class GetSubscriptionPaymentStatusUseCase {
     private readonly transaction: TransactionPort,
     private readonly logger: LoggerPort,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly studentCounter: ActiveStudentCounterPort,
   ) {}
 
   async execute(
@@ -71,6 +74,17 @@ export class GetSubscriptionPaymentStatusUseCase {
         const cfOrder = await this.cashfreeGateway.getOrder(pendingPayment.orderId);
 
         if (cfOrder.orderStatus === 'PAID') {
+          // Defense-in-depth: same amount check the webhook does. Prevents
+          // activating if the provider's order amount diverges from what we stored.
+          if (cfOrder.orderAmount !== pendingPayment.amountInr) {
+            this.logger.error('Poll-verification amount mismatch', {
+              orderId,
+              cashfreeAmount: cfOrder.orderAmount,
+              storedAmount: pendingPayment.amountInr,
+            });
+            return err(AppError.validation('Payment amount mismatch between provider and stored record'));
+          }
+
           // Cashfree confirms payment — mark as SUCCESS and activate subscription
           const now = this.clock.now();
           const providerPaymentId = `verified_${cfOrder.cfOrderId}`;
@@ -175,6 +189,20 @@ export class GetSubscriptionPaymentStatusUseCase {
 
     const { paidStartAt, paidEndAt } = computePaidDates(effectiveNow, subscription.trialEndAt);
 
+    // Re-check tier at activation (mirrors handle-cashfree-webhook). If student
+    // count crossed a boundary since initiate, queue a pendingTierKey upgrade.
+    const currentStudentCount = await this.studentCounter.countActiveStudents(academyId, now);
+    const currentRequiredTier = requiredTierForCount(currentStudentCount);
+    const pendingTierKey = currentRequiredTier !== tierKey ? currentRequiredTier : null;
+    if (pendingTierKey) {
+      this.logger.warn('Tier changed between initiate and poll-settlement', {
+        academyId,
+        paidTier: tierKey,
+        currentRequiredTier,
+        activeStudents: currentStudentCount,
+      });
+    }
+
     const activated = Subscription.reconstitute(subscription.id.toString(), {
       academyId: subscription.academyId,
       trialStartAt: subscription.trialStartAt,
@@ -182,9 +210,9 @@ export class GetSubscriptionPaymentStatusUseCase {
       paidStartAt,
       paidEndAt,
       tierKey: tierKey as TierKey,
-      pendingTierKey: null,
-      pendingTierEffectiveAt: null,
-      activeStudentCountSnapshot: subscription.activeStudentCountSnapshot,
+      pendingTierKey,
+      pendingTierEffectiveAt: pendingTierKey ? paidEndAt : null,
+      activeStudentCountSnapshot: currentStudentCount,
       manualNotes: subscription.manualNotes,
       paymentReference: subscription.paymentReference,
       audit: {

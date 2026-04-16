@@ -365,7 +365,9 @@ function StatusChangeModal({
 
           {(selectedStatus === 'INACTIVE' || selectedStatus === 'LEFT') && (
             <Text style={styles.warningText}>
-              Changing status will stop fee generation for this student.
+              Changing status will stop fee generation and remove any upcoming
+              (not-yet-due) fee entries for this student. Past and currently due
+              fees are preserved.
             </Text>
           )}
 

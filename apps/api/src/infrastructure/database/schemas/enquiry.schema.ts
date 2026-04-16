@@ -72,6 +72,12 @@ export class EnquiryModel {
   @Prop({ type: String, default: null })
   convertedStudentId!: string | null;
 
+  @Prop({ type: String, default: null })
+  closedBy!: string | null;
+
+  @Prop({ type: Date, default: null })
+  closedAt!: Date | null;
+
   @Prop({ type: Date, default: null })
   nextFollowUpDate!: Date | null;
 

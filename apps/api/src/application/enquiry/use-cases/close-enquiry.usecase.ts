@@ -42,7 +42,7 @@ export class CloseEnquiryUseCase {
       return err(EnquiryErrors.alreadyClosed());
     }
 
-    const closed = enquiry.close(input.closureReason, input.convertedStudentId);
+    const closed = enquiry.close(input.closureReason, input.actorUserId, new Date(), input.convertedStudentId);
     await this.enquiryRepo.save(closed);
     return ok(toEnquiryDetail(closed));
   }

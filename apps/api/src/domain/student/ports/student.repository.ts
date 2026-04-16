@@ -20,6 +20,14 @@ export interface BirthdayStudent {
 
 export interface StudentRepository {
   save(student: Student): Promise<void>;
+  /**
+   * CAS update: save the student only if the stored document's version matches
+   * `expectedVersion`. Returns true on success, false if another writer won
+   * (caller should treat this as a concurrency conflict and return 409).
+   * Also requires the stored document to be non-deleted, so an edit cannot
+   * resurrect a record that was soft-deleted concurrently.
+   */
+  saveWithVersionPrecondition(student: Student, expectedVersion: number): Promise<boolean>;
   findById(id: string): Promise<Student | null>;
   findByEmailInAcademy(academyId: string, email: string, excludeId?: string): Promise<Student | null>;
   findByPhoneInAcademy(academyId: string, phone: string, excludeId?: string): Promise<Student | null>;

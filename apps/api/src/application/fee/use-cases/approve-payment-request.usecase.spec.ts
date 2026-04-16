@@ -102,6 +102,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       findByIds: jest.fn(),
       countInactiveByAcademy: jest.fn(),
       countNewAdmissionsByAcademyAndDateRange: jest.fn(),
+      saveWithVersionPrecondition: jest.fn().mockResolvedValue(true),
       findBirthdaysByAcademy: jest.fn(),
     } as jest.Mocked<StudentRepository>;
 

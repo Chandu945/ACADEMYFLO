@@ -8,6 +8,11 @@ import { canChangeStudentStatus } from '@domain/student/rules/student.rules';
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
+
+export interface ChangeStudentStatusOutput {
+  student: StudentDto;
+  deletedUpcomingDuesCount: number;
+}
 import type { StudentStatus, UserRole } from '@playconnect/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
@@ -30,7 +35,7 @@ export class ChangeStudentStatusUseCase {
     private readonly transaction?: TransactionPort,
   ) {}
 
-  async execute(input: ChangeStudentStatusInput): Promise<Result<StudentDto, AppError>> {
+  async execute(input: ChangeStudentStatusInput): Promise<Result<ChangeStudentStatusOutput, AppError>> {
     const roleCheck = canChangeStudentStatus(input.actorRole);
     if (!roleCheck.allowed) {
       return err(StudentErrors.statusChangeNotAllowed());
@@ -51,8 +56,10 @@ export class ChangeStudentStatusUseCase {
     }
 
     if (input.status === student.status) {
-      return ok(toStudentDto(student));
+      return ok({ student: toStudentDto(student), deletedUpcomingDuesCount: 0 });
     }
+
+    const loadedVersion = student.audit.version;
 
     const academyId = actor.academyId;
 
@@ -103,11 +110,17 @@ export class ChangeStudentStatusUseCase {
       );
     }
 
+    let conflicted = false;
+    let deletedDues = 0;
     const saveOps = async () => {
-      await this.studentRepo.save(updated);
+      const saved = await this.studentRepo.saveWithVersionPrecondition(updated, loadedVersion);
+      if (!saved) {
+        conflicted = true;
+        return;
+      }
 
       if (needsFeeCleanup) {
-        await this.feeDueRepo!.deleteUpcomingByStudent(academyId, input.studentId);
+        deletedDues = await this.feeDueRepo!.deleteUpcomingByStudent(academyId, input.studentId);
       }
     };
 
@@ -117,15 +130,22 @@ export class ChangeStudentStatusUseCase {
       await saveOps();
     }
 
+    if (conflicted) return err(StudentErrors.concurrencyConflict());
+
     await this.auditRecorder.record({
       academyId,
       actorUserId: input.actorUserId,
       action: 'STUDENT_STATUS_CHANGED',
       entityType: 'STUDENT',
       entityId: input.studentId,
-      context: { fromStatus: student.status, newStatus: input.status, ...(input.reason ? { reason: input.reason } : {}) },
+      context: {
+        fromStatus: student.status,
+        newStatus: input.status,
+        deletedUpcomingDuesCount: String(deletedDues),
+        ...(input.reason ? { reason: input.reason } : {}),
+      },
     });
 
-    return ok(toStudentDto(updated));
+    return ok({ student: toStudentDto(updated), deletedUpcomingDuesCount: deletedDues });
   }
 }

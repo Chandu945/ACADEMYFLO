@@ -48,6 +48,8 @@ export class SoftDeleteStudentUseCase {
       return err(StudentErrors.notInAcademy());
     }
 
+    const loadedVersion = student.audit.version;
+
     const deleted = Student.reconstitute(input.studentId, {
       academyId: student.academyId,
       fullName: student.fullName,
@@ -73,7 +75,8 @@ export class SoftDeleteStudentUseCase {
       softDelete: markDeleted(input.actorUserId),
     });
 
-    await this.studentRepo.save(deleted);
+    const saved = await this.studentRepo.saveWithVersionPrecondition(deleted, loadedVersion);
+    if (!saved) return err(StudentErrors.concurrencyConflict());
 
     if (this.feeDueRepo) {
       await this.feeDueRepo.deleteUpcomingByStudent(actor.academyId, input.studentId);

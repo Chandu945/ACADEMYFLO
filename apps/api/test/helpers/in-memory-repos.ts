@@ -504,6 +504,15 @@ export class InMemoryStudentRepository implements StudentRepository {
     this.students.set(student.id.toString(), student);
   }
 
+  async saveWithVersionPrecondition(student: Student, expectedVersion: number): Promise<boolean> {
+    const existing = this.students.get(student.id.toString());
+    if (!existing) return false;
+    if (existing.audit.version !== expectedVersion) return false;
+    if (existing.isDeleted()) return false;
+    this.students.set(student.id.toString(), student);
+    return true;
+  }
+
   async findById(id: string): Promise<Student | null> {
     return this.students.get(id) ?? null;
   }

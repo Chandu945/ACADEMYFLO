@@ -131,3 +131,28 @@ StudentSchema.index({ academyId: 1, status: 1, joiningDate: 1 });
 
 // Search: prefix search on normalized name within an academy
 StudentSchema.index({ academyId: 1, fullNameNormalized: 1 });
+
+// Dedup: one ACTIVE/INACTIVE (non-deleted) student per email or phone per academy.
+// Partial index: only enforced when the field is set AND the student is not soft-deleted,
+// so deleted records don't block re-creating with the same contact info.
+StudentSchema.index(
+  { academyId: 1, email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { email: { $type: 'string' }, deletedAt: null },
+  },
+);
+StudentSchema.index(
+  { academyId: 1, mobileNumber: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { mobileNumber: { $type: 'string' }, deletedAt: null },
+  },
+);
+StudentSchema.index(
+  { academyId: 1, 'guardian.mobile': 1 },
+  {
+    unique: true,
+    partialFilterExpression: { 'guardian.mobile': { $type: 'string' }, deletedAt: null },
+  },
+);

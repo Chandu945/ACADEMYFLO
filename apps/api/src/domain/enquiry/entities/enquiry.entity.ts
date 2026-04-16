@@ -28,6 +28,8 @@ export interface EnquiryProps {
   status: EnquiryStatus;
   closureReason: ClosureReason | null;
   convertedStudentId: string | null;
+  closedBy: string | null;
+  closedAt: Date | null;
   nextFollowUpDate: Date | null;
   followUps: FollowUp[];
   createdBy: string;
@@ -68,6 +70,8 @@ export class Enquiry extends Entity<EnquiryProps> {
       status: 'ACTIVE',
       closureReason: null,
       convertedStudentId: null,
+      closedBy: null,
+      closedAt: null,
       nextFollowUpDate: params.nextFollowUpDate ?? null,
       followUps: [],
       createdBy: params.createdBy,
@@ -92,6 +96,8 @@ export class Enquiry extends Entity<EnquiryProps> {
   get status(): EnquiryStatus { return this.props.status; }
   get closureReason(): ClosureReason | null { return this.props.closureReason; }
   get convertedStudentId(): string | null { return this.props.convertedStudentId; }
+  get closedBy(): string | null { return this.props.closedBy; }
+  get closedAt(): Date | null { return this.props.closedAt; }
   get nextFollowUpDate(): Date | null { return this.props.nextFollowUpDate; }
   get followUps(): FollowUp[] { return this.props.followUps; }
   get createdBy(): string { return this.props.createdBy; }
@@ -136,12 +142,14 @@ export class Enquiry extends Entity<EnquiryProps> {
     });
   }
 
-  close(reason: ClosureReason, convertedStudentId?: string): Enquiry {
+  close(reason: ClosureReason, closedBy: string, closedAt: Date, convertedStudentId?: string): Enquiry {
     return Enquiry.reconstitute(this.id.toString(), {
       ...this.props,
       status: 'CLOSED',
       closureReason: reason,
       convertedStudentId: convertedStudentId ?? null,
+      closedBy,
+      closedAt,
       nextFollowUpDate: null,
       audit: updateAuditFields(this.props.audit),
     });

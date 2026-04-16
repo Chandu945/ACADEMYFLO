@@ -52,6 +52,11 @@ export default function EnquiryDetailPage() {
   const [convertJoiningDate, setConvertJoiningDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [convertMonthlyFee, setConvertMonthlyFee] = useState('');
   const [convertGender, setConvertGender] = useState<string>('');
+  const [convertDateOfBirth, setConvertDateOfBirth] = useState('');
+  const [convertAddressLine1, setConvertAddressLine1] = useState('');
+  const [convertCity, setConvertCity] = useState('');
+  const [convertState, setConvertState] = useState('');
+  const [convertPincode, setConvertPincode] = useState('');
 
   const handleAddFollowUp = useCallback(async () => {
     if (!followUpNotes.trim()) { setFollowUpError('Notes are required'); return; }
@@ -91,12 +96,33 @@ export default function EnquiryDetailPage() {
       setConvertError('Monthly fee is required');
       return;
     }
+    if (!convertDateOfBirth) {
+      setConvertError('Date of birth is required');
+      return;
+    }
+    if (!convertGender) {
+      setConvertError('Gender is required');
+      return;
+    }
+    if (!convertAddressLine1.trim() || !convertCity.trim() || !convertState.trim()) {
+      setConvertError('Address, city and state are required');
+      return;
+    }
+    if (!/^\d{6}$/.test(convertPincode)) {
+      setConvertError('Pincode must be 6 digits');
+      return;
+    }
     setConverting(true);
     setConvertError(null);
     const result = await convertEnquiry(params.id, {
       joiningDate: convertJoiningDate,
       monthlyFee: Number(convertMonthlyFee),
-      gender: convertGender || undefined,
+      dateOfBirth: convertDateOfBirth,
+      gender: convertGender.toUpperCase(),
+      addressLine1: convertAddressLine1.trim(),
+      city: convertCity.trim(),
+      state: convertState.trim(),
+      pincode: convertPincode,
     }, accessToken);
     setConverting(false);
     if (!result.ok) {
@@ -105,7 +131,19 @@ export default function EnquiryDetailPage() {
     }
     setConvertOpen(false);
     router.push('/enquiries');
-  }, [params.id, accessToken, router, convertJoiningDate, convertMonthlyFee, convertGender]);
+  }, [
+    params.id,
+    accessToken,
+    router,
+    convertJoiningDate,
+    convertMonthlyFee,
+    convertGender,
+    convertDateOfBirth,
+    convertAddressLine1,
+    convertCity,
+    convertState,
+    convertPincode,
+  ]);
 
   if (loading) return <Spinner centered size="lg" />;
   if (!enquiry) return <Alert variant="error" message="Enquiry not found" />;
@@ -257,7 +295,18 @@ export default function EnquiryDetailPage() {
       {/* Convert to Student Modal */}
       <Modal
         open={convertOpen}
-        onClose={() => { setConvertOpen(false); setConvertError(null); setConvertMonthlyFee(''); setConvertGender(''); setConvertJoiningDate(new Date().toISOString().slice(0, 10)); }}
+        onClose={() => {
+          setConvertOpen(false);
+          setConvertError(null);
+          setConvertMonthlyFee('');
+          setConvertGender('');
+          setConvertJoiningDate(new Date().toISOString().slice(0, 10));
+          setConvertDateOfBirth('');
+          setConvertAddressLine1('');
+          setConvertCity('');
+          setConvertState('');
+          setConvertPincode('');
+        }}
         title="Convert to Student"
         size="sm"
         footer={
@@ -277,6 +326,12 @@ export default function EnquiryDetailPage() {
             required
             value={convertJoiningDate}
             onChange={(e) => setConvertJoiningDate(e.target.value)}
+          />
+          <DatePicker
+            label="Date of Birth"
+            required
+            value={convertDateOfBirth}
+            onChange={(e) => setConvertDateOfBirth(e.target.value)}
           />
           <Input
             label="Monthly Fee"
@@ -305,6 +360,34 @@ export default function EnquiryDetailPage() {
               ))}
             </div>
           </div>
+          <Input
+            label="Address Line 1"
+            required
+            value={convertAddressLine1}
+            onChange={(e) => setConvertAddressLine1(e.target.value)}
+            placeholder="Street / flat / house no."
+          />
+          <Input
+            label="City"
+            required
+            value={convertCity}
+            onChange={(e) => setConvertCity(e.target.value)}
+          />
+          <Input
+            label="State"
+            required
+            value={convertState}
+            onChange={(e) => setConvertState(e.target.value)}
+          />
+          <Input
+            label="Pincode"
+            required
+            value={convertPincode}
+            onChange={(e) => setConvertPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="6-digit pincode"
+            inputMode="numeric"
+            maxLength={6}
+          />
         </div>
       </Modal>
     </div>

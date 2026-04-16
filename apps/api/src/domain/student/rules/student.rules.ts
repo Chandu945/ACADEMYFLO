@@ -37,9 +37,16 @@ export function validateGender(gender: string): { valid: boolean; reason?: strin
   return { valid: true };
 }
 
+const MAX_AGE_YEARS = 120;
+
 export function validateDateOfBirth(dob: Date): { valid: boolean; reason?: string } {
-  if (dob > new Date()) {
+  const now = new Date();
+  if (dob > now) {
     return { valid: false, reason: 'Date of birth cannot be in the future' };
+  }
+  const ageYears = (now.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  if (ageYears > MAX_AGE_YEARS) {
+    return { valid: false, reason: `Date of birth cannot be more than ${MAX_AGE_YEARS} years ago` };
   }
   return { valid: true };
 }

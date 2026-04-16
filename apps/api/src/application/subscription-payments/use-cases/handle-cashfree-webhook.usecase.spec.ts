@@ -67,6 +67,9 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     transaction: {
       run: jest.fn().mockImplementation((fn: () => Promise<void>) => fn()),
     },
+    studentCounter: {
+      countActiveStudents: jest.fn().mockResolvedValue(10),
+    },
     ...overrides,
   };
 }
@@ -84,6 +87,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const result = await uc.execute(
@@ -105,6 +109,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const result = await uc.execute(
@@ -143,6 +148,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const result = await uc.execute(
@@ -166,6 +172,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const result = await uc.execute(
@@ -191,6 +198,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const result = await uc.execute(
@@ -218,6 +226,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const result = await uc.execute(
@@ -239,6 +248,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const staleTimestamp = String(Math.floor(Date.now() / 1000) - 600); // 10 minutes ago
@@ -261,6 +271,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     // Payment has amountInr=299, webhook sends order_amount=500
@@ -297,6 +308,7 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.logger as never,
       deps.auditRecorder as never,
       deps.transaction as never,
+      deps.studentCounter as never,
     );
 
     const result = await uc.execute(

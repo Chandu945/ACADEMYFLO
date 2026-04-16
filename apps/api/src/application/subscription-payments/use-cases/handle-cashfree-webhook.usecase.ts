@@ -2,12 +2,14 @@ import type { Result } from '@shared/kernel';
 import { ok, err, AppError } from '@shared/kernel';
 import type { SubscriptionPaymentRepository } from '@domain/subscription-payments/ports/subscription-payment.repository';
 import type { SubscriptionRepository } from '@domain/subscription/ports/subscription.repository';
+import type { ActiveStudentCounterPort } from '@application/subscription/ports/active-student-counter.port';
 import type { ClockPort } from '@application/common/clock.port';
 import type { TransactionPort } from '@application/common/transaction.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import { computePaidDates } from '@domain/subscription-payments/rules/subscription-payment.rules';
+import { requiredTierForCount } from '@domain/subscription/rules/subscription-tier.rules';
 import type { TierKey } from '@playconnect/contracts';
 
 export interface WebhookSignatureVerifier {
@@ -23,6 +25,7 @@ export class HandleCashfreeWebhookUseCase {
     private readonly logger: LoggerPort,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly transaction: TransactionPort,
+    private readonly studentCounter: ActiveStudentCounterPort,
   ) {}
 
   async execute(
@@ -188,6 +191,22 @@ export class HandleCashfreeWebhookUseCase {
 
     const paymentRef = cfPaymentId ? `${orderId}/${cfPaymentId}` : orderId;
 
+    // Re-check tier at activation: if the active-student count crossed a tier
+    // boundary between initiate and settlement, record it as a pendingTierKey
+    // so the owner is prompted to upgrade at the next billing cycle. The user
+    // still gets the tier they paid for until then.
+    const currentStudentCount = await this.studentCounter.countActiveStudents(academyId, now);
+    const currentRequiredTier = requiredTierForCount(currentStudentCount);
+    const pendingTierKey = currentRequiredTier !== tierKey ? currentRequiredTier : null;
+    if (pendingTierKey) {
+      this.logger.warn('Tier changed between initiate and settlement', {
+        academyId,
+        paidTier: tierKey,
+        currentRequiredTier,
+        activeStudents: currentStudentCount,
+      });
+    }
+
     const activated = Subscription.reconstitute(subscription.id.toString(), {
       academyId: subscription.academyId,
       trialStartAt: subscription.trialStartAt,
@@ -195,9 +214,9 @@ export class HandleCashfreeWebhookUseCase {
       paidStartAt,
       paidEndAt,
       tierKey: tierKey as TierKey,
-      pendingTierKey: null,
-      pendingTierEffectiveAt: null,
-      activeStudentCountSnapshot: subscription.activeStudentCountSnapshot,
+      pendingTierKey,
+      pendingTierEffectiveAt: pendingTierKey ? paidEndAt : null,
+      activeStudentCountSnapshot: currentStudentCount,
       manualNotes: subscription.manualNotes,
       paymentReference: paymentRef,
       audit: {

@@ -50,6 +50,7 @@ export class UploadStudentPhotoUseCase {
     if (student.academyId !== actor.academyId) {
       return err(StudentErrors.notInAcademy());
     }
+    const loadedVersion = student.audit.version;
 
     if (!ALLOWED_IMAGE_MIME_TYPES.includes(input.mimeType as typeof ALLOWED_IMAGE_MIME_TYPES[number])) {
       return err(AppErrorClass.validation('Only JPEG, PNG, and WebP images are allowed'));
@@ -64,24 +65,40 @@ export class UploadStudentPhotoUseCase {
       return err(AppErrorClass.validation(bufferCheck.reason));
     }
 
-    // Delete old photo if exists
-    if (student.profilePhotoUrl) {
-      await this.fileStorage.delete(student.profilePhotoUrl);
-    }
-
+    // Upload new photo FIRST, then delete the old one only if upload + save succeeded.
+    // If we delete first and the upload fails, the student loses their photo entirely
+    // with no way to recover.
     const ext = extensionForMime(input.mimeType);
     const filename = `${uuidv4()}.${ext}`;
     const folder = `students/${actor.academyId}`;
 
     const { url } = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
 
+    const previousUrl = student.profilePhotoUrl;
     const updated = Student.reconstitute(input.studentId, {
       ...student['props'],
       profilePhotoUrl: url,
       audit: updateAuditFields(student.audit),
     });
 
-    await this.studentRepo.save(updated);
+    const saved = await this.studentRepo.saveWithVersionPrecondition(updated, loadedVersion);
+    if (!saved) {
+      // Concurrent edit won — the new file we just uploaded is orphaned (will
+      // be GC'd). Tell the caller to reload and retry.
+      try { await this.fileStorage.delete(url); } catch { /* best effort */ }
+      return err(StudentErrors.concurrencyConflict());
+    }
+
+    // Best-effort cleanup of the old photo. If this fails, we orphan a file in R2
+    // rather than leaving the student with a broken URL.
+    if (previousUrl) {
+      try {
+        await this.fileStorage.delete(previousUrl);
+      } catch {
+        // Intentionally swallowed — the student now points at the new URL; the
+        // old file will be cleaned up by storage GC eventually.
+      }
+    }
 
     return ok({ url });
   }

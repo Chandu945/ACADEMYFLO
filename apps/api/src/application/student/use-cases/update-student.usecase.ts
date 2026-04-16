@@ -77,6 +77,7 @@ export class UpdateStudentUseCase {
     if (!student || student.isDeleted()) {
       return err(StudentErrors.notFound(input.studentId));
     }
+    const loadedVersion = student.audit.version;
 
     if (student.academyId !== actor.academyId) {
       return err(StudentErrors.notInAcademy());
@@ -206,7 +207,20 @@ export class UpdateStudentUseCase {
       softDelete: student.softDelete,
     });
 
-    await this.studentRepo.save(updated);
+    try {
+      const saved = await this.studentRepo.saveWithVersionPrecondition(updated, loadedVersion);
+      if (!saved) return err(StudentErrors.concurrencyConflict());
+    } catch (error) {
+      // Partial unique index may fire if the mobile/email update collides with
+      // another student in the same academy.
+      const isDup = (error as { code?: number })?.code === 11000;
+      if (isDup) {
+        const keyPattern = (error as { keyPattern?: Record<string, unknown> })?.keyPattern ?? {};
+        if ('email' in keyPattern) return err(StudentErrors.duplicateEmail());
+        return err(StudentErrors.duplicatePhone());
+      }
+      throw error;
+    }
 
     await this.auditRecorder.record({
       academyId: actor.academyId,

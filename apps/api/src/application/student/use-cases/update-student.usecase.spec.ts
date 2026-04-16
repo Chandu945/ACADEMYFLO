@@ -72,6 +72,7 @@ function buildDeps() {
     findByPhoneInAcademy: jest.fn(),
     countInactiveByAcademy: jest.fn(),
     countNewAdmissionsByAcademyAndDateRange: jest.fn(),
+    saveWithVersionPrecondition: jest.fn().mockResolvedValue(true),
   };
 
   const auditRecorder = { record: jest.fn() };
@@ -97,7 +98,7 @@ describe('UpdateStudentUseCase', () => {
     if (result.ok) {
       expect(result.value.fullName).toBe('Updated Name');
     }
-    expect(studentRepo.save).toHaveBeenCalled();
+    expect(studentRepo.saveWithVersionPrecondition).toHaveBeenCalled();
   });
 
   it('should allow OWNER to change monthly fee', async () => {

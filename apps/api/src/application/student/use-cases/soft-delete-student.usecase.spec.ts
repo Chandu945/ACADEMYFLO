@@ -83,6 +83,7 @@ function buildDeps() {
     findByPhoneInAcademy: jest.fn(),
     countInactiveByAcademy: jest.fn(),
     countNewAdmissionsByAcademyAndDateRange: jest.fn(),
+    saveWithVersionPrecondition: jest.fn().mockResolvedValue(true),
   };
 
   const auditRecorder = { record: jest.fn() };
@@ -107,8 +108,8 @@ describe('SoftDeleteStudentUseCase', () => {
     if (result.ok) {
       expect(result.value.id).toBe('student-1');
     }
-    expect(studentRepo.save).toHaveBeenCalled();
-    const savedStudent = studentRepo.save.mock.calls[0]?.[0];
+    expect(studentRepo.saveWithVersionPrecondition).toHaveBeenCalled();
+    const savedStudent = studentRepo.saveWithVersionPrecondition.mock.calls[0]?.[0];
     expect(savedStudent?.isDeleted()).toBe(true);
   });
 

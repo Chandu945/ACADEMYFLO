@@ -30,6 +30,8 @@ export class MongoEnquiryRepository implements EnquiryRepository {
         status: enquiry.status,
         closureReason: enquiry.closureReason,
         convertedStudentId: enquiry.convertedStudentId,
+        closedBy: enquiry.closedBy,
+        closedAt: enquiry.closedAt,
         nextFollowUpDate: enquiry.nextFollowUpDate,
         followUps: enquiry.followUps.map((f) => ({
           _id: f.id,
@@ -149,6 +151,8 @@ export class MongoEnquiryRepository implements EnquiryRepository {
       status: string;
       closureReason: string | null;
       convertedStudentId: string | null;
+      closedBy: string | null;
+      closedAt: Date | null;
       nextFollowUpDate: Date | null;
       followUps: {
         _id: string;
@@ -187,6 +191,8 @@ export class MongoEnquiryRepository implements EnquiryRepository {
       status: d.status as 'ACTIVE' | 'CLOSED',
       closureReason: (d.closureReason as ClosureReason) ?? null,
       convertedStudentId: d.convertedStudentId ?? null,
+      closedBy: d.closedBy ?? null,
+      closedAt: d.closedAt ? new Date(d.closedAt) : null,
       nextFollowUpDate: d.nextFollowUpDate ? new Date(d.nextFollowUpDate) : null,
       followUps,
       createdBy: d.createdBy,

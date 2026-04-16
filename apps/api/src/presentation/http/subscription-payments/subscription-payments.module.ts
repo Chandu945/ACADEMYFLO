@@ -156,6 +156,7 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         logger: LoggerPort,
         auditRecorder: AuditRecorderPort,
         transaction: TransactionPort,
+        studentCounter: ActiveStudentCounterPort,
       ) =>
         new HandleCashfreeWebhookUseCase(
           paymentRepo,
@@ -165,6 +166,7 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
           logger,
           auditRecorder,
           transaction,
+          studentCounter,
         ),
       inject: [
         SUBSCRIPTION_PAYMENT_REPOSITORY,
@@ -174,6 +176,7 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         LOGGER_PORT,
         AUDIT_RECORDER_PORT,
         TRANSACTION_PORT,
+        ACTIVE_STUDENT_COUNTER,
       ],
     },
     {
@@ -188,6 +191,7 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         transaction: TransactionPort,
         logger: LoggerPort,
         auditRecorder: AuditRecorderPort,
+        studentCounter: ActiveStudentCounterPort,
       ) =>
         new GetSubscriptionPaymentStatusUseCase(
           userRepo,
@@ -199,6 +203,7 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
           transaction,
           logger,
           auditRecorder,
+          studentCounter,
         ),
       inject: [
         USER_REPOSITORY,
@@ -210,6 +215,7 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         TRANSACTION_PORT,
         LOGGER_PORT,
         AUDIT_RECORDER_PORT,
+        ACTIVE_STUDENT_COUNTER,
       ],
     },
   ],

@@ -11,14 +11,19 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
   try { return await res.json(); } catch { return null; }
 }
 
-export function useEnquiries(filters: { status?: string; source?: string; search?: string } = {}) {
+type EnquiriesPagination = { page: number; limit: number; total: number; totalPages: number };
+
+export function useEnquiries(
+  filters: { status?: string; source?: string; search?: string; page?: number; limit?: number } = {},
+) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<EnquiryListItem[]>([]);
+  const [pagination, setPagination] = useState<EnquiriesPagination>({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const { status, source, search } = filters;
+  const { status, source, search, page = 1, limit = 20 } = filters;
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
@@ -33,6 +38,8 @@ export function useEnquiries(filters: { status?: string; source?: string; search
       if (status) params.set('status', status);
       if (source) params.set('source', source);
       if (search) params.set('search', search);
+      params.set('page', String(page));
+      params.set('limit', String(limit));
       const res = await fetch(`/api/enquiries?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
@@ -42,6 +49,8 @@ export function useEnquiries(filters: { status?: string; source?: string; search
       if (controller.signal.aborted) return;
       if (!res.ok || !json) throw new Error((json?.['message'] as string) || 'Failed to load enquiries');
       setData((json['data'] ?? json['items'] ?? []) as EnquiryListItem[]);
+      const p = json['pagination'] as EnquiriesPagination | undefined;
+      if (p) setPagination(p);
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return;
       if (controller.signal.aborted) return;
@@ -49,10 +58,10 @@ export function useEnquiries(filters: { status?: string; source?: string; search
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [accessToken, status, source, search]);
+  }, [accessToken, status, source, search, page, limit]);
 
   useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
-  return { data, loading, error, refetch: fetch_ };
+  return { data, pagination, loading, error, refetch: fetch_ };
 }
 
 export function useEnquirySummary() {

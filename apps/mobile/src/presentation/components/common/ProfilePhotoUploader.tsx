@@ -38,6 +38,11 @@ export function ProfilePhotoUploader({
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [uploading, setUploading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(currentPhotoUrl);
+  const [loadError, setLoadError] = useState(false);
+
+  // Reset the error flag whenever the source URL changes so a fresh upload gets a
+  // clean shot at rendering.
+  React.useEffect(() => setLoadError(false), [photoUrl]);
 
   const effectivePath = uploadPath || GENERAL_UPLOAD_PATH;
 
@@ -163,11 +168,12 @@ export function ProfilePhotoUploader({
     >
       {uploading ? (
         <ActivityIndicator size="small" color={colors.primary} />
-      ) : resolvedUri ? (
+      ) : resolvedUri && !loadError ? (
         <Image
           source={{ uri: resolvedUri }}
           style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]}
           testID={`${testID}-image`}
+          onError={() => setLoadError(true)}
         />
       ) : (
         <View style={[styles.placeholder, { width: size, height: size, borderRadius: size / 2 }]}>

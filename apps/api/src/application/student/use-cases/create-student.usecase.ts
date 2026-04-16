@@ -162,7 +162,20 @@ export class CreateStudentUseCase {
       profilePhotoUrl: input.profilePhotoUrl,
     });
 
-    await this.studentRepo.save(student);
+    try {
+      await this.studentRepo.save(student);
+    } catch (error) {
+      // Partial unique indexes on (academyId, email/mobileNumber/guardian.mobile)
+      // catch the find-then-save race when two requests pass the dedup check
+      // concurrently. Surface a proper 409 instead of a raw 500.
+      const isDup = (error as { code?: number })?.code === 11000;
+      if (isDup) {
+        const keyPattern = (error as { keyPattern?: Record<string, unknown> })?.keyPattern ?? {};
+        if ('email' in keyPattern) return err(StudentErrors.duplicateEmail());
+        return err(StudentErrors.duplicatePhone());
+      }
+      throw error;
+    }
 
     await this.auditRecorder.record({
       academyId: actor.academyId,

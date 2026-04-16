@@ -98,7 +98,7 @@ export class ConvertToStudentUseCase {
       addressText: enquiry.address,
     });
 
-    const closed = enquiry.close('CONVERTED', studentId);
+    const closed = enquiry.close('CONVERTED', input.actorUserId, new Date(), studentId);
 
     await this.transaction.run(async () => {
       await this.studentRepo.save(student);

@@ -107,7 +107,17 @@ export class InitiateSubscriptionPaymentUseCase {
       amountInr,
       activeStudentCountAtPurchase: activeStudentCount,
     });
-    await this.paymentRepo.save(payment);
+    try {
+      await this.paymentRepo.save(payment);
+    } catch (error) {
+      // Partial unique index on {academyId, status:PENDING} rejects a concurrent
+      // second initiate. Surface as a proper 409 instead of a generic 500.
+      const err11000 = (error as { code?: number })?.code === 11000;
+      if (err11000) {
+        return err(AppError.conflict('A payment is already in progress for this academy'));
+      }
+      throw error;
+    }
 
     // Call Cashfree API
     let cfResult;

@@ -17,55 +17,71 @@ import { escapeRegex } from '@shared/utils/escape-regex';
 export class MongoStudentRepository implements StudentRepository {
   constructor(@InjectModel(StudentModel.name) private readonly model: Model<StudentDocument>) {}
 
+  private toDocument(student: Student): Record<string, unknown> {
+    return {
+      _id: student.id.toString(),
+      academyId: student.academyId,
+      fullName: student.fullName,
+      fullNameNormalized: student.fullNameNormalized,
+      dateOfBirth: student.dateOfBirth,
+      gender: student.gender,
+      address: {
+        line1: student.address.line1,
+        line2: student.address.line2 ?? null,
+        city: student.address.city,
+        state: student.address.state,
+        pincode: student.address.pincode,
+      },
+      guardian: student.guardian
+        ? {
+            name: student.guardian.name,
+            mobile: student.guardian.mobile,
+            email: student.guardian.email,
+          }
+        : null,
+      joiningDate: student.joiningDate,
+      monthlyFee: student.monthlyFee,
+      mobileNumber: student.mobileNumber,
+      email: student.email,
+      profilePhotoUrl: student.profilePhotoUrl,
+      fatherName: student.fatherName,
+      motherName: student.motherName,
+      whatsappNumber: student.whatsappNumber,
+      addressText: student.addressText,
+      status: student.status,
+      statusChangedAt: student.statusChangedAt,
+      statusChangedBy: student.statusChangedBy,
+      statusHistory: student.statusHistory.map((h) => ({
+        fromStatus: h.fromStatus,
+        toStatus: h.toStatus,
+        changedBy: h.changedBy,
+        changedAt: h.changedAt,
+        reason: h.reason,
+      })),
+      version: student.audit.version,
+      deletedAt: student.softDelete.deletedAt,
+      deletedBy: student.softDelete.deletedBy,
+    };
+  }
+
   async save(student: Student): Promise<void> {
     await this.model.findOneAndUpdate(
       { _id: student.id.toString() },
-      {
-        _id: student.id.toString(),
-        academyId: student.academyId,
-        fullName: student.fullName,
-        fullNameNormalized: student.fullNameNormalized,
-        dateOfBirth: student.dateOfBirth,
-        gender: student.gender,
-        address: {
-          line1: student.address.line1,
-          line2: student.address.line2 ?? null,
-          city: student.address.city,
-          state: student.address.state,
-          pincode: student.address.pincode,
-        },
-        guardian: student.guardian
-          ? {
-              name: student.guardian.name,
-              mobile: student.guardian.mobile,
-              email: student.guardian.email,
-            }
-          : null,
-        joiningDate: student.joiningDate,
-        monthlyFee: student.monthlyFee,
-        mobileNumber: student.mobileNumber,
-        email: student.email,
-        profilePhotoUrl: student.profilePhotoUrl,
-        fatherName: student.fatherName,
-        motherName: student.motherName,
-        whatsappNumber: student.whatsappNumber,
-        addressText: student.addressText,
-        status: student.status,
-        statusChangedAt: student.statusChangedAt,
-        statusChangedBy: student.statusChangedBy,
-        statusHistory: student.statusHistory.map((h) => ({
-          fromStatus: h.fromStatus,
-          toStatus: h.toStatus,
-          changedBy: h.changedBy,
-          changedAt: h.changedAt,
-          reason: h.reason,
-        })),
-        version: student.audit.version,
-        deletedAt: student.softDelete.deletedAt,
-        deletedBy: student.softDelete.deletedBy,
-      },
+      this.toDocument(student),
       { upsert: true, session: getTransactionSession() },
     );
+  }
+
+  async saveWithVersionPrecondition(student: Student, expectedVersion: number): Promise<boolean> {
+    // CAS: only transition from expectedVersion. Also require the row to still be
+    // non-deleted — otherwise an in-flight edit could resurrect a concurrently
+    // soft-deleted student.
+    const result = await this.model.findOneAndUpdate(
+      { _id: student.id.toString(), version: expectedVersion, deletedAt: null },
+      this.toDocument(student),
+      { session: getTransactionSession() },
+    );
+    return result !== null;
   }
 
   async findById(id: string): Promise<Student | null> {

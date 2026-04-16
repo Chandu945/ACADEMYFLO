@@ -19,7 +19,7 @@ const GENDER_OPTIONS = GENDERS.map((g) => ({ value: g, label: g.charAt(0) + g.sl
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const E164_RE = /^\+[1-9]\d{6,14}$/;
-const PINCODE_RE = /^\d{5,6}$/;
+const PINCODE_RE = /^\d{6}$/;
 
 /** Normalize a phone input to E.164 (+91XXXXXXXXXX). Returns the input as-is if already E.164 or empty. */
 function normalizePhone(value: string): string {
