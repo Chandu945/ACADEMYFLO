@@ -12,14 +12,18 @@ type SelectOption = {
 type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> & {
   label: string;
   options: SelectOption[];
+  hideLabel?: boolean;
 };
 
-export function Select({ label, name, options, id, ...rest }: SelectProps) {
+export function Select({ label, name, options, id, hideLabel, ...rest }: SelectProps) {
   const selectId = id ?? name;
 
   return (
     <div className={styles.field}>
-      <label htmlFor={selectId} className={styles.label}>
+      <label
+        htmlFor={selectId}
+        className={hideLabel ? styles.labelHidden : styles.label}
+      >
         {label}
       </label>
       <select id={selectId} name={name} className={styles.select} {...rest}>

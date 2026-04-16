@@ -135,7 +135,7 @@ describe('Audit Logs Endpoints (e2e)', () => {
         {
           provide: 'SET_STUDENT_BATCHES_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository, br: BatchRepository, sbr: StudentBatchRepository) =>
-            new SetStudentBatchesUseCase(ur, sr, br, sbr),
+            new SetStudentBatchesUseCase(ur, sr, br, sbr, { run: <T>(fn: () => Promise<T>) => fn() }),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY],
         },
         {

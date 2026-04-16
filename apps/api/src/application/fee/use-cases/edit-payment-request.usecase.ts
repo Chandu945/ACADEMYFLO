@@ -28,7 +28,7 @@ export class EditPaymentRequestUseCase {
 
   async execute(input: EditPaymentRequestInput): Promise<Result<PaymentRequestDto, AppError>> {
     if (input.actorRole !== 'STAFF') {
-      return err(PaymentRequestErrors.cancelNotAllowed());
+      return err(PaymentRequestErrors.editNotAllowed());
     }
 
     const notesCheck = validateStaffNotes(input.staffNotes);

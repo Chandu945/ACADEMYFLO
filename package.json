@@ -49,8 +49,9 @@
   },
   "overrides": {
     "react-native": "0.76.9",
-    "@nestjs/common": "^11.1.16",
-    "@nestjs/core": "^11.1.16",
+    "@nestjs/common": "^11.1.19",
+    "@nestjs/core": "^11.1.19",
+    "@nestjs/platform-express": "^11.1.19",
     "eslint": "^9.39.4"
   },
   "engines": {

@@ -59,6 +59,13 @@ module.exports = {
       to: { path: 'src/presentation/' },
     },
     {
+      name: 'domain-no-application-import',
+      comment: 'Domain layer must not depend on application layer (inner depends on outer violation).',
+      severity: 'error',
+      from: { path: 'src/domain/' },
+      to: { path: 'src/application/' },
+    },
+    {
       name: 'application-no-infra-import',
       comment: 'Application layer must not import from infrastructure layer.',
       severity: 'error',

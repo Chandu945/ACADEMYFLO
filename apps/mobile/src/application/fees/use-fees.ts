@@ -40,17 +40,35 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
   const [loadingMoreUnpaid, setLoadingMoreUnpaid] = useState(false);
   const mountedRef = useRef(true);
   const fetchingMoreRef = useRef(false);
+  // Deduplicate concurrent load() calls — protects against rapid refetch bursts
+  // (focus cascades, effect double-fires) from fanning out into many page=1
+  // requests + their pagination cascades.
+  const loadInFlightRef = useRef(false);
+  // Tracks the highest page already requested for the current month so
+  // repeat fetchMoreUnpaid calls (onEndReached firing on web when the list
+  // fits in viewport) become no-ops.
+  const requestedPageRef = useRef(0);
+  // Monotonic load id — every load() bumps it; if a stale load's results
+  // resolve after a newer load has started, we discard them.
+  const loadIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    const myId = ++loadIdRef.current;
     setLoading(true);
     setError(null);
     setUnpaidPage(1);
+    requestedPageRef.current = 1;
 
     const [unpaidSettled, paidSettled] = await Promise.allSettled([
       listUnpaidDuesUseCase({ feesApi }, month, 1, UNPAID_PAGE_SIZE),
       listPaidDuesUseCase({ feesApi }, month),
     ]);
 
+    loadInFlightRef.current = false;
+    // Discard results from a load superseded by a newer one (e.g. month change).
+    if (myId !== loadIdRef.current) return;
     if (!mountedRef.current) return;
 
     // Handle rejected promises (network failures, unexpected throws)
@@ -88,8 +106,13 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
 
   const fetchMoreUnpaid = useCallback(async () => {
     if (fetchingMoreRef.current || loading || loadingMoreUnpaid || !hasMoreUnpaid) return;
-    fetchingMoreRef.current = true;
     const nextPage = unpaidPage + 1;
+    // Skip if we've already requested (or are requesting) this page — prevents
+    // onEndReached from cascading rapid-fire duplicate fetches on web where
+    // the list can fit entirely within the viewport.
+    if (requestedPageRef.current >= nextPage) return;
+    requestedPageRef.current = nextPage;
+    fetchingMoreRef.current = true;
     setLoadingMoreUnpaid(true);
 
     try {
@@ -121,6 +144,17 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
       mountedRef.current = false;
     };
   }, [load]);
+
+  // Month change resets pagination immediately — even if a prior load is still
+  // in flight, its results will be discarded via the loadIdRef check. Without
+  // this, loadInFlightRef could block the new month's load and requestedPageRef
+  // would point at the old month's last page.
+  useEffect(() => {
+    loadInFlightRef.current = false;
+    fetchingMoreRef.current = false;
+    requestedPageRef.current = 1;
+    setUnpaidPage(1);
+  }, [month]);
 
   return {
     unpaidItems,

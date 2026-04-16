@@ -17,6 +17,10 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
+    // Intentionally disabled: enabling adds ~600 errors across DTO/filter/entity
+    // construction sites that spread partial objects into types with `prop?: T`.
+    // Flipping this on is a separate, scoped migration (replace `prop?: T` with
+    // `prop?: T | undefined` at target sites, or filter undefined before spread).
     "exactOptionalPropertyTypes": false,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,

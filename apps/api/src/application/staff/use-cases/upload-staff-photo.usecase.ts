@@ -1,11 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Result } from '@shared/kernel';
-import { ok, err, updateAuditFields } from '@shared/kernel';
+import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
-import { User } from '@domain/identity/entities/user.entity';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
-import { StaffErrors } from '../../common/errors';
+import { AuthErrors, StaffErrors } from '../../common/errors';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import {
   ALLOWED_IMAGE_MIME_TYPES,
@@ -35,7 +34,7 @@ export class UploadStaffPhotoUseCase {
     }
 
     if (actor.role !== 'OWNER') {
-      return err(AppErrorClass.forbidden('Only owners can upload staff photos'));
+      return err(AuthErrors.notOwner());
     }
 
     const staff = await this.userRepo.findById(input.staffUserId);
@@ -71,11 +70,8 @@ export class UploadStaffPhotoUseCase {
 
     const { url } = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
 
-    const updated = User.reconstitute(staff.id.toString(), {
-      ...staff['props'],
-      profilePhotoUrl: url,
-      audit: updateAuditFields(staff.audit),
-    });
+    // Use the entity's own method instead of poking at private `props`.
+    const updated = staff.updateProfilePhoto(url);
 
     await this.userRepo.save(updated);
 

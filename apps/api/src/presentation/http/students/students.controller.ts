@@ -15,6 +15,7 @@ import {
   UploadedFile,
   Req,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
@@ -44,7 +45,7 @@ import { ChangeStudentStatusDto } from './dto/change-student-status.dto';
 import { ListStudentsQueryDto } from './dto/list-students.query';
 import { SetStudentBatchesDto } from './dto/set-student-batches.dto';
 import { StudentReportQueryDto } from './dto/student-report.query';
-import { mapResultToResponse } from '../common/result-mapper';
+import { mapResultToResponse, throwMappedError } from '../common/result-mapper';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { Request, Response } from 'express';
@@ -139,7 +140,7 @@ export class StudentsController {
     @Req() req: Request,
   ) {
     if (!file) {
-      return { success: false, error: { code: 'VALIDATION', message: 'No file uploaded' } };
+      throw new BadRequestException('No file uploaded');
     }
     const result = await this.uploadStudentPhoto.execute({
       actorUserId: user.userId,
@@ -394,8 +395,7 @@ export class StudentsController {
       toMonth: query.toMonth,
     });
     if (!result.ok) {
-      res.status(400).json({ error: result.error.message });
-      return;
+      throwMappedError(result.error);
     }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(result.value.filename)}"`);
@@ -417,8 +417,7 @@ export class StudentsController {
       studentId,
     });
     if (!result.ok) {
-      res.status(400).json({ error: result.error.message });
-      return;
+      throwMappedError(result.error);
     }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(result.value.filename)}"`);
@@ -440,8 +439,7 @@ export class StudentsController {
       studentId,
     });
     if (!result.ok) {
-      res.status(400).json({ error: result.error.message });
-      return;
+      throwMappedError(result.error);
     }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(result.value.filename)}"`);

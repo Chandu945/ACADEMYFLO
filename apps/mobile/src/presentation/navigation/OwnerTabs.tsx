@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { CommonActions } from '@react-navigation/native';
+import { StackActions } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AppIcon } from '../components/ui/AppIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,18 +51,19 @@ function OwnerTabsInner() {
         })}
         screenListeners={({ navigation }) => ({
           tabPress: (e) => {
+            // Tapping a tab icon should always land on the tab's root screen,
+            // regardless of which tab is currently focused. Find the target tab's
+            // nested-stack state and, if it's not already at the root, dispatch
+            // popToTop targeted at that nested navigator via its state key.
             const state = navigation.getState();
-            const currentRoute = state?.routes[state.index];
-            const targetName = (e.target ?? '').split('-')[0]!;
-            // If tapping the already-active tab that has a nested stack, reset to first screen
-            if (currentRoute?.name === targetName && currentRoute?.state && (currentRoute.state.index ?? 0) > 0) {
-              e.preventDefault();
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [{ name: targetName }],
-                }),
-              );
+            const targetName = (e.target ?? '').split('-')[0];
+            const targetRoute = state?.routes.find((r) => r.name === targetName);
+            const nested = targetRoute?.state;
+            if (nested?.key && (nested.index ?? 0) > 0) {
+              navigation.dispatch({
+                ...StackActions.popToTop(),
+                target: nested.key,
+              });
             }
           },
         })}

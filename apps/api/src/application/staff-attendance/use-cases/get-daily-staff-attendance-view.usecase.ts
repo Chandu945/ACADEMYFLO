@@ -68,7 +68,9 @@ export class GetDailyStaffAttendanceViewUseCase {
     );
 
     const activeStaff = staffUsers.filter((u) => u.isActive());
-    const activeTotal = total; // listByAcademyAndRole returns active users by design from E2E patterns
+    // Use a proper active-only count — `total` above also includes INACTIVE
+    // staff (filter is role + deletedAt only), which would inflate pagination.
+    const activeTotal = await this.userRepo.countActiveByAcademyAndRole(actor.academyId, 'STAFF');
 
     const staffIds = activeStaff.map((s) => s.id.toString());
 

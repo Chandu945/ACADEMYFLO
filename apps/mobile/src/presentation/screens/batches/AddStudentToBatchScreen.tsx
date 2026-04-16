@@ -121,6 +121,9 @@ export function AddStudentToBatchScreen() {
 
   const handleAdd = useCallback(
     async (student: StudentListItem) => {
+      // Guard against double-tap: if another add is already in flight, or the
+      // student is already in the batch, short-circuit so we don't POST twice.
+      if (addingId !== null || addedIds.has(student.id)) return;
       setAddingId(student.id);
       try {
         const result = await addStudentToBatch(batchId, student.id);
@@ -136,7 +139,7 @@ export function AddStudentToBatchScreen() {
         setAddingId(null);
       }
     },
-    [batchId],
+    [batchId, addingId, addedIds],
   );
 
   const renderItem = useCallback(

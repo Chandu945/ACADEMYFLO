@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -19,6 +20,7 @@ export class CreateBatchDto {
   @ApiProperty({ example: 'Morning Batch' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(60)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   batchName!: string;
 
@@ -53,5 +55,6 @@ export class CreateBatchDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(1000)
   maxStudents?: number;
 }

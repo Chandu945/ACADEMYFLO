@@ -138,8 +138,16 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
         studentRepo: StudentRepository,
         audit: AuditRecorderPort,
         feeDueRepo: FeeDueRepository,
-      ) => new SoftDeleteStudentUseCase(userRepo, studentRepo, audit, feeDueRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT, FEE_DUE_REPOSITORY],
+        studentBatchRepo: StudentBatchRepository,
+      ) =>
+        new SoftDeleteStudentUseCase(userRepo, studentRepo, audit, feeDueRepo, studentBatchRepo),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        FEE_DUE_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+      ],
     },
     {
       provide: 'SET_STUDENT_BATCHES_USE_CASE',
@@ -148,8 +156,16 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
         studentRepo: StudentRepository,
         batchRepo: BatchRepository,
         studentBatchRepo: StudentBatchRepository,
-      ) => new SetStudentBatchesUseCase(userRepo, studentRepo, batchRepo, studentBatchRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY],
+        transaction: TransactionPort,
+      ) =>
+        new SetStudentBatchesUseCase(userRepo, studentRepo, batchRepo, studentBatchRepo, transaction),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        BATCH_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+        TRANSACTION_PORT,
+      ],
     },
     {
       provide: 'GET_STUDENT_BATCHES_USE_CASE',

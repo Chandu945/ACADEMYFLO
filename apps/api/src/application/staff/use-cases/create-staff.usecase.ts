@@ -108,7 +108,21 @@ export class CreateStaffUseCase {
       profilePhotoUrl: input.profilePhotoUrl ?? null,
     });
 
-    await this.userRepo.save(staffWithAcademy);
+    try {
+      await this.userRepo.save(staffWithAcademy);
+    } catch (error) {
+      // Catches the E11000 window between findByEmail/findByPhone and save()
+      // — the Mongo unique index on email/phone is the authoritative guard.
+      const err11000 = error as { code?: number; keyPattern?: Record<string, unknown> };
+      if (err11000?.code === 11000) {
+        const keys = err11000.keyPattern ?? {};
+        if ('emailNormalized' in keys || 'email' in keys) {
+          return err(AuthErrors.duplicateEmail());
+        }
+        return err(AuthErrors.duplicatePhone());
+      }
+      throw error;
+    }
 
     return ok({
       id: staffWithAcademy.id.toString(),

@@ -46,10 +46,9 @@ export class GetStudentBatchesUseCase {
     const assignments = await this.studentBatchRepo.findByStudentId(input.studentId);
     const batchIds = assignments.map((a) => a.batchId);
 
-    const batches = await Promise.all(batchIds.map((id) => this.batchRepo.findById(id)));
+    // Single $in query — was N separate findById round-trips.
+    const batches = await this.batchRepo.findByIds(batchIds);
 
-    return ok(
-      batches.filter((b): b is NonNullable<typeof b> => b !== null).map(toBatchDto),
-    );
+    return ok(batches.map(toBatchDto));
   }
 }

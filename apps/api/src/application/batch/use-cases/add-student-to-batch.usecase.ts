@@ -7,6 +7,7 @@ import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.r
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { StudentBatch } from '@domain/batch/entities/student-batch.entity';
 import { BatchErrors, StudentBatchErrors } from '../../common/errors';
+import { requireBatchInAcademy } from '../common/require-batch';
 import type { UserRole } from '@playconnect/contracts';
 import { randomUUID } from 'crypto';
 
@@ -35,14 +36,13 @@ export class AddStudentToBatchUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batch = await this.batchRepo.findById(input.batchId);
-    if (!batch) {
-      return err(BatchErrors.notFound(input.batchId));
-    }
-
-    if (batch.academyId !== actor.academyId) {
-      return err(BatchErrors.notInAcademy());
-    }
+    const batchResult = await requireBatchInAcademy(
+      this.batchRepo,
+      input.batchId,
+      actor.academyId,
+    );
+    if (!batchResult.ok) return err(batchResult.error);
+    const batch = batchResult.value;
 
     if (batch.status !== 'ACTIVE') {
       return err(BatchErrors.notActive(input.batchId));

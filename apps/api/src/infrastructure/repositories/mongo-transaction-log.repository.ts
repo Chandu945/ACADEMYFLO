@@ -52,16 +52,22 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
     academyId: string,
     page: number,
     pageSize: number,
-  ): Promise<TransactionLog[]> {
+  ): Promise<{ items: TransactionLog[]; total: number }> {
     const skip = (page - 1) * pageSize;
-    const docs = await this.model
-      .find({ academyId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(pageSize)
-      .lean()
-      .exec();
-    return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
+    const [docs, total] = await Promise.all([
+      this.model
+        .find({ academyId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .lean()
+        .exec(),
+      this.model.countDocuments({ academyId }).exec(),
+    ]);
+    return {
+      items: docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>)),
+      total,
+    };
   }
 
   async countByAcademyAndPrefix(academyId: string, prefix: string): Promise<number> {

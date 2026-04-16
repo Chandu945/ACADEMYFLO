@@ -20,8 +20,13 @@ export function getAccessToken(): string | null {
   return _accessToken;
 }
 
-export function registerAuthFailureHandler(handler: () => void): void {
+export function registerAuthFailureHandler(handler: () => void): () => void {
   _onAuthFailure = handler;
+  return () => {
+    if (_onAuthFailure === handler) {
+      _onAuthFailure = null;
+    }
+  };
 }
 
 export const accessTokenStore = {
@@ -72,6 +77,10 @@ export async function tryRefresh(): Promise<string | null> {
             email: (data.user['email'] as string) ?? session.user.email,
             phoneNumber: (data.user['phoneNumber'] as string) ?? session.user.phoneNumber,
             profilePhotoUrl: data.user['profilePhotoUrl'] as string | null | undefined ?? session.user.profilePhotoUrl,
+            // Role can change server-side (e.g., OWNER→STAFF demotion). Server-side RBAC
+            // stays correct via the fresh JWT, but the UI reads from the keychain copy —
+            // update it too so nav/permission-gated screens don't drift.
+            role: (data.user['role'] as typeof session.user.role) ?? session.user.role,
           }
         : session.user;
       await tokenStore.setSession(data.refreshToken, updatedUser);
@@ -96,7 +105,9 @@ async function request<T>(
   body?: unknown,
   retried = false,
 ): Promise<Result<T, AppError>> {
-  // Proactively refresh if the token is expired or about to expire
+  // Proactively refresh if the token is expired or about to expire.
+  // If refresh fails (returns null) we still attempt the call with whatever
+  // token we have — the server-side 401 path below handles the final cleanup.
   if (_accessToken && isTokenExpiredOrExpiring(_accessToken) && !retried) {
     await tryRefresh();
   }
@@ -121,11 +132,14 @@ async function request<T>(
     });
 
     if (res.status === 401 && !retried) {
+      // tryRefresh is deduplicated module-wide — concurrent 401s share one refresh round-trip.
+      // We rely on the returned token (rather than re-reading _accessToken) so that if
+      // the refresh returns an empty/expired token we short-circuit instead of looping.
       const newToken = await tryRefresh();
-      if (newToken) {
+      if (newToken && !isTokenExpiredOrExpiring(newToken)) {
         return request<T>(method, path, body, true);
       }
-      // Clear stale access token to prevent infinite 401 loops
+      // Refresh failed or returned a stale token — clear and cascade to logout.
       _accessToken = null;
       _onAuthFailure?.();
       return err({ code: 'UNAUTHORIZED', message: 'Session expired' });

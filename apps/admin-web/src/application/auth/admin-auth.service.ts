@@ -1,6 +1,7 @@
 import type { AuthSession } from '@/domain/admin/auth';
 import { AppError } from '@/domain/common/errors';
 import { BFF_LOGIN, BFF_LOGOUT, BFF_REFRESH } from '@/infra/auth/bff-routes';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 export async function login(email: string, password: string): Promise<AuthSession> {
   const res = await fetch(BFF_LOGIN, {
@@ -38,9 +39,9 @@ export async function refreshAccessToken(): Promise<{ accessToken: string }> {
 }
 
 export async function logout(accessToken?: string): Promise<void> {
-  const headers: Record<string, string> = {
+  const headers: Record<string, string> = csrfHeaders({
     'Content-Type': 'application/json',
-  };
+  });
   if (accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`;
   }

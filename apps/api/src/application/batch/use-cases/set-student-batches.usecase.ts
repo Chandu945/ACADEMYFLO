@@ -6,6 +6,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import { StudentBatch } from '@domain/batch/entities/student-batch.entity';
+import type { TransactionPort } from '../../common/transaction.port';
 import { BatchErrors, StudentBatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
@@ -25,6 +26,7 @@ export class SetStudentBatchesUseCase {
     private readonly studentRepo: StudentRepository,
     private readonly batchRepo: BatchRepository,
     private readonly studentBatchRepo: StudentBatchRepository,
+    private readonly transaction: TransactionPort,
   ) {}
 
   async execute(input: SetStudentBatchesInput): Promise<Result<BatchDto[], AppError>> {
@@ -49,33 +51,36 @@ export class SetStudentBatchesUseCase {
     // Deduplicate
     const uniqueBatchIds = [...new Set(input.batchIds)];
 
-    // Validate all batches exist and belong to same academy
-    const batches = await Promise.all(
-      uniqueBatchIds.map((id) => this.batchRepo.findById(id)),
-    );
-
-    for (let i = 0; i < uniqueBatchIds.length; i++) {
-      const batch = batches[i];
+    // Validate all batches exist and belong to same academy (single query).
+    const batches = await this.batchRepo.findByIds(uniqueBatchIds);
+    const batchById = new Map(batches.map((b) => [b.id.toString(), b]));
+    for (const id of uniqueBatchIds) {
+      const batch = batchById.get(id);
       if (!batch || batch.academyId !== actor.academyId) {
-        return err(StudentBatchErrors.batchNotInAcademy(uniqueBatchIds[i]!));
+        return err(StudentBatchErrors.batchNotInAcademy(id));
       }
       if (batch.status !== 'ACTIVE') {
-        return err(BatchErrors.notActive(uniqueBatchIds[i]!));
+        return err(BatchErrors.notActive(id));
       }
     }
 
     // Build new assignments
+    const academyId = actor.academyId;
     const assignments = uniqueBatchIds.map((batchId) =>
       StudentBatch.create({
         id: randomUUID(),
         studentId: input.studentId,
         batchId,
-        academyId: actor.academyId!,
+        academyId,
       }),
     );
 
-    await this.studentBatchRepo.replaceForStudent(input.studentId, assignments);
+    // Wrap replace (delete-all + insert-all) in a transaction so a mid-way
+    // failure can't leave the student with an empty or partial batch set.
+    await this.transaction.run(async () => {
+      await this.studentBatchRepo.replaceForStudent(input.studentId, assignments);
+    });
 
-    return ok(batches.filter((b): b is NonNullable<typeof b> => b !== null).map(toBatchDto));
+    return ok(batches.map(toBatchDto));
   }
 }

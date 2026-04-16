@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { apiPost } from '@/infra/http/api-client';
 import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { validateCsrfToken } from '@/infra/auth/csrf-token';
 import { resetPasswordSchema } from '@/application/academy-detail/academy-actions.schemas';
 
 type BackendResetResult = {
@@ -14,7 +15,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ academyId: string }> },
 ) {
-  if (!isOriginValid(request)) {
+  if (!isOriginValid(request) || !(await validateCsrfToken(request))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

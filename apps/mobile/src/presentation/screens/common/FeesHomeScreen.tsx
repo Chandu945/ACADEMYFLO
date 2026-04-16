@@ -74,13 +74,25 @@ export function FeesHomeScreen() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
 
-  // Build student name map from fee items (no separate API call needed)
+  // Build student name map from fee items (no separate API call needed).
+  // Identity-stable: the returned ref only changes when a NEW name-id pair
+  // appears. Prevents FlatList `extraData` churn when the same items reload
+  // (same names, different array identity).
+  const studentNameMapRef = useRef<Record<string, string>>({});
   const studentNameMap = useMemo(() => {
-    const map: Record<string, string> = {};
+    const current = studentNameMapRef.current;
+    let next: Record<string, string> | null = null;
     for (const item of [...unpaidItems, ...paidItems]) {
-      if (item.studentName) map[item.studentId] = item.studentName;
+      if (item.studentName && current[item.studentId] !== item.studentName) {
+        if (!next) next = { ...current };
+        next[item.studentId] = item.studentName;
+      }
     }
-    return map;
+    if (next) {
+      studentNameMapRef.current = next;
+      return next;
+    }
+    return current;
   }, [unpaidItems, paidItems]);
 
   useEffect(() => {
@@ -118,14 +130,20 @@ export function FeesHomeScreen() {
     let cancelled = false;
     async function load() {
       try {
-        // TODO: Batch filtering should be server-side. Currently fetches up to 500
-        // students client-side to build ID set for filtering.
-        const result = await listBatchStudents(selectedBatchId!, 1, 500);
-        if (cancelled || !mountedRef.current) return;
-        if (result.ok) {
-          const ids = new Set(result.value.data.map((s: { id: string }) => s.id));
-          setBatchStudentIds(ids);
+        // Backend caps pageSize at 100. Paginate to support batches of any size.
+        // Hard-cap at 20 pages (2000 students) as a safety belt against runaway loops.
+        // TODO: server-side batch filter on /fees/dues would eliminate this round-trip.
+        const ids = new Set<string>();
+        const PAGE_SIZE = 100;
+        const MAX_PAGES = 20;
+        for (let page = 1; page <= MAX_PAGES; page++) {
+          const result = await listBatchStudents(selectedBatchId!, page, PAGE_SIZE);
+          if (cancelled || !mountedRef.current) return;
+          if (!result.ok) return;
+          for (const s of result.value.data) ids.add(s.id);
+          if (page >= result.value.meta.totalPages) break;
         }
+        if (!cancelled && mountedRef.current) setBatchStudentIds(ids);
       } catch {
         // Silently fail — show all students without batch filter
       }
@@ -359,14 +377,13 @@ export function FeesHomeScreen() {
           error={error}
           onRetry={refetch}
           onRowPress={handleFeeRowPress}
-          isOwner={isOwner}
           month={month}
           onMarkPaidSuccess={refetch}
           studentNameMap={studentNameMap}
-          hasMore={hasMoreUnpaid}
           loadingMore={loadingMoreUnpaid}
           onEndReached={fetchMoreUnpaid}
           total={unpaidTotal}
+          skeletonCount={Math.min(8, Math.max(3, unpaidTotal || 5))}
         />
       )}
       {selectedSegment === 1 && (

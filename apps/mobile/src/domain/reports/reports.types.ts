@@ -1,3 +1,10 @@
+export type PdfExportResult = {
+  filePath: string;
+  filename: string;
+  sizeBytes: number;
+  createdAt: Date;
+};
+
 export type MonthlyRevenueItem = {
   id: string;
   studentId: string;

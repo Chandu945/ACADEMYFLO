@@ -31,7 +31,7 @@ import {
   InMemoryStudentAttendanceRepository,
   InMemoryHolidayRepository,
 } from '../helpers/in-memory-repos';
-import { createTestTokenService } from '../helpers/test-services';
+import { createTestTokenService, createInMemoryAuditRecorder } from '../helpers/test-services';
 import { User } from '../../src/domain/identity/entities/user.entity';
 import { Student } from '../../src/domain/student/entities/student.entity';
 import type { UserRepository } from '../../src/domain/identity/ports/user.repository';
@@ -64,7 +64,7 @@ describe('Attendance Failure Paths (e2e)', () => {
     holidayRepo = new InMemoryHolidayRepository();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
-    const noOpAuditRecorder: AuditRecorderPort = { record: async () => {} };
+    const auditRecorder = createInMemoryAuditRecorder();
 
     const deps = [
       USER_REPOSITORY,
@@ -86,7 +86,7 @@ describe('Attendance Failure Paths (e2e)', () => {
         { provide: STUDENT_REPOSITORY, useValue: studentRepo },
         { provide: STUDENT_ATTENDANCE_REPOSITORY, useValue: attendanceRepo },
         { provide: HOLIDAY_REPOSITORY, useValue: holidayRepo },
-        { provide: AUDIT_RECORDER_PORT, useValue: noOpAuditRecorder },
+        { provide: AUDIT_RECORDER_PORT, useValue: auditRecorder },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'GET_DAILY_ATTENDANCE_VIEW_USE_CASE',

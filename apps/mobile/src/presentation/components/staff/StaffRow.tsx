@@ -54,6 +54,8 @@ function StaffRowComponent({ staff, onPress, onToggleStatus }: StaffRowProps) {
           staff.status === 'ACTIVE' ? styles.deactivateBtn : styles.activateBtn,
         ]}
         onPress={onToggleStatus}
+        accessibilityRole="button"
+        accessibilityLabel={`${staff.status === 'ACTIVE' ? 'Deactivate' : 'Activate'} ${staff.fullName}`}
         testID={`toggle-status-${staff.id}`}
       >
         <Text style={styles.toggleText}>

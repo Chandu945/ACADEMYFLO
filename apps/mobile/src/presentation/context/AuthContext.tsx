@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     mountedRef.current = true;
 
-    registerAuthFailureHandler(() => {
+    const unregisterAuthFailure = registerAuthFailureHandler(() => {
       if (mountedRef.current) {
         setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
       }
@@ -189,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mountedRef.current = false;
+      unregisterAuthFailure();
     };
   }, [resolvePhase]);
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { StackActions } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AppIcon } from '../components/ui/AppIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,8 +37,23 @@ export function ParentTabs() {
         tabBarIcon: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => {
           const icons = TAB_ICONS[route.name];
           const iconName = focused ? icons?.active : icons?.inactive;
-          
+
           return <AppIcon name={iconName ?? 'circle'} size={size} color={color} />;
+        },
+      })}
+      screenListeners={({ navigation }) => ({
+        tabPress: (e) => {
+          // Tapping a tab icon should always land on the tab's root screen.
+          const state = navigation.getState();
+          const targetName = (e.target ?? '').split('-')[0];
+          const targetRoute = state?.routes.find((r) => r.name === targetName);
+          const nested = targetRoute?.state;
+          if (nested?.key && (nested.index ?? 0) > 0) {
+            navigation.dispatch({
+              ...StackActions.popToTop(),
+              target: nested.key,
+            });
+          }
         },
       })}
     >

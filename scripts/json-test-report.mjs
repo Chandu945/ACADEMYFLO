@@ -59,24 +59,45 @@ const gates = [
   },
 ];
 
+// Keep enough log to diagnose failures but not so much the report explodes.
+const LOG_TAIL_BYTES = 16_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
+
 function runGate(gate) {
   const start = Date.now();
+  const timeoutMs = gate.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   let exitCode = 0;
   let stdout = '';
   let stderr = '';
+  let outcome = 'passed';
+  let failureReason = null;
 
   try {
     const output = execSync(gate.command, {
       cwd: ROOT,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 120_000,
+      timeout: timeoutMs,
     });
-    stdout = output.slice(-2000); // Keep last 2000 chars to avoid huge reports
+    stdout = output.slice(-LOG_TAIL_BYTES);
   } catch (error) {
-    exitCode = error.status ?? 1;
-    stdout = (error.stdout ?? '').slice(-2000);
-    stderr = (error.stderr ?? '').slice(-2000);
+    stdout = String(error.stdout ?? '').slice(-LOG_TAIL_BYTES);
+    stderr = String(error.stderr ?? '').slice(-LOG_TAIL_BYTES);
+
+    if (error.code === 'ETIMEDOUT' || error.signal === 'SIGTERM') {
+      outcome = 'timeout';
+      exitCode = 124; // GNU timeout convention
+      failureReason = `Gate exceeded timeout of ${timeoutMs}ms`;
+    } else if (typeof error.status === 'number') {
+      outcome = 'failed';
+      exitCode = error.status;
+      failureReason = `Gate exited with code ${exitCode}`;
+    } else {
+      // Spawn error (missing binary, EPERM, etc.) — no exit status
+      outcome = 'spawn_error';
+      exitCode = error.code === 'ENOENT' ? 127 : 1;
+      failureReason = error.message ?? 'Failed to spawn gate process';
+    }
   }
 
   const duration = Date.now() - start;
@@ -86,7 +107,9 @@ function runGate(gate) {
     tool: gate.tool,
     command: gate.command,
     exitCode,
-    passed: exitCode === 0,
+    passed: outcome === 'passed',
+    outcome,
+    failureReason,
     durationMs: duration,
     stdout: stdout.trim(),
     stderr: stderr.trim(),
@@ -108,7 +131,12 @@ for (const gate of gates) {
 
   if (!result.passed) {
     allPassed = false;
-    process.stdout.write(`  FAILED (exit ${result.exitCode}, ${result.durationMs}ms)\n`);
+    const label = result.outcome === 'timeout'
+      ? 'TIMEOUT'
+      : result.outcome === 'spawn_error'
+        ? 'SPAWN_ERROR'
+        : 'FAILED';
+    process.stdout.write(`  ${label} (exit ${result.exitCode}, ${result.durationMs}ms) — ${result.failureReason ?? ''}\n`);
   } else {
     process.stdout.write(`  PASSED (${result.durationMs}ms)\n`);
   }

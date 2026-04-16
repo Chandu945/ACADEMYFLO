@@ -18,6 +18,7 @@ export class UpdateStaffDto {
   @ApiPropertyOptional({ example: 'Priya Sharma' })
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   @Transform(({ value }) => (typeof value === 'string' ? trimAndCollapse(value) : value))
   fullName?: string;
 
@@ -57,16 +58,20 @@ export class UpdateStaffDto {
   @IsIn(['MALE', 'FEMALE', null])
   gender?: 'MALE' | 'FEMALE' | null;
 
-  @ApiPropertyOptional({ example: '+919876543210' })
+  @ApiPropertyOptional({ example: '+919876543210', description: 'E.164 format' })
   @IsOptional()
   @IsString()
-  @MaxLength(20)
+  @Matches(/^\+[1-9]\d{6,14}$/, {
+    message: 'whatsappNumber must be in E.164 format (e.g. +919876543210)',
+  })
   whatsappNumber?: string | null;
 
-  @ApiPropertyOptional({ example: '+919876543210' })
+  @ApiPropertyOptional({ example: '+919876543210', description: 'E.164 format' })
   @IsOptional()
   @IsString()
-  @MaxLength(20)
+  @Matches(/^\+[1-9]\d{6,14}$/, {
+    message: 'mobileNumber must be in E.164 format (e.g. +919876543210)',
+  })
   mobileNumber?: string | null;
 
   @ApiPropertyOptional({ example: '123, MG Road, Bangalore' })

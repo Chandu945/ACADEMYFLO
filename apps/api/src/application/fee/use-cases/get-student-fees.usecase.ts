@@ -10,8 +10,10 @@ import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo'
 import { FeeErrors } from '../../common/errors';
 import type { FeeDueDto } from '../dtos/fee-due.dto';
 import { toFeeDueDto } from '../dtos/fee-due.dto';
-import type { UserRole, LateFeeConfig, LateFeeRepeatInterval } from '@playconnect/contracts';
+import type { UserRole } from '@playconnect/contracts';
 import type { ClockPort } from '../../common/clock.port';
+import { formatLocalDate } from '../../../shared/date-utils';
+import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
 
 export interface GetStudentFeesInput {
   actorUserId: string;
@@ -59,15 +61,8 @@ export class GetStudentFeesUseCase {
       this.academyRepo.findById(user.academyId),
     ]);
 
-    const today = this.clock.now().toISOString().slice(0, 10);
-    const config: LateFeeConfig | undefined = academy?.lateFeeEnabled
-      ? {
-          lateFeeEnabled: academy.lateFeeEnabled,
-          gracePeriodDays: academy.gracePeriodDays,
-          lateFeeAmountInr: academy.lateFeeAmountInr,
-          lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
-        }
-      : undefined;
+    const today = formatLocalDate(this.clock.now());
+    const config = buildLateFeeConfigFromAcademy(academy);
 
     return ok(dues.map((d) => toFeeDueDto(d, config, today, student.fullName)));
   }

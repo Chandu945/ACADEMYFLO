@@ -69,16 +69,14 @@ export class GetDailyAttendanceReportUseCase {
       input.date,
     );
 
-    // Resolve absent student names
+    // Resolve absent student names in a single batch query (was N+1).
+    const absentIds = absentRecords.map((r) => r.studentId);
+    const students = absentIds.length > 0 ? await this.studentRepo.findByIds(absentIds) : [];
+    const nameById = new Map(students.map((s) => [s.id.toString(), s.fullName]));
     const absentStudents: { studentId: string; fullName: string }[] = [];
-    for (const record of absentRecords) {
-      const student = await this.studentRepo.findById(record.studentId);
-      if (student) {
-        absentStudents.push({
-          studentId: student.id.toString(),
-          fullName: student.fullName,
-        });
-      }
+    for (const id of absentIds) {
+      const fullName = nameById.get(id);
+      if (fullName) absentStudents.push({ studentId: id, fullName });
     }
 
     return ok({

@@ -64,7 +64,8 @@ export function Pagination({
         </Button>
       </div>
       <Select
-        label=""
+        label="Items per page"
+        hideLabel
         name="pageSize"
         options={pageSizeOptions}
         value={String(pageSize)}

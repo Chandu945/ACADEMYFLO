@@ -43,6 +43,7 @@ function buildDeps() {
     findByPhone: jest.fn(),
     updateAcademyId: jest.fn(),
     listByAcademyAndRole: jest.fn(),
+    countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
@@ -67,6 +68,7 @@ function buildDeps() {
   const batchRepo: jest.Mocked<BatchRepository> = {
     save: jest.fn(),
     findById: jest.fn(),
+    findByIds: jest.fn(),
     findByAcademyAndName: jest.fn(),
     listByAcademy: jest.fn(),
     deleteById: jest.fn(),
@@ -78,6 +80,7 @@ function buildDeps() {
     findByBatchId: jest.fn(),
     deleteByBatchId: jest.fn(),
     countByBatchId: jest.fn(),
+    countByBatchIds: jest.fn().mockResolvedValue(new Map()),
   };
 
   return { userRepo, studentRepo, batchRepo, studentBatchRepo };

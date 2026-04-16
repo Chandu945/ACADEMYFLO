@@ -48,6 +48,19 @@ export class MongoStudentBatchRepository implements StudentBatchRepository {
     return this.model.countDocuments({ batchId }).exec();
   }
 
+  async countByBatchIds(batchIds: string[]): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (batchIds.length === 0) return map;
+    const rows = await this.model
+      .aggregate<{ _id: string; count: number }>([
+        { $match: { batchId: { $in: batchIds } } },
+        { $group: { _id: '$batchId', count: { $sum: 1 } } },
+      ])
+      .exec();
+    for (const row of rows) map.set(row._id, row.count);
+    return map;
+  }
+
   private toDomain(doc: unknown): StudentBatch {
     const d = doc as {
       _id: string;

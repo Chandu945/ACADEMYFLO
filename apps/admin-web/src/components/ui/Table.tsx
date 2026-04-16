@@ -6,12 +6,13 @@ import styles from './Table.module.css';
 
 type TableProps = {
   children: ReactNode;
+  'aria-label'?: string;
 };
 
-export function Table({ children }: TableProps) {
+export function Table({ children, 'aria-label': ariaLabel }: TableProps) {
   return (
     <div className={styles.wrapper}>
-      <table className={styles.table}>{children}</table>
+      <table className={styles.table} aria-label={ariaLabel}>{children}</table>
     </div>
   );
 }

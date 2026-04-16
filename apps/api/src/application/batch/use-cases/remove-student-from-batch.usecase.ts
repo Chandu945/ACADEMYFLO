@@ -6,6 +6,7 @@ import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { BatchErrors, StudentBatchErrors } from '../../common/errors';
+import { requireBatchInAcademy } from '../common/require-batch';
 import type { UserRole } from '@playconnect/contracts';
 
 export interface RemoveStudentFromBatchInput {
@@ -33,14 +34,12 @@ export class RemoveStudentFromBatchUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batch = await this.batchRepo.findById(input.batchId);
-    if (!batch) {
-      return err(BatchErrors.notFound(input.batchId));
-    }
-
-    if (batch.academyId !== actor.academyId) {
-      return err(BatchErrors.notInAcademy());
-    }
+    const batchResult = await requireBatchInAcademy(
+      this.batchRepo,
+      input.batchId,
+      actor.academyId,
+    );
+    if (!batchResult.ok) return err(batchResult.error);
 
     const student = await this.studentRepo.findById(input.studentId);
     if (!student || student.isDeleted()) {

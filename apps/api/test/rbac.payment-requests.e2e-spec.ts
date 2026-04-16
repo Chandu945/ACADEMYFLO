@@ -34,7 +34,7 @@ import {
   InMemoryPaymentRequestRepository,
   InMemoryTransactionLogRepository,
 } from './helpers/in-memory-repos';
-import { createTestTokenService } from './helpers/test-services';
+import { createTestTokenService, createInMemoryAuditRecorder } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
 import type { StudentRepository } from '../src/domain/student/ports/student.repository';
@@ -75,7 +75,7 @@ describe('Payment Requests RBAC (e2e)', () => {
     const txLogRepo = new InMemoryTransactionLogRepository();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
-    const noOpAuditRecorder = { record: async () => {} };
+    const auditRecorder = createInMemoryAuditRecorder();
     const noOpAuditLogRepo = {
       save: async () => {},
       listByAcademy: async () => ({
@@ -109,7 +109,7 @@ describe('Payment Requests RBAC (e2e)', () => {
             sr: StudentRepository,
             fdr: FeeDueRepository,
             prr: PaymentRequestRepository,
-          ) => new CreatePaymentRequestUseCase(ur, sr, fdr, prr, noOpAuditRecorder),
+          ) => new CreatePaymentRequestUseCase(ur, sr, fdr, prr, auditRecorder),
           inject: [
             USER_REPOSITORY,
             STUDENT_REPOSITORY,
@@ -126,13 +126,13 @@ describe('Payment Requests RBAC (e2e)', () => {
         {
           provide: 'CANCEL_PAYMENT_REQUEST_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository, prr: PaymentRequestRepository) =>
-            new CancelPaymentRequestUseCase(ur, sr, prr, noOpAuditRecorder),
+            new CancelPaymentRequestUseCase(ur, sr, prr, auditRecorder),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY],
         },
         {
           provide: 'EDIT_PAYMENT_REQUEST_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository, prr: PaymentRequestRepository) =>
-            new EditPaymentRequestUseCase(ur, sr, prr, noOpAuditRecorder),
+            new EditPaymentRequestUseCase(ur, sr, prr, auditRecorder),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY],
         },
         {
@@ -165,7 +165,7 @@ describe('Payment Requests RBAC (e2e)', () => {
         {
           provide: 'REJECT_PAYMENT_REQUEST_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository, prr: PaymentRequestRepository, fdr: FeeDueRepository, clock: ClockPort) =>
-            new RejectPaymentRequestUseCase(ur, sr, prr, fdr, clock, noOpAuditRecorder),
+            new RejectPaymentRequestUseCase(ur, sr, prr, fdr, clock, auditRecorder, noopTx),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY, FEE_DUE_REPOSITORY, CLOCK_PORT],
         },
         {

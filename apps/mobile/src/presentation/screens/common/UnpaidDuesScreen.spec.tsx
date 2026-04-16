@@ -42,7 +42,6 @@ describe('UnpaidDuesScreen', () => {
     error: null,
     onRetry: jest.fn(),
     onRowPress: jest.fn(),
-    isOwner: true,
     month: '2026-03',
     onMarkPaidSuccess: jest.fn(),
     studentNameMap: { s1: 'John Doe' } as Record<string, string>,
@@ -86,7 +85,7 @@ describe('UnpaidDuesScreen', () => {
 
   it('owner taps row to navigate to student fee detail', () => {
     const onRowPress = jest.fn();
-    render(<UnpaidDuesScreen {...defaultProps} isOwner={true} onRowPress={onRowPress} />);
+    render(<UnpaidDuesScreen {...defaultProps} onRowPress={onRowPress} />);
 
     fireEvent.press(screen.getByTestId('fee-row-fd1'));
 
@@ -95,7 +94,7 @@ describe('UnpaidDuesScreen', () => {
 
   it('staff taps row to navigate', () => {
     const onRowPress = jest.fn();
-    render(<UnpaidDuesScreen {...defaultProps} isOwner={false} onRowPress={onRowPress} />);
+    render(<UnpaidDuesScreen {...defaultProps} onRowPress={onRowPress} />);
 
     fireEvent.press(screen.getByTestId('fee-row-fd1'));
 

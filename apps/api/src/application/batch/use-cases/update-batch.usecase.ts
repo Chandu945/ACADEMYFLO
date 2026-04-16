@@ -16,6 +16,7 @@ import {
 import { BatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
+import { requireBatchInAcademy } from '../common/require-batch';
 import type { Weekday, UserRole } from '@playconnect/contracts';
 import { AppError as AppErrorClass } from '@shared/kernel';
 
@@ -51,14 +52,13 @@ export class UpdateBatchUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batch = await this.batchRepo.findById(input.batchId);
-    if (!batch) {
-      return err(BatchErrors.notFound(input.batchId));
-    }
-
-    if (batch.academyId !== actor.academyId) {
-      return err(BatchErrors.notInAcademy());
-    }
+    const batchResult = await requireBatchInAcademy(
+      this.batchRepo,
+      input.batchId,
+      actor.academyId,
+    );
+    if (!batchResult.ok) return err(batchResult.error);
+    const batch = batchResult.value;
 
     if (input.batchName !== undefined) {
       const nameCheck = validateBatchName(input.batchName);
@@ -98,6 +98,12 @@ export class UpdateBatchUseCase {
       }
     }
 
+    // Same both-or-neither invariant as create — a lone startTime/endTime is invalid.
+    if (Boolean(newStartTime) !== Boolean(newEndTime)) {
+      return err(
+        AppErrorClass.validation('startTime and endTime must both be provided or both omitted'),
+      );
+    }
     if (newStartTime && newEndTime) {
       const rangeCheck = validateTimeRange(newStartTime, newEndTime);
       if (!rangeCheck.valid) {

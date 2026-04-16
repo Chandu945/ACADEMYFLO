@@ -6,6 +6,44 @@ import type {
   TokenService,
   AccessTokenPayload,
 } from '../../src/application/identity/ports/token-service.port';
+import type { AuditRecorderPort } from '../../src/application/audit/ports/audit-recorder.port';
+import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+
+export type CapturedAuditCall = {
+  academyId: string;
+  actorUserId: string;
+  action: AuditActionType;
+  entityType: AuditEntityType;
+  entityId: string;
+  context?: Record<string, string>;
+};
+
+export interface InMemoryAuditRecorder extends AuditRecorderPort {
+  calls: CapturedAuditCall[];
+  findByAction(action: AuditActionType): CapturedAuditCall[];
+  clear(): void;
+}
+
+/**
+ * Test-only audit recorder that captures every record() call in memory.
+ * Preferred over a noOp stub because it lets tests assert audit behavior and
+ * surfaces use-cases that silently fail to emit audit logs.
+ */
+export function createInMemoryAuditRecorder(): InMemoryAuditRecorder {
+  const calls: CapturedAuditCall[] = [];
+  return {
+    calls,
+    async record(params) {
+      calls.push({ ...params });
+    },
+    findByAction(action) {
+      return calls.filter((c) => c.action === action);
+    },
+    clear() {
+      calls.length = 0;
+    },
+  };
+}
 
 const TEST_ACCESS_SECRET = 'test-access-secret-that-is-at-least-32-characters-long';
 const TEST_REFRESH_SECRET = 'test-refresh-secret-that-is-at-least-32-characters-long';

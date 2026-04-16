@@ -132,6 +132,18 @@ export function useStaffAttendance(
               ),
             );
             setError(result.error);
+            return;
+          }
+          // Reconcile with the server's authoritative status — matches the
+          // student-attendance pattern. Optimistic prediction could disagree
+          // with the server (race with another edit); reality wins.
+          const serverStatus = result.value.status as StaffAttendanceStatus;
+          if (serverStatus !== newStatus) {
+            setItems((prev) =>
+              prev.map((item) =>
+                item.staffUserId === staffUserId ? { ...item, status: serverStatus } : item,
+              ),
+            );
           }
         },
       );

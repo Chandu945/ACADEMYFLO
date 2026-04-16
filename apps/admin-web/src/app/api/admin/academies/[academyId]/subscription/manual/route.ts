@@ -4,13 +4,14 @@ import type { NextRequest } from 'next/server';
 import { apiPut } from '@/infra/http/api-client';
 import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { validateCsrfToken } from '@/infra/auth/csrf-token';
 import { manualSubscriptionSchema } from '@/application/academy-detail/academy-actions.schemas';
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ academyId: string }> },
 ) {
-  if (!isOriginValid(request)) {
+  if (!isOriginValid(request) || !(await validateCsrfToken(request))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

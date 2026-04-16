@@ -10,6 +10,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import type { ClockPort } from '../../common/clock.port';
+import { formatLocalDate } from '../../../shared/date-utils';
 import { canPayFeeOnline } from '@domain/parent/rules/parent.rules';
 import { generateFeeOrderId } from '@domain/parent/rules/parent.rules';
 import { FeePayment } from '@domain/parent/entities/fee-payment.entity';
@@ -75,7 +76,7 @@ export class InitiateFeePaymentUseCase {
 
     // Compute late fee — prefer snapshotted config, fall back to live academy config
     const academy = await this.academyRepo.findById(foundDue.academyId);
-    const todayStr = this.clock.now().toISOString().slice(0, 10);
+    const todayStr = formatLocalDate(this.clock.now());
     let lateFee = 0;
     const liveConfig: LateFeeConfig | undefined = academy?.lateFeeEnabled
       ? {

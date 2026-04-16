@@ -9,6 +9,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance, validateLocalDate } from '@domain/attendance/rules/attendance.rules';
+import { formatLocalDate } from '../../../shared/date-utils';
 import { AttendanceErrors } from '../../common/errors';
 import type { DailyAttendanceViewItem } from '../dtos/attendance.dto';
 import type { UserRole } from '@playconnect/contracts';
@@ -94,7 +95,7 @@ export class GetDailyAttendanceViewUseCase {
       const allBatchStudents = await this.studentRepo.findByIds(studentIds);
       let activeStudents = allBatchStudents.filter(
         (s) => s.status === 'ACTIVE' && s.academyId === actor.academyId
-          && (!s.joiningDate || s.joiningDate.toISOString().slice(0, 10) <= input.date),
+          && (!s.joiningDate || formatLocalDate(s.joiningDate) <= input.date),
       );
 
       if (input.search) {
@@ -117,7 +118,7 @@ export class GetDailyAttendanceViewUseCase {
       );
       // Filter out students who joined after the selected date
       students = result.students.filter(
-        (s) => !s.joiningDate || s.joiningDate.toISOString().slice(0, 10) <= input.date,
+        (s) => !s.joiningDate || formatLocalDate(s.joiningDate) <= input.date,
       );
       total = result.total;
     }

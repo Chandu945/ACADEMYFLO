@@ -1,5 +1,6 @@
 import type { ManualSubscriptionInput, ResetPasswordResult } from '@/domain/admin/academy-detail';
 import { AppError } from '@/domain/common/errors';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 const BFF_BASE = '/api/admin/academies';
 
@@ -13,7 +14,7 @@ async function postAction(
   body: unknown,
   accessToken?: string,
 ): Promise<ActionResult> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = csrfHeaders({ 'Content-Type': 'application/json' });
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
   let res: Response;
@@ -81,7 +82,7 @@ export async function resetOwnerPassword(
   temporaryPassword?: string,
   accessToken?: string,
 ): Promise<ResetPasswordActionResult> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = csrfHeaders({ 'Content-Type': 'application/json' });
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
   const body: Record<string, unknown> = {};

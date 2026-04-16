@@ -139,8 +139,9 @@ import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repositor
         fdr: FeeDueRepository,
         clock: ClockPort,
         audit: AuditRecorderPort,
-      ) => new RejectPaymentRequestUseCase(ur, sr, prr, fdr, clock, audit),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY, FEE_DUE_REPOSITORY, CLOCK_PORT, AUDIT_RECORDER_PORT],
+        tx: TransactionPort,
+      ) => new RejectPaymentRequestUseCase(ur, sr, prr, fdr, clock, audit, tx),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY, FEE_DUE_REPOSITORY, CLOCK_PORT, AUDIT_RECORDER_PORT, TRANSACTION_PORT],
     },
     {
       provide: 'LIST_TRANSACTION_LOGS_USE_CASE',

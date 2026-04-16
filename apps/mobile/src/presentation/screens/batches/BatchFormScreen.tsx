@@ -15,6 +15,7 @@ import {
   saveBatchUseCase,
 } from '../../../application/batch/use-cases/save-batch.usecase';
 import { createBatch, updateBatch } from '../../../infra/batch/batch-api';
+import { invalidateBatchCache } from '../../../infra/batch/batch-cache';
 import type { Weekday, CreateBatchRequest } from '../../../domain/batch/batch.types';
 import { spacing, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
@@ -126,6 +127,7 @@ export function BatchFormScreen() {
       const result = await saveBatchUseCase({ saveApi }, mode, batch?.id, data);
 
       if (result.ok) {
+        invalidateBatchCache();
         showToast(mode === 'create' ? 'Batch created' : 'Batch updated');
         navigation.goBack();
       } else {

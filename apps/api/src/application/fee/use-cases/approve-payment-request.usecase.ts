@@ -18,14 +18,28 @@ import { generateReceiptNumber } from '@domain/fee/rules/payment-request.rules';
 import { PaymentRequestErrors } from '../../common/errors';
 import type { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { toPaymentRequestDto } from '../dtos/payment-request.dto';
-import type { UserRole, LateFeeConfig, LateFeeRepeatInterval } from '@playconnect/contracts';
+import type { UserRole } from '@playconnect/contracts';
 import { DEFAULT_RECEIPT_PREFIX, computeLateFee } from '@playconnect/contracts';
+import { formatLocalDate } from '../../../shared/date-utils';
+import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
 import { randomUUID } from 'crypto';
 
 export interface ApprovePaymentRequestInput {
   actorUserId: string;
   actorRole: UserRole;
   requestId: string;
+}
+
+/**
+ * Sentinel error thrown inside the approve transaction when a concurrent
+ * approval is detected. Caught outside transaction.run() and mapped to a
+ * proper AppError so the caller sees a CONFLICT, not a 500.
+ */
+class ConcurrentApprovalError extends Error {
+  constructor() {
+    super('CONCURRENT_APPROVAL');
+    this.name = 'ConcurrentApprovalError';
+  }
 }
 
 export class ApprovePaymentRequestUseCase {
@@ -70,16 +84,10 @@ export class ApprovePaymentRequestUseCase {
     const prefix = academy?.receiptPrefix ?? DEFAULT_RECEIPT_PREFIX;
 
     // Compute late fee snapshot — prefer snapshotted config, fall back to live academy config
-    const todayStr = now.toISOString().slice(0, 10);
+    // Use IST-local date (TZ=Asia/Kolkata) to avoid off-by-one around midnight IST.
+    const todayStr = formatLocalDate(now);
     let lateFeeApplied = 0;
-    const liveConfig: LateFeeConfig | undefined = academy?.lateFeeEnabled
-      ? {
-          lateFeeEnabled: academy.lateFeeEnabled,
-          gracePeriodDays: academy.gracePeriodDays,
-          lateFeeAmountInr: academy.lateFeeAmountInr,
-          lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
-        }
-      : undefined;
+    const liveConfig = buildLateFeeConfigFromAcademy(academy);
     const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
     if (effectiveConfig) {
       lateFeeApplied = computeLateFee(due.dueDate, todayStr, effectiveConfig);
@@ -95,53 +103,60 @@ export class ApprovePaymentRequestUseCase {
       lateFeeApplied,
     });
 
-    await this.transaction.run(async () => {
-      // Re-check payment request status INSIDE transaction to prevent race condition
-      // where two concurrent approval requests both pass the earlier PENDING check.
-      // The version check on save() would also catch this, but this early check
-      // avoids creating orphaned transaction logs and gives a clear error.
-      const freshRequest = await this.paymentRequestRepo.findById(input.requestId);
-      if (!freshRequest || freshRequest.status !== 'PENDING') {
-        throw new Error(
-          `Payment request ${input.requestId} is no longer PENDING (current: ${freshRequest?.status ?? 'NOT_FOUND'}) — concurrent approval detected`,
-        );
-      }
+    try {
+      await this.transaction.run(async () => {
+        // Re-check payment request status INSIDE transaction to prevent race condition
+        // where two concurrent approval requests both pass the earlier PENDING check.
+        // The version check on save() would also catch this, but this early check
+        // avoids creating orphaned transaction logs. Throwing a sentinel so we can
+        // map it to a proper AppError after the transaction aborts, rather than
+        // surfacing as a 500.
+        const freshRequest = await this.paymentRequestRepo.findById(input.requestId);
+        if (!freshRequest || freshRequest.status !== 'PENDING') {
+          throw new ConcurrentApprovalError();
+        }
 
-      const next = await this.transactionLogRepo.incrementReceiptCounter(request.academyId, prefix);
-      const receiptNumber = generateReceiptNumber(prefix, next);
+        const next = await this.transactionLogRepo.incrementReceiptCounter(request.academyId, prefix);
+        const receiptNumber = generateReceiptNumber(prefix, next);
 
-      const txLog = TransactionLog.create({
-        id: randomUUID(),
-        academyId: request.academyId,
-        feeDueId: due.id.toString(),
-        paymentRequestId: request.id.toString(),
-        studentId: request.studentId,
-        monthKey: request.monthKey,
-        amount: request.amount,
-        source: 'STAFF_APPROVED',
-        collectedByUserId: request.staffUserId,
-        approvedByUserId: input.actorUserId,
-        receiptNumber,
-      });
-
-      const auditLog = AuditLog.create({
-        academyId: request.academyId,
-        actorUserId: input.actorUserId,
-        action: 'PAYMENT_REQUEST_APPROVED',
-        entityType: 'PAYMENT_REQUEST',
-        entityId: request.id.toString(),
-        context: sanitizeContext({
+        const txLog = TransactionLog.create({
+          id: randomUUID(),
+          academyId: request.academyId,
+          feeDueId: due.id.toString(),
+          paymentRequestId: request.id.toString(),
           studentId: request.studentId,
           monthKey: request.monthKey,
+          amount: request.amount,
+          source: 'STAFF_APPROVED',
+          collectedByUserId: request.staffUserId,
+          approvedByUserId: input.actorUserId,
           receiptNumber,
-        }),
-      });
+        });
 
-      await this.paymentRequestRepo.save(approved);
-      await this.feeDueRepo.save(paidDue);
-      await this.transactionLogRepo.save(txLog);
-      await this.auditLogRepo.save(auditLog);
-    });
+        const auditLog = AuditLog.create({
+          academyId: request.academyId,
+          actorUserId: input.actorUserId,
+          action: 'PAYMENT_REQUEST_APPROVED',
+          entityType: 'PAYMENT_REQUEST',
+          entityId: request.id.toString(),
+          context: sanitizeContext({
+            studentId: request.studentId,
+            monthKey: request.monthKey,
+            receiptNumber,
+          }),
+        });
+
+        await this.paymentRequestRepo.save(approved);
+        await this.feeDueRepo.save(paidDue);
+        await this.transactionLogRepo.save(txLog);
+        await this.auditLogRepo.save(auditLog);
+      });
+    } catch (e) {
+      if (e instanceof ConcurrentApprovalError) {
+        return err(PaymentRequestErrors.notPending());
+      }
+      throw e;
+    }
 
     // Resolve names for response
     const [staffUser, student] = await Promise.all([

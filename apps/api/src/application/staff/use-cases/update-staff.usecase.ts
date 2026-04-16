@@ -127,7 +127,20 @@ export class UpdateStaffUseCase {
       profilePhotoUrl: input.profilePhotoUrl !== undefined ? input.profilePhotoUrl : staff.profilePhotoUrl,
     });
 
-    await this.userRepo.save(updated);
+    try {
+      await this.userRepo.save(updated);
+    } catch (error) {
+      // Same E11000 guard as create-staff.
+      const err11000 = error as { code?: number; keyPattern?: Record<string, unknown> };
+      if (err11000?.code === 11000) {
+        const keys = err11000.keyPattern ?? {};
+        if ('emailNormalized' in keys || 'email' in keys) {
+          return err(AuthErrors.duplicateEmail());
+        }
+        return err(AuthErrors.duplicatePhone());
+      }
+      throw error;
+    }
 
     return ok({
       id: updated.id.toString(),

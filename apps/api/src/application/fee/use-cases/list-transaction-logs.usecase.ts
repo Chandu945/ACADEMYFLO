@@ -15,13 +15,20 @@ export interface ListTransactionLogsInput {
   pageSize: number;
 }
 
+export interface ListTransactionLogsResult {
+  items: TransactionLogDto[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+}
+
 export class ListTransactionLogsUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly transactionLogRepo: TransactionLogRepository,
   ) {}
 
-  async execute(input: ListTransactionLogsInput): Promise<Result<TransactionLogDto[], AppError>> {
+  async execute(
+    input: ListTransactionLogsInput,
+  ): Promise<Result<ListTransactionLogsResult, AppError>> {
     if (input.actorRole !== 'OWNER') {
       return err(PaymentRequestErrors.viewNotAllowed());
     }
@@ -29,12 +36,20 @@ export class ListTransactionLogsUseCase {
     const user = await this.userRepo.findById(input.actorUserId);
     if (!user || !user.academyId) return err(PaymentRequestErrors.academyRequired());
 
-    const logs = await this.transactionLogRepo.listByAcademy(
+    const { items, total } = await this.transactionLogRepo.listByAcademy(
       user.academyId,
       input.page,
       input.pageSize,
     );
 
-    return ok(logs.map(toTransactionLogDto));
+    return ok({
+      items: items.map(toTransactionLogDto),
+      meta: {
+        page: input.page,
+        pageSize: input.pageSize,
+        total,
+        totalPages: Math.ceil(total / input.pageSize) || 1,
+      },
+    });
   }
 }

@@ -31,7 +31,7 @@ import {
   InMemoryBatchRepository,
   InMemoryStudentBatchRepository,
 } from './helpers/in-memory-repos';
-import { createTestTokenService } from './helpers/test-services';
+import { createTestTokenService, createInMemoryAuditRecorder } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Batch } from '../src/domain/batch/entities/batch.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -65,7 +65,7 @@ describe('Student Batches Endpoints (e2e)', () => {
     const studentQueryRepo = new InMemoryStudentQueryRepository(studentRepo, feeDueRepo);
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
-    const noOpAuditRecorder = { record: async () => {} };
+    const auditRecorder = createInMemoryAuditRecorder();
 
     const moduleFixture = await Test.createTestingModule({
       imports: [
@@ -85,13 +85,13 @@ describe('Student Batches Endpoints (e2e)', () => {
         {
           provide: 'CREATE_STUDENT_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository) =>
-            new CreateStudentUseCase(ur, sr, noOpAuditRecorder),
+            new CreateStudentUseCase(ur, sr, auditRecorder),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY],
         },
         {
           provide: 'UPDATE_STUDENT_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository) =>
-            new UpdateStudentUseCase(ur, sr, noOpAuditRecorder),
+            new UpdateStudentUseCase(ur, sr, auditRecorder),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY],
         },
         {
@@ -108,13 +108,13 @@ describe('Student Batches Endpoints (e2e)', () => {
         {
           provide: 'CHANGE_STUDENT_STATUS_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository) =>
-            new ChangeStudentStatusUseCase(ur, sr, noOpAuditRecorder),
+            new ChangeStudentStatusUseCase(ur, sr, auditRecorder),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY],
         },
         {
           provide: 'SOFT_DELETE_STUDENT_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository) =>
-            new SoftDeleteStudentUseCase(ur, sr, noOpAuditRecorder),
+            new SoftDeleteStudentUseCase(ur, sr, auditRecorder),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY],
         },
         {
@@ -124,7 +124,7 @@ describe('Student Batches Endpoints (e2e)', () => {
             sr: StudentRepository,
             br: BatchRepository,
             sbr: StudentBatchRepository,
-          ) => new SetStudentBatchesUseCase(ur, sr, br, sbr),
+          ) => new SetStudentBatchesUseCase(ur, sr, br, sbr, { run: <T>(fn: () => Promise<T>) => fn() }),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY],
         },
         {

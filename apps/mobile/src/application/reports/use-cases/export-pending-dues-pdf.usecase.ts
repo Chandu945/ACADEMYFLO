@@ -1,6 +1,6 @@
 import type { AppError } from '../../../domain/common/errors';
 import type { Result } from '../../../domain/common/result';
-import type { PdfExportResult } from '../../../infra/reports/pdf-download';
+import type { PdfExportResult } from '../../../domain/reports/reports.types';
 
 export type PdfDownloadPort = {
   downloadAndStorePdf(options: {

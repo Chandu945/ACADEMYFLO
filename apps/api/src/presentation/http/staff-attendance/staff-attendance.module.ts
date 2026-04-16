@@ -53,9 +53,9 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
     },
     {
       provide: 'GET_DAILY_STAFF_ATTENDANCE_REPORT_USE_CASE',
-      useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-        new GetDailyStaffAttendanceReportUseCase(ur, sar),
-      inject: [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY],
+      useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+        new GetDailyStaffAttendanceReportUseCase(ur, sar, hr),
+      inject: [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY],
     },
     {
       provide: 'GET_MONTHLY_STAFF_ATTENDANCE_SUMMARY_USE_CASE',

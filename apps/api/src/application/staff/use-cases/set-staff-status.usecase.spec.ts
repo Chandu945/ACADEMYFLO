@@ -42,24 +42,34 @@ function buildDeps() {
     findByPhone: jest.fn(),
     updateAcademyId: jest.fn(),
     listByAcademyAndRole: jest.fn(),
+    countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
       anonymizeAndSoftDelete: jest.fn(),
   };
-  return { userRepo };
+  const sessionRepo: jest.Mocked<import('@domain/identity/ports/session.repository').SessionRepository> = {
+    save: jest.fn(),
+    findByUserAndDevice: jest.fn(),
+    findActiveByDeviceId: jest.fn(),
+    revokeByUserAndDevice: jest.fn(),
+    updateRefreshToken: jest.fn(),
+    revokeAllByUserIds: jest.fn(),
+    deleteExpiredAndRevoked: jest.fn(),
+  };
+  return { userRepo, sessionRepo };
 }
 
 describe('SetStaffStatusUseCase', () => {
   it('should deactivate active staff', async () => {
-    const { userRepo } = buildDeps();
+    const { userRepo, sessionRepo } = buildDeps();
     userRepo.findById.mockImplementation(async (id) => {
       if (id === 'owner-1') return createOwner();
       if (id === 'staff-1') return createStaff('ACTIVE');
       return null;
     });
 
-    const uc = new SetStaffStatusUseCase(userRepo);
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',
@@ -75,14 +85,14 @@ describe('SetStaffStatusUseCase', () => {
   });
 
   it('should activate inactive staff', async () => {
-    const { userRepo } = buildDeps();
+    const { userRepo, sessionRepo } = buildDeps();
     userRepo.findById.mockImplementation(async (id) => {
       if (id === 'owner-1') return createOwner();
       if (id === 'staff-1') return createStaff('INACTIVE');
       return null;
     });
 
-    const uc = new SetStaffStatusUseCase(userRepo);
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',
@@ -97,8 +107,8 @@ describe('SetStaffStatusUseCase', () => {
   });
 
   it('should reject non-OWNER', async () => {
-    const { userRepo } = buildDeps();
-    const uc = new SetStaffStatusUseCase(userRepo);
+    const { userRepo, sessionRepo } = buildDeps();
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo);
     const result = await uc.execute({
       ownerUserId: 'staff-1',
       ownerRole: 'STAFF',
@@ -113,14 +123,14 @@ describe('SetStaffStatusUseCase', () => {
   });
 
   it('should reject cross-academy staff', async () => {
-    const { userRepo } = buildDeps();
+    const { userRepo, sessionRepo } = buildDeps();
     userRepo.findById.mockImplementation(async (id) => {
       if (id === 'owner-1') return createOwner('academy-1');
       if (id === 'staff-1') return createStaff('ACTIVE', 'academy-2');
       return null;
     });
 
-    const uc = new SetStaffStatusUseCase(userRepo);
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',
@@ -135,13 +145,13 @@ describe('SetStaffStatusUseCase', () => {
   });
 
   it('should reject when staff not found', async () => {
-    const { userRepo } = buildDeps();
+    const { userRepo, sessionRepo } = buildDeps();
     userRepo.findById.mockImplementation(async (id) => {
       if (id === 'owner-1') return createOwner();
       return null;
     });
 
-    const uc = new SetStaffStatusUseCase(userRepo);
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',

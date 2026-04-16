@@ -46,6 +46,11 @@ function decodeAdminUser(token: string): AdminUser | null {
 }
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
+  // Access token is held in React state (not sessionStorage) so it's cleared on
+  // tab close and never persisted. An XSS payload can still read it via context,
+  // but the same payload could exfiltrate any in-memory token — the real mitigation
+  // is strict CSP + input sanitization, not hiding the token from React. Keeping it
+  // in state keeps auth UI reactive (e.g., re-render on login) without extra plumbing.
   const [user, setUser] = useState<AdminUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,10 +112,16 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logoutFn = useCallback(async () => {
-    await authService.logout(accessToken ?? undefined);
-    setUser(null);
-    setAccessToken(null);
-    window.location.href = '/login';
+    try {
+      await authService.logout(accessToken ?? undefined);
+    } catch {
+      // Best-effort: local state + redirect must happen even if the backend call fails,
+      // otherwise a network blip traps the user in an authenticated UI.
+    } finally {
+      setUser(null);
+      setAccessToken(null);
+      window.location.href = '/login';
+    }
   }, [accessToken]);
 
   const value = useMemo<AdminAuthContextValue>(

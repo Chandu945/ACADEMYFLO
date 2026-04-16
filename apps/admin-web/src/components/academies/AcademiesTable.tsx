@@ -65,7 +65,10 @@ const COLUMNS = [
 
 export function AcademiesTable({ items, loading }: AcademiesTableProps) {
   return (
-    <Table>
+    <Table aria-label="Academies">
+      <caption className={styles.visuallyHidden}>
+        Registered academies with owner, status, tier, and recent activity.
+      </caption>
       <thead>
         <tr>
           {COLUMNS.map((col) => (

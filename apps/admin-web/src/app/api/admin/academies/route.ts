@@ -6,6 +6,13 @@ import { apiGet } from '@/infra/http/api-client';
 import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 import { sanitizeQueryValue } from '@/infra/http/query-sanitizer';
 
+function clampInt(raw: string | null, fallback: number, min: number, max: number): number {
+  if (raw == null) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 type BackendListResponse = {
   items: Array<{
     academyId: string;
@@ -32,11 +39,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
 
   // Validate and sanitize query params
-  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
-  const pageSize = Math.min(
-    100,
-    Math.max(1, parseInt(searchParams.get('pageSize') ?? '20', 10) || 20),
-  );
+  const page = clampInt(searchParams.get('page'), 1, 1, Number.MAX_SAFE_INTEGER);
+  const pageSize = clampInt(searchParams.get('pageSize'), 20, 1, 100);
   const statusParam = searchParams.get('status') ?? undefined;
   const tierParam = searchParams.get('tier') ?? undefined;
   const search = sanitizeQueryValue((searchParams.get('search') ?? '').slice(0, 80)) || undefined;

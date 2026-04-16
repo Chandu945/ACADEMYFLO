@@ -8,6 +8,7 @@ import {
   clearSessionCookie,
 } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { setCsrfCookie, clearCsrfCookie } from '@/infra/auth/csrf-token';
 
 type BackendRefreshResponse = {
   accessToken: string;
@@ -32,11 +33,13 @@ export async function POST(request: NextRequest) {
 
   if (!result.ok) {
     await clearSessionCookie();
+    await clearCsrfCookie();
     return NextResponse.json({ error: 'Session expired' }, { status: 401 });
   }
 
-  // Rotate cookie with new refresh token
+  // Rotate cookies with new refresh token + new CSRF token
   await setSessionCookie(result.data.refreshToken, session.deviceId, session.userId);
+  await setCsrfCookie();
 
   return NextResponse.json({ accessToken: result.data.accessToken });
 }

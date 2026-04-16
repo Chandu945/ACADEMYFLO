@@ -6,6 +6,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { ClockPort } from '../../common/clock.port';
+import type { TransactionPort } from '../../common/transaction.port';
 import {
   canReviewPaymentRequest,
   validateRejectionReason,
@@ -31,6 +32,7 @@ export class RejectPaymentRequestUseCase {
     private readonly feeDueRepo: FeeDueRepository,
     private readonly clock: ClockPort,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly transaction: TransactionPort,
   ) {}
 
   async execute(input: RejectPaymentRequestInput): Promise<Result<PaymentRequestDto, AppError>> {
@@ -57,19 +59,27 @@ export class RejectPaymentRequestUseCase {
 
     const now = this.clock.now();
     const rejected = request.reject(input.actorUserId, now, input.reason.trim());
-    await this.paymentRequestRepo.save(rejected);
+    const academyId = user.academyId;
 
-    // Revert the fee due status back to DUE
-    const feeDue = await this.feeDueRepo.findByAcademyStudentMonth(
-      user.academyId,
-      request.studentId,
-      request.monthKey,
-    );
-    if (feeDue && feeDue.status !== 'PAID') {
-      const reverted = feeDue.revertToDue();
-      await this.feeDueRepo.save(reverted);
-    }
+    // Revert the fee due status back to DUE in the same transaction as the
+    // rejected-request save so concurrent rejects can't leave an orphaned
+    // AWAITING fee due (or double-revert it).
+    await this.transaction.run(async () => {
+      await this.paymentRequestRepo.save(rejected);
 
+      const feeDue = await this.feeDueRepo.findByAcademyStudentMonth(
+        academyId,
+        request.studentId,
+        request.monthKey,
+      );
+      if (feeDue && feeDue.status !== 'PAID') {
+        const reverted = feeDue.revertToDue();
+        await this.feeDueRepo.save(reverted);
+      }
+    });
+
+    // Audit is recorded outside the transaction per codebase convention for
+    // reject/others (fail-the-action semantics apply to the main save only).
     await this.auditRecorder.record({
       academyId: user.academyId,
       actorUserId: input.actorUserId,

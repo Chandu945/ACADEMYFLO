@@ -22,6 +22,7 @@ import {
   removeStudentFromBatch,
   deleteBatch,
 } from '../../../infra/batch/batch-api';
+import { invalidateBatchCache } from '../../../infra/batch/batch-cache';
 import { Badge } from '../../components/ui/Badge';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
@@ -32,6 +33,59 @@ import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<BatchesStackParamList, 'BatchDetail'>;
+
+type StudentRowProps = {
+  item: StudentListItem;
+  isFirst: boolean;
+  isRemoving: boolean;
+  onRemove: (item: StudentListItem) => void;
+  colors: Colors;
+  // Styles come from makeStyles(colors) in the parent; typed loosely on purpose
+  // to avoid threading the generated style shape through here.
+  styles: ReturnType<typeof makeStyles>;
+};
+
+// Memoized to avoid re-rendering unaffected rows when `removingId` flips on
+// another row in the list.
+const StudentRow = React.memo(function StudentRow({
+  item,
+  isFirst,
+  isRemoving,
+  onRemove,
+  colors,
+  styles,
+}: StudentRowProps) {
+  return (
+    <View style={[styles.studentRow, !isFirst && styles.studentRowBorder]}>
+      <View style={styles.studentAvatar}>
+        <Text style={styles.studentAvatarText}>{item.fullName.charAt(0).toUpperCase()}</Text>
+      </View>
+
+      <View style={styles.studentInfo}>
+        <Text style={styles.studentName} numberOfLines={1}>
+          {item.fullName}
+        </Text>
+        <Text style={styles.studentFee}>{'\u20B9'}{item.monthlyFee?.toLocaleString('en-IN') ?? 0}/mo</Text>
+      </View>
+
+      <Pressable
+        onPress={() => onRemove(item)}
+        disabled={isRemoving}
+        style={styles.removeButton}
+        hitSlop={8}
+        accessibilityLabel={`Remove ${item.fullName} from batch`}
+        accessibilityRole="button"
+        testID={`remove-student-${item.id}`}
+      >
+        {isRemoving ? (
+          <ActivityIndicator size="small" color={colors.danger} />
+        ) : (
+          <Text style={styles.removeText}>{'\u2715'}</Text>
+        )}
+      </Pressable>
+    </View>
+  );
+});
 type DetailRoute = RouteProp<BatchesStackParamList, 'BatchDetail'>;
 
 const PAGE_SIZE = 20;
@@ -120,6 +174,18 @@ export function BatchDetailScreen() {
     }, [loadInitial, batch?.id]),
   );
 
+  // When the debounced search changes, reset pagination and reload from page 1
+  // instead of paginating further with the new query — otherwise fetchMore
+  // would append new-search page-2 rows onto old-search page-1 rows.
+  const isFirstSearchChange = useRef(true);
+  useEffect(() => {
+    if (isFirstSearchChange.current) {
+      isFirstSearchChange.current = false;
+      return;
+    }
+    if (batch?.id) loadInitial();
+  }, [debouncedSearch, loadInitial, batch?.id]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     pageRef.current = 1;
@@ -200,6 +266,7 @@ export function BatchDetailScreen() {
             try {
               const result = await deleteBatch(batch.id);
               if (result.ok) {
+                invalidateBatchCache();
                 navigation.goBack();
               } else {
                 crossAlert('Error', result.error.message);
@@ -255,35 +322,14 @@ export function BatchDetailScreen() {
   /* ── Student row ────────────────────────────────────────────────────── */
   const renderStudentItem = useCallback(
     ({ item, index }: { item: StudentListItem; index: number }) => (
-      <View style={[styles.studentRow, index > 0 && styles.studentRowBorder]}>
-        {/* Avatar circle with initial */}
-        <View style={styles.studentAvatar}>
-          <Text style={styles.studentAvatarText}>{item.fullName.charAt(0).toUpperCase()}</Text>
-        </View>
-
-        <View style={styles.studentInfo}>
-          <Text style={styles.studentName} numberOfLines={1}>
-            {item.fullName}
-          </Text>
-          <Text style={styles.studentFee}>{'\u20B9'}{item.monthlyFee?.toLocaleString('en-IN') ?? 0}/mo</Text>
-        </View>
-
-        <Pressable
-          onPress={() => handleRemove(item)}
-          disabled={removingId === item.id}
-          style={styles.removeButton}
-          hitSlop={8}
-          accessibilityLabel={`Remove ${item.fullName} from batch`}
-          accessibilityRole="button"
-          testID={`remove-student-${item.id}`}
-        >
-          {removingId === item.id ? (
-            <ActivityIndicator size="small" color={colors.danger} />
-          ) : (
-            <Text style={styles.removeText}>{'\u2715'}</Text>
-          )}
-        </Pressable>
-      </View>
+      <StudentRow
+        item={item}
+        isFirst={index === 0}
+        isRemoving={removingId === item.id}
+        onRemove={handleRemove}
+        colors={colors}
+        styles={styles}
+      />
     ),
     [handleRemove, removingId, colors, styles],
   );

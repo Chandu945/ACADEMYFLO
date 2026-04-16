@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { apiPost } from '@/infra/http/api-client';
 import { getSessionCookie, setSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { setCsrfCookie } from '@/infra/auth/csrf-token';
 
 type BackendLoginResponse = {
   accessToken: string;
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
   const { accessToken, refreshToken, deviceId, user } = result.data;
 
   await setSessionCookie(refreshToken, deviceId, user.id);
+  await setCsrfCookie();
 
   return NextResponse.json({ accessToken, user, deviceId });
 }

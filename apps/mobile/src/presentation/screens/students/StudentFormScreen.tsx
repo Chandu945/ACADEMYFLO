@@ -10,7 +10,6 @@ import { Input } from '../../components/ui/Input';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
-import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { useToast } from '../../context/ToastContext';
 import { BatchMultiSelect } from '../../components/batches/BatchMultiSelect';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
@@ -18,7 +17,7 @@ import {
   validateStudentForm,
   saveStudentUseCase,
 } from '../../../application/student/use-cases/save-student.usecase';
-import { createStudent, updateStudent, deleteStudent, getStudentPhotoUploadPath } from '../../../infra/student/student-api';
+import { createStudent, updateStudent, getStudentPhotoUploadPath } from '../../../infra/student/student-api';
 import { getStudentBatches, setStudentBatches } from '../../../infra/batch/batch-api';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import type { Gender, CreateStudentRequest } from '../../../domain/student/student.types';
@@ -99,7 +98,6 @@ export function StudentFormScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [today] = useState(() => new Date());
   const submittingGuardRef = useRef(false);
 
@@ -246,31 +244,6 @@ export function StudentFormScreen() {
     clearFieldError('joiningDate');
   }, [clearFieldError]);
 
-  // --- Delete ---
-  const canDelete = mode === 'edit' && user?.role === 'OWNER' && student?.id;
-
-  const handleDelete = useCallback(async () => {
-    if (!student?.id || submittingGuardRef.current) return;
-    submittingGuardRef.current = true;
-    setSubmitting(true);
-    try {
-      const result = await deleteStudent(student.id);
-      if (result.ok) {
-        setShowDeleteConfirm(false);
-        showToast('Student deleted');
-        navigation.goBack();
-      } else {
-        setServerError(result.error.message);
-      }
-    } catch {
-      if (__DEV__) console.error('[StudentFormScreen] Delete failed');
-      setServerError('Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
-      submittingGuardRef.current = false;
-    }
-  }, [student?.id, navigation, showToast]);
-
   // --- Submit ---
   const showMonthlyFee = mode === 'create' || !isStaff;
 
@@ -340,7 +313,10 @@ export function StudentFormScreen() {
     if (f.whatsappNumber.trim()) data.whatsappNumber = normalizeToDigits(f.whatsappNumber.trim());
     if (f.mobileNumber.trim()) data.mobileNumber = normalizeToE164(f.mobileNumber.trim());
     if (f.addressText.trim()) data.addressText = f.addressText.trim();
-    if (f.photoUrl) data.profilePhotoUrl = f.photoUrl;
+    // Photo URL is only accepted by CreateStudentDto. On edit, the photo is updated
+    // via POST /:studentId/photo separately — sending it here trips the DTO's
+    // forbidNonWhitelisted guard ("property profilePhotoUrl should not exist").
+    if (mode === 'create' && f.photoUrl) data.profilePhotoUrl = f.photoUrl;
 
     // Staff cannot change fees
     if (mode === 'edit' && isStaff) {
@@ -635,32 +611,7 @@ export function StudentFormScreen() {
           loading={submitting}
           testID="submit-button"
         />
-        {canDelete && (
-          <View style={styles.deleteContainer}>
-            <Button
-              title="Delete Student"
-              variant="danger"
-              onPress={() => setShowDeleteConfirm(true)}
-              loading={submitting}
-              testID="delete-button"
-            />
-          </View>
-        )}
       </View>
-      <ConfirmSheet
-        visible={showDeleteConfirm}
-        title="Delete Student"
-        message={serverError && showDeleteConfirm ? serverError : "Are you sure you want to delete this student? This cannot be undone."}
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        onConfirm={handleDelete}
-        onCancel={() => {
-          setShowDeleteConfirm(false);
-          setServerError(null);
-        }}
-        loading={submitting}
-        testID="delete-confirm"
-      />
     </ScrollView>
   );
 }
@@ -726,8 +677,5 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   submitContainer: {
     marginTop: spacing.sm,
-  },
-  deleteContainer: {
-    marginTop: spacing.md,
   },
 });

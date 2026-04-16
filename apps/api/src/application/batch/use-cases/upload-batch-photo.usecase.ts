@@ -8,6 +8,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { canManageBatch } from '@domain/batch/rules/batch.rules';
 import { BatchErrors } from '../../common/errors';
+import { requireBatchInAcademy } from '../common/require-batch';
 import type { UserRole } from '@playconnect/contracts';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import {
@@ -44,14 +45,13 @@ export class UploadBatchPhotoUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batch = await this.batchRepo.findById(input.batchId);
-    if (!batch) {
-      return err(BatchErrors.notFound(input.batchId));
-    }
-
-    if (batch.academyId !== actor.academyId) {
-      return err(BatchErrors.notInAcademy());
-    }
+    const batchResult = await requireBatchInAcademy(
+      this.batchRepo,
+      input.batchId,
+      actor.academyId,
+    );
+    if (!batchResult.ok) return err(batchResult.error);
+    const batch = batchResult.value;
 
     if (!ALLOWED_IMAGE_MIME_TYPES.includes(input.mimeType as typeof ALLOWED_IMAGE_MIME_TYPES[number])) {
       return err(AppErrorClass.validation('Only JPEG, PNG, and WebP images are allowed'));

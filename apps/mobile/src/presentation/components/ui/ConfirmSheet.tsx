@@ -33,9 +33,15 @@ export function ConfirmSheet({
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Modal visible={visible} transparent animationType="fade" onShow={Keyboard.dismiss} onRequestClose={onCancel} testID={testID}>
-      <View style={styles.overlay}>
+      <View
+        style={styles.overlay}
+        accessible
+        accessibilityRole="alert"
+        accessibilityLabel={`${title}. ${message}`}
+        accessibilityViewIsModal
+      >
         <View style={styles.sheet}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title} accessibilityRole="header">{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
             <View style={styles.button}>
@@ -45,6 +51,7 @@ export function ConfirmSheet({
                 onPress={onCancel}
                 disabled={loading}
                 testID="confirm-cancel"
+                accessibilityLabel={`Cancel ${title}`}
               />
             </View>
             <View style={styles.button}>
@@ -54,6 +61,7 @@ export function ConfirmSheet({
                 onPress={onConfirm}
                 loading={loading}
                 testID="confirm-ok"
+                accessibilityLabel={`${confirmLabel}: ${title}`}
               />
             </View>
           </View>

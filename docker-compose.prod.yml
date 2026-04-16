@@ -40,12 +40,16 @@ services:
       NODE_ENV: production
       PORT: '3001'
       TZ: Asia/Kolkata
+    # readiness (not liveness) — verifies MongoDB connectivity too, since Mongo
+    # is an external managed service and there is no compose-level healthcheck for it.
+    # `restart: unless-stopped` does not loop on unhealthy status, so transient
+    # Mongo blips do not cause restart storms.
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3001/api/v1/health/liveness']
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3001/api/v1/health/readiness']
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 30s
     depends_on:
       redis:
         condition: service_healthy

@@ -3,14 +3,15 @@ import RNFS from 'react-native-fs';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
 import { ok, err } from '../../domain/common/result';
+import type { PdfExportResult } from '../../domain/reports/reports.types';
 import { getAccessToken, tryRefresh } from '../http/api-client';
 import { env } from '../env';
 import { buildPdfFilename, isValidMonthKey } from '../files/file-naming';
-import { getTempPath, moveToExports, cleanupExports, type FileMetadata } from '../files/file-manager';
+import { getTempPath, moveToExports, cleanupExports } from '../files/file-manager';
 
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 
-export type PdfExportResult = FileMetadata;
+export type { PdfExportResult };
 
 export type DownloadPdfOptions = {
   endpoint: string;

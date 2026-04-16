@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
@@ -82,7 +83,7 @@ export class InstituteInfoController {
     @Req() req: Request,
   ) {
     if (!file) {
-      return { success: false, error: { code: 'VALIDATION', message: 'No file uploaded' } };
+      throw new BadRequestException('No file uploaded');
     }
     const result = await this.uploadInstituteImage.execute({
       actorUserId: user.userId,
@@ -117,7 +118,7 @@ export class InstituteInfoController {
     @Req() req: Request,
   ) {
     if (!file) {
-      return { success: false, error: { code: 'VALIDATION', message: 'No file uploaded' } };
+      throw new BadRequestException('No file uploaded');
     }
     const result = await this.uploadInstituteImage.execute({
       actorUserId: user.userId,

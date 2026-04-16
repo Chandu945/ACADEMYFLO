@@ -40,7 +40,7 @@ import {
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '../../src/presentation/http/common/guards/jwt-auth.guard';
 import { SubscriptionEnforcementGuard } from '../../src/presentation/http/common/guards/subscription-enforcement.guard';
-import { createTestTokenService } from '../helpers/test-services';
+import { createTestTokenService, createInMemoryAuditRecorder } from '../helpers/test-services';
 import { User } from '../../src/domain/identity/entities/user.entity';
 import { Academy } from '../../src/domain/academy/entities/academy.entity';
 import { Subscription } from '../../src/domain/subscription/entities/subscription.entity';
@@ -89,7 +89,7 @@ describe('Subscription Gating (e2e)', () => {
     const studentQueryRepo = new InMemoryStudentQueryRepository(studentRepo, feeDueRepo);
     const batchRepo = new InMemoryBatchRepository();
     const studentBatchRepo = new InMemoryStudentBatchRepository();
-    const noOpAuditRecorder = { record: async () => {} };
+    const auditRecorder = createInMemoryAuditRecorder();
     const noOpLogger = {
       log: () => {},
       error: () => {},
@@ -114,7 +114,7 @@ describe('Subscription Gating (e2e)', () => {
         { provide: SUBSCRIPTION_REPOSITORY, useValue: subscriptionRepo },
         { provide: BATCH_REPOSITORY, useValue: batchRepo },
         { provide: STUDENT_BATCH_REPOSITORY, useValue: studentBatchRepo },
-        { provide: AUDIT_RECORDER_PORT, useValue: noOpAuditRecorder },
+        { provide: AUDIT_RECORDER_PORT, useValue: auditRecorder },
         { provide: CLOCK_PORT, useValue: clock },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         { provide: LOGGER_PORT, useValue: noOpLogger },
@@ -187,7 +187,7 @@ describe('Subscription Gating (e2e)', () => {
         {
           provide: 'SET_STUDENT_BATCHES_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository, br: BatchRepository, sbr: StudentBatchRepository) =>
-            new SetStudentBatchesUseCase(ur, sr, br, sbr),
+            new SetStudentBatchesUseCase(ur, sr, br, sbr, { run: <T>(fn: () => Promise<T>) => fn() }),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY],
         },
         {

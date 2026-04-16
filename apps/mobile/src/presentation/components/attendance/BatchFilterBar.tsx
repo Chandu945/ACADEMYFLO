@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
-import { listBatches } from '../../../infra/batch/batch-api';
+import { getBatchesCached } from '../../../infra/batch/batch-cache';
 import { fontSizes, fontWeights, radius, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -20,15 +20,13 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
 
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      const result = await listBatches(1, 100);
-      if (!mounted) return;
-      if (result.ok && Array.isArray(result.value?.data)) {
-        setBatches(result.value.data);
-      }
-      setLoading(false);
-    }
-    load();
+    getBatchesCached()
+      .then((items) => {
+        if (mounted) setBatches(items);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
     return () => {
       mounted = false;
     };
@@ -61,14 +59,19 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Batch filter"
       >
         <Pressable
           style={[styles.chip, allSelected && styles.chipSelected]}
           onPress={() => handlePress(null)}
+          accessibilityRole="radio"
+          accessibilityState={{ selected: allSelected }}
+          accessibilityLabel={allSelected ? 'All batches, selected' : 'All batches'}
           testID="batch-filter-all"
         >
           {allSelected && (
-            
+
             <AppIcon name="check" size={14} color={colors.primary} />
           )}
           <Text style={[styles.chipText, allSelected && styles.chipTextSelected]}>
@@ -82,6 +85,9 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
               key={batch.id}
               style={[styles.chip, isSelected && styles.chipSelected]}
               onPress={() => handlePress(batch.id, batch.batchName)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={isSelected ? `${batch.batchName}, selected` : batch.batchName}
               testID={`batch-filter-${batch.id}`}
             >
               <View style={[styles.batchInitial, isSelected && styles.batchInitialSelected]}>

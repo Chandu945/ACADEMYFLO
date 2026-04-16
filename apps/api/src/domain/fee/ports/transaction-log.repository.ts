@@ -5,7 +5,11 @@ export const TRANSACTION_LOG_REPOSITORY = Symbol('TRANSACTION_LOG_REPOSITORY');
 export interface TransactionLogRepository {
   save(log: TransactionLog): Promise<void>;
   findByPaymentRequestId(paymentRequestId: string): Promise<TransactionLog | null>;
-  listByAcademy(academyId: string, page: number, pageSize: number): Promise<TransactionLog[]>;
+  listByAcademy(
+    academyId: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{ items: TransactionLog[]; total: number }>;
   countByAcademyAndPrefix(academyId: string, prefix: string): Promise<number>;
   /**
    * Atomically increment and return the next receipt sequence number for an academy/prefix.

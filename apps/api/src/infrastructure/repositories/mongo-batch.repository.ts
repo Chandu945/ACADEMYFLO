@@ -44,6 +44,12 @@ export class MongoBatchRepository implements BatchRepository {
     return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;
   }
 
+  async findByIds(ids: string[]): Promise<Batch[]> {
+    if (ids.length === 0) return [];
+    const docs = await this.model.find({ _id: { $in: ids } }).lean().exec();
+    return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
+  }
+
   async findByAcademyAndName(
     academyId: string,
     batchNameNormalized: string,

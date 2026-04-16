@@ -7,6 +7,7 @@ import { canReadBatch } from '@domain/batch/rules/batch.rules';
 import { BatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
+import { requireBatchInAcademy } from '../common/require-batch';
 import type { UserRole } from '@playconnect/contracts';
 
 export interface GetBatchInput {
@@ -32,15 +33,13 @@ export class GetBatchUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batch = await this.batchRepo.findById(input.batchId);
-    if (!batch) {
-      return err(BatchErrors.notFound(input.batchId));
-    }
+    const batchResult = await requireBatchInAcademy(
+      this.batchRepo,
+      input.batchId,
+      actor.academyId,
+    );
+    if (!batchResult.ok) return err(batchResult.error);
 
-    if (batch.academyId !== actor.academyId) {
-      return err(BatchErrors.notInAcademy());
-    }
-
-    return ok(toBatchDto(batch));
+    return ok(toBatchDto(batchResult.value));
   }
 }

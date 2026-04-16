@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { View, FlatList, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import type { AppError } from '../../../domain/common/errors';
@@ -19,14 +19,14 @@ type UnpaidDuesScreenProps = {
   error: AppError | null;
   onRetry: () => void;
   onRowPress: (studentId: string) => void;
-  isOwner: boolean;
   month: string;
   onMarkPaidSuccess: () => void;
   studentNameMap: Record<string, string>;
-  hasMore?: boolean;
   loadingMore?: boolean;
   onEndReached?: () => void;
   total?: number;
+  /** Number of skeleton tiles to render while loading. Default 5. */
+  skeletonCount?: number;
 };
 
 const markPaidApi = { markFeePaid };
@@ -37,13 +37,12 @@ export function UnpaidDuesScreen({
   error,
   onRetry,
   onRowPress,
-  isOwner: _isOwner,
   month,
   onMarkPaidSuccess,
   studentNameMap,
-  hasMore: _hasMore,
   loadingMore,
   onEndReached,
+  skeletonCount = 5,
 }: UnpaidDuesScreenProps) {
   const { colors } = useTheme();
   const { showToast } = useToast();
@@ -51,9 +50,33 @@ export function UnpaidDuesScreen({
   const [marking, setMarking] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Optimistic hide: the id of an item currently being marked paid, filtered
+  // from the visible list so the user gets instant feedback. Cleared when
+  // the parent refetch replaces `items` (success) or explicitly on error.
+  const [pendingPaidId, setPendingPaidId] = useState<string | null>(null);
+
+  // Clearing when `items` ref changes is a reasonable proxy for "refetch
+  // completed" — parent only hands us a new array after a list mutation.
+  useEffect(() => {
+    setPendingPaidId(null);
+  }, [items]);
+
+  const visibleItems = useMemo(
+    () => (pendingPaidId ? items.filter((i) => i.id !== pendingPaidId) : items),
+    [items, pendingPaidId],
+  );
+
+  // On react-native-web, FlatList can treat the list as "at end" the moment
+  // it renders if content fits within the viewport, firing onEndReached on
+  // every render. Require a real user scroll before we allow auto-pagination.
+  const userScrolledRef = useRef(false);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Re-arm the scroll gate so auto-pagination stays disabled until the user
+    // scrolls the refreshed list — otherwise onEndReached can fire immediately
+    // after refresh completes while the list is still short.
+    userScrolledRef.current = false;
     try {
       await onRetry();
     } catch {
@@ -65,8 +88,10 @@ export function UnpaidDuesScreen({
 
   const handleMarkPaid = useCallback(async () => {
     if (!confirmItem) return;
+    const itemId = confirmItem.id;
     setMarking(true);
     setMarkError(null);
+    setPendingPaidId(itemId);
 
     try {
       const result = await ownerMarkPaidUseCase(
@@ -80,10 +105,12 @@ export function UnpaidDuesScreen({
         onMarkPaidSuccess();
         showToast('Fee marked as paid');
       } else {
+        setPendingPaidId(null);
         setMarkError(result.error.message);
       }
     } catch (e) {
       if (__DEV__) console.error('[UnpaidDuesScreen] Mark paid failed:', e);
+      setPendingPaidId(null);
       setMarkError('Something went wrong. Please try again.');
     } finally {
       setMarking(false);
@@ -107,12 +134,19 @@ export function UnpaidDuesScreen({
 
   const keyExtractor = useCallback((item: FeeDueItem) => item.id, []);
 
+  const handleScrollBeginDrag = useCallback(() => {
+    userScrolledRef.current = true;
+  }, []);
+  const handleEndReached = useCallback(() => {
+    if (userScrolledRef.current && onEndReached) onEndReached();
+  }, [onEndReached]);
+
   if (loading) {
     return (
       <View style={styles.content} testID="skeleton-container">
-        <SkeletonTile />
-        <SkeletonTile />
-        <SkeletonTile />
+        {Array.from({ length: skeletonCount }, (_, i) => (
+          <SkeletonTile key={i} />
+        ))}
       </View>
     );
   }
@@ -127,11 +161,11 @@ export function UnpaidDuesScreen({
 
   return (
     <View style={styles.container}>
-      {items.length === 0 ? (
+      {visibleItems.length === 0 ? (
         <EmptyState message="No unpaid dues for this month" />
       ) : (
         <FlatList
-          data={items}
+          data={visibleItems}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           extraData={studentNameMap}
@@ -139,8 +173,9 @@ export function UnpaidDuesScreen({
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
-          onEndReached={onEndReached}
+          onEndReached={handleEndReached}
           onEndReachedThreshold={0.3}
+          onScrollBeginDrag={handleScrollBeginDrag}
           removeClippedSubviews
           windowSize={11}
           maxToRenderPerBatch={5}

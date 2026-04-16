@@ -93,6 +93,12 @@ export class InMemoryUserRepository implements UserRepository {
     return { users, total: filtered.length };
   }
 
+  async countActiveByAcademyAndRole(academyId: string, role: UserRole): Promise<number> {
+    return Array.from(this.users.values()).filter(
+      (u) => u.academyId === academyId && u.role === role && u.status === 'ACTIVE',
+    ).length;
+  }
+
   async incrementTokenVersionByAcademyId(academyId: string): Promise<string[]> {
     const { User: UserClass } = await import('../../src/domain/identity/entities/user.entity');
     const ids: string[] = [];
@@ -398,6 +404,18 @@ export class InMemoryStudentBatchRepository implements StudentBatchRepository {
     return Array.from(this.assignments.values()).filter((a) => a.batchId === batchId).length;
   }
 
+  async countByBatchIds(batchIds: string[]): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (batchIds.length === 0) return map;
+    const wanted = new Set(batchIds);
+    for (const a of this.assignments.values()) {
+      if (wanted.has(a.batchId)) {
+        map.set(a.batchId, (map.get(a.batchId) ?? 0) + 1);
+      }
+    }
+    return map;
+  }
+
   clear(): void {
     this.assignments.clear();
   }
@@ -462,6 +480,12 @@ export class InMemoryBatchRepository implements BatchRepository {
 
   async findById(id: string): Promise<Batch | null> {
     return this.batches.get(id) ?? null;
+  }
+
+  async findByIds(ids: string[]): Promise<Batch[]> {
+    return ids
+      .map((id) => this.batches.get(id))
+      .filter((b): b is Batch => b !== undefined);
   }
 
   async findByAcademyAndName(
@@ -955,12 +979,12 @@ export class InMemoryTransactionLogRepository implements TransactionLogRepositor
     academyId: string,
     page: number,
     pageSize: number,
-  ): Promise<TransactionLog[]> {
+  ): Promise<{ items: TransactionLog[]; total: number }> {
     const all = Array.from(this.logs.values())
       .filter((l) => l.academyId === academyId)
       .sort((a, b) => b.audit.createdAt.getTime() - a.audit.createdAt.getTime());
     const start = (page - 1) * pageSize;
-    return all.slice(start, start + pageSize);
+    return { items: all.slice(start, start + pageSize), total: all.length };
   }
 
   async countByAcademyAndPrefix(academyId: string, prefix: string): Promise<number> {

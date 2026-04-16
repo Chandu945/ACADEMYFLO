@@ -6,8 +6,9 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import { isEligibleForDue, shouldFlipToDue, computeDueDate } from '@domain/fee/rules/fee.rules';
-import { toMonthKeyFromDate } from '@shared/date-utils';
-import { DEFAULT_DUE_DATE_DAY, type LateFeeConfig, type LateFeeRepeatInterval } from '@playconnect/contracts';
+import { toMonthKeyFromDate, formatLocalDate, daysBetweenLocalDates } from '@shared/date-utils';
+import { DEFAULT_DUE_DATE_DAY } from '@playconnect/contracts';
+import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
 import { randomUUID } from 'crypto';
 
 export interface RunMonthlyDuesEngineInput {
@@ -93,22 +94,18 @@ export class RunMonthlyDuesEngineUseCase {
 
     // Phase 3: Snapshot late fee config onto overdue dues that haven't been snapshotted yet
     let snapshotted = 0;
-    if (academy.lateFeeEnabled && academy.lateFeeAmountInr > 0) {
-      const config: LateFeeConfig = {
-        lateFeeEnabled: academy.lateFeeEnabled,
-        gracePeriodDays: academy.gracePeriodDays,
-        lateFeeAmountInr: academy.lateFeeAmountInr,
-        lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
-      };
+    const config = buildLateFeeConfigFromAcademy(academy);
+    if (config && academy.lateFeeAmountInr > 0) {
 
-      const todayMs = input.now.getTime();
-      const dayMs = 24 * 60 * 60 * 1000;
+      // Use calendar-day arithmetic on IST YYYY-MM-DD strings so the result
+      // doesn't depend on system TZ (with TZ drift the string+parse trick could
+      // be off by one near midnight IST).
+      const todayStr = formatLocalDate(input.now);
 
       const unsnapshotted = await this.feeDueRepo.findDueWithoutSnapshot(input.academyId);
       const toSnapshot: FeeDue[] = [];
       for (const due of unsnapshotted) {
-        const dueDateMs = new Date(due.dueDate + 'T00:00:00').getTime();
-        const daysPastDue = Math.floor((todayMs - dueDateMs) / dayMs);
+        const daysPastDue = daysBetweenLocalDates(due.dueDate, todayStr);
         if (daysPastDue > config.gracePeriodDays) {
           toSnapshot.push(due.snapshotLateFeeConfig(config));
         }

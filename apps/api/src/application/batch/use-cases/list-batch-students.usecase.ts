@@ -7,6 +7,7 @@ import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.r
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { canReadBatch } from '@domain/batch/rules/batch.rules';
 import { BatchErrors } from '../../common/errors';
+import { requireBatchInAcademy } from '../common/require-batch';
 import type { StudentDto } from '../../student/dtos/student.dto';
 import { toStudentDto } from '../../student/dtos/student.dto';
 import type { UserRole } from '@playconnect/contracts';
@@ -49,14 +50,12 @@ export class ListBatchStudentsUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batch = await this.batchRepo.findById(input.batchId);
-    if (!batch) {
-      return err(BatchErrors.notFound(input.batchId));
-    }
-
-    if (batch.academyId !== actor.academyId) {
-      return err(BatchErrors.notInAcademy());
-    }
+    const batchResult = await requireBatchInAcademy(
+      this.batchRepo,
+      input.batchId,
+      actor.academyId,
+    );
+    if (!batchResult.ok) return err(batchResult.error);
 
     const assignments = await this.studentBatchRepo.findByBatchId(input.batchId);
     const studentIds = assignments.map((a) => a.studentId);

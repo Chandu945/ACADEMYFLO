@@ -9,6 +9,7 @@ import { StudentErrors } from '../../common/errors';
 import type { UserRole } from '@playconnect/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 
 export interface SoftDeleteStudentInput {
   actorUserId: string;
@@ -22,6 +23,7 @@ export class SoftDeleteStudentUseCase {
     private readonly studentRepo: StudentRepository,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly feeDueRepo?: FeeDueRepository,
+    private readonly studentBatchRepo?: StudentBatchRepository,
   ) {}
 
   async execute(input: SoftDeleteStudentInput): Promise<Result<{ id: string }, AppError>> {
@@ -80,6 +82,13 @@ export class SoftDeleteStudentUseCase {
 
     if (this.feeDueRepo) {
       await this.feeDueRepo.deleteUpcomingByStudent(actor.academyId, input.studentId);
+    }
+
+    // Clean up batch memberships so a deleted student doesn't linger in
+    // batch attendance views or count against capacity. Reuse replaceForStudent
+    // with an empty array — that's the existing "clear all" path.
+    if (this.studentBatchRepo) {
+      await this.studentBatchRepo.replaceForStudent(input.studentId, []);
     }
 
     await this.auditRecorder.record({

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AttendanceStackParamList } from '../../navigation/AttendanceStack';
 import type { AppError } from '../../../domain/common/errors';
@@ -110,6 +110,20 @@ export function AttendanceMonthlySummaryScreen() {
       mountedRef.current = false;
     };
   }, [load]);
+
+  // Refresh counts when the user navigates back from the daily attendance
+  // screen — toggles there don't invalidate this view's cache, so without
+  // this the P/A/H totals stay stale until an explicit pull-to-refresh.
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      load(1, false);
+    }, [load]),
+  );
 
   const handleRowPress = useCallback(
     (item: MonthlySummaryItem) => {

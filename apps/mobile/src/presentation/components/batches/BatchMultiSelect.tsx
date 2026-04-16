@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
-import { listBatches } from '../../../infra/batch/batch-api';
+import { getBatchesCached } from '../../../infra/batch/batch-cache';
 import { fontSizes, fontWeights, radius, spacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -19,29 +19,33 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
 
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      const result = await listBatches(1, 100);
-      if (!mounted) return;
-      if (result.ok && Array.isArray(result.value?.data)) {
-        setBatches(result.value.data);
-      }
-      setLoading(false);
-    }
-    load();
+    getBatchesCached()
+      .then((items) => {
+        if (mounted) setBatches(items);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
     return () => {
       mounted = false;
     };
   }, []);
 
+  // Read selectedIds through a ref so `toggle` stays stable across re-renders.
+  // Otherwise every parent render with a new selectedIds array would recreate
+  // toggle and any memoized downstream components (rows) would churn.
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
   const toggle = useCallback(
     (batchId: string) => {
-      if (selectedIds.includes(batchId)) {
-        onChange(selectedIds.filter((id) => id !== batchId));
+      const ids = selectedIdsRef.current;
+      if (ids.includes(batchId)) {
+        onChange(ids.filter((id) => id !== batchId));
       } else {
-        onChange([...selectedIds, batchId]);
+        onChange([...ids, batchId]);
       }
     },
-    [selectedIds, onChange],
+    [onChange],
   );
 
   if (loading) {
@@ -62,8 +66,18 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
 
   return (
     <View>
-      <Text style={styles.label}>Batches</Text>
-      <View style={styles.list}>
+      <Text
+        style={styles.label}
+        accessibilityRole="header"
+        accessibilityLabel={
+          selectedIds.length === 0
+            ? 'Batches, none selected'
+            : `Batches, ${selectedIds.length} selected`
+        }
+      >
+        Batches
+      </Text>
+      <View style={styles.list} accessibilityRole="radiogroup" accessibilityLabel="Select batches">
         {batches.map((batch) => {
           const isSelected = selectedIds.includes(batch.id);
           return (
@@ -71,6 +85,9 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
               key={batch.id}
               style={[styles.chip, isSelected && styles.chipSelected]}
               onPress={() => toggle(batch.id)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isSelected }}
+              accessibilityLabel={batch.batchName}
               testID={`batch-select-${batch.id}`}
             >
               <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>

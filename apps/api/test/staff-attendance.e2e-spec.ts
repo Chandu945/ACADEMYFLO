@@ -22,7 +22,7 @@ import {
   InMemoryStaffAttendanceRepository,
   InMemoryHolidayRepository,
 } from './helpers/in-memory-repos';
-import { createTestTokenService } from './helpers/test-services';
+import { createTestTokenService, createInMemoryAuditRecorder } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Holiday } from '../src/domain/attendance/entities/holiday.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -71,7 +71,7 @@ describe('Staff Attendance Endpoints (e2e)', () => {
     holidayRepo = new InMemoryHolidayRepository();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
-    const noOpAuditRecorder = { record: async () => {} };
+    const auditRecorder = createInMemoryAuditRecorder();
 
     const deps = [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY];
 
@@ -97,14 +97,14 @@ describe('Staff Attendance Endpoints (e2e)', () => {
         {
           provide: 'MARK_STAFF_ATTENDANCE_USE_CASE',
           useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new MarkStaffAttendanceUseCase(ur, sar, noOpAuditRecorder),
+            new MarkStaffAttendanceUseCase(ur, sar, auditRecorder),
           inject: [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY],
         },
         {
           provide: 'GET_DAILY_STAFF_ATTENDANCE_REPORT_USE_CASE',
-          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository) =>
-            new GetDailyStaffAttendanceReportUseCase(ur, sar),
-          inject: [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY],
+          useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: InMemoryHolidayRepository) =>
+            new GetDailyStaffAttendanceReportUseCase(ur, sar, hr),
+          inject: [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY],
         },
         {
           provide: 'GET_MONTHLY_STAFF_ATTENDANCE_SUMMARY_USE_CASE',

@@ -23,7 +23,10 @@ export class MongoTransactionService implements TransactionPort {
       }
       const session = await this.connection.startSession();
       try {
-        session.startTransaction();
+        // MongoDB requires all reads inside a transaction to target the primary.
+        // The connection default is `secondaryPreferred`, so without this override
+        // Mongo throws: "Read preference in a transaction must be primary".
+        session.startTransaction({ readPreference: 'primary' });
         const result = await runInTransaction(session, fn);
         await session.commitTransaction();
         return result;

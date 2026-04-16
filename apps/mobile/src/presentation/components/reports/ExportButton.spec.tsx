@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { ExportButton } from './ExportButton';
 import { ok, err } from '../../../domain/common/result';
-import type { PdfExportResult } from '../../../infra/reports/pdf-download';
+import type { PdfExportResult } from '../../../domain/reports/reports.types';
 
 jest.mock('react-native-share', () => ({
   default: { open: jest.fn(() => Promise.resolve({ success: true })) },

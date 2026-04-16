@@ -76,7 +76,10 @@ export function StaffFormScreen() {
   const [startDate, setStartDate] = useState(staff?.startDate ?? '');
   const [gender, setGender] = useState(staff?.gender ?? '');
   const [whatsappNumber, setWhatsappNumber] = useState(stripCountryCode(staff?.whatsappNumber ?? ''));
-  const [mobileNumber, _setMobileNumber] = useState(stripCountryCode(staff?.mobileNumber ?? ''));
+  // mobileNumber is derived from the staff prop; there's intentionally no UI
+  // input for it on this form. Using a ref/constant rather than an unused
+  // useState setter (ESLint flagged the dead `_setMobileNumber`).
+  const mobileNumber = stripCountryCode(staff?.mobileNumber ?? '');
   const [address, setAddress] = useState(staff?.address ?? '');
   const [qualification, setQualification] = useState(staff?.qualificationInfo?.qualification ?? '');
   const [position, setPosition] = useState(staff?.qualificationInfo?.position ?? '');
@@ -194,6 +197,12 @@ export function StaffFormScreen() {
           ? { amount: newAmount, frequency: salaryFrequency as SalaryFrequency }
           : null;
       }
+
+      // Photo: unlike students (where UpdateStudentDto rejects profilePhotoUrl),
+      // UpdateStaffDto accepts it — so include changes in the PATCH body or the
+      // user's photo edit silently disappears.
+      const newPhotoUrl = photoUrl || null;
+      if (newPhotoUrl !== (staff?.profilePhotoUrl ?? null)) patch.profilePhotoUrl = newPhotoUrl;
 
       result = await updateStaffUseCase({ staffApi: updateApi }, staff!.id, patch);
     }

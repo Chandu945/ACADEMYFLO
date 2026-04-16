@@ -25,6 +25,7 @@ type ButtonProps = {
   loading?: boolean;
   disabled?: boolean;
   testID?: string;
+  accessibilityLabel?: string;
 };
 
 function getBgColors(colors: Colors): Record<ButtonVariant, string> {
@@ -51,6 +52,7 @@ export function Button({
   loading = false,
   disabled = false,
   testID,
+  accessibilityLabel,
 }: ButtonProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -76,7 +78,7 @@ export function Button({
       onPressOut={handlePressOut}
       disabled={isDisabled}
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
     >

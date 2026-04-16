@@ -96,13 +96,23 @@ type SummaryBarProps = {
   items: DailyStaffAttendanceItem[];
 };
 
-function SummaryBar({ items }: SummaryBarProps) {
+function SummaryBarComponent({ items }: SummaryBarProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const presentCount = items.filter((i) => i.status === 'PRESENT').length;
-  const totalCount = items.length;
-  const percentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+  // Memoize counts so they only recompute when `items` identity changes,
+  // not on every parent re-render (e.g. pull-to-refresh, date selection).
+  const { presentCount, totalCount, percentage, absentCount } = useMemo(() => {
+    let present = 0;
+    for (const item of items) if (item.status === 'PRESENT') present++;
+    const total = items.length;
+    return {
+      presentCount: present,
+      totalCount: total,
+      absentCount: total - present,
+      percentage: total > 0 ? Math.round((present / total) * 100) : 0,
+    };
+  }, [items]);
 
   if (totalCount === 0) return null;
 
@@ -110,7 +120,7 @@ function SummaryBar({ items }: SummaryBarProps) {
     <View style={styles.summaryBar}>
       <View style={styles.summaryLeft}>
         <View style={styles.summaryIconCircle}>
-          
+
           <AppIcon name="account-group" size={18} color={colors.primary} />
         </View>
         <View>
@@ -125,12 +135,14 @@ function SummaryBar({ items }: SummaryBarProps) {
           <Text style={[styles.summaryChipText, { color: colors.success }]}>{presentCount}P</Text>
         </View>
         <View style={[styles.summaryChip, { backgroundColor: colors.dangerBg }]}>
-          <Text style={[styles.summaryChipText, { color: colors.danger }]}>{totalCount - presentCount}A</Text>
+          <Text style={[styles.summaryChipText, { color: colors.danger }]}>{absentCount}A</Text>
         </View>
       </View>
     </View>
   );
 }
+
+const SummaryBar = memo(SummaryBarComponent);
 
 export function StaffAttendanceScreen() {
   const { colors } = useTheme();

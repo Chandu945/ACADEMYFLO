@@ -30,7 +30,7 @@ import {
   InMemoryStudentAttendanceRepository,
   InMemoryHolidayRepository,
 } from './helpers/in-memory-repos';
-import { createTestTokenService } from './helpers/test-services';
+import { createTestTokenService, createInMemoryAuditRecorder } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Student } from '../src/domain/student/entities/student.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -62,7 +62,7 @@ describe('Attendance Endpoints (e2e)', () => {
     holidayRepo = new InMemoryHolidayRepository();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
-    const noOpAuditRecorder = { record: async () => {} };
+    const auditRecorder = createInMemoryAuditRecorder();
 
     const deps = [
       USER_REPOSITORY,
@@ -102,7 +102,7 @@ describe('Attendance Endpoints (e2e)', () => {
             sr: StudentRepository,
             ar: StudentAttendanceRepository,
             hr: HolidayRepository,
-          ) => new MarkStudentAttendanceUseCase(ur, sr, ar, hr, noOpAuditRecorder),
+          ) => new MarkStudentAttendanceUseCase(ur, sr, ar, hr, auditRecorder),
           inject: deps,
         },
         {
@@ -112,7 +112,7 @@ describe('Attendance Endpoints (e2e)', () => {
             sr: StudentRepository,
             ar: StudentAttendanceRepository,
             hr: HolidayRepository,
-          ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, noOpAuditRecorder),
+          ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, auditRecorder),
           inject: deps,
         },
         {

@@ -57,12 +57,13 @@ export class ListBatchesUseCase {
       input.search,
     );
 
-    const data: BatchListItemDto[] = await Promise.all(
-      batches.map(async (batch) => ({
-        ...toBatchDto(batch),
-        studentCount: await this.studentBatchRepo.countByBatchId(batch.id.toString()),
-      })),
-    );
+    // Single aggregation for all batch counts on the page (was N per-batch round-trips).
+    const batchIds = batches.map((b) => b.id.toString());
+    const countByBatch = await this.studentBatchRepo.countByBatchIds(batchIds);
+    const data: BatchListItemDto[] = batches.map((batch) => ({
+      ...toBatchDto(batch),
+      studentCount: countByBatch.get(batch.id.toString()) ?? 0,
+    }));
 
     return ok({
       data,

@@ -36,6 +36,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       save: jest.fn(),
       updateAcademyId: jest.fn(),
       listByAcademyAndRole: jest.fn(),
+    countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
       incrementTokenVersionByAcademyId: jest.fn(),
       incrementTokenVersionByUserId: jest.fn(),
       listByAcademyId: jest.fn(),

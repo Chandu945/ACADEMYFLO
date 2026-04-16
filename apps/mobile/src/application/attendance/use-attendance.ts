@@ -157,6 +157,18 @@ export function useAttendance(
               ),
             );
             setError(result.error);
+            return;
+          }
+          // Reconcile with the server's authoritative status — if the backend
+          // decided differently than we predicted (e.g. race with another edit),
+          // the UI should reflect reality, not our optimistic guess.
+          const serverStatus = result.value.status as AttendanceStatus;
+          if (serverStatus !== capturedNew) {
+            setItems((prev) =>
+              prev.map((item) =>
+                item.studentId === studentId ? { ...item, status: serverStatus } : item,
+              ),
+            );
           }
         })
         .catch((e) => {

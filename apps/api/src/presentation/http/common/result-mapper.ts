@@ -27,7 +27,7 @@ const ERROR_STATUS_MAP: Record<string, HttpStatus> = {
   COOLDOWN_ACTIVE: HttpStatus.TOO_MANY_REQUESTS,
 };
 
-function throwMappedError(error: AppError): never {
+export function throwMappedError(error: AppError): never {
   const status = ERROR_STATUS_MAP[error.code] ?? HttpStatus.INTERNAL_SERVER_ERROR;
   switch (status) {
     case HttpStatus.BAD_REQUEST:

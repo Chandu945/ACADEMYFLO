@@ -34,8 +34,14 @@ export function DaysPicker({ selected, onChange, error }: DaysPickerProps) {
 
   return (
     <View>
-      <Text style={styles.label}>Days</Text>
-      <View style={styles.row}>
+      <Text style={styles.label} accessibilityRole="header">
+        Days
+      </Text>
+      <View
+        style={styles.row}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Days of the week"
+      >
         {ALL_DAYS.map((day) => {
           const isSelected = selected.includes(day.value);
           return (
@@ -43,6 +49,9 @@ export function DaysPicker({ selected, onChange, error }: DaysPickerProps) {
               key={day.value}
               style={[styles.chip, isSelected && styles.chipSelected]}
               onPress={() => toggle(day.value)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isSelected }}
+              accessibilityLabel={day.label}
               testID={`day-${day.value.toLowerCase()}`}
             >
               <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>

@@ -10,6 +10,7 @@ import type { ChildFeeDueDto } from '../dtos/parent.dto';
 import type { UserRole, LateFeeConfig, LateFeeRepeatInterval } from '@playconnect/contracts';
 import { computeLateFee } from '@playconnect/contracts';
 import type { ClockPort } from '../../common/clock.port';
+import { formatLocalDate } from '../../../shared/date-utils';
 
 export interface GetChildFeesInput {
   parentUserId: string;
@@ -44,7 +45,7 @@ export class GetChildFeesUseCase {
       this.academyRepo.findById(link.academyId),
     ]);
 
-    const today = this.clock.now().toISOString().slice(0, 10);
+    const today = formatLocalDate(this.clock.now());
     const config: LateFeeConfig | undefined = academy?.lateFeeEnabled
       ? {
           lateFeeEnabled: academy.lateFeeEnabled,

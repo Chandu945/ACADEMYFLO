@@ -40,7 +40,7 @@ export interface SetStaffStatusOutput {
 export class SetStaffStatusUseCase {
   constructor(
     private readonly userRepo: UserRepository,
-    private readonly sessionRepo?: SessionRepository,
+    private readonly sessionRepo: SessionRepository,
   ) {}
 
   async execute(input: SetStaffStatusInput): Promise<Result<SetStaffStatusOutput, AppError>> {
@@ -96,7 +96,7 @@ export class SetStaffStatusUseCase {
     // Note: user auth cache (user:auth:{staffId}) will be invalidated on next
     // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
 
-    if (input.status === 'INACTIVE' && this.sessionRepo) {
+    if (input.status === 'INACTIVE') {
       await this.sessionRepo.revokeAllByUserIds([input.staffId]);
     }
 

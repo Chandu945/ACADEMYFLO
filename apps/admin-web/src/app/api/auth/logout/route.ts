@@ -4,9 +4,10 @@ import type { NextRequest } from 'next/server';
 import { apiPost } from '@/infra/http/api-client';
 import { getSessionCookie, clearSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { clearCsrfCookie, validateCsrfToken } from '@/infra/auth/csrf-token';
 
 export async function POST(request: NextRequest) {
-  if (!isOriginValid(request)) {
+  if (!isOriginValid(request) || !(await validateCsrfToken(request))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
   }
 
   await clearSessionCookie();
+  await clearCsrfCookie();
 
   return NextResponse.json({ ok: true });
 }

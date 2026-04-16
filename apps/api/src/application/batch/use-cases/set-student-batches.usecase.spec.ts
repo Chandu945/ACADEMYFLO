@@ -54,6 +54,7 @@ function buildDeps() {
     findByPhone: jest.fn(),
     updateAcademyId: jest.fn(),
     listByAcademyAndRole: jest.fn(),
+    countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
@@ -78,6 +79,7 @@ function buildDeps() {
   const batchRepo: jest.Mocked<BatchRepository> = {
     save: jest.fn(),
     findById: jest.fn(),
+    findByIds: jest.fn(),
     findByAcademyAndName: jest.fn(),
     listByAcademy: jest.fn(),
     deleteById: jest.fn(),
@@ -89,9 +91,12 @@ function buildDeps() {
     findByBatchId: jest.fn(),
     deleteByBatchId: jest.fn(),
     countByBatchId: jest.fn(),
+    countByBatchIds: jest.fn().mockResolvedValue(new Map()),
   };
 
-  return { userRepo, studentRepo, batchRepo, studentBatchRepo };
+  const transaction = { run: <T>(fn: () => Promise<T>) => fn() };
+
+  return { userRepo, studentRepo, batchRepo, studentBatchRepo, transaction };
 }
 
 describe('SetStudentBatchesUseCase', () => {
@@ -99,13 +104,14 @@ describe('SetStudentBatchesUseCase', () => {
     const deps = buildDeps();
     deps.userRepo.findById.mockResolvedValue(createMockUser());
     deps.studentRepo.findById.mockResolvedValue(createMockStudent());
-    deps.batchRepo.findById.mockImplementation(async (id) => createMockBatch(id));
+    deps.batchRepo.findByIds.mockImplementation(async (ids) => ids.map((id) => createMockBatch(id)));
 
     const uc = new SetStudentBatchesUseCase(
       deps.userRepo,
       deps.studentRepo,
       deps.batchRepo,
       deps.studentBatchRepo,
+      deps.transaction,
     );
 
     const result = await uc.execute({
@@ -129,13 +135,14 @@ describe('SetStudentBatchesUseCase', () => {
     const deps = buildDeps();
     deps.userRepo.findById.mockResolvedValue(createMockUser());
     deps.studentRepo.findById.mockResolvedValue(createMockStudent());
-    deps.batchRepo.findById.mockImplementation(async (id) => createMockBatch(id));
+    deps.batchRepo.findByIds.mockImplementation(async (ids) => ids.map((id) => createMockBatch(id)));
 
     const uc = new SetStudentBatchesUseCase(
       deps.userRepo,
       deps.studentRepo,
       deps.batchRepo,
       deps.studentBatchRepo,
+      deps.transaction,
     );
 
     const result = await uc.execute({
@@ -161,6 +168,7 @@ describe('SetStudentBatchesUseCase', () => {
       deps.studentRepo,
       deps.batchRepo,
       deps.studentBatchRepo,
+      deps.transaction,
     );
 
     const result = await uc.execute({
@@ -180,13 +188,14 @@ describe('SetStudentBatchesUseCase', () => {
     const deps = buildDeps();
     deps.userRepo.findById.mockResolvedValue(createMockUser());
     deps.studentRepo.findById.mockResolvedValue(createMockStudent());
-    deps.batchRepo.findById.mockResolvedValue(createMockBatch('batch-1', 'other-academy'));
+    deps.batchRepo.findByIds.mockResolvedValue([createMockBatch('batch-1', 'other-academy')]);
 
     const uc = new SetStudentBatchesUseCase(
       deps.userRepo,
       deps.studentRepo,
       deps.batchRepo,
       deps.studentBatchRepo,
+      deps.transaction,
     );
 
     const result = await uc.execute({
@@ -210,6 +219,7 @@ describe('SetStudentBatchesUseCase', () => {
       deps.studentRepo,
       deps.batchRepo,
       deps.studentBatchRepo,
+      deps.transaction,
     );
 
     const result = await uc.execute({
@@ -235,6 +245,7 @@ describe('SetStudentBatchesUseCase', () => {
       deps.studentRepo,
       deps.batchRepo,
       deps.studentBatchRepo,
+      deps.transaction,
     );
 
     const result = await uc.execute({

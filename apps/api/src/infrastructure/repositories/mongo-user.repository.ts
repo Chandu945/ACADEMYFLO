@@ -91,6 +91,12 @@ export class MongoUserRepository implements UserRepository {
     return { users, total };
   }
 
+  async countActiveByAcademyAndRole(academyId: string, role: UserRole): Promise<number> {
+    return this.model
+      .countDocuments({ academyId, role, status: 'ACTIVE', deletedAt: null })
+      .exec();
+  }
+
   async incrementTokenVersionByAcademyId(academyId: string): Promise<string[]> {
     await this.model.updateMany({ academyId, deletedAt: null }, { $inc: { tokenVersion: 1 } }, { session: getTransactionSession() });
     const docs = await this.model.find({ academyId, deletedAt: null }).select('_id').lean().exec();
