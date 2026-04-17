@@ -16,6 +16,8 @@ export const childrenListSchema = z.array(childSummarySchema);
 export const childAttendanceSummarySchema = z.object({
   studentId: z.string(),
   month: z.string(),
+  absentDates: z.array(z.string()),
+  holidayDates: z.array(z.string()),
   presentCount: z.number(),
   absentCount: z.number(),
   holidayCount: z.number(),
@@ -80,7 +82,7 @@ export const academyInfoSchema = z.object({
   academyName: z.string(),
   address: z.object({
     line1: z.string(),
-    line2: z.string().optional(),
+    line2: z.string().nullable().optional(),
     city: z.string(),
     state: z.string(),
     pincode: z.string(),

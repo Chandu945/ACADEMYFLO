@@ -61,8 +61,8 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
       input.pageSize,
     );
 
-    // Get all absent records and holidays for the month in bulk
-    const [allAbsent, holidays] = await Promise.all([
+    // Get all present records and holidays for the month in bulk
+    const [allPresent, holidays] = await Promise.all([
       this.staffAttendanceRepo.findAbsentByAcademyAndMonth(actor.academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(actor.academyId, input.month),
     ]);
@@ -71,19 +71,19 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
     const holidayCount = holidays.length;
     const holidayDateSet = new Set(holidays.map((h) => h.date));
 
-    // Build absent dates per staff (to compute overlap with holidays)
-    const absentDatesMap = new Map<string, string[]>();
-    for (const record of allAbsent) {
-      const dates = absentDatesMap.get(record.staffUserId) ?? [];
+    // Build present dates per staff (to compute overlap with holidays)
+    const presentDatesMap = new Map<string, string[]>();
+    for (const record of allPresent) {
+      const dates = presentDatesMap.get(record.staffUserId) ?? [];
       dates.push(record.date);
-      absentDatesMap.set(record.staffUserId, dates);
+      presentDatesMap.set(record.staffUserId, dates);
     }
 
     const data: MonthlyStaffAttendanceSummaryItem[] = staffUsers.map((s) => {
-      const absentDates = absentDatesMap.get(s.id.toString()) ?? [];
-      const absentCount = absentDates.length;
-      const overlapCount = absentDates.filter((d) => holidayDateSet.has(d)).length;
-      const presentCount = Math.max(0, daysInMonth - absentCount - holidayCount + overlapCount);
+      const presentDatesForStaff = presentDatesMap.get(s.id.toString()) ?? [];
+      const presentCount = presentDatesForStaff.length;
+      const overlapCount = presentDatesForStaff.filter((d) => holidayDateSet.has(d)).length;
+      const absentCount = Math.max(0, daysInMonth - presentCount - holidayCount + overlapCount);
       return {
         staffUserId: s.id.toString(),
         fullName: s.fullName,

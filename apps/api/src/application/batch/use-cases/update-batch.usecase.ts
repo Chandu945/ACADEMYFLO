@@ -98,10 +98,10 @@ export class UpdateBatchUseCase {
       }
     }
 
-    // Same both-or-neither invariant as create — a lone startTime/endTime is invalid.
-    if (Boolean(newStartTime) !== Boolean(newEndTime)) {
+    // endTime without startTime is invalid; startTime alone is allowed.
+    if (newEndTime && !newStartTime) {
       return err(
-        AppErrorClass.validation('startTime and endTime must both be provided or both omitted'),
+        AppErrorClass.validation('startTime is required when endTime is provided'),
       );
     }
     if (newStartTime && newEndTime) {

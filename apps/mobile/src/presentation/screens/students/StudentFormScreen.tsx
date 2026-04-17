@@ -100,6 +100,7 @@ export function StudentFormScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [today] = useState(() => new Date());
   const submittingGuardRef = useRef(false);
+  const submittedRef = useRef(false);
 
   // --- Refs for focus chain ---
   const fatherNameRef = useRef<TextInput>(null);
@@ -153,7 +154,7 @@ export function StudentFormScreen() {
   }, [fullName, dateOfBirth, gender, guardianName, guardianMobile, guardianEmail,
     joiningDate, monthlyFee, fatherName, motherName, whatsappNumber, mobileNumber,
     addressText, photoUrl, selectedBatchIds]);
-  useUnsavedChangesWarning(isDirty && !submitting);
+  useUnsavedChangesWarning(isDirty && !submitting && !submittedRef.current);
 
   // --- Load batches for edit mode ---
   useEffect(() => {
@@ -358,11 +359,13 @@ export function StudentFormScreen() {
           }
         }
 
+        submittedRef.current = true;
         if (mode === 'create') {
           (navigation as unknown as { navigate: (name: string) => void }).navigate('StudentsList');
         } else {
-          navigation.goBack();
+          (navigation as unknown as { navigate: (name: string) => void }).navigate('StudentsList');
         }
+        return;
       } else {
         const msg = result.error.message;
         if (result.error.fieldErrors && Object.keys(result.error.fieldErrors).length > 0) {
@@ -483,22 +486,6 @@ export function StudentFormScreen() {
       <Text style={styles.sectionSubtitle}>Phone numbers with country code.</Text>
 
       <Input
-        ref={whatsappRef}
-        label="WhatsApp (Optional)"
-        value={whatsappNumber}
-        onChangeText={handleWhatsappChange}
-        keyboardType="phone-pad"
-        autoComplete="tel"
-        textContentType="telephoneNumber"
-        prefix="+91"
-        placeholder="9876543210"
-        maxLength={10}
-        returnKeyType="next"
-        onSubmitEditing={() => mobileRef.current?.focus()}
-        testID="input-whatsappNumber"
-      />
-
-      <Input
         ref={mobileRef}
         label="Mobile Number (Optional)"
         value={mobileNumber}
@@ -537,42 +524,8 @@ export function StudentFormScreen() {
         placeholder="456 Park Lane, Mumbai"
         maxLength={300}
         returnKeyType="next"
-        onSubmitEditing={() => guardianNameRef.current?.focus()}
-        testID="input-addressText"
-      />
-
-      {/* Section: Guardian Information (Optional) */}
-      <Text style={styles.sectionTitle} accessibilityRole="header">Guardian Information</Text>
-      <Text style={styles.sectionSubtitle}>Optional — add parent/guardian contact details.</Text>
-
-      <Input
-        ref={guardianNameRef}
-        label="Guardian Name (Optional)"
-        value={guardianName}
-        onChangeText={handleGuardianNameChange}
-        error={fieldErrors['guardianName']}
-        maxLength={100}
-        autoCapitalize="words"
-        returnKeyType="next"
-        onSubmitEditing={() => guardianMobileRef.current?.focus()}
-        testID="input-guardianName"
-      />
-
-      <Input
-        ref={guardianMobileRef}
-        label="Guardian Mobile (Optional)"
-        value={guardianMobile}
-        onChangeText={handleGuardianMobileChange}
-        error={fieldErrors['guardianMobile']}
-        prefix="+91"
-        placeholder="9876543210"
-        keyboardType="phone-pad"
-        autoComplete="tel"
-        textContentType="telephoneNumber"
-        maxLength={10}
-        returnKeyType="next"
         onSubmitEditing={() => monthlyFeeRef.current?.focus()}
-        testID="input-guardianMobile"
+        testID="input-addressText"
       />
 
       {/* Section: Enrollment */}

@@ -58,26 +58,24 @@ export class InitiateSubscriptionPaymentUseCase {
       return err(AppError.forbidden('Cannot initiate payment for a disabled academy'));
     }
 
-    // Check for existing PENDING payment — expire stale ones
+    // Check for existing PENDING payment — expire it to allow retry
     const existingPending = await this.paymentRepo.findPendingByAcademyId(academyId);
     if (existingPending) {
-      const STALE_PAYMENT_TTL_MS = 30 * 60 * 1000; // 30 minutes
-      const now = this.clock.now();
-      const createdAt = existingPending.audit.createdAt;
-      if (now.getTime() - createdAt.getTime() > STALE_PAYMENT_TTL_MS) {
-        // Stale PENDING payment — atomically transition to FAILED so a new one can proceed
-        const expired = existingPending.markFailed('EXPIRED_STALE');
-        const transitioned = await this.paymentRepo.saveWithStatusPrecondition(expired, 'PENDING');
-        if (!transitioned) {
-          // Another request already transitioned this payment — re-check
-          return err(AppError.conflict('A payment is already in progress for this academy'));
-        }
-        this.logger.info('Expired stale PENDING payment', {
+      // Always expire stale PENDING payments on retry — the user explicitly
+      // clicked "Try Again", so the old checkout session is abandoned.
+      const expired = existingPending.markFailed('SUPERSEDED_BY_RETRY');
+      const transitioned = await this.paymentRepo.saveWithStatusPrecondition(expired, 'PENDING');
+      if (!transitioned) {
+        // Another request already transitioned (e.g. webhook arrived) — safe to proceed
+        this.logger.info('PENDING payment already transitioned by another process', {
           academyId,
           orderId: existingPending.orderId,
         });
       } else {
-        return err(AppError.conflict('A payment is already in progress for this academy'));
+        this.logger.info('Expired previous PENDING payment on retry', {
+          academyId,
+          orderId: existingPending.orderId,
+        });
       }
     }
 

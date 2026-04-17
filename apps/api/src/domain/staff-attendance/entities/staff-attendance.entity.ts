@@ -2,8 +2,8 @@ import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields } from '@shared/kernel';
 
 /**
- * Represents an ABSENT record for a staff member on a given date.
- * If no record exists for (academyId, staffUserId, date), the staff is PRESENT.
+ * Represents a PRESENT record for a staff member on a given date.
+ * If no record exists for (academyId, staffUserId, date), the staff is ABSENT.
  */
 export interface StaffAttendanceProps {
   academyId: string;

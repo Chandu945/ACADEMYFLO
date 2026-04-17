@@ -12,6 +12,8 @@ export type ChildSummary = {
 export type ChildAttendanceSummary = {
   studentId: string;
   month: string;
+  absentDates: string[];
+  holidayDates: string[];
   presentCount: number;
   absentCount: number;
   holidayCount: number;
@@ -92,7 +94,7 @@ export type AcademyInfo = {
   academyName: string;
   address: {
     line1: string;
-    line2?: string;
+    line2?: string | null;
     city: string;
     state: string;
     pincode: string;

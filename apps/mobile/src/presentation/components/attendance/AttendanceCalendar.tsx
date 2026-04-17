@@ -72,21 +72,21 @@ function buildCalendarGrid(
   return rows;
 }
 
-function getStatusBg(colors: Colors): Record<DayStatus, string> {
+function getStatusBg(_colors: Colors): Record<DayStatus, string> {
   return {
-    present: colors.successBg,
-    absent: colors.dangerBg,
-    holiday: colors.warningBg,
-    future: colors.bg,
+    present: 'rgba(22, 163, 74, 0.15)',   // soft green
+    absent: 'rgba(239, 68, 68, 0.12)',     // soft red
+    holiday: 'rgba(234, 179, 8, 0.12)',    // soft amber
+    future: 'transparent',
     empty: 'transparent',
   };
 }
 
 function getStatusText(colors: Colors): Record<DayStatus, string> {
   return {
-    present: colors.successText,
-    absent: colors.dangerText,
-    holiday: colors.warningText,
+    present: '#4ade80',   // bright green (readable on dark bg)
+    absent: '#f87171',    // bright red
+    holiday: '#fbbf24',   // bright amber
     future: colors.textDisabled,
     empty: 'transparent',
   };
@@ -147,15 +147,15 @@ export function AttendanceCalendar({ month, absentDates, holidayDates }: Props) 
       {/* Legend */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+          <View style={[styles.legendDot, { backgroundColor: '#4ade80' }]} />
           <Text style={styles.legendLabel}>Present</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
+          <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
           <Text style={styles.legendLabel}>Absent</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+          <View style={[styles.legendDot, { backgroundColor: '#fbbf24' }]} />
           <Text style={styles.legendLabel}>Holiday</Text>
         </View>
       </View>

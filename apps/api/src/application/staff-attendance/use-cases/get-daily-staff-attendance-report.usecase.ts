@@ -47,30 +47,40 @@ export class GetDailyStaffAttendanceReportUseCase {
     // (PDF exports, admin tools) can render context — matches the daily view.
     // Use countActiveByAcademyAndRole — listByAcademyAndRole's `total` wrongly
     // includes INACTIVE staff (only filters by role + deletedAt, not status),
-    // which would give a misleading "present = total - absent" denominator.
-    const [holiday, totalActive, absentRecords] = await Promise.all([
+    // which would give a misleading denominator.
+    const [holiday, totalActive, presentRecords] = await Promise.all([
       this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date),
       this.userRepo.countActiveByAcademyAndRole(actor.academyId, 'STAFF'),
       this.staffAttendanceRepo.findAbsentByAcademyAndDate(actor.academyId, input.date),
     ]);
     const isHoliday = holiday !== null;
 
-    // Batch-resolve absent staff names (avoids N+1 queries)
-    const absentStaffIds = absentRecords.map((r) => r.staffUserId);
-    const absentUsers = await this.userRepo.findByIds(absentStaffIds);
-    const userMap = new Map(absentUsers.map((u) => [u.id.toString(), u]));
-    const absentStaff = absentRecords
-      .map((record) => {
-        const user = userMap.get(record.staffUserId);
-        return user ? { staffUserId: user.id.toString(), fullName: user.fullName } : null;
-      })
-      .filter((entry): entry is { staffUserId: string; fullName: string } => entry !== null);
+    const presentCount = presentRecords.length;
+    const absentCount = Math.max(0, totalActive - presentRecords.length);
+
+    // To build the absentStaff list we need all active staff, then exclude
+    // those who have a present record.
+    const presentStaffIdSet = new Set(presentRecords.map((r) => r.staffUserId));
+
+    // Fetch all active staff (page through with a large page size to avoid
+    // pagination complexity — staff counts are typically small).
+    const { users: allStaffUsers } = await this.userRepo.listByAcademyAndRole(
+      actor.academyId,
+      'STAFF',
+      1,
+      10000,
+    );
+    const activeStaffUsers = allStaffUsers.filter((u) => u.isActive());
+
+    const absentStaff = activeStaffUsers
+      .filter((u) => !presentStaffIdSet.has(u.id.toString()))
+      .map((u) => ({ staffUserId: u.id.toString(), fullName: u.fullName }));
 
     return ok({
       date: input.date,
       isHoliday,
-      presentCount: totalActive - absentRecords.length,
-      absentCount: absentRecords.length,
+      presentCount,
+      absentCount,
       absentStaff,
     });
   }

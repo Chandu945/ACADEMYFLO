@@ -167,7 +167,6 @@ export default function NewStaffPage() {
           <div className={styles.section}>
             <h4 className={styles.sectionTitle}>Contact Information</h4>
             <div className={styles.sectionFields}>
-              <Input label="WhatsApp Number" type="tel" value={form.whatsappNumber} onChange={(e) => set('whatsappNumber', e.target.value)} error={fieldErrors['whatsappNumber']} placeholder="+919876543210" hint="E.164 format with +91 prefix" />
               <Input label="Mobile Number" type="tel" value={form.mobileNumber} onChange={(e) => set('mobileNumber', e.target.value)} error={fieldErrors['mobileNumber']} placeholder="+919876543210" hint="E.164 format with +91 prefix" />
               <Input label="Address" value={form.address} onChange={(e) => set('address', e.target.value)} error={fieldErrors['address']} placeholder="Full address (optional)" hint="Max 300 characters" />
             </div>

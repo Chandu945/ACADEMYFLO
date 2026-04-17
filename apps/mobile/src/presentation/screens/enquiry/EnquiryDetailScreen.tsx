@@ -371,28 +371,36 @@ function AddFollowUpModal({
     }
   };
 
+  if (!visible) return null;
+
+  const content = (
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Add Follow-Up</Text>
+
+        <Text style={styles.label}>Notes *</Text>
+        <TextInput style={[styles.input, styles.notesInput]} value={notes} onChangeText={setNotes} placeholder="What was discussed?" multiline testID="followup-notes" />
+
+        <Text style={styles.label}>Schedule Next Follow-Up</Text>
+        <DatePickerInput value={nextDate} onChange={setNextDate} placeholder="Select next follow-up date" testID="followup-next-date" />
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="followup-cancel">
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving} testID="followup-save">
+            <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (Platform.OS === 'web') return content;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Add Follow-Up</Text>
-
-          <Text style={styles.label}>Notes *</Text>
-          <TextInput style={[styles.input, styles.notesInput]} value={notes} onChangeText={setNotes} placeholder="What was discussed?" multiline testID="followup-notes" />
-
-          <Text style={styles.label}>Schedule Next Follow-Up</Text>
-          <DatePickerInput value={nextDate} onChange={setNextDate} placeholder="Select next follow-up date" testID="followup-next-date" />
-
-          <View style={styles.modalButtons}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="followup-cancel">
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving} testID="followup-save">
-              <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
+      {content}
     </Modal>
   );
 }
@@ -439,41 +447,49 @@ function CloseEnquiryModal({
     }
   };
 
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Close Enquiry</Text>
-          <Text style={styles.label}>Reason</Text>
-          <View style={styles.reasonRow}>
-            {reasons.map((r) => (
-              <TouchableOpacity
-                key={r.value}
-                style={[styles.reasonChip, reason === r.value && styles.reasonChipActive]}
-                onPress={() => setReason(r.value)}
-                testID={`reason-${r.value}`}
-              >
-                <Text style={[styles.reasonChipText, reason === r.value && styles.reasonChipTextActive]}>
-                  {r.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.modalButtons}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="close-cancel">
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+  if (!visible) return null;
+
+  const content = (
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Close Enquiry</Text>
+        <Text style={styles.label}>Reason</Text>
+        <View style={styles.reasonRow}>
+          {reasons.map((r) => (
             <TouchableOpacity
-              style={[styles.dangerBtn, saving && styles.saveBtnDisabled]}
-              onPress={handleClose}
-              disabled={saving}
-              testID="close-confirm"
+              key={r.value}
+              style={[styles.reasonChip, reason === r.value && styles.reasonChipActive]}
+              onPress={() => setReason(r.value)}
+              testID={`reason-${r.value}`}
             >
-              <Text style={styles.saveBtnText}>{saving ? 'Closing...' : 'Close Enquiry'}</Text>
+              <Text style={[styles.reasonChipText, reason === r.value && styles.reasonChipTextActive]}>
+                {r.label}
+              </Text>
             </TouchableOpacity>
-          </View>
+          ))}
+        </View>
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="close-cancel">
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dangerBtn, saving && styles.saveBtnDisabled]}
+            onPress={handleClose}
+            disabled={saving}
+            testID="close-confirm"
+          >
+            <Text style={styles.saveBtnText}>{saving ? 'Closing...' : 'Close Enquiry'}</Text>
+          </TouchableOpacity>
         </View>
       </View>
+    </View>
+  );
+
+  if (Platform.OS === 'web') return content;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      {content}
     </Modal>
   );
 }
@@ -705,7 +721,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   convertButtonText: { fontSize: fontSizes.sm, fontWeight: fontWeights.semibold, color: colors.success },
 
   // Modal styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.xl },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    ...(Platform.OS === 'web' ? { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } : {}),
+  },
   modalContent: { backgroundColor: colors.bg, borderRadius: radius.xl, padding: spacing.xl },
   modalTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.semibold, color: colors.text, marginBottom: spacing.base },
   label: { fontSize: fontSizes.base, fontWeight: fontWeights.medium, color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },

@@ -82,11 +82,15 @@ export class InviteParentUseCase {
       const passwordHash = await this.passwordHasher.hash(tempPassword);
       parentUserId = randomUUID();
 
+      // User.create requires a valid E.164 phone — generate a placeholder
+      // if guardian didn't provide one. The parent can update it later.
+      const phoneForAccount = guardianPhone || `+91${Date.now().toString().slice(-10)}`;
+
       const parent = User.create({
         id: parentUserId,
         fullName: guardianName,
         email: parentEmail,
-        phoneNumber: guardianPhone,
+        phoneNumber: phoneForAccount,
         role: 'PARENT',
         passwordHash,
       });

@@ -18,31 +18,65 @@ const ACTION_LABELS: Record<string, string> = {
   PAYMENT_REQUEST_REJECTED: 'Payment Rejected',
   STAFF_ATTENDANCE_CHANGED: 'Staff Attendance',
   MONTHLY_DUES_ENGINE_RAN: 'Dues Engine Ran',
+  EVENT_CREATED: 'Event Created',
+  EVENT_UPDATED: 'Event Updated',
+  EVENT_DELETED: 'Event Deleted',
+  EXPENSE_CREATED: 'Expense Created',
+  EXPENSE_UPDATED: 'Expense Updated',
+  EXPENSE_DELETED: 'Expense Deleted',
+  ENQUIRY_CREATED: 'Enquiry Created',
+  ENQUIRY_UPDATED: 'Enquiry Updated',
+  ENQUIRY_CLOSED: 'Enquiry Closed',
+  BATCH_CREATED: 'Batch Created',
+  BATCH_UPDATED: 'Batch Updated',
+  BATCH_DELETED: 'Batch Deleted',
+  FEE_MARKED_PAID: 'Fee Marked Paid',
+  GALLERY_PHOTO_UPLOADED: 'Photo Uploaded',
+  GALLERY_PHOTO_DELETED: 'Photo Deleted',
+  ADMIN_OWNER_PASSWORD_RESET: 'Password Reset',
+  SUBSCRIPTION_PAYMENT_COMPLETED: 'Payment Completed',
+  SUBSCRIPTION_PAYMENT_FAILED: 'Payment Failed',
+  ACCOUNT_DELETION_REQUESTED: 'Deletion Requested',
+  ACCOUNT_DELETION_CANCELLED: 'Deletion Cancelled',
+  ACCOUNT_DELETION_EXECUTED: 'Account Deleted',
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  STUDENT: 'Student',
+  BATCH: 'Batch',
+  STAFF: 'Staff',
+  STAFF_ATTENDANCE: 'Staff Attendance',
+  STUDENT_ATTENDANCE: 'Attendance',
+  FEE: 'Fee',
+  FEE_DUE: 'Fee',
+  PAYMENT_REQUEST: 'Payment',
+  EVENT: 'Event',
+  EXPENSE: 'Expense',
+  ENQUIRY: 'Enquiry',
+  GALLERY_PHOTO: 'Photo',
+  USER: 'User',
+  SUBSCRIPTION: 'Subscription',
+  SUBSCRIPTION_PAYMENT: 'Subscription',
+  ACADEMY: 'Academy',
 };
 
 function getActionIcon(action: string): string {
-  switch (action) {
-    case 'STUDENT_CREATED': return 'account-plus-outline';
-    case 'STUDENT_UPDATED': return 'account-edit-outline';
-    case 'STUDENT_STATUS_CHANGED': return 'account-switch-outline';
-    case 'STUDENT_DELETED': return 'account-remove-outline';
-    case 'STUDENT_ATTENDANCE_EDITED': return 'calendar-edit';
-    case 'PAYMENT_REQUEST_CREATED': return 'cash-plus';
-    case 'PAYMENT_REQUEST_CANCELLED': return 'cash-remove';
-    case 'PAYMENT_REQUEST_APPROVED': return 'cash-check';
-    case 'PAYMENT_REQUEST_REJECTED': return 'close-circle-outline';
-    case 'STAFF_ATTENDANCE_CHANGED': return 'clipboard-account-outline';
-    case 'MONTHLY_DUES_ENGINE_RAN': return 'cog-outline';
-    default: return 'file-document-outline';
-  }
+  if (action.includes('CREATED') || action.includes('PLUS')) return 'plus-circle-outline';
+  if (action.includes('UPDATED') || action.includes('EDITED') || action.includes('CHANGED')) return 'pencil-circle-outline';
+  if (action.includes('DELETED') || action.includes('REMOVE')) return 'minus-circle-outline';
+  if (action.includes('APPROVED') || action.includes('COMPLETED')) return 'check-circle-outline';
+  if (action.includes('REJECTED') || action.includes('FAILED') || action.includes('CANCELLED')) return 'close-circle-outline';
+  if (action.includes('ATTENDANCE')) return 'calendar-check-outline';
+  if (action.includes('PAYMENT') || action.includes('FEE')) return 'cash';
+  if (action.includes('PHOTO') || action.includes('GALLERY')) return 'image-outline';
+  return 'file-document-outline';
 }
 
 function getActionColorKey(action: string): 'info' | 'success' | 'warning' | 'danger' | 'primary' {
-  if (action === 'STUDENT_DELETED' || action === 'PAYMENT_REQUEST_REJECTED' || action === 'PAYMENT_REQUEST_CANCELLED') return 'danger';
-  if (action.startsWith('STUDENT_')) return 'info';
-  if (action === 'PAYMENT_REQUEST_APPROVED') return 'success';
-  if (action.startsWith('PAYMENT_')) return 'primary';
-  if (action.startsWith('STAFF_')) return 'warning';
+  if (action.includes('DELETED') || action.includes('REJECTED') || action.includes('CANCELLED') || action.includes('FAILED')) return 'danger';
+  if (action.includes('APPROVED') || action.includes('COMPLETED') || action.includes('PAID')) return 'success';
+  if (action.includes('CREATED') || action.includes('UPLOADED')) return 'info';
+  if (action.includes('UPDATED') || action.includes('CHANGED') || action.includes('EDITED')) return 'warning';
   return 'primary';
 }
 
@@ -56,8 +90,32 @@ function getActionBg(colorKey: string, colors: Colors): string {
   }
 }
 
-const MAX_CONTEXT_KEYS = 6;
-const MAX_VALUE_LENGTH = 40;
+const MAX_CONTEXT_KEYS = 4;
+const MAX_VALUE_LENGTH = 30;
+
+/** Keys with raw IDs or technical data — hide from UI */
+const HIDDEN_CONTEXT_KEYS = new Set([
+  'staffUserId', 'studentId', 'userId', 'entityId', 'academyId',
+  'feeDueId', 'requestId', 'orderId', 'parentId', 'batchId',
+  'providerPaymentId', 'cfPaymentId',
+]);
+
+/** Check if a value looks like a UUID */
+function isUuidLike(val: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(val) || /^[0-9a-f]{24}$/i.test(val);
+}
+
+/** Humanize context key names */
+function humanizeKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .replace(/^\s+/, '')
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+    .trim();
+}
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -83,7 +141,9 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const contextEntries = item.context
-    ? Object.entries(item.context).slice(0, MAX_CONTEXT_KEYS)
+    ? Object.entries(item.context)
+        .filter(([key, val]) => !HIDDEN_CONTEXT_KEYS.has(key) && val && !isUuidLike(val) && !val.includes('[REDACTED'))
+        .slice(0, MAX_CONTEXT_KEYS)
     : [];
 
   const colorKey = getActionColorKey(item.action);
@@ -111,24 +171,24 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
 
       <View style={styles.detailRow}>
         <View style={styles.detailItem}>
-          
-          <AppIcon name="shape-outline" size={13} color={colors.textSecondary} />
+          <AppIcon name="tag-outline" size={13} color={colors.textSecondary} />
           <Text style={styles.detailText}>
-            {item.entityType}{item.entityId ? ` #${item.entityId.slice(0, 8)}` : ''}
+            {ENTITY_LABELS[item.entityType] ?? item.entityType.replace(/_/g, ' ')}
           </Text>
         </View>
-        <View style={styles.detailItem}>
-          
-          <AppIcon name="account-outline" size={13} color={colors.textSecondary} />
-          <Text style={styles.detailText}>{item.actorName ?? item.actorUserId.slice(0, 8)}</Text>
-        </View>
+        {item.actorName ? (
+          <View style={styles.detailItem}>
+            <AppIcon name="account-outline" size={13} color={colors.textSecondary} />
+            <Text style={styles.detailText}>{item.actorName}</Text>
+          </View>
+        ) : null}
       </View>
 
       {contextEntries.length > 0 && (
         <View style={styles.contextRow}>
           {contextEntries.map(([key, val]) => (
             <View key={key} style={styles.chip}>
-              <Text style={styles.chipKey}>{key}</Text>
+              <Text style={styles.chipKey}>{humanizeKey(key)}</Text>
               <Text style={styles.chipVal}>{truncate(val, MAX_VALUE_LENGTH)}</Text>
             </View>
           ))}

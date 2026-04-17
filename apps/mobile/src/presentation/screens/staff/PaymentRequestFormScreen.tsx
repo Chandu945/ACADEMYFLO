@@ -80,7 +80,8 @@ export function PaymentRequestFormScreen() {
 
       if (result.ok) {
         showToast(isEditMode ? 'Request updated successfully' : 'Request submitted successfully');
-        navigation.goBack();
+        (navigation as any).navigate('FeesHome');
+        return;
       } else {
         if (result.error.fieldErrors) {
           setFieldErrors(result.error.fieldErrors);

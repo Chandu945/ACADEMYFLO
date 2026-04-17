@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -66,6 +66,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
   const [notes, setNotes] = useState(enquiry?.notes ?? '');
   const [nextFollowUpDate, setNextFollowUpDate] = useState(toDateOnly(enquiry?.nextFollowUpDate));
   const [saving, setSaving] = useState(false);
+  const submittedRef = useRef(false);
 
   // In edit mode, track whether any field changed from its initial value.
   // In create mode, consider the form dirty if the two required fields have content.
@@ -82,7 +83,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
       nextFollowUpDate !== toDateOnly(enquiry?.nextFollowUpDate)
     : !!(prospectName || mobileNumber);
 
-  useUnsavedChangesWarning(hasChanges && !saving);
+  useUnsavedChangesWarning(hasChanges && !saving && !submittedRef.current);
 
   const testIdPrefix = isEdit ? 'edit-' : '';
 
@@ -126,12 +127,10 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         });
 
         if (result.ok) {
+          submittedRef.current = true;
           showToast('Enquiry updated');
-          if (navigation.canGoBack()) {
-            navigation.goBack();
-          } else {
-            (navigation as any).navigate('EnquiryList');
-          }
+          (navigation as any).navigate('EnquiryList');
+          return;
         } else {
           crossAlert('Error', result.error.message);
         }
@@ -150,16 +149,14 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         });
 
         if (result.ok) {
+          submittedRef.current = true;
           const data = result.value as { warning?: string; id: string };
           if (data.warning) {
             crossAlert('Note', data.warning);
           }
           showToast('Enquiry created successfully');
-          if (navigation.canGoBack()) {
-            navigation.goBack();
-          } else {
-            (navigation as any).navigate('EnquiryList');
-          }
+          (navigation as any).navigate('EnquiryList');
+          return;
         } else {
           crossAlert('Error', result.error.message);
         }

@@ -81,11 +81,10 @@ export class CreateBatchUseCase {
       }
     }
 
-    // Time range must be fully specified or fully omitted — a lone startTime
-    // (or lone endTime) leaves the batch schedule ambiguous.
-    if (Boolean(input.startTime) !== Boolean(input.endTime)) {
+    // endTime without startTime is invalid; startTime alone is allowed (open-ended).
+    if (input.endTime && !input.startTime) {
       return err(
-        AppErrorClass.validation('startTime and endTime must both be provided or both omitted'),
+        AppErrorClass.validation('startTime is required when endTime is provided'),
       );
     }
     if (input.startTime && input.endTime) {

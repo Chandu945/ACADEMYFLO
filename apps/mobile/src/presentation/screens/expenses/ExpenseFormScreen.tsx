@@ -82,13 +82,14 @@ export function ExpenseFormScreen() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
   const mountedRef = useRef(true);
+  const submittedRef = useRef(false);
 
   const initialRef = useRef({ amount, date, categoryId, notes });
   const isDirty = amount !== initialRef.current.amount ||
     date !== initialRef.current.date ||
     categoryId !== initialRef.current.categoryId ||
     notes !== initialRef.current.notes;
-  useUnsavedChangesWarning(isDirty && !saving);
+  useUnsavedChangesWarning(isDirty && !saving && !submittedRef.current);
 
   const loadCategories = useCallback(async () => {
     const result = await expenseApi.listCategories();
@@ -168,8 +169,10 @@ export function ExpenseFormScreen() {
       );
 
       if (result.ok) {
+        submittedRef.current = true;
         showToast(mode === 'create' ? 'Expense added' : 'Expense updated');
-        navigation.goBack();
+        (navigation as any).navigate('ExpensesHome');
+        return;
       } else {
         crossAlert('Error', result.error.message);
       }
@@ -192,8 +195,10 @@ export function ExpenseFormScreen() {
           try {
             const result = await deleteExpenseUseCase({ expenseApi }, existing.id);
             if (result.ok) {
+              submittedRef.current = true;
               showToast('Expense deleted');
-              navigation.goBack();
+              (navigation as any).navigate('ExpensesHome');
+              return;
             } else {
               crossAlert('Error', result.error.message);
             }

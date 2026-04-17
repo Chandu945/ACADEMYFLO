@@ -284,10 +284,6 @@ export default function StudentDetailPage() {
             <span className={styles.infoValue}>{student.mobileNumber || '-'}</span>
           </div>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>WhatsApp Number</span>
-            <span className={styles.infoValue}>{student.whatsappNumber || '-'}</span>
-          </div>
-          <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Email</span>
             <span className={styles.infoValue}>{student.email || '-'}</span>
           </div>

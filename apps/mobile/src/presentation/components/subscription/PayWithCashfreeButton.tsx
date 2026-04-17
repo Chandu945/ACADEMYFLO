@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Button } from '../ui/Button';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import type { PaymentFlowStatus } from '../../../domain/payments/cashfree.types';
+import { AppIcon } from '../ui/AppIcon';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -30,44 +30,146 @@ export function PayWithCashfreeButton({
   if (isSuccess) return null;
 
   return (
-    <View style={styles.container} testID="pay-cashfree-section">
-      <Text style={styles.label}>
-        Subscribe to {tierLabel} — ₹{amountInr}/month
-      </Text>
+    <View style={styles.card} testID="pay-cashfree-section">
+      {/* Price summary */}
+      <View style={styles.priceRow}>
+        <View>
+          <Text style={styles.planLabel}>{tierLabel}</Text>
+          <Text style={styles.billingLabel}>Monthly subscription</Text>
+        </View>
+        <View style={styles.priceTag}>
+          <Text style={styles.rupee}>{'\u20B9'}</Text>
+          <Text style={styles.amount}>{amountInr}</Text>
+          <Text style={styles.period}>/mo</Text>
+        </View>
+      </View>
+
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Action button */}
       {isFailed ? (
-        <Button
-          title="Try Again"
-          variant="primary"
+        <TouchableOpacity
+          style={styles.retryButton}
           onPress={onRetry}
+          activeOpacity={0.8}
           testID="pay-retry-button"
-        />
+        >
+          <AppIcon name="refresh" size={18} color={colors.white} />
+          <Text style={styles.buttonText}>Try Again</Text>
+        </TouchableOpacity>
       ) : (
-        <Button
-          title="Pay with Cashfree"
-          variant="primary"
+        <TouchableOpacity
+          style={[styles.payButton, isLoading && styles.payButtonDisabled]}
           onPress={onPress}
-          loading={isLoading}
           disabled={isLoading}
+          activeOpacity={0.8}
           testID="pay-cashfree-button"
-        />
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <>
+              <AppIcon name="shield-check-outline" size={18} color={colors.white} />
+              <Text style={styles.buttonText}>Pay Securely</Text>
+            </>
+          )}
+        </TouchableOpacity>
       )}
+
+      {/* Secure badge */}
+      <View style={styles.secureRow}>
+        <AppIcon name="lock-outline" size={12} color={colors.textDisabled} />
+        <Text style={styles.secureText}>Secured by Cashfree Payments</Text>
+      </View>
     </View>
   );
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
-  container: {
+  card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.base,
-    marginBottom: spacing.base,
-    ...shadows.sm,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.md,
   },
-  label: {
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  planLabel: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
-    color: colors.textDark,
-    marginBottom: spacing.md,
-    textAlign: 'center',
+    color: colors.text,
+  },
+  billingLabel: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  priceTag: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  rupee: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
+  },
+  amount: {
+    fontSize: fontSizes['3xl'],
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
+  },
+  period: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    marginLeft: 2,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginVertical: spacing.lg,
+  },
+  payButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md + 2,
+    gap: spacing.sm,
+  },
+  payButtonDisabled: {
+    opacity: 0.7,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.warning,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md + 2,
+    gap: spacing.sm,
+  },
+  buttonText: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.white,
+  },
+  secureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: spacing.md,
+  },
+  secureText: {
+    fontSize: fontSizes.xs,
+    color: colors.textDisabled,
   },
 });

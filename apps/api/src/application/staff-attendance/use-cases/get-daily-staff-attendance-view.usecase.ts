@@ -74,18 +74,18 @@ export class GetDailyStaffAttendanceViewUseCase {
 
     const staffIds = activeStaff.map((s) => s.id.toString());
 
-    // Fetch absent records for these staff on this date
-    const absentRecords = await this.staffAttendanceRepo.findAbsentByAcademyDateAndStaffIds(
+    // Fetch present records for these staff on this date
+    const presentRecords = await this.staffAttendanceRepo.findAbsentByAcademyDateAndStaffIds(
       actor.academyId,
       input.date,
       staffIds,
     );
-    const absentSet = new Set(absentRecords.map((r) => r.staffUserId));
+    const presentSet = new Set(presentRecords.map((r) => r.staffUserId));
 
     const data: DailyStaffAttendanceViewItem[] = activeStaff.map((s) => ({
       staffUserId: s.id.toString(),
       fullName: s.fullName,
-      status: absentSet.has(s.id.toString()) ? ('ABSENT' as const) : ('PRESENT' as const),
+      status: presentSet.has(s.id.toString()) ? ('PRESENT' as const) : ('ABSENT' as const),
     }));
 
     return ok({

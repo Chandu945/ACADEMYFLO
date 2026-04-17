@@ -245,26 +245,15 @@ export default function NewStudentPage() {
                   maxLength={100}
                 />
               </div>
-              <div className={styles.gridRow}>
-                <Input
-                  label="WhatsApp Number"
-                  type="tel"
-                  value={form.whatsappNumber}
-                  onChange={(e) => set('whatsappNumber', e.target.value)}
-                  error={fieldErrors['whatsappNumber']}
-                  placeholder="+919876543210"
-                  hint="E.164 format with +91 prefix"
-                />
-                <Input
-                  label="Mobile Number"
-                  type="tel"
-                  value={form.mobileNumber}
-                  onChange={(e) => set('mobileNumber', e.target.value)}
-                  error={fieldErrors['mobileNumber']}
-                  placeholder="+919876543210"
-                  hint="E.164 format with +91 prefix"
-                />
-              </div>
+              <Input
+                label="Mobile Number"
+                type="tel"
+                value={form.mobileNumber}
+                onChange={(e) => set('mobileNumber', e.target.value)}
+                error={fieldErrors['mobileNumber']}
+                placeholder="+919876543210"
+                hint="E.164 format with +91 prefix"
+              />
             </div>
           </div>
 

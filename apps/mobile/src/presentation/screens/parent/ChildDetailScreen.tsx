@@ -22,6 +22,7 @@ import type { Colors } from '../../theme';
 import { formatMonthKey, formatMonthShort, formatCurrency } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
 import { getCurrentMonthIST, nowIST } from '../../../domain/common/date-utils';
+import { AttendanceCalendar } from '../../components/attendance/AttendanceCalendar';
 
 type Route = RouteProp<ParentHomeStackParamList, 'ChildDetail'>;
 type Nav = NativeStackNavigationProp<ParentHomeStackParamList, 'ChildDetail'>;
@@ -140,8 +141,31 @@ export function ChildDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attMonth, setAttMonth] = useState(getCurrentMonthIST());
+  const [attLoading, setAttLoading] = useState(false);
+  const currentMonth = getCurrentMonthIST();
   const mountedRef = useRef(true);
   const todayMs = useMemo(() => { const d = nowIST(); d.setHours(0, 0, 0, 0); return d.getTime(); }, []);
+
+  const navigateMonth = useCallback((delta: number) => {
+    setAttMonth((prev) => {
+      const [y, m] = prev.split('-').map(Number);
+      const d = new Date(y!, m! - 1 + delta, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
+  }, []);
+
+  // Load attendance when month changes
+  useEffect(() => {
+    let cancelled = false;
+    setAttLoading(true);
+    getChildAttendanceUseCase({ parentApi }, studentId, attMonth).then((res) => {
+      if (cancelled || !mountedRef.current) return;
+      if (res.ok) setAttendance(res.value);
+      setAttLoading(false);
+    }).catch(() => { if (!cancelled) setAttLoading(false); });
+    return () => { cancelled = true; };
+  }, [studentId, attMonth]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -259,36 +283,57 @@ export function ChildDetailScreen() {
         <View style={styles.sectionHeader}>
           
           <AppIcon name="calendar-check-outline" size={20} color={colors.primary} />
-          <Text style={styles.sectionTitle}>
-            Attendance — {formatMonthKey(getCurrentMonth())}
-          </Text>
+          <Text style={styles.sectionTitle}>Attendance</Text>
         </View>
-        {attendance && (
-          <View style={styles.sectionCard}>
-            <AttendanceBar
-              label="Present"
-              count={attendance.presentCount}
-              total={totalDays}
-              color={colors.success}
-              icon="check-circle-outline"
-            />
-            <AttendanceBar
-              label="Absent"
-              count={attendance.absentCount}
-              total={totalDays}
-              color={colors.danger}
-              icon="close-circle-outline"
-            />
-            <AttendanceBar
-              label="Holidays"
-              count={attendance.holidayCount}
-              total={totalDays}
-              color={colors.textDisabled}
-              icon="calendar-remove-outline"
-            />
+
+        {/* Month Navigator */}
+        <View style={styles.monthNav}>
+          <TouchableOpacity onPress={() => navigateMonth(-1)} style={styles.monthNavBtn}>
+            <AppIcon name="chevron-left" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.monthLabel}>{formatMonthKey(attMonth)}</Text>
+          <TouchableOpacity onPress={() => navigateMonth(1)} style={styles.monthNavBtn} disabled={attMonth >= currentMonth}>
+            <AppIcon name="chevron-right" size={22} color={attMonth >= currentMonth ? colors.textDisabled : colors.text} />
+          </TouchableOpacity>
+          {attMonth !== currentMonth && (
+            <TouchableOpacity onPress={() => setAttMonth(currentMonth)} style={styles.monthResetBtn}>
+              <Text style={{ color: colors.primary, fontSize: fontSizes.xs, fontWeight: fontWeights.medium }}>This Month</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {attLoading ? (
+          <View style={[styles.sectionCard, { alignItems: 'center', padding: spacing.xl }]}>
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
-        )}
-        {!attendance && (
+        ) : attendance ? (
+          <>
+            {/* Summary row */}
+            <View style={styles.summaryRow}>
+              <View style={[styles.summaryChip, { backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.25)', borderWidth: 1 }]}>
+                <Text style={[styles.summaryCount, { color: '#4ade80' }]}>{attendance.presentCount}</Text>
+                <Text style={styles.summaryLabel}>Present</Text>
+              </View>
+              <View style={[styles.summaryChip, { backgroundColor: 'rgba(248, 113, 113, 0.1)', borderColor: 'rgba(248, 113, 113, 0.25)', borderWidth: 1 }]}>
+                <Text style={[styles.summaryCount, { color: '#f87171' }]}>{attendance.absentCount}</Text>
+                <Text style={styles.summaryLabel}>Absent</Text>
+              </View>
+              <View style={[styles.summaryChip, { backgroundColor: 'rgba(251, 191, 36, 0.1)', borderColor: 'rgba(251, 191, 36, 0.25)', borderWidth: 1 }]}>
+                <Text style={[styles.summaryCount, { color: '#fbbf24' }]}>{attendance.holidayCount}</Text>
+                <Text style={styles.summaryLabel}>Holidays</Text>
+              </View>
+            </View>
+
+            {/* Calendar grid */}
+            <View style={styles.sectionCard}>
+              <AttendanceCalendar
+                month={attMonth}
+                absentDates={attendance.absentDates}
+                holidayDates={attendance.holidayDates}
+              />
+            </View>
+          </>
+        ) : (
           <View style={styles.sectionCard}>
             <Text style={styles.noData}>No attendance data available</Text>
           </View>
@@ -579,5 +624,50 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.sm,
     lineHeight: 20,
     fontStyle: 'italic' as const,
+  },
+
+  /* Month Navigation */
+  monthNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  monthNavBtn: {
+    padding: spacing.xs,
+  },
+  monthLabel: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+    minWidth: 100,
+    textAlign: 'center',
+  },
+  monthResetBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+
+  /* Summary chips */
+  summaryRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  summaryChip: {
+    flex: 1,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  summaryCount: {
+    fontSize: fontSizes['2xl'],
+    fontWeight: fontWeights.bold,
+  },
+  summaryLabel: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });

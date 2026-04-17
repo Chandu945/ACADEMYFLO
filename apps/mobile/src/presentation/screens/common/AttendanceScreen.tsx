@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Keyboard,
+  Modal,
+  Platform,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -298,30 +300,45 @@ export function AttendanceScreen() {
         )}
       </View>
 
-      {/* ── Filter Panel ──────────────────────────────── */}
-      {showFilters && (
-        <View style={styles.filterPanel}>
-          <DatePickerRow
-            date={selectedDate}
-            onPrevious={goToPrev}
-            onNext={goToNext}
-            onToday={goToToday}
-            isToday={isToday}
-          />
-          <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Batch</Text>
-            <BatchFilterBar selectedBatchId={selectedBatchId} onChange={setSelectedBatchId} />
+      {/* ── Filter Modal ──────────────────────────────── */}
+      {(() => {
+        const filterContent = (
+          <View style={styles.filterModalOverlay}>
+            <TouchableOpacity style={styles.filterModalBackdrop} activeOpacity={1} onPress={() => setShowFilters(false)} />
+            <View style={styles.filterModalSheet}>
+              <View style={styles.filterModalHandle} />
+              <View style={styles.filterModalHeader}>
+                <Text style={styles.filterModalTitle}>Filters</Text>
+                {selectedBatchId !== null && (
+                  <TouchableOpacity onPress={() => setSelectedBatchId(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.filterModalClear}>Clear All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <DatePickerRow
+                date={selectedDate}
+                onPrevious={goToPrev}
+                onNext={goToNext}
+                onToday={goToToday}
+                isToday={isToday}
+              />
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Batch</Text>
+                <BatchFilterBar selectedBatchId={selectedBatchId} onChange={setSelectedBatchId} />
+              </View>
+
+              <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <Text style={styles.filterApplyText}>Show Results</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          {selectedBatchId !== null && (
-            <TouchableOpacity
-              style={styles.clearFilters}
-              onPress={() => setSelectedBatchId(null)}
-            >
-              <Text style={styles.clearFiltersText}>Clear Batch Filter</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+        );
+
+        if (!showFilters) return null;
+        if (Platform.OS === 'web') return filterContent;
+        return <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>{filterContent}</Modal>;
+      })()}
 
       {/* ── Date + Action Buttons (always visible when filter panel is closed) ── */}
       {!showFilters && (
@@ -470,13 +487,62 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.white,
   },
 
-  /* ── Filter Panel ──────────────────────────────── */
-  filterPanel: {
+  /* ── Filter Modal ──────────────────────────────── */
+  filterModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+    ...(Platform.OS === 'web' ? { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } : {}),
+  },
+  filterModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  filterModalSheet: {
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderRadius: radius.xl + 4,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    width: '100%',
+    maxWidth: 400,
+  },
+  filterModalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  filterModalTitle: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  filterModalClear: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.danger,
+  },
+  filterApplyBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md + 2,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  filterApplyText: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.white,
   },
   filterSection: {
     marginTop: spacing.sm,
@@ -488,16 +554,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: spacing.xs,
-  },
-  clearFilters: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  clearFiltersText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.primary,
   },
 
   /* ── Controls ──────────────────────────────────── */

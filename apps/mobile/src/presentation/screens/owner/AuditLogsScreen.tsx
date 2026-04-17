@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useAuth } from '../../context/AuthContext';
 import { useAuditLogs } from '../../../application/audit/use-audit-logs';
@@ -45,6 +46,7 @@ export function AuditLogsScreen() {
 function AuditLogsContent() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation();
   const {
     items,
     loading,
@@ -106,6 +108,31 @@ function AuditLogsContent() {
     setShowFilters((v) => !v);
   }, []);
 
+  // Place filter icon in the navigation header
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          style={[styles.headerFilterBtn, showFilters && styles.headerFilterBtnActive]}
+          onPress={toggleFilters}
+          testID="toggle-filters"
+          accessibilityLabel="Toggle filters"
+        >
+          <AppIcon
+            name={showFilters ? 'filter-off-outline' : 'filter-variant'}
+            size={22}
+            color={showFilters ? colors.primary : colors.textSecondary}
+          />
+          {activeFilterCount > 0 && !showFilters && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, showFilters, activeFilterCount, toggleFilters, colors, styles]);
+
   const handleApply = useCallback(() => {
     applyFilters();
     setShowFilters(false);
@@ -158,29 +185,6 @@ function AuditLogsContent() {
 
   return (
     <View style={styles.screen} testID="audit-logs-screen">
-      {/* ── Navbar row with filter icon ───────────────── */}
-      <View style={styles.navRow}>
-        <TouchableOpacity
-          style={[styles.navBtn, showFilters && styles.navBtnActive]}
-          onPress={toggleFilters}
-          testID="toggle-filters"
-          accessibilityRole="button"
-          accessibilityLabel="Toggle filters"
-        >
-          
-          <AppIcon
-            name={showFilters ? 'filter-off-outline' : 'filter-variant'}
-            size={22}
-            color={showFilters ? colors.primary : colors.textSecondary}
-          />
-          {activeFilterCount > 0 && !showFilters && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
       {/* ── Active filter pills (when panel is closed) ── */}
       {!showFilters && activeFilterPills.length > 0 && (
         <ActiveFilterBar filters={activeFilterPills} onClearAll={handleClear} />
@@ -239,10 +243,7 @@ function AuditLogsContent() {
           ListHeaderComponent={
             items.length > 0 ? (
               <View style={styles.listSectionHeader}>
-                
-                <AppIcon name="clipboard-text-clock-outline" size={18} color={colors.textSecondary} />
-                <Text style={styles.listSectionTitle}>Activity Log</Text>
-                <Text style={styles.listSectionCount}>{items.length}</Text>
+                <Text style={styles.listSectionCount}>{items.length} entries</Text>
               </View>
             ) : null
           }
@@ -267,23 +268,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  navRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xs,
-  },
-  navBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerFilterBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-    ...shadows.sm,
+    marginRight: spacing.xs,
   },
-  navBtnActive: {
+  headerFilterBtnActive: {
     backgroundColor: colors.primarySoft,
   },
   filterBadge: {
@@ -367,25 +360,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   listSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
+    justifyContent: 'flex-end',
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
   },
-  listSectionTitle: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.semibold,
-    color: colors.text,
-    flex: 1,
-  },
   listSectionCount: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-    overflow: 'hidden',
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.medium,
+    color: colors.textSecondary,
   },
 
   /* ── List Content ────────────────────────────────── */

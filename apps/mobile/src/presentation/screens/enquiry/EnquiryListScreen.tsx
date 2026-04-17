@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Keyboard,
+  Modal,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -250,33 +252,49 @@ export function EnquiryListScreen() {
         )}
       </View>
 
-      {/* ── Filter Panel ──────────────────────────────── */}
-      {showFilters && (
-        <View style={styles.filterPanel}>
-          <Text style={styles.filterLabel}>Status</Text>
-          <View style={styles.filterChipRow}>
-            {FILTER_TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.filterChip, activeTab === tab.key && styles.filterChipActive]}
-                onPress={() => setActiveTab(tab.key)}
-                testID={`filter-${tab.key}`}
-              >
-                <Text style={[styles.filterChipText, activeTab === tab.key && styles.filterChipTextActive]}>
-                  {tab.label}
-                </Text>
+      {/* ── Filter Modal ──────────────────────────────── */}
+      {(() => {
+        const filterContent = (
+          <View style={styles.filterModalOverlay}>
+            <TouchableOpacity style={styles.filterModalBackdrop} activeOpacity={1} onPress={() => setShowFilters(false)} />
+            <View style={styles.filterModalSheet}>
+              <View style={styles.filterModalHandle} />
+              <View style={styles.filterModalHeader}>
+                <Text style={styles.filterModalTitle}>Filters</Text>
+                {activeTab !== 'ALL' && (
+                  <TouchableOpacity onPress={() => setActiveTab('ALL')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.filterModalClear}>Clear All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.filterLabel}>Status</Text>
+              <View style={styles.filterChipRow}>
+                {FILTER_TABS.map((tab) => (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.filterChip, activeTab === tab.key && styles.filterChipActive]}
+                    onPress={() => setActiveTab(tab.key)}
+                    testID={`filter-${tab.key}`}
+                  >
+                    <Text style={[styles.filterChipText, activeTab === tab.key && styles.filterChipTextActive]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <Text style={styles.filterApplyText}>Show Results</Text>
               </TouchableOpacity>
-            ))}
+            </View>
           </View>
-          {activeTab !== 'ALL' && (
-            <TouchableOpacity style={styles.clearFilters} onPress={() => setActiveTab('ALL')}>
-              
-              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
-              <Text style={styles.clearFiltersText}>Clear Filter</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+        );
+
+        if (!showFilters) return null;
+        if (Platform.OS === 'web') return filterContent;
+        return <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>{filterContent}</Modal>;
+      })()}
 
       {/* ── Active filter pill (when panel closed) ── */}
       {!showFilters && activeTab !== 'ALL' && (
@@ -421,13 +439,62 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.white,
   },
 
-  /* ── Filter Panel ───────────────────────────────── */
-  filterPanel: {
+  /* ── Filter Modal ───────────────────────────────── */
+  filterModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+    ...(Platform.OS === 'web' ? { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } : {}),
+  },
+  filterModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  filterModalSheet: {
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderRadius: radius.xl + 4,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    width: '100%',
+    maxWidth: 400,
+  },
+  filterModalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  filterModalTitle: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  filterModalClear: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.danger,
+  },
+  filterApplyBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md + 2,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  filterApplyText: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.white,
   },
   filterLabel: {
     fontSize: fontSizes.sm,
@@ -458,18 +525,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   filterChipTextActive: {
     color: colors.white,
-  },
-  clearFilters: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-    alignSelf: 'flex-start',
-  },
-  clearFiltersText: {
-    fontSize: fontSizes.sm,
-    color: colors.danger,
-    fontWeight: fontWeights.medium,
   },
 
   /* ── Active Filter Bar ──────────────────────────── */

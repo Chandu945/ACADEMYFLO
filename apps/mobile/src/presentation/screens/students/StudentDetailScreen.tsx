@@ -263,20 +263,20 @@ export function StudentDetailScreen() {
             </View>
           )}
 
-          {/* WhatsApp tile */}
-          {student.whatsappNumber && (
+          {/* WhatsApp tile — uses mobileNumber or guardian mobile as fallback */}
+          {(student.mobileNumber || student.guardian?.mobile || student.whatsappNumber) && (
             <View style={styles.contactTile}>
               <View style={[styles.contactTileIcon, { backgroundColor: colors.successBg }]}>
                 <AppIcon name="whatsapp" size={20} color="#25D366" />
               </View>
               <View style={styles.contactTileInfo}>
                 <Text style={styles.contactTileLabel}>WhatsApp</Text>
-                <Text style={styles.contactTileValue}>{student.whatsappNumber}</Text>
+                <Text style={styles.contactTileValue}>{student.mobileNumber || student.guardian?.mobile || student.whatsappNumber}</Text>
               </View>
               <View style={styles.contactTileActions}>
                 <TouchableOpacity
                   style={styles.whatsappCircle}
-                  onPress={() => handleWhatsApp(student.whatsappNumber!)}
+                  onPress={() => handleWhatsApp((student.mobileNumber || student.guardian?.mobile || student.whatsappNumber)!)}
                   accessibilityLabel={`Open WhatsApp chat with ${student.fullName}`}
                   accessibilityRole="button"
                   testID="whatsapp-student"
@@ -288,16 +288,6 @@ export function StudentDetailScreen() {
           )}
 
           {/* Contact details */}
-          {student.guardian?.name ? (
-            <View style={styles.contactDetailRow}>
-              <AppIcon name="account-outline" size={18} color={colors.textSecondary} />
-              <View style={styles.contactDetailInfo}>
-                <Text style={styles.contactDetailLabel}>Guardian Name</Text>
-                <Text style={styles.contactDetailValue}>{student.guardian.name}</Text>
-              </View>
-            </View>
-          ) : null}
-
           {(student.email || student.guardian?.email) ? (
             <View style={styles.contactDetailRow}>
               <AppIcon name="email-outline" size={18} color={colors.textSecondary} />

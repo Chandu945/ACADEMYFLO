@@ -105,8 +105,8 @@ export function ProfileModal({
             {/* Divider */}
             <View style={styles.divider} />
 
-            {/* Subscription section */}
-            {subscription && (
+            {/* Subscription section — owner only */}
+            {subscription && user.role === 'OWNER' && (
               <>
                 <View style={styles.subSection}>
                   <View style={styles.subRow}>

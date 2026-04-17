@@ -81,8 +81,8 @@ export class MarkStaffAttendanceUseCase {
     // Staff attendance is required even on holidays — no holiday check
     // (unlike student attendance which blocks on holidays)
 
-    if (input.status === 'ABSENT') {
-      // Check if an absent record already exists to avoid overwriting audit data
+    if (input.status === 'PRESENT') {
+      // Check if a present record already exists to avoid overwriting audit data
       const existing = await this.staffAttendanceRepo.findAbsentByAcademyDateAndStaffIds(
         actor.academyId,
         input.date,
@@ -99,7 +99,7 @@ export class MarkStaffAttendanceUseCase {
         await this.staffAttendanceRepo.save(record);
       }
     } else {
-      // PRESENT: delete absent record if exists (idempotent)
+      // ABSENT: delete present record if exists (idempotent)
       await this.staffAttendanceRepo.deleteByAcademyStaffDate(
         actor.academyId,
         input.staffUserId,

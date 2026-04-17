@@ -69,13 +69,6 @@ const STAFF_SECTIONS: MenuSection[] = [
       { key: 'events', icon: 'calendar-plus', label: 'Events', screen: 'EventList' },
     ],
   },
-  {
-    title: 'Settings',
-    items: [
-      { key: 'academy-settings', icon: 'cog-outline', label: 'Academy Settings', screen: 'AcademySettings' },
-      { key: 'subscription', icon: 'card-account-details-outline', label: 'Subscription', screen: 'Subscription' },
-    ],
-  },
 ];
 
 const PARENT_SECTIONS: MenuSection[] = [

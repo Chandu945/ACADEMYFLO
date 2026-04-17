@@ -336,6 +336,7 @@ export function ParentDashboardScreen() {
             </View>
           )}
 
+
           {/* ── Payment Summary ── */}
           {payments.length > 0 && (
             <View style={styles.sectionCard}>

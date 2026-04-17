@@ -94,6 +94,7 @@ export function StaffFormScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittedRef = useRef(false);
 
   const initialRef = useRef({
     fullName, email, phoneNumber, startDate, gender,
@@ -114,7 +115,7 @@ export function StaffFormScreen() {
     salaryFrequency !== initialRef.current.salaryFrequency ||
     password !== initialRef.current.password ||
     photoUrl !== initialRef.current.photoUrl;
-  useUnsavedChangesWarning(isDirty && !submitting);
+  useUnsavedChangesWarning(isDirty && !submitting && !submittedRef.current);
 
   const handleSubmit = useCallback(async () => {
     const fields = { fullName, email, phoneNumber, password };
@@ -208,23 +209,21 @@ export function StaffFormScreen() {
     }
 
     if (result.ok) {
+      submittedRef.current = true;
       showToast(mode === 'create' ? 'Staff created' : 'Staff updated');
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      } else {
-        (navigation as any).navigate('StaffList');
-      }
+      (navigation as any).navigate('StaffList');
+      return;
+    }
+
+    const msg = result.error.message;
+    if (result.error.fieldErrors && Object.keys(result.error.fieldErrors).length > 0) {
+      setFieldErrors(result.error.fieldErrors);
+    } else if (/email already exists/i.test(msg)) {
+      setFieldErrors({ email: msg });
+    } else if (/phone.*already exists/i.test(msg)) {
+      setFieldErrors({ phoneNumber: msg });
     } else {
-      const msg = result.error.message;
-      if (result.error.fieldErrors && Object.keys(result.error.fieldErrors).length > 0) {
-        setFieldErrors(result.error.fieldErrors);
-      } else if (/email already exists/i.test(msg)) {
-        setFieldErrors({ email: msg });
-      } else if (/phone.*already exists/i.test(msg)) {
-        setFieldErrors({ phoneNumber: msg });
-      } else {
-        setServerError(msg);
-      }
+      setServerError(msg);
     }
     } catch (e) {
       if (__DEV__) console.error('[StaffFormScreen] Submit failed:', e);
@@ -358,25 +357,6 @@ export function StaffFormScreen() {
         <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
       </View>
       <View style={styles.formCard}>
-        <Input
-          label="WhatsApp Number"
-          value={whatsappNumber}
-          onChangeText={(text) => {
-            let digits = text.replace(/[^0-9]/g, '');
-            if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
-            if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
-            setWhatsappNumber(digits.slice(0, 10));
-          }}
-          prefix="+91"
-          placeholder="9876543210"
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          textContentType="telephoneNumber"
-          maxLength={10}
-          testID="input-whatsappNumber"
-        />
-
-
         <Input
           label="Address"
           value={address}

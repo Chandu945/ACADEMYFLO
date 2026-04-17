@@ -7,7 +7,7 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
-import { isValidMonthKey, getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
+import { isValidMonthKey, getDaysInMonth, getAllDatesInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { ParentErrors } from '../../common/errors';
 import type { ChildAttendanceSummaryDto } from '../dtos/parent.dto';
 import type { UserRole } from '@playconnect/contracts';
@@ -77,7 +77,8 @@ export class GetChildAttendanceUseCase {
     const link = await this.linkRepo.findByParentAndStudent(input.parentUserId, input.studentId);
     if (!link) return err(ParentErrors.childNotLinked());
 
-    const [absentRecords, holidays, student] = await Promise.all([
+    const [presentRecords, holidays, student] = await Promise.all([
+      // Records now represent PRESENT (presence-only model)
       this.attendanceRepo.findAbsentByAcademyStudentAndMonth(
         link.academyId,
         input.studentId,
@@ -88,13 +89,24 @@ export class GetChildAttendanceUseCase {
     ]);
 
     const effectiveDays = getEffectiveDays(input.month, student?.joiningDate);
-    const absentCount = absentRecords.length;
-    const holidayCount = holidays.length;
-    const presentCount = Math.max(0, effectiveDays - absentCount - holidayCount);
+    const presentDates = presentRecords.map((r) => r.date);
+    const holidayDates = holidays.map((h) => h.date);
+    const holidayDateSet = new Set(holidayDates);
+    const presentCount = presentDates.length;
+    const holidayCount = holidayDates.length;
+    const overlapCount = presentDates.filter((d) => holidayDateSet.has(d)).length;
+    const absentCount = Math.max(0, effectiveDays - presentCount - holidayCount + overlapCount);
+
+    // Compute absent dates = all dates in month minus present minus holidays
+    const allDates = getAllDatesInMonth(input.month);
+    const presentSet = new Set(presentDates);
+    const absentDates = allDates.filter((d) => !presentSet.has(d) && !holidayDateSet.has(d));
 
     return ok({
       studentId: input.studentId,
       month: input.month,
+      absentDates,
+      holidayDates,
       presentCount,
       absentCount,
       holidayCount,

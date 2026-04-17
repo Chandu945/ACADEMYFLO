@@ -50,6 +50,7 @@ export function BatchFormScreen() {
 
   const maxStudentsRef = useRef<TextInput>(null);
   const submittingRef = useRef(false);
+  const submittedRef = useRef(false);
 
   const isDirty = !!(batchName !== (batch?.batchName ?? '') ||
     notes !== (batch?.notes ?? '') ||
@@ -57,7 +58,7 @@ export function BatchFormScreen() {
     endTime !== (batch?.endTime ?? '') ||
     maxStudents !== (batch?.maxStudents != null ? String(batch.maxStudents) : '') ||
     JSON.stringify(days) !== JSON.stringify(batch?.days ?? []));
-  useUnsavedChangesWarning(isDirty && !submitting);
+  useUnsavedChangesWarning(isDirty && !submitting && !submittedRef.current);
 
   // Ref snapshot for handleSubmit — avoids massive dependency array for 6 fields.
   const formRef = useRef({ batchName, days, notes, startTime, endTime, maxStudents });
@@ -127,9 +128,11 @@ export function BatchFormScreen() {
       const result = await saveBatchUseCase({ saveApi }, mode, batch?.id, data);
 
       if (result.ok) {
+        submittedRef.current = true;
         invalidateBatchCache();
         showToast(mode === 'create' ? 'Batch created' : 'Batch updated');
-        navigation.goBack();
+        (navigation as any).navigate('BatchesList');
+        return;
       } else {
         if (result.error.fieldErrors) {
           setFieldErrors(result.error.fieldErrors);

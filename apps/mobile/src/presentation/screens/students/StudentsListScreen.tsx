@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Animated,
   Keyboard,
+  Modal,
+  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -316,89 +318,84 @@ export function StudentsListScreen() {
       {/* ── Active Filter Pills (visible when panel closed) ── */}
       {!showFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />}
 
-      {/* ── Filter Panel ──────────────────────────────── */}
-      {showFilters && (
-        <View style={styles.filterPanel}>
-          {/* Status Filter */}
-          <View style={styles.filterCard}>
-            <View style={styles.filterCardHeader}>
-              <AppIcon name="account-check-outline" size={15} color={colors.textSecondary} />
-              <Text style={styles.filterCardTitle}>Status</Text>
-            </View>
-            <View style={styles.chipRow}>
-              {STATUS_OPTIONS.map((opt) => {
-                const selected = statusFilter === opt.value;
-                return (
-                  <TouchableOpacity
-                    key={opt.label}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => setStatusFilter(opt.value)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={`${opt.label} status filter`}
-                    testID={`status-chip-${opt.label.toLowerCase()}`}
-                  >
-                    {selected && (
-                      <AppIcon name="check" size={14} color={colors.primary} />
-                    )}
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                      {opt.label}
-                    </Text>
+      {/* ── Filter Modal ──────────────────────────────── */}
+      {(() => {
+        const filterContent = (
+          <View style={styles.filterModalOverlay}>
+            <TouchableOpacity style={styles.filterModalBackdrop} activeOpacity={1} onPress={() => setShowFilters(false)} />
+            <View style={styles.filterModalSheet}>
+              {/* Handle bar */}
+              <View style={styles.filterModalHandle} />
+
+              {/* Header */}
+              <View style={styles.filterModalHeader}>
+                <Text style={styles.filterModalTitle}>Filters</Text>
+                {activeFilterCount > 0 && (
+                  <TouchableOpacity onPress={clearAllFilters} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.filterModalClear}>Clear All</Text>
                   </TouchableOpacity>
-                );
-              })}
+                )}
+              </View>
+
+              {/* Status */}
+              <View style={styles.filterCard}>
+                <View style={styles.filterCardHeader}>
+                  <AppIcon name="account-check-outline" size={15} color={colors.textSecondary} />
+                  <Text style={styles.filterCardTitle}>Status</Text>
+                </View>
+                <View style={styles.chipRow}>
+                  {STATUS_OPTIONS.map((opt) => {
+                    const selected = statusFilter === opt.value;
+                    return (
+                      <TouchableOpacity key={opt.label} style={[styles.chip, selected && styles.chipSelected]} onPress={() => setStatusFilter(opt.value)} testID={`status-chip-${opt.label.toLowerCase()}`}>
+                        {selected && <AppIcon name="check" size={14} color={colors.primary} />}
+                        <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Fee Status */}
+              <View style={styles.filterCard}>
+                <View style={styles.filterCardHeader}>
+                  <AppIcon name="currency-inr" size={15} color={colors.textSecondary} />
+                  <Text style={styles.filterCardTitle}>Fee Status</Text>
+                </View>
+                <View style={styles.chipRow}>
+                  {FEE_OPTIONS.map((opt) => {
+                    const selected = feeFilter === opt.value;
+                    return (
+                      <TouchableOpacity key={opt.label} style={[styles.chip, selected && styles.chipSelected]} onPress={() => setFeeFilter(opt.value)} testID={`fee-chip-${opt.label.toLowerCase()}`}>
+                        {selected && <AppIcon name="check" size={14} color={colors.primary} />}
+                        <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Batch */}
+              <View style={styles.filterCard}>
+                <View style={styles.filterCardHeader}>
+                  <AppIcon name="account-group-outline" size={15} color={colors.textSecondary} />
+                  <Text style={styles.filterCardTitle}>Batch</Text>
+                </View>
+                <BatchFilterBar selectedBatchId={selectedBatchId} onChange={handleBatchChange} />
+              </View>
+
+              {/* Apply button */}
+              <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <Text style={styles.filterApplyText}>Show Results</Text>
+              </TouchableOpacity>
             </View>
           </View>
+        );
 
-          {/* Fee Status Filter */}
-          <View style={styles.filterCard}>
-            <View style={styles.filterCardHeader}>
-              <AppIcon name="currency-inr" size={15} color={colors.textSecondary} />
-              <Text style={styles.filterCardTitle}>Fee Status</Text>
-            </View>
-            <View style={styles.chipRow}>
-              {FEE_OPTIONS.map((opt) => {
-                const selected = feeFilter === opt.value;
-                return (
-                  <TouchableOpacity
-                    key={opt.label}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => setFeeFilter(opt.value)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={`${opt.label} fee filter`}
-                    testID={`fee-chip-${opt.label.toLowerCase()}`}
-                  >
-                    {selected && (
-                      <AppIcon name="check" size={14} color={colors.primary} />
-                    )}
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Batch Filter */}
-          <View style={styles.filterCard}>
-            <View style={styles.filterCardHeader}>
-              <AppIcon name="account-group-outline" size={15} color={colors.textSecondary} />
-              <Text style={styles.filterCardTitle}>Batch</Text>
-            </View>
-            <BatchFilterBar selectedBatchId={selectedBatchId} onChange={handleBatchChange} />
-          </View>
-
-          {/* Clear All */}
-          {activeFilterCount > 0 && (
-            <TouchableOpacity style={styles.clearFilters} onPress={clearAllFilters}>
-              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
-              <Text style={styles.clearFiltersText}>Clear All Filters</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+        if (!showFilters) return null;
+        if (Platform.OS === 'web') return filterContent;
+        return <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>{filterContent}</Modal>;
+      })()}
 
       {/* ── Content ───────────────────────────────────── */}
       {error && <InlineError message={error.message} onRetry={refetch} />}
@@ -555,14 +552,62 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.white,
   },
 
-  /* ── Filter Panel ──────────────────────────────── */
-  filterPanel: {
+  /* ── Filter Modal ──────────────────────────────── */
+  filterModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+    ...(Platform.OS === 'web' ? { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } : {}),
+  },
+  filterModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  filterModalSheet: {
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.sm,
+    borderRadius: radius.xl + 4,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+    width: '100%',
+    maxWidth: 400,
+  },
+  filterModalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  filterModalTitle: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  filterModalClear: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.danger,
+  },
+  filterApplyBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md + 2,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  filterApplyText: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.white,
   },
   filterCard: {
     backgroundColor: colors.bg,
@@ -610,19 +655,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   chipTextSelected: {
     color: colors.primary,
     fontWeight: fontWeights.semibold,
-  },
-  clearFilters: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.base,
-    gap: spacing.xs,
-  },
-  clearFiltersText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.danger,
   },
 
   /* ── Content ───────────────────────────────────── */

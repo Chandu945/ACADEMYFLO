@@ -40,6 +40,8 @@ export interface PaymentHistoryItemDto {
 export interface ChildAttendanceSummaryDto {
   studentId: string;
   month: string;
+  absentDates: string[];
+  holidayDates: string[];
   presentCount: number;
   absentCount: number;
   holidayCount: number;

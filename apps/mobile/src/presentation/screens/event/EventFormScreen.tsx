@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   ScrollView,
   View,
@@ -77,6 +77,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
 
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const submittedRef = useRef(false);
 
   /* ── Dirty detection ────────────────────────────────────── */
   const isDirty =
@@ -103,7 +104,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
         location !== (event?.location ?? '') ||
         targetAudience !== ((event?.targetAudience as TargetAudience) ?? '');
 
-  useUnsavedChangesWarning(isDirty && !submitting);
+  useUnsavedChangesWarning(isDirty && !submitting && !submittedRef.current);
 
   /* ── Guard: missing event data in edit mode ─────────────── */
   if (mode === 'edit' && !event?.id) {
@@ -161,12 +162,10 @@ export function EventFormScreen(props: EventFormScreenProps) {
           : await eventApi.updateEvent(event!.id, payload);
 
       if (result.ok) {
+        submittedRef.current = true;
         showToast(mode === 'create' ? 'Event created' : 'Event updated');
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-        } else {
-          (navigation as any).navigate('EventList');
-        }
+        (navigation as any).navigate('EventList');
+        return;
       } else {
         setServerError(result.error.message);
       }
