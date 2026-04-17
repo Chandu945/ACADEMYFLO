@@ -40,6 +40,7 @@ export type { LocalDate, MonthKey } from './types/dates';
 export type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeRepeatInterval, LateFeeConfig } from './constants/fee-due';
 export {
   FEE_DUE_STATUSES,
+  PAYMENT_LABELS,
   DEFAULT_DUE_DATE_DAY,
   DEFAULT_RECEIPT_PREFIX,
   CONVENIENCE_FEE_RATE,

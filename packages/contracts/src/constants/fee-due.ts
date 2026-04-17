@@ -7,7 +7,8 @@ export const FEE_DUE_STATUSES = ['UPCOMING', 'DUE', 'PAID'] as const;
 export type PaidSource = 'OWNER_DIRECT' | 'STAFF_APPROVED' | 'PARENT_ONLINE' | 'MANUAL';
 
 /** Payment instrument label */
-export type PaymentLabel = 'CASH' | 'UPI' | 'CARD' | 'NET_BANKING' | 'ONLINE';
+export const PAYMENT_LABELS = ['CASH', 'UPI', 'CARD', 'NET_BANKING', 'ONLINE'] as const;
+export type PaymentLabel = (typeof PAYMENT_LABELS)[number];
 
 /** Default due-date day of month (1-28) */
 export const DEFAULT_DUE_DATE_DAY = 5;

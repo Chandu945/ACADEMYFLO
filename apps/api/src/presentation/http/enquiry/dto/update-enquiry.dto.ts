@@ -7,6 +7,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
+import { ENQUIRY_SOURCES } from '@playconnect/contracts';
 
 export class UpdateEnquiryDto {
   @IsOptional()
@@ -45,7 +46,7 @@ export class UpdateEnquiryDto {
   interestedIn?: string | null;
 
   @IsOptional()
-  @IsIn(['WALK_IN', 'PHONE', 'REFERRAL', 'SOCIAL_MEDIA', 'WEBSITE', 'OTHER', null])
+  @IsIn([...ENQUIRY_SOURCES, null])
   source?: string | null;
 
   @IsOptional()

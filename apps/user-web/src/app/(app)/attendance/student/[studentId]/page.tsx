@@ -85,14 +85,15 @@ export default function StudentMonthlyAttendancePage() {
 
   const { data, loading } = useStudentMonthlyAttendance(studentId, monthParam);
 
-  const summary = data?.summary;
-  const records = data?.records ?? [];
-
-  // Filter to show only absent and holiday records
-  const filteredRecords = useMemo(
-    () => records.filter((r) => r.status.toUpperCase() === 'ABSENT' || r.status.toUpperCase() === 'HOLIDAY'),
-    [records],
-  );
+  // Build records from absentDates and holidayDates arrays
+  const filteredRecords = useMemo(() => {
+    if (!data) return [];
+    const records: { date: string; status: string }[] = [];
+    for (const d of data.absentDates ?? []) records.push({ date: d, status: 'ABSENT' });
+    for (const d of data.holidayDates ?? []) records.push({ date: d, status: 'HOLIDAY' });
+    records.sort((a, b) => a.date.localeCompare(b.date));
+    return records;
+  }, [data]);
 
   const handlePrev = () => {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -132,18 +133,18 @@ export default function StudentMonthlyAttendancePage() {
       ) : (
         <>
           {/* Summary Cards */}
-          {summary && (
+          {data && (
             <div className={styles.summaryGrid}>
               <div className={`${styles.summaryCard} ${styles.present}`}>
-                <span className={styles.summaryValue}>{summary.present}</span>
+                <span className={styles.summaryValue}>{data.presentCount}</span>
                 <span className={styles.summaryLabel}>Present</span>
               </div>
               <div className={`${styles.summaryCard} ${styles.absent}`}>
-                <span className={styles.summaryValue}>{summary.absent}</span>
+                <span className={styles.summaryValue}>{data.absentCount}</span>
                 <span className={styles.summaryLabel}>Absent</span>
               </div>
               <div className={`${styles.summaryCard} ${styles.holiday}`}>
-                <span className={styles.summaryValue}>{summary.holidays}</span>
+                <span className={styles.summaryValue}>{data.holidayCount}</span>
                 <span className={styles.summaryLabel}>Holidays</span>
               </div>
             </div>
@@ -165,10 +166,10 @@ export default function StudentMonthlyAttendancePage() {
               </div>
             </div>
           ) : (
-            !summary && <p className={styles.empty}>No attendance records for this month.</p>
+            !data && <p className={styles.empty}>No attendance records for this month.</p>
           )}
 
-          {summary && filteredRecords.length === 0 && (
+          {data && filteredRecords.length === 0 && (
             <p className={styles.empty}>No absent or holiday days this month.</p>
           )}
         </>

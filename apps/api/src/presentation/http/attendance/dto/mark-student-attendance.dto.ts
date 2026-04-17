@@ -1,9 +1,10 @@
 import { IsIn, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { STUDENT_ATTENDANCE_STATUSES } from '@playconnect/contracts';
 
 export class MarkStudentAttendanceDto {
-  @ApiProperty({ example: 'ABSENT', enum: ['PRESENT', 'ABSENT'] })
+  @ApiProperty({ example: 'ABSENT', enum: [...STUDENT_ATTENDANCE_STATUSES] })
   @IsString()
-  @IsIn(['PRESENT', 'ABSENT'])
+  @IsIn(STUDENT_ATTENDANCE_STATUSES)
   status!: 'PRESENT' | 'ABSENT';
 }

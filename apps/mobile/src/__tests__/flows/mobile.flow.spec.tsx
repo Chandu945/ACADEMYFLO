@@ -59,12 +59,12 @@ jest.mock('../../infra/dashboard/dashboard-api', () => ({
 }));
 
 jest.mock('../../infra/event/event-api', () => ({
-  getEventSummary: jest.fn().mockResolvedValue({ ok: true, value: { thisMonth: { total: 0, upcoming: 0 }, nextMonth: { total: 0, upcoming: 0 } } }),
-  fetchEvents: jest.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } }),
+  getEventSummary: jest.fn().mockResolvedValue({ ok: true, value: { thisMonth: { total: 0, upcoming: 0 } } }),
+  listEvents: jest.fn().mockResolvedValue({ ok: true, value: { data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } } }),
 }));
 
 jest.mock('../../infra/enquiry/enquiry-api', () => ({
-  getEnquirySummary: jest.fn().mockResolvedValue({ ok: true, value: { total: 0, open: 0, converted: 0, closed: 0 } }),
+  getEnquirySummary: jest.fn().mockResolvedValue({ ok: true, value: { total: 0, active: 0, closed: 0, todayFollowUp: 0 } }),
   fetchEnquiries: jest.fn().mockResolvedValue({ ok: true, value: { items: [], total: 0 } }),
 }));
 

@@ -1,13 +1,15 @@
 import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { STUDENT_STATUSES, FEE_FILTERS } from '@playconnect/contracts';
+import type { StudentStatus, FeeFilter } from '@playconnect/contracts';
 import { PaginationQueryDto } from '../../common/dto/pagination.query';
 
 export class ListStudentsQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional({ enum: ['ACTIVE', 'INACTIVE', 'LEFT'] })
+  @ApiPropertyOptional({ enum: [...STUDENT_STATUSES] })
   @IsOptional()
   @IsString()
-  @IsIn(['ACTIVE', 'INACTIVE', 'LEFT'])
-  status?: 'ACTIVE' | 'INACTIVE' | 'LEFT';
+  @IsIn(STUDENT_STATUSES)
+  status?: StudentStatus;
 
   @ApiPropertyOptional({ description: 'Prefix search on student name' })
   @IsOptional()
@@ -15,10 +17,10 @@ export class ListStudentsQueryDto extends PaginationQueryDto {
   @MaxLength(100)
   search?: string;
 
-  @ApiPropertyOptional({ enum: ['ALL', 'DUE', 'PAID'] })
+  @ApiPropertyOptional({ enum: [...FEE_FILTERS] })
   @IsOptional()
-  @IsIn(['ALL', 'DUE', 'PAID'])
-  feeFilter?: 'ALL' | 'DUE' | 'PAID';
+  @IsIn(FEE_FILTERS)
+  feeFilter?: FeeFilter;
 
   @ApiPropertyOptional({ description: 'Month in YYYY-MM format for fee filtering' })
   @IsOptional()

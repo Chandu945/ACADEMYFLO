@@ -1,6 +1,5 @@
 import { IsNotEmpty, IsOptional, IsString, IsIn } from 'class-validator';
-
-const CLOSURE_REASONS = ['CONVERTED', 'NOT_INTERESTED', 'OTHER'] as const;
+import { CLOSURE_REASONS } from '@playconnect/contracts';
 
 export class CloseEnquiryDto {
   @IsNotEmpty()

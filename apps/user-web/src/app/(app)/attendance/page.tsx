@@ -74,17 +74,17 @@ export default function AttendancePage() {
 
   // Filtered attendance items based on search
   const filteredAttendanceItems = useMemo(() => {
-    if (!attendance?.items) return [];
-    if (!markSearch.trim()) return attendance.items;
+    if (!attendance?.data) return [];
+    if (!markSearch.trim()) return attendance.data;
     const q = markSearch.trim().toLowerCase();
-    return attendance.items.filter((item) => item.fullName.toLowerCase().includes(q));
-  }, [attendance?.items, markSearch]);
+    return attendance.data.filter((item) => item.fullName.toLowerCase().includes(q));
+  }, [attendance?.data, markSearch]);
 
   // When attendance data loads, reset local overrides
   React.useEffect(() => {
-    if (attendance?.items) {
+    if (attendance?.data) {
       const map: Record<string, string> = {};
-      attendance.items.forEach((item) => { map[item.studentId] = item.status; });
+      attendance.data.forEach((item) => { map[item.studentId] = item.status; });
       setLocalStatuses(map);
     }
   }, [attendance]);
@@ -109,11 +109,11 @@ export default function AttendancePage() {
   }, [selectedDate, accessToken, localStatuses]);
 
   const handleBulk = useCallback(async (status: string) => {
-    if (!attendance?.items) return;
+    if (!attendance?.data) return;
     setBulkLoading(true);
     setAttendanceError(null);
     const previousStatuses = { ...localStatuses };
-    const updates = attendance.items.map((item) => ({ studentId: item.studentId, status }));
+    const updates = attendance.data.map((item) => ({ studentId: item.studentId, status }));
     setLocalStatuses((prev) => {
       const n = { ...prev };
       updates.forEach((u) => { n[u.studentId] = u.status; });
@@ -130,10 +130,10 @@ export default function AttendancePage() {
   }, [attendance, selectedDate, accessToken, refetch, localStatuses]);
 
   const handleDeclareHoliday = useCallback(async () => {
-    if (!attendance?.items) return;
+    if (!attendance?.data) return;
     setBulkLoading(true);
     setAttendanceError(null);
-    const updates = attendance.items.map((item) => ({ studentId: item.studentId, status: 'HOLIDAY' }));
+    const updates = attendance.data.map((item) => ({ studentId: item.studentId, status: 'HOLIDAY' }));
     const result = await markBulkAttendance(selectedDate, updates, accessToken);
     setBulkLoading(false);
     if (!result.ok) {
@@ -247,7 +247,7 @@ export default function AttendancePage() {
 
       {loading ? (
         <Spinner centered size="lg" />
-      ) : !attendance?.items?.length ? (
+      ) : !attendance?.data?.length ? (
         <EmptyState message="No students found" subtitle="Try selecting a different batch or date" />
       ) : filteredAttendanceItems.length === 0 ? (
         <EmptyState message="No matching students" subtitle="Try a different search term" />

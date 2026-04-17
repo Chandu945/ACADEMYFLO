@@ -11,9 +11,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
-
-const EVENT_TYPES = ['TOURNAMENT', 'MEETING', 'DEMO_CLASS', 'HOLIDAY', 'ANNUAL_DAY', 'TRAINING_CAMP', 'OTHER'] as const;
-const TARGET_AUDIENCES = ['ALL', 'STUDENTS', 'STAFF', 'PARENTS'] as const;
+import { EVENT_TYPES, TARGET_AUDIENCES } from '@playconnect/contracts';
 
 export class CreateEventDto {
   @IsNotEmpty()

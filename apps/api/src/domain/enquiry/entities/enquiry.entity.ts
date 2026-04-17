@@ -1,9 +1,8 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
+import type { EnquiryStatus, EnquirySource, ClosureReason } from '@playconnect/contracts';
 
-export type EnquiryStatus = 'ACTIVE' | 'CLOSED';
-export type EnquirySource = 'WALK_IN' | 'PHONE' | 'REFERRAL' | 'SOCIAL_MEDIA' | 'WEBSITE' | 'OTHER';
-export type ClosureReason = 'CONVERTED' | 'NOT_INTERESTED' | 'OTHER';
+export type { EnquiryStatus, EnquirySource, ClosureReason } from '@playconnect/contracts';
 
 export interface FollowUp {
   id: string;

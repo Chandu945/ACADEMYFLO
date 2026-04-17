@@ -1,6 +1,5 @@
 import { IsIn, IsNotEmpty } from 'class-validator';
-
-const EVENT_STATUSES = ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'] as const;
+import { EVENT_STATUSES } from '@playconnect/contracts';
 
 export class ChangeEventStatusDto {
   @IsNotEmpty()

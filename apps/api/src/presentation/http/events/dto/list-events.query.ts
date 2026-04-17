@@ -1,8 +1,6 @@
 import { IsOptional, IsString, IsIn, IsInt, Min, Max, Matches, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
-
-const EVENT_STATUSES = ['UPCOMING', 'ONGOING', 'COMPLETED', 'CANCELLED'] as const;
-const EVENT_TYPES = ['TOURNAMENT', 'MEETING', 'DEMO_CLASS', 'HOLIDAY', 'ANNUAL_DAY', 'TRAINING_CAMP', 'OTHER'] as const;
+import { EVENT_STATUSES, EVENT_TYPES } from '@playconnect/contracts';
 
 export class ListEventsQuery {
   @IsOptional()

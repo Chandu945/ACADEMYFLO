@@ -9,8 +9,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
-
-const ENQUIRY_SOURCES = ['WALK_IN', 'PHONE', 'REFERRAL', 'SOCIAL_MEDIA', 'WEBSITE', 'OTHER'] as const;
+import { ENQUIRY_SOURCES } from '@playconnect/contracts';
 
 export class CreateEnquiryDto {
   @IsNotEmpty()

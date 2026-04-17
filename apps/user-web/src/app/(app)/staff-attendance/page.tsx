@@ -24,11 +24,11 @@ function toISODate(d: Date) {
 }
 
 type MonthlySummaryItem = {
-  staffId: string;
-  staffName: string;
-  present: number;
-  absent: number;
-  totalWorkingDays: number;
+  staffUserId: string;
+  fullName: string;
+  presentCount: number;
+  absentCount: number;
+  holidayCount: number;
 };
 
 function toMonthString(d: Date) {
@@ -179,11 +179,11 @@ export default function StaffAttendancePage() {
     errorTimerRef.current = setTimeout(() => setActionError(null), 5000);
   }, []);
 
-  const handleStatusChange = useCallback(async (staffId: string, status: string) => {
+  const handleStatusChange = useCallback(async (staffUserId: string, status: string) => {
     setActionError(null);
     // Capture previous value before optimistic update
-    const prevValue = staffStatuses[staffId];
-    setStaffStatuses((prev) => ({ ...prev, [staffId]: status }));
+    const prevValue = staffStatuses[staffUserId];
+    setStaffStatuses((prev) => ({ ...prev, [staffUserId]: status }));
 
     try {
       const res = await fetch('/api/staff-attendance', {
@@ -192,17 +192,17 @@ export default function StaffAttendancePage() {
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ staffId, date: selectedDate, status }),
+        body: JSON.stringify({ staffUserId, date: selectedDate, status }),
         signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) {
         let msg = 'Failed to update attendance';
         try { const json = await res.json(); msg = json.message || msg; } catch { /* ignore */ }
-        setStaffStatuses((curr) => ({ ...curr, [staffId]: prevValue ?? '' }));
+        setStaffStatuses((curr) => ({ ...curr, [staffUserId]: prevValue ?? '' }));
         showTimedError(msg);
       }
     } catch {
-      setStaffStatuses((curr) => ({ ...curr, [staffId]: prevValue ?? '' }));
+      setStaffStatuses((curr) => ({ ...curr, [staffUserId]: prevValue ?? '' }));
       showTimedError('Network error. Please try again.');
     }
   }, [selectedDate, accessToken, staffStatuses, showTimedError]);
@@ -219,9 +219,9 @@ export default function StaffAttendancePage() {
 
   const monthlyAggregates = useMemo(() => {
     if (monthlySummary.length === 0) return null;
-    const totalPresent = monthlySummary.reduce((sum, item) => sum + item.present, 0);
-    const totalAbsent = monthlySummary.reduce((sum, item) => sum + item.absent, 0);
-    const totalWorkingDays = monthlySummary.reduce((sum, item) => sum + item.totalWorkingDays, 0);
+    const totalPresent = monthlySummary.reduce((sum, item) => sum + item.presentCount, 0);
+    const totalAbsent = monthlySummary.reduce((sum, item) => sum + item.absentCount, 0);
+    const totalWorkingDays = monthlySummary.reduce((sum, item) => sum + item.presentCount + item.absentCount, 0);
     const avgAttendance = totalWorkingDays > 0 ? Math.round((totalPresent / totalWorkingDays) * 100) : 0;
     return { totalPresent, totalAbsent, avgAttendance };
   }, [monthlySummary]);
@@ -327,11 +327,11 @@ export default function StaffAttendancePage() {
           </Thead>
           <Tbody>
             {monthlySummary.map((item) => (
-              <Tr key={item.staffId}>
-                <Td><span className={styles.staffNameCell}>{item.staffName}</span></Td>
-                <Td><span className={styles.presentCount}>{item.present}</span></Td>
-                <Td><span className={styles.absentCount}>{item.absent}</span></Td>
-                <Td>{item.totalWorkingDays}</Td>
+              <Tr key={item.staffUserId}>
+                <Td><span className={styles.staffNameCell}>{item.fullName}</span></Td>
+                <Td><span className={styles.presentCount}>{item.presentCount}</span></Td>
+                <Td><span className={styles.absentCount}>{item.absentCount}</span></Td>
+                <Td>{item.presentCount + item.absentCount}</Td>
               </Tr>
             ))}
           </Tbody>

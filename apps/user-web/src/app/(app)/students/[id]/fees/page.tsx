@@ -18,8 +18,8 @@ const PAYMENT_METHODS = [
   { value: '', label: 'Payment Method' },
   { value: 'CASH', label: 'Cash' },
   { value: 'UPI', label: 'UPI' },
-  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-  { value: 'CHEQUE', label: 'Cheque' },
+  { value: 'CARD', label: 'Card' },
+  { value: 'NET_BANKING', label: 'Net Banking' },
   { value: 'ONLINE', label: 'Online' },
 ];
 

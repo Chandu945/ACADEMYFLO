@@ -42,7 +42,6 @@ export default function EnquiryDetailPage() {
 
   const [closeOpen, setCloseOpen] = useState(false);
   const [closeReasonType, setCloseReasonType] = useState<CloseReasonType | ''>('');
-  const [closeCustomReason, setCloseCustomReason] = useState('');
   const [closing, setClosing] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
 
@@ -63,6 +62,7 @@ export default function EnquiryDetailPage() {
     setAddingFollowUp(true);
     setFollowUpError(null);
     const result = await addFollowUp(params.id, {
+      date: new Date().toISOString(),
       notes: followUpNotes.trim(),
       nextFollowUpDate: nextFollowUpDate || undefined,
     }, accessToken);
@@ -74,14 +74,13 @@ export default function EnquiryDetailPage() {
   }, [followUpNotes, nextFollowUpDate, params.id, accessToken, refetch]);
 
   const handleClose = useCallback(async () => {
-    const reason = closeReasonType === 'OTHER' ? closeCustomReason : closeReasonType;
-    if (!reason) {
+    if (!closeReasonType) {
       setCloseError('Please select a reason');
       return;
     }
     setClosing(true);
     setCloseError(null);
-    const result = await closeEnquiry(params.id, reason, accessToken);
+    const result = await closeEnquiry(params.id, closeReasonType, accessToken);
     setClosing(false);
     if (!result.ok) {
       setCloseError(result.error || 'Failed to close enquiry');
@@ -89,7 +88,7 @@ export default function EnquiryDetailPage() {
     }
     setCloseOpen(false);
     refetch();
-  }, [params.id, closeReasonType, closeCustomReason, accessToken, refetch]);
+  }, [params.id, closeReasonType, accessToken, refetch]);
 
   const handleConvert = useCallback(async () => {
     if (!convertMonthlyFee || Number(convertMonthlyFee) <= 0) {
@@ -259,7 +258,7 @@ export default function EnquiryDetailPage() {
       {/* Close Dialog */}
       <ConfirmDialog
         open={closeOpen}
-        onClose={() => { setCloseOpen(false); setCloseReasonType(''); setCloseCustomReason(''); setCloseError(null); }}
+        onClose={() => { setCloseOpen(false); setCloseReasonType(''); setCloseError(null); }}
         onConfirm={handleClose}
         title="Close Enquiry"
         message="Select a reason for closing this enquiry."
@@ -274,21 +273,12 @@ export default function EnquiryDetailPage() {
                 key={reason}
                 type="button"
                 className={`${styles.reasonChip} ${closeReasonType === reason ? styles.reasonChipActive : ''}`}
-                onClick={() => { setCloseReasonType(reason); if (reason !== 'OTHER') setCloseCustomReason(''); }}
+                onClick={() => setCloseReasonType(reason)}
               >
                 {reason.replace('_', ' ')}
               </button>
             ))}
           </div>
-          {closeReasonType === 'OTHER' && (
-            <Input
-              label="Custom reason"
-              value={closeCustomReason}
-              onChange={(e) => setCloseCustomReason(e.target.value)}
-              placeholder="Enter reason..."
-              required
-            />
-          )}
         </div>
       </ConfirmDialog>
 

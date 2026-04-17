@@ -14,7 +14,7 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
 type EnquiriesPagination = { page: number; limit: number; total: number; totalPages: number };
 
 export function useEnquiries(
-  filters: { status?: string; source?: string; search?: string; page?: number; limit?: number } = {},
+  filters: { status?: string; search?: string; page?: number; limit?: number } = {},
 ) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<EnquiryListItem[]>([]);
@@ -23,7 +23,7 @@ export function useEnquiries(
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const { status, source, search, page = 1, limit = 20 } = filters;
+  const { status, search, page = 1, limit = 20 } = filters;
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
@@ -36,7 +36,6 @@ export function useEnquiries(
     try {
       const params = new URLSearchParams();
       if (status) params.set('status', status);
-      if (source) params.set('source', source);
       if (search) params.set('search', search);
       params.set('page', String(page));
       params.set('limit', String(limit));
@@ -58,7 +57,7 @@ export function useEnquiries(
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [accessToken, status, source, search, page, limit]);
+  }, [accessToken, status, search, page, limit]);
 
   useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
   return { data, pagination, loading, error, refetch: fetch_ };

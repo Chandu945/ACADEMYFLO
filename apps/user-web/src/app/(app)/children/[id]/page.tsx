@@ -22,13 +22,6 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ] as const;
 
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-');
-  if (!y || !m || !d) return dateStr;
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
-}
-
 function formatMonthKey(monthKey: string): string {
   // monthKey can be "YYYY-MM" or "January 2025" etc.
   if (/^\d{4}-\d{2}$/.test(monthKey)) {
@@ -38,14 +31,7 @@ function formatMonthKey(monthKey: string): string {
   return monthKey;
 }
 
-function attendanceBadgeVariant(status: string) {
-  switch (status.toUpperCase()) {
-    case 'PRESENT': return 'success' as const;
-    case 'ABSENT': return 'danger' as const;
-    case 'HOLIDAY': return 'warning' as const;
-    default: return 'default' as const;
-  }
-}
+
 
 function feeBadgeVariant(status: string) {
   switch (status.toUpperCase()) {
@@ -86,16 +72,18 @@ function AttendanceContent({ studentId }: { studentId: string }) {
     [year, month],
   );
 
-  const { data, loading } = useChildAttendance(studentId, monthParam);
+  const { data: rawAttendance, loading } = useChildAttendance(studentId, monthParam);
 
-  const summary = (data as Record<string, unknown> | null)?.summary as
-    | { present: number; absent: number; holidays: number; total: number }
-    | undefined;
-
-  const records = ((data as Record<string, unknown> | null)?.records ?? []) as Array<{
-    date: string;
-    status: string;
-  }>;
+  // API returns flat { studentId, month, presentCount, absentCount, holidayCount }
+  const attendanceData = rawAttendance as Record<string, unknown> | null;
+  const summary = attendanceData?.presentCount != null
+    ? {
+        present: Number(attendanceData['presentCount']) || 0,
+        absent: Number(attendanceData['absentCount']) || 0,
+        holidays: Number(attendanceData['holidayCount']) || 0,
+        total: (Number(attendanceData['presentCount']) || 0) + (Number(attendanceData['absentCount']) || 0) + (Number(attendanceData['holidayCount']) || 0),
+      }
+    : undefined;
 
   const handlePrev = () => {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -146,23 +134,8 @@ function AttendanceContent({ studentId }: { studentId: string }) {
             </div>
           )}
 
-          {/* Records List */}
-          {records.length > 0 ? (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>Daily Records</h3>
-              <div className={styles.recordsList}>
-                {records.map((rec) => (
-                  <div key={rec.date} className={styles.recordItem}>
-                    <span className={styles.recordDate}>{formatDate(rec.date)}</span>
-                    <Badge variant={attendanceBadgeVariant(rec.status)}>
-                      {rec.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            !summary && <p className={styles.empty}>No attendance records for this month.</p>
+          {!summary && (
+            <p className={styles.empty}>No attendance records for this month.</p>
           )}
         </>
       )}

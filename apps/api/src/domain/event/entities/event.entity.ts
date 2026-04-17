@@ -1,9 +1,8 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
+import type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
 
-export type EventStatus = 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
-export type EventType = 'TOURNAMENT' | 'MEETING' | 'DEMO_CLASS' | 'HOLIDAY' | 'ANNUAL_DAY' | 'TRAINING_CAMP' | 'OTHER';
-export type TargetAudience = 'ALL' | 'STUDENTS' | 'STAFF' | 'PARENTS';
+export type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
 
 export interface EventProps {
   academyId: string;

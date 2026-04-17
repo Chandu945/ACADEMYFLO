@@ -29,10 +29,12 @@ const STATUS_OPTIONS = [
 
 const TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
-  { value: 'EVENT', label: 'Event' },
-  { value: 'HOLIDAY', label: 'Holiday' },
-  { value: 'EXAM', label: 'Exam' },
+  { value: 'TOURNAMENT', label: 'Tournament' },
   { value: 'MEETING', label: 'Meeting' },
+  { value: 'DEMO_CLASS', label: 'Demo Class' },
+  { value: 'HOLIDAY', label: 'Holiday' },
+  { value: 'ANNUAL_DAY', label: 'Annual Day' },
+  { value: 'TRAINING_CAMP', label: 'Training Camp' },
   { value: 'OTHER', label: 'Other' },
 ];
 

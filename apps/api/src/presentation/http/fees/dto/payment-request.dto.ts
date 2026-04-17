@@ -1,5 +1,6 @@
-import { IsString, MinLength, MaxLength, IsOptional, Matches } from 'class-validator';
+import { IsString, MinLength, MaxLength, IsOptional, IsIn, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { PAYMENT_REQUEST_STATUSES } from '@playconnect/contracts';
 import { PaginationQueryDto } from '../../common/dto/pagination.query';
 import { sanitizeNotes } from '../../common/sanitizers/notes-sanitizer';
 
@@ -29,9 +30,7 @@ export class RejectPaymentRequestDto {
 export class ListPaymentRequestsQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
-  @Matches(/^(PENDING|APPROVED|REJECTED|CANCELLED)$/, {
-    message: 'status must be PENDING, APPROVED, REJECTED, or CANCELLED',
-  })
+  @IsIn(PAYMENT_REQUEST_STATUSES)
   status?: string;
 }
 

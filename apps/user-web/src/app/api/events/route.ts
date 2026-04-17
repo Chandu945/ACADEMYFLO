@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     eventType: searchParams.get('eventType') || undefined,
     fromDate: searchParams.get('fromDate') || undefined,
     toDate: searchParams.get('toDate') || undefined,
+    search: searchParams.get('search') || undefined,
   });
   const result = await apiGet(`/api/v1/events?${params}`, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);

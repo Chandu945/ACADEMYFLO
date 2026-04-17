@@ -1,4 +1,5 @@
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ALLOWED_REPEAT_INTERVALS } from '@playconnect/contracts';
 
 export class UpdateAcademySettingsDto {
   @IsOptional()
@@ -30,6 +31,6 @@ export class UpdateAcademySettingsDto {
 
   @IsOptional()
   @IsInt()
-  @IsIn([1, 3, 5])
+  @IsIn([...ALLOWED_REPEAT_INTERVALS])
   lateFeeRepeatIntervalDays?: number;
 }

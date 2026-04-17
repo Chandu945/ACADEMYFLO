@@ -1,8 +1,9 @@
 import { IsOptional, IsIn } from 'class-validator';
+import { PAYMENT_LABELS } from '@playconnect/contracts';
 import type { PaymentLabel } from '@playconnect/contracts';
 
 export class MarkFeePaidBodyDto {
   @IsOptional()
-  @IsIn(['CASH', 'UPI', 'CARD', 'NET_BANKING', 'ONLINE'])
+  @IsIn(PAYMENT_LABELS)
   paymentLabel?: PaymentLabel;
 }

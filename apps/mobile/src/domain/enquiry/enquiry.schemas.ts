@@ -45,6 +45,8 @@ export const enquiryDetailSchema = z.object({
   status: z.enum(['ACTIVE', 'CLOSED']),
   closureReason: z.enum(['CONVERTED', 'NOT_INTERESTED', 'OTHER']).nullable(),
   convertedStudentId: z.string().nullable(),
+  closedBy: z.string().nullable(),
+  closedAt: z.string().nullable(),
   nextFollowUpDate: z.string().nullable(),
   followUps: z.array(followUpSchema),
   createdBy: z.string(),

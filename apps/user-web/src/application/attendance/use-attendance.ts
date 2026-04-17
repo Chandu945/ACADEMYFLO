@@ -12,7 +12,7 @@ type AttendanceItem = {
 type AttendancePage = {
   date: string;
   isHoliday: boolean;
-  items: AttendanceItem[];
+  data: AttendanceItem[];
   meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
 };
 
@@ -179,8 +179,13 @@ export function useMonthlySummary(month: string, search?: string) {
 /* ── Student Monthly Attendance ──────────────────────────────────────── */
 
 type StudentMonthlyData = {
-  summary: { present: number; absent: number; holidays: number; total: number };
-  records: Array<{ date: string; status: string }>;
+  studentId: string;
+  month: string;
+  absentDates: string[];
+  holidayDates: string[];
+  presentCount: number;
+  absentCount: number;
+  holidayCount: number;
 };
 
 export function useStudentMonthlyAttendance(studentId: string, month: string) {

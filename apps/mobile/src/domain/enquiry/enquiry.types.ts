@@ -36,6 +36,8 @@ export type EnquiryDetail = {
   status: EnquiryStatus;
   closureReason: string | null;
   convertedStudentId: string | null;
+  closedBy: string | null;
+  closedAt: string | null;
   nextFollowUpDate: string | null;
   followUps: FollowUp[];
   createdBy: string;
