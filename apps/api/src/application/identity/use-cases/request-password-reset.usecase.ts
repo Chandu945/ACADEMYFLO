@@ -68,11 +68,15 @@ export class RequestPasswordResetUseCase {
 
     await this.challengeRepo.save(challenge);
 
-    await this.emailSender.send({
-      to: email,
-      subject: 'PlayConnect Password Reset',
-      html: `<p>Your PlayConnect password reset code is: <strong>${otp}</strong>. Valid for ${this.otpExpiryMinutes} minutes.</p>`,
-    });
+    try {
+      await this.emailSender.send({
+        to: email,
+        subject: 'PlayConnect Password Reset',
+        html: `<p>Your PlayConnect password reset code is: <strong>${otp}</strong>. Valid for ${this.otpExpiryMinutes} minutes.</p>`,
+      });
+    } catch {
+      // OTP is saved — user can retry. Don't crash and don't leak account existence.
+    }
 
     return ok({ message: GENERIC_MESSAGE });
   }

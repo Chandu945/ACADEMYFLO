@@ -121,6 +121,7 @@ export class HandleCashfreeWebhookUseCase {
         now,
       );
 
+      let didTransition = false;
       const saveAndActivate = async () => {
         const transitioned = await this.paymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
         if (!transitioned) {
@@ -128,10 +129,16 @@ export class HandleCashfreeWebhookUseCase {
           this.logger.info('Payment already transitioned from PENDING — skipping', { orderId });
           return;
         }
+        didTransition = true;
         await this.activateSubscription(payment.academyId, payment.tierKey, orderId, cfPaymentId, now);
       };
 
       await this.transaction.run(saveAndActivate);
+
+      // Only log, audit, and email if this webhook actually performed the transition
+      if (!didTransition) {
+        return ok(undefined);
+      }
 
       this.logger.info('Payment SUCCESS — subscription activated', {
         orderId,

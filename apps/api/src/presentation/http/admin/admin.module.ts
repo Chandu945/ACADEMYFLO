@@ -113,8 +113,9 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         sessionRepo: SessionRepository,
         auditRecorder: AuditRecorderPort,
         emailSender: EmailSenderPort,
-      ) => new SetAcademyLoginDisabledUseCase(academyRepo, userRepo, sessionRepo, auditRecorder, emailSender),
-      inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY, AUDIT_RECORDER_PORT, EMAIL_SENDER_PORT],
+        deviceTokenRepo: DeviceTokenRepository,
+      ) => new SetAcademyLoginDisabledUseCase(academyRepo, userRepo, sessionRepo, auditRecorder, emailSender, deviceTokenRepo),
+      inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY, AUDIT_RECORDER_PORT, EMAIL_SENDER_PORT, DEVICE_TOKEN_REPOSITORY],
     },
     {
       provide: 'FORCE_LOGOUT_ACADEMY_USE_CASE',

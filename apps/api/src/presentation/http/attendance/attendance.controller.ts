@@ -312,17 +312,24 @@ export class AttendanceController {
   }
 
   private async notifyParentsOfAbsence(studentIds: string[], date: string): Promise<void> {
-    const students = await this.studentRepo.findByIds(studentIds);
+    if (!studentIds || studentIds.length === 0) return;
+
+    // Parallel: fetch student names + all parent links in one batch
+    const [students, allLinks] = await Promise.all([
+      this.studentRepo.findByIds(studentIds),
+      Promise.all(studentIds.map((id) => this.parentLinkRepo.findByStudentId(id))),
+    ]);
     const nameMap = new Map(students.map((s) => [s.id.toString(), s.fullName]));
 
-    for (const studentId of studentIds) {
-      const links = await this.parentLinkRepo.findByStudentId(studentId);
-      if (links.length === 0) continue;
+    // Send all push notifications in parallel
+    const sends = studentIds.map((studentId, i) => {
+      const links = allLinks[i] ?? [];
+      if (links.length === 0) return Promise.resolve();
 
       const parentUserIds = links.map((l) => l.parentUserId);
       const studentName = nameMap.get(studentId) ?? 'Your child';
 
-      await this.pushService
+      return this.pushService
         .sendToUsers(parentUserIds, {
           title: 'Attendance Update',
           body: `${studentName} was marked absent on ${date}.`,
@@ -334,6 +341,7 @@ export class AttendanceController {
             error: pushErr instanceof Error ? pushErr.message : String(pushErr),
           });
         });
-    }
+    });
+    await Promise.allSettled(sends);
   }
 }

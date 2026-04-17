@@ -5,6 +5,7 @@ import { User } from '@domain/identity/entities/user.entity';
 import type { UserStatus } from '@domain/identity/entities/user.entity';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import { canManageStaff, staffBelongsToAcademy } from '@domain/identity/rules/staff.rules';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
@@ -46,6 +47,7 @@ export class SetStaffStatusUseCase {
     private readonly sessionRepo: SessionRepository,
     private readonly emailSender?: EmailSenderPort,
     private readonly academyRepo?: AcademyRepository,
+    private readonly deviceTokenRepo?: DeviceTokenRepository,
   ) {}
 
   async execute(input: SetStaffStatusInput): Promise<Result<SetStaffStatusOutput, AppError>> {
@@ -103,6 +105,7 @@ export class SetStaffStatusUseCase {
 
     if (input.status === 'INACTIVE') {
       await this.sessionRepo.revokeAllByUserIds([input.staffId]);
+      await this.deviceTokenRepo?.removeByUserIds([input.staffId]);
     }
 
     // Fire-and-forget: notify staff about status change

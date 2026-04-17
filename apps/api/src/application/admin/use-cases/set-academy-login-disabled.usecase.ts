@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderAcademyLoginDisabledEmail } from '../../notifications/templates/academy-login-disabled-template';
@@ -39,6 +40,7 @@ export class SetAcademyLoginDisabledUseCase {
     private readonly sessionRepo: SessionRepository,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly emailSender?: EmailSenderPort,
+    private readonly deviceTokenRepo?: DeviceTokenRepository,
   ) {}
 
   async execute(
@@ -67,6 +69,7 @@ export class SetAcademyLoginDisabledUseCase {
       );
       if (affectedUserIds.length > 0) {
         await this.sessionRepo.revokeAllByUserIds(affectedUserIds);
+        await this.deviceTokenRepo?.removeByUserIds(affectedUserIds);
       }
       affectedUsers = affectedUserIds.length;
     }

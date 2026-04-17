@@ -108,13 +108,16 @@ export class SendOverduePushRemindersUseCase {
       studentMap.set(s.id.toString(), s.fullName);
     }
 
-    // Find parent links for all students
+    // Find parent links for all students (parallel batch)
     const parentUserIdsByStudent = new Map<string, string[]>();
-    for (const studentId of studentIds) {
-      const links = await this.parentLinkRepo.findByStudentId(studentId);
+    const allLinks = await Promise.all(
+      studentIds.map((id) => this.parentLinkRepo.findByStudentId(id)),
+    );
+    for (let i = 0; i < studentIds.length; i++) {
+      const links = allLinks[i] ?? [];
       if (links.length > 0) {
         parentUserIdsByStudent.set(
-          studentId,
+          studentIds[i]!,
           links.map((l) => l.parentUserId),
         );
       }
@@ -135,17 +138,19 @@ export class SendOverduePushRemindersUseCase {
       const lateFee = due.lateFeeConfigSnapshot
         ? computeLateFee(due.dueDate, today, due.lateFeeConfigSnapshot)
         : 0;
-      const lateFeeNote = lateFee > 0
-        ? ` A late fee of \u20B9${lateFee} has been added.`
+      const safeAmount = Number(due.amount) || 0;
+      const safeLateFee = Number(lateFee) || 0;
+      const lateFeeNote = safeLateFee > 0
+        ? ` A late fee of \u20B9${safeLateFee} has been added.`
         : '';
 
       let body: string;
       if (daysOverdue === 0) {
-        body = `Fee of \u20B9${due.amount} for ${studentName} (${formatMonthKey(due.monthKey)}) is due today. Please pay to avoid late fees.`;
+        body = `Fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) is due today. Please pay to avoid late fees.`;
       } else if (daysOverdue === 1) {
-        body = `Fee of \u20B9${due.amount} for ${studentName} (${formatMonthKey(due.monthKey)}) was due yesterday. Please pay now.${lateFeeNote}`;
+        body = `Fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) was due yesterday. Please pay now.${lateFeeNote}`;
       } else {
-        body = `Fee of \u20B9${due.amount} for ${studentName} (${formatMonthKey(due.monthKey)}) is overdue by ${daysOverdue} days.${lateFeeNote} Please pay immediately.`;
+        body = `Fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) is overdue by ${daysOverdue} days.${lateFeeNote} Please pay immediately.`;
       }
 
       const notificationPayload = {

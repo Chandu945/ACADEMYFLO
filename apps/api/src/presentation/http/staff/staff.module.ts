@@ -20,6 +20,8 @@ import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '@domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 
 @Module({
@@ -47,9 +49,9 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
     },
     {
       provide: 'SET_STAFF_STATUS_USE_CASE',
-      useFactory: (userRepo: UserRepository, sessionRepo: SessionRepository, emailSender: EmailSenderPort, academyRepo: AcademyRepository) =>
-        new SetStaffStatusUseCase(userRepo, sessionRepo, emailSender, academyRepo),
-      inject: [USER_REPOSITORY, SESSION_REPOSITORY, EMAIL_SENDER_PORT, ACADEMY_REPOSITORY],
+      useFactory: (userRepo: UserRepository, sessionRepo: SessionRepository, emailSender: EmailSenderPort, academyRepo: AcademyRepository, deviceTokenRepo: DeviceTokenRepository) =>
+        new SetStaffStatusUseCase(userRepo, sessionRepo, emailSender, academyRepo, deviceTokenRepo),
+      inject: [USER_REPOSITORY, SESSION_REPOSITORY, EMAIL_SENDER_PORT, ACADEMY_REPOSITORY, DEVICE_TOKEN_REPOSITORY],
     },
     {
       provide: 'UPLOAD_STAFF_PHOTO_USE_CASE',
