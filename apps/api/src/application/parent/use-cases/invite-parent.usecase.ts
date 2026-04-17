@@ -5,11 +5,14 @@ import { User } from '@domain/identity/entities/user.entity';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import { canInviteParent } from '@domain/parent/rules/parent.rules';
 import { ParentStudentLink } from '@domain/parent/entities/parent-student-link.entity';
 import { AuthErrors, ParentErrors, StudentErrors } from '../../common/errors';
 import type { UserRole } from '@playconnect/contracts';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderParentInviteEmail } from '../../notifications/templates/parent-invite-template';
 import { randomUUID } from 'crypto';
 
 export interface InviteParentInput {
@@ -31,7 +34,9 @@ export class InviteParentUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly linkRepo: ParentStudentLinkRepository,
+    private readonly academyRepo: AcademyRepository,
     private readonly passwordHasher: PasswordHasher,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(input: InviteParentInput): Promise<Result<InviteParentOutput, AppError>> {
@@ -115,6 +120,25 @@ export class InviteParentUseCase {
       academyId: owner.academyId,
     });
     await this.linkRepo.save(link);
+
+    // Fire-and-forget: send welcome email with credentials to new parents
+    if (tempPassword && parentEmail && this.emailSender) {
+      const academy = await this.academyRepo.findById(owner.academyId!);
+      const academyName = academy?.academyName ?? 'Your Academy';
+      this.emailSender
+        .send({
+          to: parentEmail,
+          subject: `Welcome to ${academyName} - Your Login Credentials`,
+          html: renderParentInviteEmail({
+            parentName: guardianName,
+            studentName: student.fullName,
+            academyName,
+            loginEmail: parentEmail,
+            tempPassword,
+          }),
+        })
+        .catch(() => {/* best-effort — credentials also returned in API response */});
+    }
 
     return ok({
       parentId: parentUserId,

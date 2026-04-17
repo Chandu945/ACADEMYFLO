@@ -47,6 +47,9 @@ import { SetAcademyLoginDisabledUseCase } from '@application/admin/use-cases/set
 import { ForceLogoutAcademyUseCase } from '@application/admin/use-cases/force-logout-academy.usecase';
 import { ResetOwnerPasswordUseCase } from '@application/admin/use-cases/reset-owner-password.usecase';
 import { ListAcademyAuditLogsUseCase } from '@application/admin/use-cases/list-academy-audit-logs.usecase';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-email-sender';
 import { MongoDbModule } from '@infrastructure/database/mongodb.module';
 
 @Module({
@@ -131,6 +134,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         DEVICE_TOKEN_REPOSITORY,
       ],
     },
+    { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     {
       provide: 'RESET_OWNER_PASSWORD_USE_CASE',
       useFactory: (
@@ -141,6 +145,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         generator: PasswordGeneratorPort,
         auditRecorder: AuditRecorderPort,
         deviceTokenRepo: DeviceTokenRepository,
+        emailSender: EmailSenderPort,
       ) =>
         new ResetOwnerPasswordUseCase(
           userRepo,
@@ -150,6 +155,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
           generator,
           auditRecorder,
           deviceTokenRepo,
+          emailSender,
         ),
       inject: [
         USER_REPOSITORY,
@@ -159,6 +165,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         PASSWORD_GENERATOR,
         AUDIT_RECORDER_PORT,
         DEVICE_TOKEN_REPOSITORY,
+        EMAIL_SENDER_PORT,
       ],
     },
     {

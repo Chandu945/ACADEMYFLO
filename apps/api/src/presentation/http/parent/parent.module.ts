@@ -54,6 +54,9 @@ import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import { CLOCK_PORT } from '@application/common/clock.port';
 import { SystemClock } from '@application/common/system-clock';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-email-sender';
 
 // Use cases
 import { InviteParentUseCase } from '@application/parent/use-cases/invite-parent.usecase';
@@ -159,6 +162,8 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
       inject: [AppConfigService],
     },
 
+    { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
+
     // Use cases
     {
       provide: 'INVITE_PARENT_USE_CASE',
@@ -166,9 +171,11 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         userRepo: UserRepository,
         studentRepo: StudentRepository,
         linkRepo: ParentStudentLinkRepository,
+        academyRepo: AcademyRepository,
         hasher: PasswordHasher,
-      ) => new InviteParentUseCase(userRepo, studentRepo, linkRepo, hasher),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PARENT_STUDENT_LINK_REPOSITORY, PASSWORD_HASHER],
+        emailSender: EmailSenderPort,
+      ) => new InviteParentUseCase(userRepo, studentRepo, linkRepo, academyRepo, hasher, emailSender),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PARENT_STUDENT_LINK_REPOSITORY, ACADEMY_REPOSITORY, PASSWORD_HASHER, EMAIL_SENDER_PORT],
     },
     {
       provide: 'GET_MY_CHILDREN_USE_CASE',

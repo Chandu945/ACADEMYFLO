@@ -8,6 +8,9 @@ import { canManageStaff } from '@domain/identity/rules/staff.rules';
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import type { UserRole } from '@playconnect/contracts';
 import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderStaffWelcomeEmail } from '../../notifications/templates/staff-welcome-template';
 import { randomUUID } from 'crypto';
 
 export interface CreateStaffInput {
@@ -51,6 +54,8 @@ export class CreateStaffUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly passwordHasher: PasswordHasher,
+    private readonly academyRepo?: AcademyRepository,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(input: CreateStaffInput): Promise<Result<CreateStaffOutput, AppError>> {
@@ -122,6 +127,24 @@ export class CreateStaffUseCase {
         return err(AuthErrors.duplicatePhone());
       }
       throw error;
+    }
+
+    // Fire-and-forget: send welcome email to new staff
+    if (this.academyRepo && this.emailSender) {
+    const academy = await this.academyRepo.findById(owner.academyId!);
+    const academyName = academy?.academyName ?? 'Your Academy';
+    this.emailSender
+      .send({
+        to: staffWithAcademy.emailNormalized,
+        subject: `Welcome to ${academyName} - Staff Account Created`,
+        html: renderStaffWelcomeEmail({
+          staffName: staffWithAcademy.fullName,
+          academyName,
+          loginEmail: staffWithAcademy.emailNormalized,
+          loginPhone: staffWithAcademy.phoneE164,
+        }),
+      })
+      .catch(() => {/* best-effort */});
     }
 
     return ok({

@@ -8,6 +8,8 @@ import type { DeviceTokenRepository } from '@domain/notification/ports/device-to
 import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import type { PasswordGeneratorPort } from '../../common/password-generator.port';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderAdminPasswordResetEmail } from '../../notifications/templates/admin-password-reset-template';
 import { AdminErrors } from '../../common/errors';
 
 interface ResetOwnerPasswordInput {
@@ -30,6 +32,7 @@ export class ResetOwnerPasswordUseCase {
     private readonly passwordGenerator: PasswordGeneratorPort,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly deviceTokenRepo: DeviceTokenRepository,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(
@@ -74,6 +77,19 @@ export class ResetOwnerPasswordUseCase {
         ownerEmail: owner.emailNormalized,
       },
     });
+
+    // Fire-and-forget: email the owner their new temporary password
+    this.emailSender
+      ?.send({
+        to: owner.emailNormalized,
+        subject: 'Your Academyflo Password Has Been Reset',
+        html: renderAdminPasswordResetEmail({
+          ownerName: owner.fullName,
+          academyName: academy.academyName,
+          tempPassword,
+        }),
+      })
+      .catch(() => {/* best-effort — temp password also returned in API response */});
 
     return ok({
       temporaryPassword: tempPassword,
