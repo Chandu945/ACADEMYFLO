@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import { canViewFees } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
@@ -15,6 +16,7 @@ export interface ListPaidDuesInput {
   actorUserId: string;
   actorRole: UserRole;
   month: string;
+  batchId?: string;
 }
 
 export class ListPaidDuesUseCase {
@@ -22,6 +24,7 @@ export class ListPaidDuesUseCase {
     private readonly userRepo: UserRepository,
     private readonly feeDueRepo: FeeDueRepository,
     private readonly studentRepo?: StudentRepository,
+    private readonly studentBatchRepo?: StudentBatchRepository,
   ) {}
 
   async execute(input: ListPaidDuesInput): Promise<Result<FeeDueDto[], AppError>> {
@@ -33,7 +36,14 @@ export class ListPaidDuesUseCase {
     const user = await this.userRepo.findById(input.actorUserId);
     if (!user || !user.academyId) return err(FeeErrors.academyRequired());
 
-    const dues = await this.feeDueRepo.listByAcademyMonthPaid(user.academyId, input.month);
+    let dues = await this.feeDueRepo.listByAcademyMonthPaid(user.academyId, input.month);
+
+    // Filter by batch if requested
+    if (input.batchId && this.studentBatchRepo) {
+      const batchAssignments = await this.studentBatchRepo.findByBatchId(input.batchId);
+      const batchStudentIds = new Set(batchAssignments.map((a) => a.studentId));
+      dues = dues.filter((d) => batchStudentIds.has(d.studentId));
+    }
 
     // Build student name map
     const nameMap: Record<string, string> = {};

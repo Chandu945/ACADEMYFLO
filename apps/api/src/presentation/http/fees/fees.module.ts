@@ -12,6 +12,8 @@ import {
 } from '@infrastructure/database/schemas/transaction-log.schema';
 import { MongoFeeDueRepository } from '@infrastructure/repositories/mongo-fee-due.repository';
 import { MongoStudentRepository } from '@infrastructure/repositories/mongo-student.repository';
+import { MongoStudentBatchRepository } from '@infrastructure/repositories/mongo-student-batch.repository';
+import { StudentBatchModel, StudentBatchSchema } from '@infrastructure/database/schemas/student-batch.schema';
 import { MongoTransactionLogRepository } from '@infrastructure/repositories/mongo-transaction-log.repository';
 import { MongoTransactionService } from '@infrastructure/database/mongo-transaction.service';
 import { FEE_DUE_REPOSITORY } from '@domain/fee/ports/fee-due.repository';
@@ -37,6 +39,8 @@ import type { TransactionPort } from '@application/common/transaction.port';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { STUDENT_BATCH_REPOSITORY } from '@domain/batch/ports/student-batch.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 
 @Module({
   imports: [
@@ -48,26 +52,28 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
       { name: FeeDueModel.name, schema: FeeDueSchema },
       { name: StudentModel.name, schema: StudentSchema },
       { name: TransactionLogModel.name, schema: TransactionLogSchema },
+      { name: StudentBatchModel.name, schema: StudentBatchSchema },
     ]),
   ],
   controllers: [FeesController],
   providers: [
     { provide: FEE_DUE_REPOSITORY, useClass: MongoFeeDueRepository },
     { provide: STUDENT_REPOSITORY, useClass: MongoStudentRepository },
+    { provide: STUDENT_BATCH_REPOSITORY, useClass: MongoStudentBatchRepository },
     { provide: TRANSACTION_LOG_REPOSITORY, useClass: MongoTransactionLogRepository },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     { provide: CLOCK_PORT, useClass: SystemClock },
     {
       provide: 'LIST_UNPAID_DUES_USE_CASE',
-      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository, academyRepo: AcademyRepository, clock: ClockPort, studentRepo: StudentRepository) =>
-        new ListUnpaidDuesUseCase(userRepo, feeDueRepo, academyRepo, clock, studentRepo),
-      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, CLOCK_PORT, STUDENT_REPOSITORY],
+      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository, academyRepo: AcademyRepository, clock: ClockPort, studentRepo: StudentRepository, studentBatchRepo: StudentBatchRepository) =>
+        new ListUnpaidDuesUseCase(userRepo, feeDueRepo, academyRepo, clock, studentRepo, studentBatchRepo),
+      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, CLOCK_PORT, STUDENT_REPOSITORY, STUDENT_BATCH_REPOSITORY],
     },
     {
       provide: 'LIST_PAID_DUES_USE_CASE',
-      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository, studentRepo: StudentRepository) =>
-        new ListPaidDuesUseCase(userRepo, feeDueRepo, studentRepo),
-      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, STUDENT_REPOSITORY],
+      useFactory: (userRepo: UserRepository, feeDueRepo: FeeDueRepository, studentRepo: StudentRepository, studentBatchRepo: StudentBatchRepository) =>
+        new ListPaidDuesUseCase(userRepo, feeDueRepo, studentRepo, studentBatchRepo),
+      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, STUDENT_REPOSITORY, STUDENT_BATCH_REPOSITORY],
     },
     {
       provide: 'GET_STUDENT_FEES_USE_CASE',

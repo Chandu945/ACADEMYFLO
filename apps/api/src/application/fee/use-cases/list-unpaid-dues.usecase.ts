@@ -5,6 +5,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import { canViewFees } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
@@ -21,6 +22,7 @@ export interface ListUnpaidDuesInput {
   month: string;
   page: number;
   pageSize: number;
+  batchId?: string;
 }
 
 export interface ListUnpaidDuesOutput {
@@ -35,6 +37,7 @@ export class ListUnpaidDuesUseCase {
     private readonly academyRepo: AcademyRepository,
     private readonly clock: ClockPort,
     private readonly studentRepo?: StudentRepository,
+    private readonly studentBatchRepo?: StudentBatchRepository,
   ) {}
 
   async execute(input: ListUnpaidDuesInput): Promise<Result<ListUnpaidDuesOutput, AppError>> {
@@ -57,11 +60,19 @@ export class ListUnpaidDuesUseCase {
     const today = formatLocalDate(this.clock.now());
     const config = buildLateFeeConfigFromAcademy(academy);
 
+    // Filter by batch if requested
+    let filteredDues = dues;
+    if (input.batchId && this.studentBatchRepo) {
+      const batchAssignments = await this.studentBatchRepo.findByBatchId(input.batchId);
+      const batchStudentIds = new Set(batchAssignments.map((a) => a.studentId));
+      filteredDues = dues.filter((d) => batchStudentIds.has(d.studentId));
+    }
+
     // Build student name map (only for the page slice to avoid unnecessary lookups)
-    const total = dues.length;
+    const total = filteredDues.length;
     const { page, pageSize } = input;
     const start = (page - 1) * pageSize;
-    const paged = dues.slice(start, start + pageSize);
+    const paged = filteredDues.slice(start, start + pageSize);
 
     const nameMap: Record<string, string> = {};
     if (this.studentRepo && paged.length > 0) {
