@@ -212,6 +212,27 @@ export async function updateStudent(id: string, body: Record<string, unknown>, a
   }
 }
 
+export async function inviteParent(studentId: string, accessToken?: string | null) {
+  try {
+    const res = await fetch(`/api/students/${studentId}/invite-parent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok || !json) {
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to invite parent' };
+    }
+    return { ok: true as const, data: json as { parentId: string; tempPassword: string; studentId: string; parentEmail: string; isExistingUser: boolean } };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
+}
+
 export async function deleteStudent(id: string, accessToken?: string | null) {
   try {
     const res = await fetch(`/api/students/${id}`, {

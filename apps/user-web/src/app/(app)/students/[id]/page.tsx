@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useStudentDetail, deleteStudent, updateStudent } from '@/application/students/use-students';
+import { useStudentDetail, deleteStudent, updateStudent, inviteParent } from '@/application/students/use-students';
 import { useAuth } from '@/application/auth/use-auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -77,9 +77,15 @@ export default function StudentDetailPage() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
 
+  // Invite parent state
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ parentEmail: string; tempPassword: string; isExistingUser: boolean } | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
   const canEdit = user?.role === 'OWNER' || user?.role === 'STAFF';
   const canDelete = user?.role === 'OWNER';
   const canChangeStatus = user?.role === 'OWNER';
+  const canInvite = user?.role === 'OWNER';
 
   const openStatusModal = useCallback(() => {
     if (!student) return;
@@ -125,6 +131,24 @@ export default function StudentDetailPage() {
     router.push('/students');
   }, [params.id, accessToken, router]);
 
+  const handleInviteParent = useCallback(async () => {
+    if (!params.id) return;
+    setInviteLoading(true);
+    setInviteError(null);
+    setInviteResult(null);
+    const result = await inviteParent(params.id, accessToken);
+    setInviteLoading(false);
+    if (!result.ok) {
+      setInviteError(result.error);
+      return;
+    }
+    setInviteResult({
+      parentEmail: result.data.parentEmail,
+      tempPassword: result.data.tempPassword,
+      isExistingUser: result.data.isExistingUser,
+    });
+  }, [params.id, accessToken]);
+
   if (loading) return <Spinner centered size="lg" />;
   if (error) return (
     <div className={styles.page}>
@@ -157,6 +181,18 @@ export default function StudentDetailPage() {
       </button>
 
       {statusSuccess && <Alert variant="success" message={statusSuccess} />}
+      {inviteError && <Alert variant="error" message={inviteError} onDismiss={() => setInviteError(null)} />}
+      {inviteResult && (
+        <Alert
+          variant="success"
+          message={
+            inviteResult.isExistingUser
+              ? `Parent account (${inviteResult.parentEmail}) has been linked to this student.`
+              : `Parent invited! Email: ${inviteResult.parentEmail}, Temporary Password: ${inviteResult.tempPassword}`
+          }
+          onDismiss={() => setInviteResult(null)}
+        />
+      )}
 
       {/* Profile Header */}
       <div className={styles.profileHeader}>
@@ -175,6 +211,11 @@ export default function StudentDetailPage() {
           <Link href={`/students/${params.id}/fees`}>
             <Button variant="secondary">View Fee Details</Button>
           </Link>
+          {canInvite && (
+            <Button variant="outline" onClick={handleInviteParent} loading={inviteLoading}>
+              Invite Parent
+            </Button>
+          )}
           {canChangeStatus && (
             <Button variant="outline" onClick={openStatusModal}>
               Change Status
