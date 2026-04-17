@@ -141,17 +141,17 @@ export class GetDailyAttendanceViewUseCase {
       });
     }
 
-    // Fetch absent records for these students on this date
-    const absentRecords = await this.attendanceRepo.findAbsentByAcademyAndDate(
+    // Fetch present records for these students on this date
+    const presentRecords = await this.attendanceRepo.findAbsentByAcademyAndDate(
       actor.academyId,
       input.date,
     );
-    const absentSet = new Set(absentRecords.map((r) => r.studentId));
+    const presentSet = new Set(presentRecords.map((r) => r.studentId));
 
     const data: DailyAttendanceViewItem[] = students.map((s) => ({
       studentId: s.id.toString(),
       fullName: s.fullName,
-      status: absentSet.has(s.id.toString()) ? ('ABSENT' as const) : ('PRESENT' as const),
+      status: presentSet.has(s.id.toString()) ? ('PRESENT' as const) : ('ABSENT' as const),
     }));
 
     return ok({

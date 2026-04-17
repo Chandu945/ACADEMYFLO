@@ -63,8 +63,8 @@ export class GetMonthlyAttendanceSummaryUseCase {
       input.pageSize,
     );
 
-    // Get all absent records and holidays for the month in bulk
-    const [allAbsent, holidays] = await Promise.all([
+    // Get all present records and holidays for the month in bulk
+    const [allPresent, holidays] = await Promise.all([
       this.attendanceRepo.findAbsentByAcademyAndMonth(actor.academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(actor.academyId, input.month),
     ]);
@@ -73,20 +73,20 @@ export class GetMonthlyAttendanceSummaryUseCase {
     const holidayDateSet = new Set(holidays.map((h) => h.date));
     const daysInMonth = getDaysInMonth(input.month);
 
-    // Build absent count and overlap count per student
-    const absentCountMap = new Map<string, number>();
+    // Build present count and overlap count per student (records now mean PRESENT)
+    const presentCountMap = new Map<string, number>();
     const overlapCountMap = new Map<string, number>();
-    for (const record of allAbsent) {
-      absentCountMap.set(record.studentId, (absentCountMap.get(record.studentId) ?? 0) + 1);
+    for (const record of allPresent) {
+      presentCountMap.set(record.studentId, (presentCountMap.get(record.studentId) ?? 0) + 1);
       if (holidayDateSet.has(record.date)) {
         overlapCountMap.set(record.studentId, (overlapCountMap.get(record.studentId) ?? 0) + 1);
       }
     }
 
     const data: MonthlyAttendanceSummaryItem[] = students.map((s) => {
-      const absentCount = absentCountMap.get(s.id.toString()) ?? 0;
+      const presentCount = presentCountMap.get(s.id.toString()) ?? 0;
       const overlapCount = overlapCountMap.get(s.id.toString()) ?? 0;
-      const presentCount = Math.max(0, daysInMonth - absentCount - holidayCount + overlapCount);
+      const absentCount = Math.max(0, daysInMonth - presentCount - holidayCount + overlapCount);
       return {
         studentId: s.id.toString(),
         fullName: s.fullName,

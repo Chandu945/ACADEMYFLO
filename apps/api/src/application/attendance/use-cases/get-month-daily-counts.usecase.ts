@@ -52,17 +52,17 @@ export class GetMonthDailyCountsUseCase {
     const totalDaysInMonth = new Date(year, monthNum, 0).getDate();
 
     // Fetch all data in parallel (3 queries instead of 30+)
-    const [totalStudents, absentRecords, holidays] = await Promise.all([
+    const [totalStudents, presentRecords, holidays] = await Promise.all([
       this.studentRepo.countActiveByAcademy(academyId),
       this.attendanceRepo.findAbsentByAcademyAndMonth(academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(academyId, input.month),
     ]);
 
-    // Build absent count map: date -> count
-    const absentCountMap = new Map<string, number>();
-    for (const record of absentRecords) {
-      const count = absentCountMap.get(record.date) ?? 0;
-      absentCountMap.set(record.date, count + 1);
+    // Build present count map: date -> count (records now mean PRESENT)
+    const presentCountMap = new Map<string, number>();
+    for (const record of presentRecords) {
+      const count = presentCountMap.get(record.date) ?? 0;
+      presentCountMap.set(record.date, count + 1);
     }
 
     // Build holiday set
@@ -72,9 +72,10 @@ export class GetMonthDailyCountsUseCase {
     const days: MonthDailyCountDay[] = [];
     for (let d = 1; d <= totalDaysInMonth; d++) {
       const dateStr = `${input.month}-${String(d).padStart(2, '0')}`;
+      const presentCountForDay = presentCountMap.get(dateStr) ?? 0;
       days.push({
         date: dateStr,
-        absentCount: absentCountMap.get(dateStr) ?? 0,
+        absentCount: Math.max(0, totalStudents - presentCountForDay),
         isHoliday: holidaySet.has(dateStr),
       });
     }

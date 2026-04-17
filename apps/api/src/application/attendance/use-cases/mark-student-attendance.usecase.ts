@@ -84,8 +84,8 @@ export class MarkStudentAttendanceUseCase {
       return err(AttendanceErrors.holidayDeclared());
     }
 
-    if (input.status === 'ABSENT') {
-      // Upsert absent record (idempotent)
+    if (input.status === 'PRESENT') {
+      // Upsert present record (idempotent)
       const existing = await this.attendanceRepo.findByAcademyStudentDate(
         actor.academyId,
         input.studentId,
@@ -102,7 +102,7 @@ export class MarkStudentAttendanceUseCase {
         await this.attendanceRepo.save(record);
       }
     } else {
-      // PRESENT: delete absent record if exists (idempotent)
+      // ABSENT: delete present record if exists (idempotent)
       await this.attendanceRepo.deleteByAcademyStudentDate(
         actor.academyId,
         input.studentId,

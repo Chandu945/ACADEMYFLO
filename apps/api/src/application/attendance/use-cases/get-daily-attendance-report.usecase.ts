@@ -56,34 +56,32 @@ export class GetDailyAttendanceReportUseCase {
       });
     }
 
-    // Get total ACTIVE students count
-    const { total: totalActive } = await this.studentRepo.list(
-      { academyId: actor.academyId, status: 'ACTIVE' },
-      1,
-      1,
-    );
+    // Get all ACTIVE students
+    const allActiveStudents = await this.studentRepo.listActiveByAcademy(actor.academyId);
+    const totalActive = allActiveStudents.length;
 
-    // Get all absent records for the day
-    const absentRecords = await this.attendanceRepo.findAbsentByAcademyAndDate(
+    // Get all present records for the day (records now mean PRESENT)
+    const presentRecords = await this.attendanceRepo.findAbsentByAcademyAndDate(
       actor.academyId,
       input.date,
     );
 
-    // Resolve absent student names in a single batch query (was N+1).
-    const absentIds = absentRecords.map((r) => r.studentId);
-    const students = absentIds.length > 0 ? await this.studentRepo.findByIds(absentIds) : [];
-    const nameById = new Map(students.map((s) => [s.id.toString(), s.fullName]));
+    // Build set of present student IDs
+    const presentSet = new Set(presentRecords.map((r) => r.studentId));
+
+    // Absent students = all active students who do NOT have a present record
     const absentStudents: { studentId: string; fullName: string }[] = [];
-    for (const id of absentIds) {
-      const fullName = nameById.get(id);
-      if (fullName) absentStudents.push({ studentId: id, fullName });
+    for (const s of allActiveStudents) {
+      if (!presentSet.has(s.id.toString())) {
+        absentStudents.push({ studentId: s.id.toString(), fullName: s.fullName });
+      }
     }
 
     return ok({
       date: input.date,
       isHoliday: false,
-      presentCount: totalActive - absentRecords.length,
-      absentCount: absentRecords.length,
+      presentCount: presentRecords.length,
+      absentCount: Math.max(0, totalActive - presentRecords.length),
       absentStudents,
     });
   }

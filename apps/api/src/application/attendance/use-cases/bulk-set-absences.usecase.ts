@@ -85,21 +85,28 @@ export class BulkSetAbsencesUseCase {
       }
     }
 
-    // Get current absent records for the day
-    const currentAbsent = await this.attendanceRepo.findAbsentByAcademyAndDate(
+    // Fetch all active students to compute who should be PRESENT
+    const allActiveStudents = await this.studentRepo.listActiveByAcademy(academyId);
+    const absentSet = new Set(uniqueIds);
+    const shouldBePresentIds = allActiveStudents
+      .map((s) => s.id.toString())
+      .filter((id) => !absentSet.has(id));
+
+    // Get current present records for the day (records now mean PRESENT)
+    const currentPresent = await this.attendanceRepo.findAbsentByAcademyAndDate(
       academyId,
       input.date,
     );
-    const currentAbsentSet = new Set(currentAbsent.map((r) => r.studentId));
-    const targetAbsentSet = new Set(uniqueIds);
+    const currentPresentSet = new Set(currentPresent.map((r) => r.studentId));
+    const targetPresentSet = new Set(shouldBePresentIds);
 
     // Wrap delete+create in a transaction to ensure atomicity.
     // Without this, a failure mid-way could leave attendance in an inconsistent state
     // (some records deleted but new ones not yet created).
     const bulkOps = async () => {
-      // Delete records not in target set
-      for (const record of currentAbsent) {
-        if (!targetAbsentSet.has(record.studentId)) {
+      // Delete present records for students not in target present set (they are now ABSENT)
+      for (const record of currentPresent) {
+        if (!targetPresentSet.has(record.studentId)) {
           await this.attendanceRepo.deleteByAcademyStudentDate(
             academyId,
             record.studentId,
@@ -108,9 +115,9 @@ export class BulkSetAbsencesUseCase {
         }
       }
 
-      // Create missing absent records
-      for (const studentId of uniqueIds) {
-        if (!currentAbsentSet.has(studentId)) {
+      // Create missing present records
+      for (const studentId of shouldBePresentIds) {
+        if (!currentPresentSet.has(studentId)) {
           const record = StudentAttendance.create({
             id: randomUUID(),
             academyId,
