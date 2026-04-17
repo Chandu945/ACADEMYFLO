@@ -242,7 +242,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   percentageCircle: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radius.full,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',

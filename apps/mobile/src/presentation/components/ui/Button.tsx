@@ -9,7 +9,7 @@ import {
   type TextStyle,
 } from 'react-native';
 
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, disabledOpacity, springConfig, letterSpacing as ls } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { lightHaptic } from '../../utils/haptics';
@@ -31,7 +31,7 @@ type ButtonProps = {
 function getBgColors(colors: Colors): Record<ButtonVariant, string> {
   return {
     primary: colors.primary,
-    secondary: colors.border,
+    secondary: colors.bgSubtle,
     danger: colors.danger,
   };
 }
@@ -39,7 +39,7 @@ function getBgColors(colors: Colors): Record<ButtonVariant, string> {
 function getTextColors(colors: Colors): Record<ButtonVariant, string> {
   return {
     primary: colors.white,
-    secondary: colors.textMedium,
+    secondary: colors.text,
     danger: colors.white,
   };
 }
@@ -64,11 +64,11 @@ export function Button({
   const handlePressIn = () => {
     if (isDisabled) return;
     lightHaptic();
-    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
+    Animated.spring(scale, springConfig.press).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }).start();
+    Animated.spring(scale, springConfig.release).start();
   };
 
   return (
@@ -117,16 +117,16 @@ const makeStyles = (_colors: Colors) => StyleSheet.create({
     borderRadius: radius.md,
   },
   disabled: {
-    opacity: 0.45,
+    opacity: disabledOpacity,
   },
   text: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
-    letterSpacing: 0.3,
+    letterSpacing: ls.wide,
   },
   textSm: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
-    letterSpacing: 0,
+    letterSpacing: ls.normal,
   },
 });

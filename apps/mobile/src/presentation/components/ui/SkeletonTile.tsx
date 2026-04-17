@@ -7,7 +7,13 @@ import { spacing, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
-export function SkeletonTile() {
+type SkeletonVariant = 'card' | 'row' | 'avatar';
+
+type SkeletonTileProps = {
+  variant?: SkeletonVariant;
+};
+
+export function SkeletonTile({ variant = 'card' }: SkeletonTileProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const opacity = useRef(new Animated.Value(0.3)).current;
@@ -31,6 +37,34 @@ export function SkeletonTile() {
     return () => animation.stop();
   }, [opacity]);
 
+  if (variant === 'row') {
+    return (
+      <Animated.View
+        style={[styles.row, { opacity }]}
+        accessibilityLabel="Loading"
+        testID="skeleton-tile"
+      >
+        <View style={styles.rowCircle} />
+        <View style={styles.rowLines}>
+          <View style={styles.rowLineWide} />
+          <View style={styles.rowLineNarrow} />
+        </View>
+      </Animated.View>
+    );
+  }
+
+  if (variant === 'avatar') {
+    return (
+      <Animated.View
+        style={[styles.avatarWrap, { opacity }]}
+        accessibilityLabel="Loading"
+        testID="skeleton-tile"
+      >
+        <View style={styles.avatarCircle} />
+      </Animated.View>
+    );
+  }
+
   return (
     <Animated.View
       style={[styles.tile, { opacity }]}
@@ -45,6 +79,7 @@ export function SkeletonTile() {
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  /* Card variant (default) */
   tile: {
     flex: 1,
     backgroundColor: colors.surface,
@@ -73,5 +108,51 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     height: 12,
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.sm,
+  },
+
+  /* Row variant — mimics a list item */
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  rowCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgSubtle,
+    marginRight: spacing.md,
+  },
+  rowLines: {
+    flex: 1,
+  },
+  rowLineWide: {
+    width: '70%',
+    height: 14,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.sm,
+    marginBottom: spacing.sm,
+  },
+  rowLineNarrow: {
+    width: '45%',
+    height: 10,
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.sm,
+  },
+
+  /* Avatar variant — single circle placeholder */
+  avatarWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgSubtle,
   },
 });

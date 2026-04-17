@@ -193,6 +193,36 @@ export const avatarColors = {
   dark: ['#22d3ee', '#a78bfa', '#f472b6', '#fb923c', '#4ade80', '#60a5fa'],
 } as const;
 
+// ── Interaction ───────────────────────────────────────────────────────────
+export const disabledOpacity = 0.45;
+
+// ── Opacity Scale ─────────────────────────────────────────────────────────
+export const opacity = {
+  disabled: 0.45,
+  muted: 0.6,
+  subtle: 0.8,
+  full: 1,
+} as const;
+
+// ── Letter Spacing ────────────────────────────────────────────────────────
+export const letterSpacing = {
+  tight: -0.3,
+  normal: 0,
+  wide: 0.3,
+  wider: 0.5,
+  widest: 1,
+} as const;
+
+// ── Animation ─────────────────────────────────────────────────────────────
+export const springConfig = {
+  /** Gentle press feedback */
+  press: { toValue: 0.97, useNativeDriver: true } as const,
+  /** Snap-back after press */
+  release: { toValue: 1, friction: 4, useNativeDriver: true } as const,
+  /** Toggle / switch animations */
+  toggle: { friction: 5, useNativeDriver: true } as const,
+} as const;
+
 // ── List Defaults ─────────────────────────────────────────────────────────
 export const listDefaults = {
   contentPaddingBottom: 100,

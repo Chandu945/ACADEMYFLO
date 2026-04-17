@@ -14,9 +14,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
-const BIRTHDAY_ORANGE = '#e67e22';
-const BIRTHDAY_BG = '#fef3e7';
-const WHATSAPP_GREEN = '#25D366';
+const WHATSAPP_GREEN = '#25D366'; // brand color
 
 function formatBirthday(dateStr: string): string {
   const [, m, d] = dateStr.split('-');
@@ -74,7 +72,7 @@ function BirthdayRow({ student, isToday, testID }: BirthdayRowProps) {
         {isToday && (
           <View style={styles.partyHat}>
             
-            <AppIcon name="party-popper" size={10} color={BIRTHDAY_ORANGE} />
+            <AppIcon name="party-popper" size={10} color={colors.warningAccent} />
           </View>
         )}
       </View>
@@ -180,7 +178,7 @@ export function BirthdayWidget({ students: prefetchedStudents }: BirthdayWidgetP
       <View style={styles.header}>
         <View style={styles.iconCircle}>
           
-          <AppIcon name="cake-variant-outline" size={18} color={BIRTHDAY_ORANGE} />
+          <AppIcon name="cake-variant-outline" size={18} color={colors.warningAccent} />
         </View>
         <Text style={styles.title}>Birthdays</Text>
         {hasToday && (
@@ -194,14 +192,14 @@ export function BirthdayWidget({ students: prefetchedStudents }: BirthdayWidgetP
         <View style={styles.todaySection}>
           <View style={styles.todayBanner}>
             
-            <AppIcon name="party-popper" size={16} color={BIRTHDAY_ORANGE} />
+            <AppIcon name="party-popper" size={16} color={colors.warningAccent} />
             <Text style={styles.todayBannerText}>
               {todayBirthdays.length === 1
                 ? `${todayBirthdays[0]!.fullName}'s birthday today!`
                 : `${todayBirthdays.length} birthdays today!`}
             </Text>
             
-            <AppIcon name="party-popper" size={16} color={BIRTHDAY_ORANGE} />
+            <AppIcon name="party-popper" size={16} color={colors.warningAccent} />
           </View>
           {todayBirthdays.map((s) => (
             <BirthdayRow key={s.id} student={s} isToday testID={`today-birthday-${s.id}`} />
@@ -241,7 +239,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: BIRTHDAY_BG,
+    backgroundColor: colors.warningLightBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -252,7 +250,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
   },
   countBadge: {
-    backgroundColor: BIRTHDAY_ORANGE,
+    backgroundColor: colors.warningAccent,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -265,7 +263,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Today Section ──────────────────────────────── */
   todaySection: {
-    backgroundColor: BIRTHDAY_BG,
+    backgroundColor: colors.warningLightBg,
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -280,7 +278,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   todayBannerText: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.bold,
-    color: BIRTHDAY_ORANGE,
+    color: colors.warningAccent,
   },
 
   /* ── Upcoming Section ───────────────────────────── */
@@ -312,7 +310,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginRight: spacing.sm,
   },
   avatarToday: {
-    backgroundColor: BIRTHDAY_ORANGE,
+    backgroundColor: colors.warningAccent,
     borderWidth: 2,
     borderColor: colors.white,
   },
@@ -366,6 +364,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   whatsappBtn: {
-    backgroundColor: '#E8FFF0',
+    backgroundColor: colors.successBg,
   },
 });

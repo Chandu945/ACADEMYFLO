@@ -72,11 +72,11 @@ function buildCalendarGrid(
   return rows;
 }
 
-function getStatusBg(_colors: Colors): Record<DayStatus, string> {
+function getStatusBg(colors: Colors): Record<DayStatus, string> {
   return {
-    present: 'rgba(22, 163, 74, 0.15)',   // soft green
-    absent: 'rgba(239, 68, 68, 0.12)',     // soft red
-    holiday: 'rgba(234, 179, 8, 0.12)',    // soft amber
+    present: colors.successBg,
+    absent: colors.dangerBg,
+    holiday: colors.warningBg,
     future: 'transparent',
     empty: 'transparent',
   };
@@ -84,9 +84,9 @@ function getStatusBg(_colors: Colors): Record<DayStatus, string> {
 
 function getStatusText(colors: Colors): Record<DayStatus, string> {
   return {
-    present: '#4ade80',   // bright green (readable on dark bg)
-    absent: '#f87171',    // bright red
-    holiday: '#fbbf24',   // bright amber
+    present: colors.successText,
+    absent: colors.dangerText,
+    holiday: colors.warningText,
     future: colors.textDisabled,
     empty: 'transparent',
   };
@@ -147,15 +147,15 @@ export function AttendanceCalendar({ month, absentDates, holidayDates }: Props) 
       {/* Legend */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#4ade80' }]} />
+          <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
           <Text style={styles.legendLabel}>Present</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#f87171' }]} />
+          <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
           <Text style={styles.legendLabel}>Absent</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#fbbf24' }]} />
+          <View style={[styles.legendDot, { backgroundColor: colors.warningAccent }]} />
           <Text style={styles.legendLabel}>Holiday</Text>
         </View>
       </View>

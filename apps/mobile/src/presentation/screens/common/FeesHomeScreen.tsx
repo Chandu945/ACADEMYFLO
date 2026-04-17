@@ -463,8 +463,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.xs,
   },
   navBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',

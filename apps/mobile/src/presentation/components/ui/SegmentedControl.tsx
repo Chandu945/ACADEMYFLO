@@ -44,7 +44,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.xl,
-    padding: 4,
+    padding: spacing.xs,
     marginBottom: spacing.md,
   },
   segment: {
@@ -58,7 +58,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   segmentSelected: {
     backgroundColor: colors.surface,
     ...shadows.sm,
-    elevation: 3,
   },
   label: {
     fontSize: fontSizes.sm,

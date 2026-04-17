@@ -46,13 +46,20 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   const isPassword = secureTextEntry === true;
 
+  const wrapperStyle = [
+    styles.inputWrapper,
+    focused && !error && styles.inputWrapperFocused,
+    error ? styles.inputWrapperError : undefined,
+  ];
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputWrapper}>
+      <Text style={[styles.label, error ? styles.labelError : undefined]}>{label}</Text>
+      <View style={wrapperStyle}>
         {prefix ? (
           <View style={styles.prefixContainer}>
             <Text style={styles.prefixText}>{prefix}</Text>
@@ -64,6 +71,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({
           style={[styles.input, isPassword ? styles.inputWithToggle : undefined, prefix ? styles.inputWithPrefix : undefined]}
           value={value}
           onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={placeholder}
           placeholderTextColor={colors.textDisabled}
           secureTextEntry={isPassword && !passwordVisible}
@@ -116,8 +125,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.semibold,
     color: colors.textSecondary,
     marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.2,
+  },
+  labelError: {
+    color: colors.danger,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -127,9 +138,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
   },
+  inputWrapperFocused: {
+    borderColor: colors.primary,
+  },
+  inputWrapperError: {
+    borderColor: colors.danger,
+  },
   input: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 13,
     paddingHorizontal: spacing.base,
     fontSize: fontSizes.base,
     color: colors.text,
@@ -159,7 +176,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   toggleButton: {
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },

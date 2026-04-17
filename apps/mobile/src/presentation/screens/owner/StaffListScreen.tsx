@@ -14,7 +14,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { StaffRow } from '../../components/staff/StaffRow';
 import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
-import { spacing, listDefaults } from '../../theme';
+import { spacing, radius, shadows, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -128,7 +128,11 @@ export function StaffListScreen() {
           <SkeletonTile />
         </View>
       ) : !loading && items.length === 0 ? (
-        <EmptyState message="No staff members" />
+        <EmptyState
+          icon="account-group-outline"
+          message="No staff members"
+          subtitle="Add your first staff member to get started."
+        />
       ) : (
         <FlatList
           data={items}
@@ -209,14 +213,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     right: spacing.xl,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...shadows.lg,
   },
 });

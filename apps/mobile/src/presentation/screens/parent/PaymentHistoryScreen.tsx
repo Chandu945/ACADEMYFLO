@@ -5,12 +5,12 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
+import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import type { ParentPaymentsStackParamList } from '../../navigation/ParentPaymentsStack';
 import { getPaymentHistoryUseCase } from '../../../application/parent/use-cases/get-payment-history.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
@@ -156,9 +156,10 @@ export function PaymentHistoryScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading payments...</Text>
+      <View style={styles.skeletons}>
+        <SkeletonTile />
+        <SkeletonTile />
+        <SkeletonTile />
       </View>
     );
   }
@@ -217,6 +218,7 @@ export function PaymentHistoryScreen() {
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
   list: { padding: spacing.base, paddingBottom: spacing['2xl'] },
+  skeletons: { padding: spacing.base },
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -337,11 +339,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing['2xl'],
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: fontSizes.md,
-    color: colors.textSecondary,
   },
   errorText: {
     color: colors.danger,

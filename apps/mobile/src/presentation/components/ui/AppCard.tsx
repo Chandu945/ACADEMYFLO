@@ -1,38 +1,34 @@
 import { useRef, useMemo } from 'react';
 import { Animated, Pressable, StyleSheet, type ViewStyle } from 'react-native';
 
-import { radius, shadows, spacing } from '../../theme';
+import { radius, shadows, spacing, springConfig } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { lightHaptic } from '../../utils/haptics';
+
+type CardVariant = 'flat' | 'elevated' | 'outlined';
 
 type AppCardProps = {
   children: React.ReactNode;
   onPress?: () => void;
   onLongPress?: () => void;
+  variant?: CardVariant;
   style?: ViewStyle;
   testID?: string;
 };
 
-export function AppCard({ children, onPress, onLongPress, style, testID }: AppCardProps) {
+export function AppCard({ children, onPress, onLongPress, variant = 'flat', style, testID }: AppCardProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeCardStyles(colors), [colors]);
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     lightHaptic();
-    Animated.spring(scale, {
-      toValue: 0.985,
-      useNativeDriver: true,
-    }).start();
+    Animated.spring(scale, springConfig.press).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      friction: 4,
-      useNativeDriver: true,
-    }).start();
+    Animated.spring(scale, springConfig.release).start();
   };
 
   if (onPress || onLongPress) {
@@ -46,7 +42,7 @@ export function AppCard({ children, onPress, onLongPress, style, testID }: AppCa
         android_ripple={{ color: colors.border, borderless: false }}
         testID={testID}
       >
-        <Animated.View style={[styles.base, style, { transform: [{ scale }] }]}>
+        <Animated.View style={[styles.base, styles[variant], style, { transform: [{ scale }] }]}>
           {children}
         </Animated.View>
       </Pressable>
@@ -54,7 +50,7 @@ export function AppCard({ children, onPress, onLongPress, style, testID }: AppCa
   }
 
   return (
-    <Animated.View style={[styles.base, style]} testID={testID}>
+    <Animated.View style={[styles.base, styles[variant], style]} testID={testID}>
       {children}
     </Animated.View>
   );
@@ -65,12 +61,16 @@ const makeCardStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.base,
+  } as ViewStyle,
+  flat: {
     ...shadows.sm,
   } as ViewStyle,
   elevated: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.base,
     ...shadows.md,
+  } as ViewStyle,
+  outlined: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.none,
   } as ViewStyle,
 });

@@ -22,7 +22,8 @@ import { useEnquiries } from '../../../application/enquiry/use-enquiries';
 import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { getTodayIST } from '../../../domain/common/date-utils';
 import { InlineError } from '../../components/ui/InlineError';
-import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -322,16 +323,12 @@ export function EnquiryListScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconCircle}>
-                
-                <AppIcon name="account-question-outline" size={48} color={colors.primary} />
-              </View>
-              <Text style={styles.emptyTitle}>No enquiries found</Text>
-              <Text style={styles.emptySubtitle}>
-                {debouncedSearch ? 'Try a different search term.' : 'Create your first enquiry to get started.'}
-              </Text>
-            </View>
+            <EmptyState
+              icon="account-question-outline"
+              message="No enquiries found"
+              subtitle={debouncedSearch ? 'Try a different search term.' : 'Create your first enquiry to get started.'}
+              variant={debouncedSearch ? 'noResults' : 'empty'}
+            />
           ) : null
         }
         ListFooterComponent={
@@ -354,7 +351,7 @@ export function EnquiryListScreen() {
         accessibilityRole="button"
         testID="add-enquiry-fab"
       >
-        <Text style={styles.fabText}>+</Text>
+        <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
     </View>
   );
@@ -400,8 +397,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.xs,
   },
   navBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -674,36 +671,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.medium,
   },
 
-  /* ── Empty State ─────────────────────────────────── */
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: spacing['3xl'],
-    paddingHorizontal: spacing['3xl'],
-  },
-  emptyIconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  emptySubtitle: {
-    fontSize: fontSizes.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
   loader: {
     padding: spacing.base,
   },
@@ -713,19 +680,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     right: spacing.xl,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  fabText: {
-    fontSize: fontSizes['3xl'],
-    color: colors.white,
-    lineHeight: 28,
+    ...shadows.lg,
   },
 });

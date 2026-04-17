@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { Pressable, Animated, StyleSheet } from 'react-native';
 
-import { radius } from '../../theme';
+import { radius, disabledOpacity, springConfig } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { lightHaptic } from '../../utils/haptics';
@@ -28,8 +28,7 @@ export function Toggle({
   useEffect(() => {
     Animated.spring(translateX, {
       toValue: value ? 20 : 0,
-      friction: 5,
-      useNativeDriver: true,
+      ...springConfig.toggle,
     }).start();
   }, [value, translateX]);
 
@@ -58,7 +57,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 44,
     height: 24,
     borderRadius: radius.lg,
-    backgroundColor: colors.borderStrong,
+    backgroundColor: colors.border,
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
@@ -66,7 +65,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.primary,
   },
   disabled: {
-    opacity: 0.4,
+    opacity: disabledOpacity,
   },
   thumb: {
     width: 20,

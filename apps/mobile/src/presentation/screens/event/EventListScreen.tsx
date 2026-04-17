@@ -21,7 +21,7 @@ import type { EventListItem, EventListFilters, EventStatus } from '../../../doma
 import * as eventApi from '../../../infra/event/event-api';
 import { EventCard } from '../../components/event/EventCard';
 import { InlineError } from '../../components/ui/InlineError';
-import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { getCurrentMonthIST } from '../../../domain/common/date-utils';
@@ -424,8 +424,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.xs,
   },
   navBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -625,15 +625,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     right: spacing.xl,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...shadows.lg,
   },
   fabText: {
     fontSize: fontSizes['3xl'],
