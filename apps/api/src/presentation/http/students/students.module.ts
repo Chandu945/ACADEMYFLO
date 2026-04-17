@@ -40,6 +40,9 @@ import { GetStudentBatchesUseCase } from '@application/batch/use-cases/get-stude
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
 import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
+import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-email-sender';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
@@ -86,6 +89,7 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
     { provide: ACADEMY_REPOSITORY, useClass: MongoAcademyRepository },
     { provide: STUDENT_ATTENDANCE_REPOSITORY, useClass: MongoStudentAttendanceRepository },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
+    { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     {
       provide: 'CREATE_STUDENT_USE_CASE',
       useFactory: (
@@ -128,8 +132,10 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
         audit: AuditRecorderPort,
         feeDueRepo: FeeDueRepository,
         transaction: TransactionPort,
-      ) => new ChangeStudentStatusUseCase(userRepo, studentRepo, audit, feeDueRepo, transaction),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT, FEE_DUE_REPOSITORY, TRANSACTION_PORT],
+        emailSender: EmailSenderPort,
+        academyRepo: AcademyRepository,
+      ) => new ChangeStudentStatusUseCase(userRepo, studentRepo, audit, feeDueRepo, transaction, emailSender, academyRepo),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT, FEE_DUE_REPOSITORY, TRANSACTION_PORT, EMAIL_SENDER_PORT, ACADEMY_REPOSITORY],
     },
     {
       provide: 'SOFT_DELETE_STUDENT_USE_CASE',

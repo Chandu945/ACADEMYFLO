@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { randomBytes, randomUUID } from 'crypto';
 import type { Result } from '@shared/kernel';
 import { AppError, err, ok } from '@shared/kernel';
@@ -11,6 +11,9 @@ import { ACCOUNT_DELETION_REQUEST_REPOSITORY } from '@domain/account-deletion/po
 import { AccountDeletionRequest } from '@domain/account-deletion/entities/account-deletion-request.entity';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { renderAccountDeletionRequestedEmail } from '../../notifications/templates/account-deletion-template';
 import type { RequestAccountDeletionInput, AccountDeletionStatusDto } from '../dto/account-deletion.dto';
 
 export const DEFAULT_COOLING_OFF_DAYS = 30;
@@ -26,6 +29,7 @@ export class RequestAccountDeletionUseCase {
     @Inject(ACCOUNT_DELETION_REQUEST_REPOSITORY)
     private readonly requests: AccountDeletionRequestRepository,
     @Inject(AUDIT_RECORDER_PORT) private readonly audit: AuditRecorderPort,
+    @Optional() @Inject(EMAIL_SENDER_PORT) private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(input: RequestAccountDeletionInput): Promise<Result<AccountDeletionStatusDto>> {
@@ -89,6 +93,19 @@ export class RequestAccountDeletionUseCase {
     this.logger.log(
       `Account deletion requested for user=${input.userId} role=${user.role} scheduled=${request.scheduledExecutionAt.toISOString()}`,
     );
+
+    // Fire-and-forget: notify owner about scheduled deletion
+    if (this.emailSender) {
+      this.emailSender.send({
+        to: user.emailNormalized,
+        subject: 'Account Deletion Scheduled - Academyflo',
+        html: renderAccountDeletionRequestedEmail({
+          ownerName: user.fullName,
+          academyName: 'Academyflo',
+          scheduledDate: request.scheduledExecutionAt.toISOString().split('T')[0] ?? '',
+        }),
+      }).catch(() => {});
+    }
 
     return ok(this.toDto(request));
   }

@@ -7,6 +7,8 @@ import { Session } from '@domain/identity/entities/session.entity';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { PasswordHasher } from '../ports/password-hasher.port';
 import type { TokenService } from '../ports/token-service.port';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderOwnerWelcomeEmail } from '../../notifications/templates/owner-welcome-template';
 import { AuthErrors } from '../../common/errors';
 import { randomUUID } from 'crypto';
 
@@ -40,6 +42,7 @@ export class OwnerSignupUseCase {
     private readonly passwordHasher: PasswordHasher,
     private readonly tokenService: TokenService,
     private readonly refreshTtlSeconds: number = 2_592_000,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(input: OwnerSignupInput): Promise<Result<OwnerSignupOutput, AppError>> {
@@ -97,6 +100,16 @@ export class OwnerSignupUseCase {
       academyId: user.academyId,
       tokenVersion: user.tokenVersion,
     });
+
+    // Fire-and-forget: send welcome email to new owner
+    this.emailSender?.send({
+      to: user.emailNormalized,
+      subject: 'Welcome to Academyflo!',
+      html: renderOwnerWelcomeEmail({
+        ownerName: user.fullName,
+        email: user.emailNormalized,
+      }),
+    }).catch(() => {});
 
     return ok({
       accessToken,

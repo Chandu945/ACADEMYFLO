@@ -3,7 +3,11 @@ import { ok, err, updateAuditFields } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
 import type { SubscriptionRepository } from '@domain/subscription/ports/subscription.repository';
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderSubscriptionDeactivatedEmail } from '../../notifications/templates/subscription-deactivated-template';
 import { AdminErrors } from '../../common/errors';
 
 interface DeactivateSubscriptionInput {
@@ -17,6 +21,9 @@ export class DeactivateSubscriptionUseCase {
   constructor(
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly emailSender?: EmailSenderPort,
+    private readonly userRepo?: UserRepository,
+    private readonly academyRepo?: AcademyRepository,
   ) {}
 
   async execute(input: DeactivateSubscriptionInput): Promise<Result<void, AppError>> {
@@ -70,6 +77,24 @@ export class DeactivateSubscriptionUseCase {
         newTrialEndAt: newTrialEndAt.toISOString(),
       },
     });
+
+    // Fire-and-forget: notify academy owner about subscription deactivation
+    if (this.emailSender && this.userRepo && this.academyRepo) {
+      const academy = await this.academyRepo.findById(input.academyId);
+      if (academy) {
+        const owner = await this.userRepo.findById(academy.ownerUserId);
+        if (owner) {
+          this.emailSender.send({
+            to: owner.emailNormalized,
+            subject: 'Subscription Deactivated - ' + academy.academyName,
+            html: renderSubscriptionDeactivatedEmail({
+              ownerName: owner.fullName,
+              academyName: academy.academyName,
+            }),
+          }).catch(() => {});
+        }
+      }
+    }
 
     return ok(undefined);
   }

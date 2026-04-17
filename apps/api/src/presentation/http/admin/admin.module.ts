@@ -96,9 +96,14 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
     },
     {
       provide: 'DEACTIVATE_SUBSCRIPTION_USE_CASE',
-      useFactory: (repo: SubscriptionRepository, auditRecorder: AuditRecorderPort) =>
-        new DeactivateSubscriptionUseCase(repo, auditRecorder),
-      inject: [SUBSCRIPTION_REPOSITORY, AUDIT_RECORDER_PORT],
+      useFactory: (
+        repo: SubscriptionRepository,
+        auditRecorder: AuditRecorderPort,
+        emailSender: EmailSenderPort,
+        userRepo: UserRepository,
+        academyRepo: AcademyRepository,
+      ) => new DeactivateSubscriptionUseCase(repo, auditRecorder, emailSender, userRepo, academyRepo),
+      inject: [SUBSCRIPTION_REPOSITORY, AUDIT_RECORDER_PORT, EMAIL_SENDER_PORT, USER_REPOSITORY, ACADEMY_REPOSITORY],
     },
     {
       provide: 'SET_ACADEMY_LOGIN_DISABLED_USE_CASE',
@@ -107,8 +112,9 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         userRepo: UserRepository,
         sessionRepo: SessionRepository,
         auditRecorder: AuditRecorderPort,
-      ) => new SetAcademyLoginDisabledUseCase(academyRepo, userRepo, sessionRepo, auditRecorder),
-      inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY, AUDIT_RECORDER_PORT],
+        emailSender: EmailSenderPort,
+      ) => new SetAcademyLoginDisabledUseCase(academyRepo, userRepo, sessionRepo, auditRecorder, emailSender),
+      inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY, AUDIT_RECORDER_PORT, EMAIL_SENDER_PORT],
     },
     {
       provide: 'FORCE_LOGOUT_ACADEMY_USE_CASE',

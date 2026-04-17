@@ -6,6 +6,9 @@ import type { UserStatus } from '@domain/identity/entities/user.entity';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import { canManageStaff, staffBelongsToAcademy } from '@domain/identity/rules/staff.rules';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderStaffDeactivatedEmail } from '../../notifications/templates/staff-deactivated-template';
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import type { UserRole } from '@playconnect/contracts';
 import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
@@ -41,6 +44,8 @@ export class SetStaffStatusUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly sessionRepo: SessionRepository,
+    private readonly emailSender?: EmailSenderPort,
+    private readonly academyRepo?: AcademyRepository,
   ) {}
 
   async execute(input: SetStaffStatusInput): Promise<Result<SetStaffStatusOutput, AppError>> {
@@ -98,6 +103,20 @@ export class SetStaffStatusUseCase {
 
     if (input.status === 'INACTIVE') {
       await this.sessionRepo.revokeAllByUserIds([input.staffId]);
+    }
+
+    // Fire-and-forget: notify staff about status change
+    if (this.emailSender && this.academyRepo) {
+      const academy = await this.academyRepo.findById(staff.academyId ?? '');
+      this.emailSender.send({
+        to: staff.emailNormalized,
+        subject: `Account ${input.status === 'INACTIVE' ? 'Deactivated' : 'Reactivated'} - ${academy?.academyName ?? 'Your Academy'}`,
+        html: renderStaffDeactivatedEmail({
+          staffName: staff.fullName,
+          academyName: academy?.academyName ?? 'Your Academy',
+          newStatus: input.status,
+        }),
+      }).catch(() => {});
     }
 
     return ok({

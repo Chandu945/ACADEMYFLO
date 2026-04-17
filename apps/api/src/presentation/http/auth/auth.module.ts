@@ -90,8 +90,9 @@ import { AppConfigService } from '@shared/config/config.service';
         hasher: PasswordHasher,
         tokenSvc: TokenService,
         config: AppConfigService,
-      ) => new OwnerSignupUseCase(userRepo, sessionRepo, hasher, tokenSvc, config.jwtRefreshTtl),
-      inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, TOKEN_SERVICE, AppConfigService],
+        emailSender: EmailSenderPort,
+      ) => new OwnerSignupUseCase(userRepo, sessionRepo, hasher, tokenSvc, config.jwtRefreshTtl, emailSender),
+      inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, TOKEN_SERVICE, AppConfigService, EMAIL_SENDER_PORT],
     },
     {
       provide: 'LOGIN_USE_CASE',
@@ -165,6 +166,7 @@ import { AppConfigService } from '@shared/config/config.service';
         otpHasher: OtpHasher,
         passwordHasher: PasswordHasher,
         deviceTokenRepo: DeviceTokenRepository,
+        emailSender: EmailSenderPort,
       ) =>
         new ConfirmPasswordResetUseCase(
           userRepo,
@@ -173,6 +175,7 @@ import { AppConfigService } from '@shared/config/config.service';
           otpHasher,
           passwordHasher,
           deviceTokenRepo,
+          emailSender,
         ),
       inject: [
         USER_REPOSITORY,
@@ -181,6 +184,7 @@ import { AppConfigService } from '@shared/config/config.service';
         OTP_HASHER,
         PASSWORD_HASHER,
         DEVICE_TOKEN_REPOSITORY,
+        EMAIL_SENDER_PORT,
       ],
     },
     {

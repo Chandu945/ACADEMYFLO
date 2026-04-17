@@ -1,10 +1,15 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Result } from '@shared/kernel';
 import { AppError, err, ok } from '@shared/kernel';
 import type { AccountDeletionRequestRepository } from '@domain/account-deletion/ports/account-deletion-request.repository';
 import { ACCOUNT_DELETION_REQUEST_REPOSITORY } from '@domain/account-deletion/ports/account-deletion-request.repository';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { renderAccountDeletionCancelledEmail } from '../../notifications/templates/account-deletion-template';
 
 @Injectable()
 export class CancelAccountDeletionUseCase {
@@ -14,6 +19,8 @@ export class CancelAccountDeletionUseCase {
     @Inject(ACCOUNT_DELETION_REQUEST_REPOSITORY)
     private readonly requests: AccountDeletionRequestRepository,
     @Inject(AUDIT_RECORDER_PORT) private readonly audit: AuditRecorderPort,
+    @Optional() @Inject(USER_REPOSITORY) private readonly userRepo?: UserRepository,
+    @Optional() @Inject(EMAIL_SENDER_PORT) private readonly emailSender?: EmailSenderPort,
   ) {}
 
   /**
@@ -53,6 +60,21 @@ export class CancelAccountDeletionUseCase {
           viaToken: params.cancelToken ? 'true' : 'false',
         },
       });
+    }
+
+    // Fire-and-forget: notify owner that deletion has been cancelled
+    if (this.emailSender && this.userRepo) {
+      const user = await this.userRepo.findById(request.userId);
+      if (user) {
+        this.emailSender.send({
+          to: user.emailNormalized,
+          subject: 'Account Deletion Cancelled - Academyflo',
+          html: renderAccountDeletionCancelledEmail({
+            ownerName: user.fullName,
+            academyName: 'Academyflo',
+          }),
+        }).catch(() => {});
+      }
     }
 
     this.logger.log(`Account deletion canceled for user=${request.userId}`);

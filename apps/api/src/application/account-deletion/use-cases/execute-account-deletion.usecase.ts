@@ -1,10 +1,15 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Result } from '@shared/kernel';
 import { AppError, err, ok } from '@shared/kernel';
 import type { AccountDeletionRequestRepository } from '@domain/account-deletion/ports/account-deletion-request.repository';
 import { ACCOUNT_DELETION_REQUEST_REPOSITORY } from '@domain/account-deletion/ports/account-deletion-request.repository';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { renderAccountDeletionExecutedEmail } from '../../notifications/templates/account-deletion-template';
 import { DefaultDeletionStrategyRegistry } from '../services/deletion-strategy';
 
 @Injectable()
@@ -16,6 +21,8 @@ export class ExecuteAccountDeletionUseCase {
     private readonly requests: AccountDeletionRequestRepository,
     private readonly strategies: DefaultDeletionStrategyRegistry,
     @Inject(AUDIT_RECORDER_PORT) private readonly audit: AuditRecorderPort,
+    @Optional() @Inject(USER_REPOSITORY) private readonly users?: UserRepository,
+    @Optional() @Inject(EMAIL_SENDER_PORT) private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async executeById(requestId: string): Promise<Result<void>> {
@@ -46,6 +53,9 @@ export class ExecuteAccountDeletionUseCase {
       return err(AppError.validation('Request is not yet due for execution.'));
     }
 
+    // Capture user info before deletion for notification
+    const userBeforeDeletion = this.users ? await this.users.findById(request.userId) : null;
+
     const strategy = this.strategies.for(request.role);
     const outcome = await strategy.execute(request);
     if (!outcome.ok) {
@@ -70,6 +80,18 @@ export class ExecuteAccountDeletionUseCase {
           role: request.role,
         },
       });
+    }
+
+    // Fire-and-forget: notify owner that account has been permanently deleted
+    if (this.emailSender && userBeforeDeletion) {
+      this.emailSender.send({
+        to: userBeforeDeletion.emailNormalized,
+        subject: 'Account Permanently Deleted - Academyflo',
+        html: renderAccountDeletionExecutedEmail({
+          ownerName: userBeforeDeletion.fullName,
+          ownerEmail: userBeforeDeletion.emailNormalized,
+        }),
+      }).catch(() => {});
     }
 
     this.logger.log(

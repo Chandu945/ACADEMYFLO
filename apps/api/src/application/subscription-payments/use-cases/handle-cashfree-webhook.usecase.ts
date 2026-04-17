@@ -11,6 +11,10 @@ import { Subscription } from '@domain/subscription/entities/subscription.entity'
 import { computePaidDates } from '@domain/subscription-payments/rules/subscription-payment.rules';
 import { requiredTierForCount } from '@domain/subscription/rules/subscription-tier.rules';
 import type { TierKey } from '@playconnect/contracts';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { renderSubscriptionPaymentSuccessEmail, renderSubscriptionPaymentFailedEmail } from '@application/notifications/templates/subscription-payment-template';
 
 export interface WebhookSignatureVerifier {
   verify(rawBody: Buffer, signature: string, timestamp: string): boolean;
@@ -26,6 +30,9 @@ export class HandleCashfreeWebhookUseCase {
     private readonly auditRecorder: AuditRecorderPort,
     private readonly transaction: TransactionPort,
     private readonly studentCounter: ActiveStudentCounterPort,
+    private readonly userRepo?: UserRepository,
+    private readonly academyRepo?: AcademyRepository,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(
@@ -144,6 +151,25 @@ export class HandleCashfreeWebhookUseCase {
           providerPaymentId: cfPaymentId ? String(cfPaymentId) : '',
         },
       });
+
+      // Fire-and-forget: payment success email to owner
+      if (this.emailSender && this.userRepo && this.academyRepo) {
+        const owner = await this.userRepo.findById(payment.ownerUserId);
+        const academy = await this.academyRepo.findById(payment.academyId);
+        if (owner && academy) {
+          this.emailSender.send({
+            to: owner.emailNormalized,
+            subject: 'Subscription Payment Successful - ' + academy.academyName,
+            html: renderSubscriptionPaymentSuccessEmail({
+              ownerName: owner.fullName,
+              academyName: academy.academyName,
+              tierKey: payment.tierKey,
+              amountInr: payment.amountInr,
+              orderId,
+            }),
+          }).catch(() => {});
+        }
+      }
     } else if (paymentStatus === 'FAILED' || paymentStatus === 'USER_DROPPED') {
       // payment.status !== 'SUCCESS' is guaranteed by the early return above (line 66)
       const updated = payment.markFailed(paymentStatus);
@@ -162,6 +188,26 @@ export class HandleCashfreeWebhookUseCase {
           amountInr: String(payment.amountInr),
         },
       });
+
+      // Fire-and-forget: payment failed email to owner
+      if (this.emailSender && this.userRepo && this.academyRepo) {
+        const owner = await this.userRepo.findById(payment.ownerUserId);
+        const academy = await this.academyRepo.findById(payment.academyId);
+        if (owner && academy) {
+          this.emailSender.send({
+            to: owner.emailNormalized,
+            subject: 'Subscription Payment Failed - ' + academy.academyName,
+            html: renderSubscriptionPaymentFailedEmail({
+              ownerName: owner.fullName,
+              academyName: academy.academyName,
+              tierKey: payment.tierKey,
+              amountInr: payment.amountInr,
+              orderId,
+              reason: paymentStatus,
+            }),
+          }).catch(() => {});
+        }
+      }
     }
 
     return ok(undefined);

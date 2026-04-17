@@ -9,6 +9,11 @@ import {
   computePendingTierChange,
 } from '@domain/subscription/rules/subscription-tier.rules';
 import type { TierKey } from '@playconnect/contracts';
+import { TIER_PRICING_INR } from '@playconnect/contracts';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderPendingTierChangeEmail } from '../../notifications/templates/pending-tier-change-template';
 
 export interface EvaluateTierOutput {
   activeStudentCount: number;
@@ -23,6 +28,9 @@ export class EvaluateTierUseCase {
     private readonly subscriptionRepo: SubscriptionRepository,
     private readonly studentCounter: ActiveStudentCounterPort,
     private readonly clock: ClockPort,
+    private readonly userRepo?: UserRepository,
+    private readonly academyRepo?: AcademyRepository,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(academyId: string): Promise<Result<EvaluateTierOutput, AppError>> {
@@ -50,6 +58,29 @@ export class EvaluateTierUseCase {
       activeStudentCountSnapshot: activeStudentCount,
     });
     await this.subscriptionRepo.save(updated);
+
+    // Fire-and-forget: notify owner only when a new tier change is detected
+    const hadPendingBefore = subscription.pendingTierKey !== null;
+    if (pendingChange && !hadPendingBefore && this.emailSender && this.userRepo && this.academyRepo) {
+      const academy = await this.academyRepo.findById(academyId);
+      if (academy) {
+        const owner = await this.userRepo.findById(academy.ownerUserId);
+        if (owner) {
+          this.emailSender.send({
+            to: owner.emailNormalized,
+            subject: 'Subscription Tier Change Required - ' + academy.academyName,
+            html: renderPendingTierChangeEmail({
+              ownerName: owner.fullName,
+              academyName: academy.academyName,
+              currentTier: currentTierKey ?? 'None',
+              requiredTier: requiredTierKey,
+              activeStudentCount,
+              requiredTierPrice: TIER_PRICING_INR[requiredTierKey] ?? 0,
+            }),
+          }).catch(() => {});
+        }
+      }
+    }
 
     return ok({
       activeStudentCount,

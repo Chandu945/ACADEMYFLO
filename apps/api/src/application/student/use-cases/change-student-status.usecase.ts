@@ -5,6 +5,9 @@ import { Student } from '@domain/student/entities/student.entity';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canChangeStudentStatus } from '@domain/student/rules/student.rules';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderStudentStatusChangedEmail } from '../../notifications/templates/student-status-changed-template';
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
@@ -33,6 +36,8 @@ export class ChangeStudentStatusUseCase {
     private readonly auditRecorder: AuditRecorderPort,
     private readonly feeDueRepo?: FeeDueRepository,
     private readonly transaction?: TransactionPort,
+    private readonly emailSender?: EmailSenderPort,
+    private readonly academyRepo?: AcademyRepository,
   ) {}
 
   async execute(input: ChangeStudentStatusInput): Promise<Result<ChangeStudentStatusOutput, AppError>> {
@@ -145,6 +150,25 @@ export class ChangeStudentStatusUseCase {
         ...(input.reason ? { reason: input.reason } : {}),
       },
     });
+
+    // Fire-and-forget: notify parent/guardian about student status change
+    if (this.emailSender && this.academyRepo) {
+      const parentEmail = student.guardian?.email || student.email;
+      if (parentEmail) {
+        const academy = await this.academyRepo.findById(actor.academyId ?? '');
+        this.emailSender.send({
+          to: parentEmail,
+          subject: `Student Status Update - ${student.fullName}`,
+          html: renderStudentStatusChangedEmail({
+            parentName: student.guardian?.name ?? 'Parent/Guardian',
+            studentName: student.fullName,
+            academyName: academy?.academyName ?? 'Your Academy',
+            newStatus: input.status,
+            reason: input.reason ?? null,
+          }),
+        }).catch(() => {});
+      }
+    }
 
     return ok({ student: toStudentDto(updated), deletedUpcomingDuesCount: deletedDues });
   }

@@ -23,6 +23,13 @@ import type { ClockPort } from '@application/common/clock.port';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
+import { UserModel, UserSchema } from '@infrastructure/database/schemas/user.schema';
+import { MongoUserRepository } from '@infrastructure/repositories/mongo-user.repository';
+import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import type { UserRepository } from '@domain/identity/ports/user.repository';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-email-sender';
 
 @Module({
   imports: [
@@ -30,6 +37,7 @@ import { LOGGER_PORT } from '@shared/logging/logger.port';
       { name: AcademyModel.name, schema: AcademySchema },
       { name: StudentModel.name, schema: StudentSchema },
       { name: SubscriptionModel.name, schema: SubscriptionSchema },
+      { name: UserModel.name, schema: UserSchema },
     ]),
   ],
   providers: [
@@ -37,14 +45,19 @@ import { LOGGER_PORT } from '@shared/logging/logger.port';
     { provide: SUBSCRIPTION_REPOSITORY, useClass: MongoSubscriptionRepository },
     { provide: ACTIVE_STUDENT_COUNTER, useClass: MongoActiveStudentCounter },
     { provide: CLOCK_PORT, useClass: SystemClock },
+    { provide: USER_REPOSITORY, useClass: MongoUserRepository },
+    { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     {
       provide: 'EVALUATE_TIER_USE_CASE',
       useFactory: (
         subscriptionRepo: SubscriptionRepository,
         studentCounter: ActiveStudentCounterPort,
         clock: ClockPort,
-      ) => new EvaluateTierUseCase(subscriptionRepo, studentCounter, clock),
-      inject: [SUBSCRIPTION_REPOSITORY, ACTIVE_STUDENT_COUNTER, CLOCK_PORT],
+        userRepo: UserRepository,
+        academyRepo: AcademyRepository,
+        emailSender: EmailSenderPort,
+      ) => new EvaluateTierUseCase(subscriptionRepo, studentCounter, clock, userRepo, academyRepo, emailSender),
+      inject: [SUBSCRIPTION_REPOSITORY, ACTIVE_STUDENT_COUNTER, CLOCK_PORT, USER_REPOSITORY, ACADEMY_REPOSITORY, EMAIL_SENDER_PORT],
     },
     {
       provide: 'RECOMPUTE_PENDING_TIERS_USE_CASE',

@@ -8,6 +8,8 @@ import type { PasswordResetChallengeRepository } from '@domain/identity/ports/pa
 import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import type { OtpHasher } from '../ports/otp-hasher.port';
 import type { PasswordHasher } from '../ports/password-hasher.port';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderPasswordChangedEmail } from '../../notifications/templates/password-changed-template';
 import { PasswordResetErrors } from '../../common/errors';
 
 interface ConfirmPasswordResetInput {
@@ -28,6 +30,7 @@ export class ConfirmPasswordResetUseCase {
     private readonly otpHasher: OtpHasher,
     private readonly passwordHasher: PasswordHasher,
     private readonly deviceTokenRepo: DeviceTokenRepository,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(
@@ -85,6 +88,16 @@ export class ConfirmPasswordResetUseCase {
     // device compromise, and stale tokens would keep delivering PII to it.
     await this.deviceTokenRepo.removeByUserIds([userId]);
     await this.challengeRepo.markUsed(challenge.id.toString());
+
+    // Fire-and-forget: notify user about password change
+    this.emailSender?.send({
+      to: user.emailNormalized,
+      subject: 'Your Academyflo Password Has Been Changed',
+      html: renderPasswordChangedEmail({
+        userName: user.fullName,
+        userEmail: user.emailNormalized,
+      }),
+    }).catch(() => {});
 
     return ok({ message: 'Password reset successful.' });
   }

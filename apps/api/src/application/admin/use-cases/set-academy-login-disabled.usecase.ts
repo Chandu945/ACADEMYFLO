@@ -5,6 +5,8 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderAcademyLoginDisabledEmail } from '../../notifications/templates/academy-login-disabled-template';
 import { AdminErrors } from '../../common/errors';
 
 interface SetAcademyLoginDisabledInput {
@@ -36,6 +38,7 @@ export class SetAcademyLoginDisabledUseCase {
     private readonly userRepo: UserRepository,
     private readonly sessionRepo: SessionRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly emailSender?: EmailSenderPort,
   ) {}
 
   async execute(
@@ -79,6 +82,22 @@ export class SetAcademyLoginDisabledUseCase {
         affectedUsers: String(affectedUsers),
       },
     });
+
+    // Fire-and-forget: notify academy owner about login status change
+    if (this.emailSender) {
+      const owner = await this.userRepo.findById(academy.ownerUserId);
+      if (owner) {
+        this.emailSender.send({
+          to: owner.emailNormalized,
+          subject: `Academy Login ${input.disabled ? 'Disabled' : 'Re-Enabled'}`,
+          html: renderAcademyLoginDisabledEmail({
+            recipientName: owner.fullName,
+            academyName: academy.academyName,
+            disabled: input.disabled,
+          }),
+        }).catch(() => {});
+      }
+    }
 
     return ok({ loginDisabled: input.disabled, affectedUsers });
   }

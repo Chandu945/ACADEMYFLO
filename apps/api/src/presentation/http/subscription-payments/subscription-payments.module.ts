@@ -33,6 +33,9 @@ import type { LoggerPort } from '@shared/logging/logger.port';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-email-sender';
 import { AuthModule } from '../auth/auth.module';
 import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboarding.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
@@ -70,6 +73,7 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
     ...(process.env['APP_ENV'] === 'development' ? [SubscriptionPaymentsTestController] : []),
   ],
   providers: [
+    { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     { provide: SUBSCRIPTION_PAYMENT_REPOSITORY, useClass: MongoSubscriptionPaymentRepository },
     { provide: SUBSCRIPTION_REPOSITORY, useClass: MongoSubscriptionRepository },
     { provide: ACTIVE_STUDENT_COUNTER, useClass: MongoActiveStudentCounter },
@@ -157,6 +161,9 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         auditRecorder: AuditRecorderPort,
         transaction: TransactionPort,
         studentCounter: ActiveStudentCounterPort,
+        userRepo: UserRepository,
+        academyRepo: AcademyRepository,
+        emailSender: EmailSenderPort,
       ) =>
         new HandleCashfreeWebhookUseCase(
           paymentRepo,
@@ -167,6 +174,9 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
           auditRecorder,
           transaction,
           studentCounter,
+          userRepo,
+          academyRepo,
+          emailSender,
         ),
       inject: [
         SUBSCRIPTION_PAYMENT_REPOSITORY,
@@ -177,6 +187,9 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         AUDIT_RECORDER_PORT,
         TRANSACTION_PORT,
         ACTIVE_STUDENT_COUNTER,
+        USER_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        EMAIL_SENDER_PORT,
       ],
     },
     {

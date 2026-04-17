@@ -23,6 +23,9 @@ import { CLOCK_PORT } from '@application/common/clock.port';
 import { SystemClock } from '@application/common/system-clock';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
+import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
+import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-email-sender';
 import { AuthModule } from '../auth/auth.module';
 import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboarding.module';
 
@@ -40,11 +43,17 @@ import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboardin
     { provide: SUBSCRIPTION_REPOSITORY, useClass: MongoSubscriptionRepository },
     { provide: ACTIVE_STUDENT_COUNTER, useClass: MongoActiveStudentCounter },
     { provide: CLOCK_PORT, useClass: SystemClock },
+    { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     {
       provide: 'CREATE_TRIAL_SUBSCRIPTION_USE_CASE',
-      useFactory: (repo: SubscriptionRepository, clock: ClockPort) =>
-        new CreateTrialSubscriptionUseCase(repo, clock),
-      inject: [SUBSCRIPTION_REPOSITORY, CLOCK_PORT],
+      useFactory: (
+        repo: SubscriptionRepository,
+        clock: ClockPort,
+        emailSender: EmailSenderPort,
+        userRepo: UserRepository,
+        academyRepo: AcademyRepository,
+      ) => new CreateTrialSubscriptionUseCase(repo, clock, emailSender, userRepo, academyRepo),
+      inject: [SUBSCRIPTION_REPOSITORY, CLOCK_PORT, EMAIL_SENDER_PORT, USER_REPOSITORY, ACADEMY_REPOSITORY],
     },
     {
       provide: 'GET_MY_SUBSCRIPTION_USE_CASE',

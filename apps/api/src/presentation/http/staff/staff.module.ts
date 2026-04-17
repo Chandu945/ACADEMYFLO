@@ -47,9 +47,9 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
     },
     {
       provide: 'SET_STAFF_STATUS_USE_CASE',
-      useFactory: (userRepo: UserRepository, sessionRepo: SessionRepository) =>
-        new SetStaffStatusUseCase(userRepo, sessionRepo),
-      inject: [USER_REPOSITORY, SESSION_REPOSITORY],
+      useFactory: (userRepo: UserRepository, sessionRepo: SessionRepository, emailSender: EmailSenderPort, academyRepo: AcademyRepository) =>
+        new SetStaffStatusUseCase(userRepo, sessionRepo, emailSender, academyRepo),
+      inject: [USER_REPOSITORY, SESSION_REPOSITORY, EMAIL_SENDER_PORT, ACADEMY_REPOSITORY],
     },
     {
       provide: 'UPLOAD_STAFF_PHOTO_USE_CASE',
