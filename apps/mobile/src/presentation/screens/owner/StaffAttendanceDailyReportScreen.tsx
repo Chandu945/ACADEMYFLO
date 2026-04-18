@@ -175,7 +175,7 @@ export function StaffAttendanceDailyReportScreen() {
           <Text style={styles.countLabel}>Present</Text>
         </View>
         <View style={styles.countBox} accessibilityLabel={`${report.absentCount} staff absent`}>
-          <View style={[styles.countIconCircle, { backgroundColor: colors.dangerBg }]}>
+          <View style={[styles.countIconCircle, { backgroundColor: colors.bgSubtle }]}>
             <AppIcon name="close-circle-outline" size={22} color={colors.danger} />
           </View>
           <Text style={[styles.countNumber, { color: colors.danger }]}>{report.absentCount}</Text>
@@ -319,13 +319,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.dangerBorder,
+    borderColor: colors.border,
   },
   absentAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.dangerBg,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,

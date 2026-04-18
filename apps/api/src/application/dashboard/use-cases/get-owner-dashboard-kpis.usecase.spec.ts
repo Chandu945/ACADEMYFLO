@@ -7,6 +7,7 @@ import {
   InMemoryFeeDueRepository,
   InMemoryStudentAttendanceRepository,
   InMemoryExpenseRepository,
+  InMemoryHolidayRepository,
 } from '../../../../test/helpers/in-memory-repos';
 import { User } from '@domain/identity/entities/user.entity';
 import { Student } from '@domain/student/entities/student.entity';
@@ -44,6 +45,7 @@ describe('GetOwnerDashboardKpisUseCase', () => {
       fdRepo,
       attRepo,
       expenseRepo,
+      new InMemoryHolidayRepository(),
     );
 
     // Create owner user

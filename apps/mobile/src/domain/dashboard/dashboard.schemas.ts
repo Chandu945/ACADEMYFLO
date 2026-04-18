@@ -15,6 +15,7 @@ export const ownerDashboardApiSchema = z.object({
   totalExpenses: z.number().min(0),
   lateFeeCollected: z.number().min(0),
   overdueCount: z.number().int().min(0),
+  isHolidayToday: z.boolean(),
 });
 
 export type OwnerDashboardApiPayload = z.infer<typeof ownerDashboardApiSchema>;

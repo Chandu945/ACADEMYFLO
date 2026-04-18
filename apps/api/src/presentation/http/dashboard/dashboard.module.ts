@@ -32,6 +32,10 @@ import { TRANSACTION_LOG_REPOSITORY } from '@domain/fee/ports/transaction-log.re
 import { STUDENT_ATTENDANCE_REPOSITORY } from '@domain/attendance/ports/student-attendance.repository';
 import { EXPENSE_REPOSITORY } from '@domain/expense/ports/expense.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import { HOLIDAY_REPOSITORY } from '@domain/attendance/ports/holiday.repository';
+import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
+import { HolidayModel, HolidaySchema } from '@infrastructure/database/schemas/holiday.schema';
+import { MongoHolidayRepository } from '@infrastructure/repositories/mongo-holiday.repository';
 import { GetOwnerDashboardKpisUseCase } from '@application/dashboard/use-cases/get-owner-dashboard-kpis.usecase';
 import { GetMonthlyChartUseCase } from '@application/dashboard/use-cases/get-monthly-chart.usecase';
 import { GetBirthdaysUseCase } from '@application/dashboard/use-cases/get-birthdays.usecase';
@@ -55,6 +59,7 @@ import type { ExpenseRepository } from '@domain/expense/ports/expense.repository
       { name: TransactionLogModel.name, schema: TransactionLogSchema },
       { name: StudentAttendanceModel.name, schema: StudentAttendanceSchema },
       { name: ExpenseModel.name, schema: ExpenseSchema },
+      { name: HolidayModel.name, schema: HolidaySchema },
     ]),
   ],
   controllers: [DashboardController],
@@ -65,6 +70,7 @@ import type { ExpenseRepository } from '@domain/expense/ports/expense.repository
     { provide: TRANSACTION_LOG_REPOSITORY, useClass: MongoTransactionLogRepository },
     { provide: STUDENT_ATTENDANCE_REPOSITORY, useClass: MongoStudentAttendanceRepository },
     { provide: EXPENSE_REPOSITORY, useClass: MongoExpenseRepository },
+    { provide: HOLIDAY_REPOSITORY, useClass: MongoHolidayRepository },
     {
       provide: 'GET_OWNER_DASHBOARD_KPIS_USE_CASE',
       useFactory: (
@@ -75,7 +81,8 @@ import type { ExpenseRepository } from '@domain/expense/ports/expense.repository
         fdRepo: FeeDueRepository,
         attRepo: StudentAttendanceRepository,
         expRepo: ExpenseRepository,
-      ) => new GetOwnerDashboardKpisUseCase(userRepo, studentRepo, prRepo, tlRepo, fdRepo, attRepo, expRepo),
+        holRepo: HolidayRepository,
+      ) => new GetOwnerDashboardKpisUseCase(userRepo, studentRepo, prRepo, tlRepo, fdRepo, attRepo, expRepo, holRepo),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
@@ -84,6 +91,7 @@ import type { ExpenseRepository } from '@domain/expense/ports/expense.repository
         FEE_DUE_REPOSITORY,
         STUDENT_ATTENDANCE_REPOSITORY,
         EXPENSE_REPOSITORY,
+        HOLIDAY_REPOSITORY,
       ],
     },
     {

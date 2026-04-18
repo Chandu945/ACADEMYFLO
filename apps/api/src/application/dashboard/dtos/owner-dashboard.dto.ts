@@ -11,4 +11,5 @@ export interface OwnerDashboardKpisDto {
   totalExpenses: number;
   lateFeeCollected: number;
   overdueCount: number;
+  isHolidayToday: boolean;
 }

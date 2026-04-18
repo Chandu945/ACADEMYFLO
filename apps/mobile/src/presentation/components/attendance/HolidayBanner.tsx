@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
-import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -16,16 +16,11 @@ export function HolidayBanner({ isOwner, onRemoveHoliday, removing }: HolidayBan
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container} testID="holiday-banner">
-      <View style={styles.content}>
-        <View style={styles.iconWrap}>
-          
-          <AppIcon name="calendar-star" size={20} color={colors.warning} />
-        </View>
-        <View style={styles.textWrap}>
-          <Text style={styles.title}>Holiday Declared</Text>
-          <Text style={styles.subtitle}>Attendance not required for this day</Text>
-        </View>
+      <View style={styles.iconRow}>
+        <AppIcon name="party-popper" size={24} color={colors.warningAccent} />
       </View>
+      <Text style={styles.title}>Holiday Today</Text>
+      <Text style={styles.subtitle}>Attendance is not required for this day</Text>
       {isOwner && onRemoveHoliday && (
         <TouchableOpacity
           style={styles.removeBtn}
@@ -35,9 +30,12 @@ export function HolidayBanner({ isOwner, onRemoveHoliday, removing }: HolidayBan
           testID="remove-holiday-button"
         >
           {removing ? (
-            <ActivityIndicator size="small" color={colors.danger} />
+            <ActivityIndicator size="small" color={colors.textSecondary} />
           ) : (
-            <Text style={styles.removeBtnText}>Remove</Text>
+            <>
+              <AppIcon name="close-circle-outline" size={14} color={colors.textSecondary} />
+              <Text style={styles.removeBtnText}>Remove Holiday</Text>
+            </>
           )}
         </TouchableOpacity>
       )}
@@ -47,55 +45,47 @@ export function HolidayBanner({ isOwner, onRemoveHoliday, removing }: HolidayBan
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.warningLightBg,
-    borderWidth: 1,
-    borderColor: colors.warningBorder,
-    borderRadius: radius.lg,
-    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
     marginHorizontal: spacing.base,
     marginBottom: spacing.md,
+    ...shadows.sm,
   },
-  content: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
+  iconRow: {
+    width: 48,
+    height: 48,
     borderRadius: radius.full,
-    backgroundColor: colors.warningBg,
+    backgroundColor: colors.warningLightBg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  textWrap: {
-    flex: 1,
+    marginBottom: spacing.md,
   },
   title: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
-    color: colors.warningText,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: fontSizes.xs,
-    color: colors.warningText,
-    marginTop: 1,
-    opacity: 0.8,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   removeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.dangerBg,
-    borderWidth: 1,
-    borderColor: colors.dangerBorder,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgSubtle,
   },
   removeBtnText: {
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.danger,
+    fontWeight: fontWeights.medium,
+    color: colors.textSecondary,
   },
 });

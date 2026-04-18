@@ -34,8 +34,8 @@ function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps
 
   return (
     <View style={styles.card} testID={`attendance-row-${item.studentId}`}>
-      <View style={[styles.avatar, isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
-        <Text style={[styles.avatarText, isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
+      <View style={[styles.avatar, isHoliday ? styles.avatarHoliday : isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
+        <Text style={[styles.avatarText, isHoliday ? styles.avatarTextHoliday : isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
           {getInitials(item.fullName)}
         </Text>
       </View>
@@ -43,8 +43,8 @@ function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{item.fullName}</Text>
         <View style={styles.statusRow}>
-          <View style={[styles.statusDot, isPresent ? styles.dotPresent : styles.dotAbsent]} />
-          <Text style={[styles.statusLabel, isPresent ? styles.labelPresent : styles.labelAbsent]}>
+          <View style={[styles.statusDot, isHoliday ? styles.dotHoliday : isPresent ? styles.dotPresent : styles.dotAbsent]} />
+          <Text style={[styles.statusLabel, isHoliday ? styles.labelHoliday : isPresent ? styles.labelPresent : styles.labelAbsent]}>
             {isHoliday ? 'Holiday' : isPresent ? 'Present' : 'Absent'}
           </Text>
         </View>
@@ -88,6 +88,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   avatarAbsent: {
     backgroundColor: colors.dangerBg,
   },
+  avatarHoliday: {
+    backgroundColor: colors.warningLightBg,
+  },
   avatarText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
@@ -97,6 +100,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   avatarTextAbsent: {
     color: colors.danger,
+  },
+  avatarTextHoliday: {
+    color: colors.warningAccent,
   },
   info: {
     flex: 1,
@@ -123,6 +129,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   dotAbsent: {
     backgroundColor: colors.danger,
   },
+  dotHoliday: {
+    backgroundColor: colors.warningAccent,
+  },
   statusLabel: {
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.medium,
@@ -132,5 +141,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   labelAbsent: {
     color: colors.danger,
+  },
+  labelHoliday: {
+    color: colors.warningAccent,
   },
 });

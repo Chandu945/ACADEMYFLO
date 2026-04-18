@@ -16,6 +16,8 @@ import { PAYMENT_REQUEST_REPOSITORY } from '../src/domain/fee/ports/payment-requ
 import { TRANSACTION_LOG_REPOSITORY } from '../src/domain/fee/ports/transaction-log.repository';
 import { STUDENT_ATTENDANCE_REPOSITORY } from '../src/domain/attendance/ports/student-attendance.repository';
 import { EXPENSE_REPOSITORY } from '../src/domain/expense/ports/expense.repository';
+import { HOLIDAY_REPOSITORY } from '../src/domain/attendance/ports/holiday.repository';
+import type { HolidayRepository } from '../src/domain/attendance/ports/holiday.repository';
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { GetOwnerDashboardKpisUseCase } from '../src/application/dashboard/use-cases/get-owner-dashboard-kpis.usecase';
 import {
@@ -26,6 +28,7 @@ import {
   InMemoryTransactionLogRepository,
   InMemoryStudentAttendanceRepository,
   InMemoryExpenseRepository,
+  InMemoryHolidayRepository,
 } from './helpers/in-memory-repos';
 import { createTestTokenService } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
@@ -87,6 +90,7 @@ describe('Dashboard (e2e)', () => {
         { provide: TRANSACTION_LOG_REPOSITORY, useValue: tlRepo },
         { provide: STUDENT_ATTENDANCE_REPOSITORY, useValue: attRepo },
         { provide: EXPENSE_REPOSITORY, useValue: expenseRepo },
+        { provide: HOLIDAY_REPOSITORY, useValue: new InMemoryHolidayRepository() },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'GET_OWNER_DASHBOARD_KPIS_USE_CASE',
@@ -98,7 +102,8 @@ describe('Dashboard (e2e)', () => {
             fdr: FeeDueRepository,
             attr: StudentAttendanceRepository,
             expr: ExpenseRepository,
-          ) => new GetOwnerDashboardKpisUseCase(ur, sr, prr, tlr, fdr, attr, expr),
+            holr: HolidayRepository,
+          ) => new GetOwnerDashboardKpisUseCase(ur, sr, prr, tlr, fdr, attr, expr, holr),
           inject: [
             USER_REPOSITORY,
             STUDENT_REPOSITORY,
@@ -107,6 +112,7 @@ describe('Dashboard (e2e)', () => {
             FEE_DUE_REPOSITORY,
             STUDENT_ATTENDANCE_REPOSITORY,
             EXPENSE_REPOSITORY,
+            HOLIDAY_REPOSITORY,
           ],
         },
       ],

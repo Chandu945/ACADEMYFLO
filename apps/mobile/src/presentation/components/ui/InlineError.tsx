@@ -16,16 +16,11 @@ export function InlineError({ message, onRetry }: InlineErrorProps) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container} accessibilityRole="alert">
-      <View style={styles.row}>
-        <View style={styles.iconCircle}>
-          <AppIcon name="alert-circle-outline" size={18} color={colors.danger} />
-        </View>
-        <Text style={styles.text}>{message}</Text>
-      </View>
+      <AppIcon name="alert-circle-outline" size={16} color={colors.warningAccent} />
+      <Text style={styles.text} numberOfLines={3}>{message}</Text>
       {onRetry ? (
-        <TouchableOpacity style={styles.retryButton} onPress={onRetry} testID="retry-button">
+        <TouchableOpacity style={styles.retryButton} onPress={onRetry} hitSlop={8} testID="retry-button">
           <AppIcon name="refresh" size={14} color={colors.primary} />
-          <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -34,47 +29,31 @@ export function InlineError({ message, onRetry }: InlineErrorProps) {
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.dangerBg,
-    borderWidth: 1,
-    borderColor: colors.dangerBorder,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginVertical: spacing.sm,
-  },
-  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  iconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.warningLightBg,
+    borderWidth: 1,
+    borderColor: colors.warningBorder,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginHorizontal: spacing.base,
+    marginVertical: spacing.sm,
   },
   text: {
     flex: 1,
     fontSize: fontSizes.sm,
-    color: colors.dangerText,
+    color: colors.warningText,
     fontWeight: fontWeights.medium,
     lineHeight: 18,
   },
   retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    width: 32,
+    height: 32,
     borderRadius: radius.full,
-  },
-  retryText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

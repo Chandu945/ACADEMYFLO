@@ -174,18 +174,37 @@ export function DashboardScreen() {
                 lateFees: data.lateFeeCollected,
               } : null}
             />
-            <AttendanceMarkingCards
-              onStudentPress={() => navigation.navigate('Attendance')}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation
-              onStaffPress={() => navigation.navigate('More', { screen: 'StaffAttendance' } as any)}
-              initialStudentData={data ? {
-                present: data.todayPresentCount,
-                total: data.todayPresentCount + data.todayAbsentCount,
-              } : null}
-            />
-            <AttendanceSummaryWidget
-              onPress={() => navigation.navigate('Attendance')}
-            />
+            {data?.isHolidayToday ? (
+              <TouchableOpacity
+                style={styles.holidayCard}
+                onPress={() => navigation.navigate('Attendance')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.holidayIconCircle}>
+                  <AppIcon name="party-popper" size={22} color={colors.warningAccent} />
+                </View>
+                <View style={styles.holidayTextWrap}>
+                  <Text style={styles.holidayTitle}>Holiday Today</Text>
+                  <Text style={styles.holidaySubtitle}>No attendance tracking for today</Text>
+                </View>
+                <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
+              </TouchableOpacity>
+            ) : (
+              <>
+                <AttendanceMarkingCards
+                  onStudentPress={() => navigation.navigate('Attendance')}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation
+                  onStaffPress={() => navigation.navigate('More', { screen: 'StaffAttendance' } as any)}
+                  initialStudentData={data ? {
+                    present: data.todayPresentCount,
+                    total: data.todayPresentCount + data.todayAbsentCount,
+                  } : null}
+                />
+                <AttendanceSummaryWidget
+                  onPress={() => navigation.navigate('Attendance')}
+                />
+              </>
+            )}
             <MonthlyChartWidget
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation
               onPress={() => navigation.navigate('More', { screen: 'ReportsHome' } as any)}
@@ -339,5 +358,39 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
     color: colors.white,
+  },
+
+  /* ── Holiday Card ──────────────────────────────── */
+  holidayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
+  holidayIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.warningLightBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  holidayTextWrap: {
+    flex: 1,
+  },
+  holidayTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  holidaySubtitle: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    marginTop: 1,
   },
 });

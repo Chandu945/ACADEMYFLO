@@ -317,7 +317,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.base,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     ...shadows.md,
   },
 

@@ -8,6 +8,7 @@ import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
+import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { canViewDashboard } from '@domain/fee/rules/fee.rules';
 import { FeeErrors } from '../../common/errors';
 import { formatLocalDate, toMonthKeyFromDate } from '@shared/date-utils';
@@ -30,6 +31,7 @@ export class GetOwnerDashboardKpisUseCase {
     private readonly feeDueRepo: FeeDueRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly expenseRepo: ExpenseRepository,
+    private readonly holidayRepo: HolidayRepository,
   ) {}
 
   async execute(
@@ -57,6 +59,7 @@ export class GetOwnerDashboardKpisUseCase {
       totalExpenses,
       lateFeeCollected,
       overdueCount,
+      isHolidayToday,
     ] = await Promise.all([
       this.studentRepo.countActiveByAcademy(academyId),
       this.studentRepo.countNewAdmissionsByAcademyAndDateRange(academyId, input.from, input.to),
@@ -70,6 +73,7 @@ export class GetOwnerDashboardKpisUseCase {
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
       this.feeDueRepo.sumLateFeeCollectedByAcademyAndMonth(academyId, currentMonthKey),
       this.feeDueRepo.countOverdueByAcademy(academyId, today),
+      this.holidayRepo.findByAcademyAndDate(academyId, today).then((h) => h !== null),
     ]);
 
     const todayAbsentCount = Math.max(0, totalStudents - todayPresentCount);
@@ -87,6 +91,7 @@ export class GetOwnerDashboardKpisUseCase {
       totalExpenses,
       lateFeeCollected,
       overdueCount,
+      isHolidayToday,
     });
   }
 }

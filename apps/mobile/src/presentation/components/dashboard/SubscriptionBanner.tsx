@@ -62,16 +62,16 @@ export function SubscriptionBanner() {
 
   return (
     <TouchableOpacity
-      style={[styles.banner, { backgroundColor: colors.dangerBg, borderColor: colors.dangerBorder }]}
+      style={[styles.banner, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.warningAccent }]}
       onPress={handlePress}
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={message}
       testID="subscription-banner"
     >
-      <AppIcon name={icon} size={20} color={colors.dangerText} />
-      <Text style={[styles.text, { color: colors.dangerText }]}>{message}</Text>
-      <AppIcon name="chevron-right" size={18} color={colors.dangerText} />
+      <AppIcon name={icon} size={20} color={colors.warningAccent} />
+      <Text style={[styles.text, { color: colors.text }]}>{message}</Text>
+      <AppIcon name="chevron-right" size={18} color={colors.warningAccent} />
     </TouchableOpacity>
   );
 }

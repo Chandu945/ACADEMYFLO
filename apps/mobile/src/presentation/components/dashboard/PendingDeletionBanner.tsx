@@ -201,7 +201,7 @@ const makeStyles = (colors: Colors) =>
       justifyContent: 'center',
     },
     countdownChipCritical: {
-      backgroundColor: colors.dangerBg,
+      backgroundColor: colors.warningLightBg,
     },
     countdownNumber: {
       fontSize: fontSizes['3xl'],
@@ -210,7 +210,7 @@ const makeStyles = (colors: Colors) =>
       lineHeight: 30,
     },
     countdownNumberCritical: {
-      color: colors.danger,
+      color: colors.warningAccent,
     },
     countdownLabel: {
       fontSize: fontSizes.xs,
@@ -220,7 +220,7 @@ const makeStyles = (colors: Colors) =>
       marginTop: 2,
     },
     countdownLabelCritical: {
-      color: colors.danger,
+      color: colors.warningAccent,
     },
     headingWrap: {
       flex: 1,

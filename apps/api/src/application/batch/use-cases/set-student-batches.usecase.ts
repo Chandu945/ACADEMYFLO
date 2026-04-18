@@ -64,6 +64,21 @@ export class SetStudentBatchesUseCase {
       }
     }
 
+    // Check capacity for newly added batches
+    const currentAssignments = await this.studentBatchRepo.findByStudentId(input.studentId);
+    const currentBatchIds = new Set(currentAssignments.map((a) => a.batchId));
+    const newlyAddedBatchIds = uniqueBatchIds.filter((id) => !currentBatchIds.has(id));
+
+    for (const batchId of newlyAddedBatchIds) {
+      const batch = batchById.get(batchId)!;
+      if (batch.maxStudents !== null) {
+        const currentCount = await this.studentBatchRepo.countByBatchId(batchId);
+        if (currentCount >= batch.maxStudents) {
+          return err(BatchErrors.capacityFull());
+        }
+      }
+    }
+
     // Build new assignments
     const academyId = actor.academyId;
     const assignments = uniqueBatchIds.map((batchId) =>

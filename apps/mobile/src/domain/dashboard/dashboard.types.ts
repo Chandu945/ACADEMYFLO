@@ -15,6 +15,7 @@ export type OwnerDashboardKpis = {
   totalExpenses: number;
   lateFeeCollected: number;
   overdueCount: number;
+  isHolidayToday: boolean;
 };
 
 export type MonthlyChartPoint = {

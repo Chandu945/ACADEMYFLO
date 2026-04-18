@@ -119,8 +119,8 @@ export function OverdueStudentsScreen() {
       <View style={styles.summaryCard} testID="overdue-summary">
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconCircle, { backgroundColor: colors.dangerBg }]}>
-              <AppIcon name="currency-inr" size={18} color={colors.danger} />
+            <View style={[styles.summaryIconCircle, { backgroundColor: colors.warningLightBg }]}>
+              <AppIcon name="currency-inr" size={18} color={colors.warning} />
             </View>
             <Text style={styles.summaryLabel}>Total Overdue</Text>
             <Text style={styles.summaryValue}>{formatCurrency(data.totalOverdueAmount)}</Text>
@@ -214,12 +214,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   errorCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.dangerBg,
+    backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.base,
     marginHorizontal: spacing.base,
     marginTop: spacing.sm,
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadows.sm,
   },
   errorIconCircle: {

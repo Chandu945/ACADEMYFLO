@@ -157,14 +157,16 @@ export function DeleteAccountScreen() {
       ) : (
         <>
           <View style={styles.warningCard}>
-            <AppIcon name="alert-circle-outline" size={20} color={colors.danger} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.warningTitle}>Delete this academy</Text>
-              <Text style={styles.warningBody}>
-                This permanently removes your academy and everything in it after a{' '}
-                {COOLING_OFF_DAYS}-day cooling-off period. This action cannot be undone
-                once the period elapses.
-              </Text>
+            <View style={styles.warningIconCircle}>
+              <AppIcon name="shield-alert-outline" size={22} color={colors.warningAccent} />
+            </View>
+            <Text style={styles.warningTitle}>Delete this academy</Text>
+            <Text style={styles.warningBody}>
+              This permanently removes your academy and everything in it after a{' '}
+              {COOLING_OFF_DAYS}-day cooling-off period. This action cannot be undone
+              once the period elapses.
+            </Text>
+            <View style={styles.bulletList}>
               {[
                 'All staff, students, parents and their logins are removed',
                 'All attendance, fee and expense records are deleted',
@@ -172,7 +174,10 @@ export function DeleteAccountScreen() {
                 'Your active subscription is canceled',
                 'Audit logs and payment receipts are retained for legal compliance',
               ].map((b) => (
-                <Text key={b} style={styles.bullet}>• {b}</Text>
+                <View key={b} style={styles.bulletRow}>
+                  <View style={styles.bulletDot} />
+                  <Text style={styles.bulletText}>{b}</Text>
+                </View>
               ))}
             </View>
           </View>
@@ -253,30 +258,60 @@ const makeStyles = (colors: Colors) =>
       flexGrow: 1,
     },
     warningCard: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      padding: spacing.base,
-      backgroundColor: colors.dangerBg,
-      borderColor: colors.dangerBorder,
+      padding: spacing.lg,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
       borderWidth: 1,
-      borderRadius: radius.lg,
+      borderRadius: radius.xl,
       marginBottom: spacing.base,
+      alignItems: 'center',
+    },
+    warningIconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.full,
+      backgroundColor: colors.warningLightBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
     },
     warningTitle: {
       fontSize: fontSizes.lg,
       fontWeight: fontWeights.bold,
-      color: colors.dangerText,
-      marginBottom: 4,
+      color: colors.text,
+      marginBottom: spacing.sm,
     },
     warningBody: {
-      fontSize: fontSizes.base,
-      color: colors.text,
-      marginBottom: spacing.xs,
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: spacing.md,
     },
-    bullet: {
-      fontSize: fontSizes.base,
+    bulletList: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.bgSubtle,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.sm,
+    },
+    bulletRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+    },
+    bulletDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.textDisabled,
+      marginTop: 6,
+    },
+    bulletText: {
+      flex: 1,
+      fontSize: fontSizes.sm,
       color: colors.textMedium,
-      marginTop: 2,
+      lineHeight: 18,
     },
     btn: {
       paddingVertical: 14,
@@ -285,9 +320,13 @@ const makeStyles = (colors: Colors) =>
       justifyContent: 'center',
       marginTop: spacing.base,
     },
-    btnDanger: { backgroundColor: colors.danger },
+    btnDanger: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.danger,
+    },
     btnDangerText: {
-      color: colors.white,
+      color: colors.danger,
       fontSize: fontSizes.base,
       fontWeight: fontWeights.semibold,
     },

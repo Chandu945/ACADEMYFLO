@@ -113,7 +113,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
   },
   card: {
     flex: 1,

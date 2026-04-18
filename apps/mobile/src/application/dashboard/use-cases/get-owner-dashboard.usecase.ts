@@ -32,6 +32,7 @@ function mapToKpis(raw: OwnerDashboardApiPayload): OwnerDashboardKpis {
     totalExpenses: raw.totalExpenses,
     lateFeeCollected: raw.lateFeeCollected,
     overdueCount: raw.overdueCount,
+    isHolidayToday: raw.isHolidayToday,
   };
 }
 

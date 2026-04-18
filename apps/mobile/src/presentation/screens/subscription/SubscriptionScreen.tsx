@@ -376,14 +376,14 @@ const makeStyles = (colors: Colors) =>
 
     /* ── Block reason ─────────────────────────────────────────────── */
     blockReasonBox: {
-      backgroundColor: colors.dangerBg,
+      backgroundColor: colors.warningLightBg,
       borderRadius: radius.md,
       padding: spacing.sm,
       marginTop: spacing.md,
     },
     blockReasonText: {
       fontSize: fontSizes.sm,
-      color: colors.dangerText,
+      color: colors.warningText,
       textAlign: 'center',
       lineHeight: 18,
     },
