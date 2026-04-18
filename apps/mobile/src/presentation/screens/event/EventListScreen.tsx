@@ -214,7 +214,7 @@ export function EventListScreen() {
           </View>
         ) : (
           <View style={styles.titleBar}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
+            <TouchableOpacity onPress={() => navigation.navigate('MoreHome')} style={styles.navBtn}>
               
               <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>

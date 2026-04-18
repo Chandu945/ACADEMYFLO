@@ -82,7 +82,14 @@ export function MoreStack() {
   const { colors } = useTheme();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text },
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen
         name="MoreHome"
         component={MoreScreen}

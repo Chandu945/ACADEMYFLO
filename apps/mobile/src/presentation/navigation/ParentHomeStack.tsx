@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme } from '../context/ThemeContext';
 import { ChildrenListScreen } from '../screens/parent/ChildrenListScreen';
 import { ChildDetailScreen } from '../screens/parent/ChildDetailScreen';
 import { ReceiptScreen } from '../screens/parent/ReceiptScreen';
@@ -13,9 +14,17 @@ export type ParentHomeStackParamList = {
 const Stack = createNativeStackNavigator<ParentHomeStackParamList>();
 
 export function ParentHomeStack() {
+  const { colors } = useTheme();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text },
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen
         name="ChildrenList"
         component={ChildrenListScreen}

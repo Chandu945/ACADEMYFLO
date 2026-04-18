@@ -5,6 +5,7 @@ import { StudentsListScreen } from '../screens/students/StudentsListScreen';
 import { StudentFormScreen } from '../screens/students/StudentFormScreen';
 import { StudentDetailScreen } from '../screens/students/StudentDetailScreen';
 import { HeaderBackButton } from '../components/ui/HeaderBackButton';
+import { useTheme } from '../context/ThemeContext';
 
 export type StudentsStackParamList = {
   StudentsList: undefined;
@@ -15,9 +16,17 @@ export type StudentsStackParamList = {
 const Stack = createNativeStackNavigator<StudentsStackParamList>();
 
 export function StudentsStack() {
+  const { colors } = useTheme();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text },
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen
         name="StudentsList"
         component={StudentsListScreen}

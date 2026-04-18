@@ -7,6 +7,7 @@ import { StaffAttendanceScreen } from '../screens/owner/StaffAttendanceScreen';
 import { StaffAttendanceDailyReportScreen } from '../screens/owner/StaffAttendanceDailyReportScreen';
 import { StaffAttendanceMonthlySummaryScreen } from '../screens/owner/StaffAttendanceMonthlySummaryScreen';
 import { HeaderBackButton } from '../components/ui/HeaderBackButton';
+import { useTheme } from '../context/ThemeContext';
 
 export type StaffStackParamList = {
   StaffList: undefined;
@@ -19,9 +20,17 @@ export type StaffStackParamList = {
 const Stack = createNativeStackNavigator<StaffStackParamList>();
 
 export function StaffStack() {
+  const { colors } = useTheme();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text },
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen name="StaffList" component={StaffListScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="StaffForm"

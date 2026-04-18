@@ -13,7 +13,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
-import type { BatchesStackParamList } from '../../navigation/BatchesStack';
+import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { useBatches } from '../../../application/batch/use-batches';
 import { listBatches } from '../../../infra/batch/batch-api';
@@ -24,7 +24,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
-type Nav = NativeStackNavigationProp<BatchesStackParamList, 'BatchesList'>;
+type Nav = NativeStackNavigationProp<MoreStackParamList, 'BatchesList'>;
 
 const batchesApi = { listBatches };
 
@@ -158,7 +158,7 @@ export function BatchesListScreen() {
         ) : (
           <View style={styles.titleBar}>
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={() => navigation.navigate('MoreHome')}
               style={styles.navBtn}
               accessibilityLabel="Go back"
               accessibilityRole="button"

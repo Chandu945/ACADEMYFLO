@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme } from '../context/ThemeContext';
 import { AttendanceScreen } from '../screens/common/AttendanceScreen';
 import { AttendanceDailyReportScreen } from '../screens/common/AttendanceDailyReportScreen';
 import { AttendanceMonthlySummaryScreen } from '../screens/common/AttendanceMonthlySummaryScreen';
@@ -15,9 +16,17 @@ export type AttendanceStackParamList = {
 const Stack = createNativeStackNavigator<AttendanceStackParamList>();
 
 export function AttendanceStack() {
+  const { colors } = useTheme();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text },
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen
         name="AttendanceMain"
         component={AttendanceScreen}

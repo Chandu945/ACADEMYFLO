@@ -17,7 +17,7 @@ export function HeaderBackButton({ onPress }: HeaderBackButtonProps) {
       accessibilityRole="button"
       accessibilityLabel="Go back"
     >
-      <AppIcon name="arrow-left" size={24} color={colors.white ?? '#FFFFFF'} />
+      <AppIcon name="arrow-left" size={24} color={colors.text} />
     </Pressable>
   );
 }

@@ -6,6 +6,7 @@ import { BatchFormScreen } from '../screens/batches/BatchFormScreen';
 import { BatchDetailScreen } from '../screens/batches/BatchDetailScreen';
 import { AddStudentToBatchScreen } from '../screens/batches/AddStudentToBatchScreen';
 import { HeaderBackButton } from '../components/ui/HeaderBackButton';
+import { useTheme } from '../context/ThemeContext';
 
 export type BatchesStackParamList = {
   BatchesList: undefined;
@@ -17,9 +18,17 @@ export type BatchesStackParamList = {
 const Stack = createNativeStackNavigator<BatchesStackParamList>();
 
 export function BatchesStack() {
+  const { colors } = useTheme();
   return (
     // @ts-expect-error @types/react version mismatch in monorepo
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text },
+        headerShadowVisible: false,
+      }}
+    >
       <Stack.Screen
         name="BatchesList"
         component={BatchesListScreen}
