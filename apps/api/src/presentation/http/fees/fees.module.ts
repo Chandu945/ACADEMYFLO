@@ -28,6 +28,7 @@ import { ListUnpaidDuesUseCase } from '@application/fee/use-cases/list-unpaid-du
 import { ListPaidDuesUseCase } from '@application/fee/use-cases/list-paid-dues.usecase';
 import { GetStudentFeesUseCase } from '@application/fee/use-cases/get-student-fees.usecase';
 import { MarkFeePaidUseCase } from '@application/fee/use-cases/mark-fee-paid.usecase';
+import { ListOverdueStudentsUseCase } from '@application/fee/use-cases/list-overdue-students.usecase';
 import { RunMonthlyDuesEngineUseCase } from '@application/fee/use-cases/run-monthly-dues-engine.usecase';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
@@ -109,6 +110,16 @@ import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.r
         TRANSACTION_PORT,
         AUDIT_RECORDER_PORT,
       ],
+    },
+    {
+      provide: 'LIST_OVERDUE_STUDENTS_USE_CASE',
+      useFactory: (
+        userRepo: UserRepository,
+        feeDueRepo: FeeDueRepository,
+        academyRepo: AcademyRepository,
+        studentRepo: StudentRepository,
+      ) => new ListOverdueStudentsUseCase(userRepo, feeDueRepo, academyRepo, studentRepo),
+      inject: [USER_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, STUDENT_REPOSITORY],
     },
     {
       provide: 'RUN_MONTHLY_DUES_ENGINE_USE_CASE',

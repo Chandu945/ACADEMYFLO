@@ -46,4 +46,16 @@ export interface FeeDueRepository {
   findOverdueDues(upToDate: string): Promise<FeeDue[]>;
   findDueWithoutSnapshot(academyId: string): Promise<FeeDue[]>;
   deleteUpcomingByStudent(academyId: string, studentId: string): Promise<number>;
+  /**
+   * DB-side SUM of lateFeeApplied for PAID fee dues in a given academy + month.
+   */
+  sumLateFeeCollectedByAcademyAndMonth(academyId: string, monthKey: string): Promise<number>;
+  /**
+   * DB-side COUNT of fee dues with status='DUE' and dueDate <= today.
+   */
+  countOverdueByAcademy(academyId: string, today: string): Promise<number>;
+  /**
+   * List all overdue fee dues for a given academy (status='DUE', dueDate <= today).
+   */
+  listOverdueByAcademy(academyId: string, today: string): Promise<FeeDue[]>;
 }

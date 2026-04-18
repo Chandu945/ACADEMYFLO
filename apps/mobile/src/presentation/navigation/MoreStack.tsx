@@ -33,6 +33,7 @@ import { StaffAttendanceDailyReportScreen } from '../screens/owner/StaffAttendan
 import { StaffAttendanceMonthlySummaryScreen } from '../screens/owner/StaffAttendanceMonthlySummaryScreen';
 import { ReportsHomeScreen } from '../screens/owner/ReportsHomeScreen';
 import { DeleteAccountScreen } from '../screens/account/DeleteAccountScreen';
+import { OverdueStudentsScreen } from '../screens/fees/OverdueStudentsScreen';
 import { HeaderBackButton } from '../components/ui/HeaderBackButton';
 import type { ExpenseItem } from '../../domain/expense/expense.types';
 import type { EventDetail } from '../../domain/event/event.types';
@@ -73,6 +74,7 @@ export type MoreStackParamList = {
   StaffAttendanceDailyReport: { date: string };
   StaffAttendanceMonthlySummary: { month: string };
   ReportsHome: undefined;
+  OverdueStudents: undefined;
   DeleteAccount: undefined;
 };
 
@@ -388,6 +390,16 @@ export function MoreStack() {
         component={ReportsHomeScreen}
         options={({ navigation }) => ({
           title: 'Reports',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="OverdueStudents"
+        component={OverdueStudentsScreen}
+        options={({ navigation }) => ({
+          title: 'Overdue Students',
           headerLeft: () => (
             <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
           ),

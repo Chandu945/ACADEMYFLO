@@ -12,11 +12,11 @@ import {
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { AppIcon } from '../ui/AppIcon';
-import RNFS from 'react-native-fs';
 import RNShare from 'react-native-share';
 import type { StudentListItem, StudentStatus } from '../../../domain/student/student.types';
 import * as studentApi from '../../../infra/student/student-api';
-import { getAccessToken } from '../../../infra/http/api-client';
+import { getAccessToken, tryRefresh } from '../../../infra/http/api-client';
+import { isTokenExpiredOrExpiring } from '../../../infra/auth/token-expiry';
 import { env } from '../../../infra/env';
 import { useAuth } from '../../context/AuthContext';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
@@ -140,47 +140,98 @@ export function StudentActionMenu({
 
   const handleGenerateDocument = async (docType: 'report' | 'registration-form' | 'id-card', label: string) => {
     onClose();
-    const token = getAccessToken();
+    let token = getAccessToken();
     if (!token) {
       crossAlert('Error', 'Session expired. Please log in again.');
       return;
     }
+
+    if (isTokenExpiredOrExpiring(token)) {
+      const refreshed = await tryRefresh();
+      if (refreshed) {
+        token = refreshed;
+      } else {
+        crossAlert('Error', 'Session expired. Please log in again.');
+        return;
+      }
+    }
+
     setGenerating(label);
     try {
       const path = studentApi.getStudentDocumentUrl(student.id, docType);
       const url = `${env.API_BASE_URL}${path}`;
-      const destPath = `${RNFS.CachesDirectoryPath}/${docType}_${student.id}.pdf`;
 
-      const response = await RNFS.downloadFile({
-        fromUrl: url,
-        toFile: destPath,
-        connectionTimeout: 30_000,
-        readTimeout: 30_000,
+      const res = await fetch(url, {
         headers: {
           Accept: 'application/pdf',
           Authorization: `Bearer ${token}`,
         },
-      }).promise;
+      });
 
-      if (response.statusCode === 200 && response.bytesWritten > 0) {
-        await RNShare.open({
-          url: `file://${destPath}`,
-          type: 'application/pdf',
-          title: label,
-        }).catch(() => {});
-        // Clean up temp file after share dialog closes
-        RNFS.unlink(destPath).catch(() => {});
-      } else if (response.statusCode === 401) {
-        crossAlert('Error', 'Session expired. Please log in again.');
-      } else {
-        crossAlert('Error', 'Failed to generate document. Please try again.');
+      if (res.status === 401) {
+        const refreshed = await tryRefresh();
+        if (!refreshed) {
+          crossAlert('Error', 'Session expired. Please log in again.');
+          return;
+        }
+        const retry = await fetch(url, {
+          headers: { Accept: 'application/pdf', Authorization: `Bearer ${refreshed}` },
+        });
+        if (!retry.ok) {
+          crossAlert('Error', `Server returned status ${retry.status}.`);
+          return;
+        }
+        const blob = await retry.blob();
+        const base64 = await blobToBase64(blob);
+        await sharePdf(base64, `${docType}_${student.id}.pdf`, label);
+        return;
       }
-    } catch {
-      crossAlert('Error', 'Failed to generate document. Check your connection and try again.');
+
+      if (!res.ok) {
+        let errorMsg = `Server returned status ${res.status}.`;
+        try {
+          const body = await res.json();
+          if (body.message) errorMsg = body.message;
+        } catch {
+          // use generic
+        }
+        crossAlert('Error', errorMsg);
+        return;
+      }
+
+      const blob = await res.blob();
+      const base64 = await blobToBase64(blob);
+      await sharePdf(base64, `${docType}_${student.id}.pdf`, label);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      crossAlert('Error', `Failed to generate document: ${msg}`);
     } finally {
       setGenerating(null);
     }
   };
+
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        // Strip data URL prefix: "data:application/pdf;base64,..."
+        const base64 = result.split(',')[1] ?? result;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function sharePdf(base64: string, filename: string, title: string) {
+    await RNShare.open({
+      url: `data:application/pdf;base64,${base64}`,
+      filename,
+      type: 'application/pdf',
+      title,
+    }).catch(() => {});
+  }
 
   const actions: ActionItem[] = [
     {
@@ -242,24 +293,6 @@ export function StudentActionMenu({
       iconName: 'chart-bar',
       ownerOnly: true,
       onPress: () => handleGenerateDocument('report', 'Generating Report...'),
-    },
-    {
-      key: 'registration',
-      title: 'Registration Form',
-      subtitle: 'Generate student registration form',
-      iconColor: colors.primary,
-      iconName: 'file-document-outline',
-      ownerOnly: true,
-      onPress: () => handleGenerateDocument('registration-form', 'Generating Form...'),
-    },
-    {
-      key: 'idcard',
-      title: 'Generate ID Card',
-      subtitle: 'Generate student ID card',
-      iconColor: colors.primary,
-      iconName: 'card-account-details-outline',
-      ownerOnly: true,
-      onPress: () => handleGenerateDocument('id-card', 'Generating ID Card...'),
     },
   ];
 
@@ -364,11 +397,14 @@ function StatusChangeModal({
           </Text>
 
           {(selectedStatus === 'INACTIVE' || selectedStatus === 'LEFT') && (
-            <Text style={styles.warningText}>
-              Changing status will stop fee generation and remove any upcoming
-              (not-yet-due) fee entries for this student. Past and currently due
-              fees are preserved.
-            </Text>
+            <View style={styles.warningBox}>
+              <AppIcon name="information-outline" size={18} color={colors.warningText} />
+              <Text style={styles.warningText}>
+                Changing status will stop fee generation and remove any upcoming
+                (not-yet-due) fee entries for this student. Past and currently due
+                fees are preserved.
+              </Text>
+            </View>
           )}
 
           <View style={styles.statusOptions}>
@@ -433,7 +469,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   modalTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.semibold, color: colors.text, marginBottom: spacing.sm },
   currentStatus: { fontSize: fontSizes.base, color: colors.textSecondary, marginBottom: spacing.md },
   currentStatusValue: { fontWeight: fontWeights.semibold, color: colors.text },
-  warningText: { fontSize: fontSizes.sm, color: colors.danger, backgroundColor: colors.dangerBg, padding: spacing.md, borderRadius: radius.md, marginBottom: spacing.md },
+  warningBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.warningLightBg, padding: spacing.md, borderRadius: radius.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.warningBorder },
+  warningText: { flex: 1, fontSize: fontSizes.sm, color: colors.warningText, lineHeight: 18 },
   statusOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   statusChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   statusChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },

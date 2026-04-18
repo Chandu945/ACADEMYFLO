@@ -21,6 +21,7 @@ type MenuItem = {
   icon: string;
   label: string;
   screen: keyof MoreStackParamList;
+  danger?: boolean;
 };
 
 type MenuSection = { title: string; items: MenuItem[] };
@@ -42,6 +43,7 @@ const OWNER_SECTIONS: MenuSection[] = [
       { key: 'reports', icon: 'chart-bar', label: 'Reports', screen: 'ReportsHome' },
       { key: 'staff-attendance', icon: 'calendar-account-outline', label: 'Staff Attendance', screen: 'StaffAttendance' },
       { key: 'audit-logs', icon: 'clipboard-text-clock-outline', label: 'Audit Logs', screen: 'AuditLogs' },
+      { key: 'overdue-students', icon: 'alert-circle-outline', label: 'Overdue Students', screen: 'OverdueStudents' },
     ],
   },
   {
@@ -158,10 +160,10 @@ export function MoreScreen() {
                   accessibilityRole="link"
                   testID={`menu-${item.key}`}
                 >
-                  <View style={styles.iconContainer}>
-                    <AppIcon name={item.icon} size={20} color={colors.primary} />
+                  <View style={[styles.iconContainer, item.danger && { backgroundColor: colors.dangerBg }]}>
+                    <AppIcon name={item.icon} size={20} color={item.danger ? colors.danger : colors.primary} />
                   </View>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  <Text style={[styles.menuLabel, item.danger && { color: colors.danger }]}>{item.label}</Text>
                   <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
                 </TouchableOpacity>
               ))}

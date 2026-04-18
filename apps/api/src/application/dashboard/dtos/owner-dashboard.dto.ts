@@ -9,4 +9,6 @@ export interface OwnerDashboardKpisDto {
   dueStudentsCount: number;
   todayPresentCount: number;
   totalExpenses: number;
+  lateFeeCollected: number;
+  overdueCount: number;
 }

@@ -171,6 +171,7 @@ export function DashboardScreen() {
                 collected: data.collectedAmount,
                 pending: data.totalPendingAmount,
                 expenses: data.totalExpenses,
+                lateFees: data.lateFeeCollected,
               } : null}
             />
             <AttendanceMarkingCards

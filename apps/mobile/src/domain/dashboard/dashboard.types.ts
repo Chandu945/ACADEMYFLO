@@ -13,6 +13,8 @@ export type OwnerDashboardKpis = {
   dueStudentsCount: number;
   todayPresentCount: number;
   totalExpenses: number;
+  lateFeeCollected: number;
+  overdueCount: number;
 };
 
 export type MonthlyChartPoint = {

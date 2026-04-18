@@ -27,6 +27,7 @@ type FinancialData = {
   collected: number;
   pending: number;
   expenses: number;
+  lateFees: number;
 };
 
 function MetricTile({
@@ -70,10 +71,11 @@ type FinancialOverviewWidgetProps = {
   onCollectedPress?: () => void;
   onPendingPress?: () => void;
   onExpensesPress?: () => void;
-  initialData?: { collected: number; pending: number; expenses: number } | null;
+  onLateFeesPress?: () => void;
+  initialData?: { collected: number; pending: number; expenses: number; lateFees: number } | null;
 };
 
-export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onExpensesPress, initialData }: FinancialOverviewWidgetProps) {
+export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onExpensesPress, onLateFeesPress, initialData }: FinancialOverviewWidgetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [initDate] = useState(() => new Date());
@@ -112,6 +114,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
         collected: result.value.totalCollected,
         pending: result.value.totalPendingAmount,
         expenses: result.value.totalExpenses,
+        lateFees: result.value.lateFeeCollected,
       });
     }
     setLoading(false);
@@ -152,7 +155,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
 
   const netProfit = data ? data.collected - data.expenses : 0;
   const maxAmount = data
-    ? Math.max(data.collected, data.pending, data.expenses, 1)
+    ? Math.max(data.collected, data.pending, data.expenses, data.lateFees, 1)
     : 1;
   const profitPct =
     data && data.collected > 0
@@ -230,7 +233,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
             </View>
           </View>
 
-          {/* Three metric tiles */}
+          {/* Metric tiles */}
           <View style={styles.metricsRow}>
             <MetricTile
               icon="cash-check"
@@ -252,6 +255,13 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
               amount={data.expenses}
               maxAmount={maxAmount}
               onPress={onExpensesPress}
+            />
+            <MetricTile
+              icon="clock-alert-outline"
+              label="Late Fees"
+              amount={data.lateFees}
+              maxAmount={maxAmount}
+              onPress={onLateFeesPress}
             />
           </View>
         </>
@@ -366,10 +376,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   /* Metric tiles */
   metricsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   metricTile: {
-    flex: 1,
+    width: '48%' as any,
+    flexGrow: 1,
     backgroundColor: colors.bg,
     borderRadius: radius.lg,
     padding: spacing.md,

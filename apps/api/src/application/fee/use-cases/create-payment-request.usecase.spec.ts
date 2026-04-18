@@ -63,6 +63,9 @@ describe('CreatePaymentRequestUseCase', () => {
       findOverdueDues: jest.fn(),
       findDueWithoutSnapshot: jest.fn(),
       deleteUpcomingByStudent: jest.fn(),
+      sumLateFeeCollectedByAcademyAndMonth: jest.fn(),
+      countOverdueByAcademy: jest.fn(),
+      listOverdueByAcademy: jest.fn(),
     } as jest.Mocked<FeeDueRepository>;
 
     prRepo = {

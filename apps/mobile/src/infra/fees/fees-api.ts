@@ -1,5 +1,6 @@
 import type { FeeDueListApiResponse, FeeDuePaginatedApiResponse } from '../../domain/fees/fees.schemas';
 import type { FeeDueItem } from '../../domain/fees/fees.types';
+import type { OverdueStudentsResult } from '../../domain/fees/overdue.types';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
 import { apiGet, apiPut } from '../http/api-client';
@@ -37,4 +38,8 @@ export function markFeePaid(
   return apiPut<FeeDueItem>(`/api/v1/fees/students/${studentId}/${month}/pay`, paymentLabel ? { paymentLabel } : undefined);
 }
 
-export const feesApi = { listUnpaidDues, listPaidDues, getStudentFees, markFeePaid };
+export function getOverdueStudents(): Promise<Result<OverdueStudentsResult, AppError>> {
+  return apiGet<OverdueStudentsResult>('/api/v1/fees/overdue');
+}
+
+export const feesApi = { listUnpaidDues, listPaidDues, getStudentFees, markFeePaid, getOverdueStudents };

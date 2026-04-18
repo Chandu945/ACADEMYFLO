@@ -9,6 +9,7 @@ import type { ListUnpaidDuesUseCase } from '@application/fee/use-cases/list-unpa
 import type { ListPaidDuesUseCase } from '@application/fee/use-cases/list-paid-dues.usecase';
 import type { GetStudentFeesUseCase } from '@application/fee/use-cases/get-student-fees.usecase';
 import type { MarkFeePaidUseCase } from '@application/fee/use-cases/mark-fee-paid.usecase';
+import type { ListOverdueStudentsUseCase } from '@application/fee/use-cases/list-overdue-students.usecase';
 import { FeesMonthQueryDto, FeesMonthPaginatedQueryDto, StudentFeeRangeQueryDto } from './dto/fee.query';
 import { MarkFeePaidBodyDto } from './dto/mark-fee-paid.dto';
 import { mapResultToResponse } from '../common/result-mapper';
@@ -30,6 +31,8 @@ export class FeesController {
     private readonly getStudentFees: GetStudentFeesUseCase,
     @Inject('MARK_FEE_PAID_USE_CASE')
     private readonly markFeePaid: MarkFeePaidUseCase,
+    @Inject('LIST_OVERDUE_STUDENTS_USE_CASE')
+    private readonly listOverdueStudents: ListOverdueStudentsUseCase,
     @Inject(LOGGER_PORT) private readonly logger: LoggerPort,
   ) {}
 
@@ -68,6 +71,20 @@ export class FeesController {
       batchId: query.batchId,
     });
 
+    return mapResultToResponse(result, req);
+  }
+
+  @Get('overdue')
+  @Roles('OWNER', 'STAFF')
+  @ApiOperation({ summary: 'List students with overdue fees' })
+  async getOverdueStudents(
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    const result = await this.listOverdueStudents.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+    });
     return mapResultToResponse(result, req);
   }
 

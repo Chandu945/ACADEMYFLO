@@ -13,6 +13,8 @@ export const ownerDashboardApiSchema = z.object({
   dueStudentsCount: z.number().int().min(0),
   todayPresentCount: z.number().int().min(0),
   totalExpenses: z.number().min(0),
+  lateFeeCollected: z.number().min(0),
+  overdueCount: z.number().int().min(0),
 });
 
 export type OwnerDashboardApiPayload = z.infer<typeof ownerDashboardApiSchema>;

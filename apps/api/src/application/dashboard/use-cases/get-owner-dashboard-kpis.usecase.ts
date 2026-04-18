@@ -55,6 +55,8 @@ export class GetOwnerDashboardKpisUseCase {
       totalPendingAmount,
       todayPresentCount,
       totalExpenses,
+      lateFeeCollected,
+      overdueCount,
     ] = await Promise.all([
       this.studentRepo.countActiveByAcademy(academyId),
       this.studentRepo.countNewAdmissionsByAcademyAndDateRange(academyId, input.from, input.to),
@@ -66,6 +68,8 @@ export class GetOwnerDashboardKpisUseCase {
       // Records now represent PRESENT students (presence-only model)
       this.attendanceRepo.countAbsentByAcademyAndDate(academyId, today),
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
+      this.feeDueRepo.sumLateFeeCollectedByAcademyAndMonth(academyId, currentMonthKey),
+      this.feeDueRepo.countOverdueByAcademy(academyId, today),
     ]);
 
     const todayAbsentCount = Math.max(0, totalStudents - todayPresentCount);
@@ -81,6 +85,8 @@ export class GetOwnerDashboardKpisUseCase {
       dueStudentsCount,
       todayPresentCount,
       totalExpenses,
+      lateFeeCollected,
+      overdueCount,
     });
   }
 }

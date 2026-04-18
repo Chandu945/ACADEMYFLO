@@ -30,6 +30,8 @@ function mapToKpis(raw: OwnerDashboardApiPayload): OwnerDashboardKpis {
     dueStudentsCount: raw.dueStudentsCount,
     todayPresentCount: raw.todayPresentCount,
     totalExpenses: raw.totalExpenses,
+    lateFeeCollected: raw.lateFeeCollected,
+    overdueCount: raw.overdueCount,
   };
 }
 

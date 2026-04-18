@@ -897,6 +897,28 @@ export class InMemoryFeeDueRepository implements FeeDueRepository {
     );
   }
 
+  async sumLateFeeCollectedByAcademyAndMonth(academyId: string, monthKey: string): Promise<number> {
+    let total = 0;
+    for (const d of this.dues.values()) {
+      if (d.academyId === academyId && d.monthKey === monthKey && d.status === 'PAID' && d.lateFeeApplied && d.lateFeeApplied > 0) {
+        total += d.lateFeeApplied;
+      }
+    }
+    return total;
+  }
+
+  async countOverdueByAcademy(academyId: string, today: string): Promise<number> {
+    return Array.from(this.dues.values()).filter(
+      (d) => d.academyId === academyId && d.status === 'DUE' && d.dueDate <= today,
+    ).length;
+  }
+
+  async listOverdueByAcademy(academyId: string, today: string): Promise<FeeDue[]> {
+    return Array.from(this.dues.values()).filter(
+      (d) => d.academyId === academyId && d.status === 'DUE' && d.dueDate <= today,
+    );
+  }
+
   async deleteUpcomingByStudent(academyId: string, studentId: string): Promise<number> {
     let count = 0;
     for (const [key, due] of this.dues) {
