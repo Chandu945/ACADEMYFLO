@@ -59,9 +59,10 @@ export function useEnquiries(
           setError(result.error);
         }
       } catch (e) {
-        if (__DEV__) console.error('[useEnquiries] Load failed:', e);
+        console.error('[useEnquiries] Load failed:', e);
         if (mountedRef.current) {
-          setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
+          const msg = e instanceof Error ? e.message : 'Something went wrong.';
+          setError({ code: 'UNKNOWN', message: msg });
         }
       } finally {
         if (mountedRef.current) {
