@@ -13,6 +13,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RbacGuard } from '../common/guards/rbac.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -43,6 +44,8 @@ import type { ClosureReason } from '@domain/enquiry/entities/enquiry.entity';
 @UseGuards(JwtAuthGuard, RbacGuard)
 @Roles('OWNER', 'STAFF')
 export class EnquiryController {
+  private readonly logger = new Logger('EnquiryController');
+
   constructor(
     @Inject('CREATE_ENQUIRY_USE_CASE')
     private readonly createEnquiry: CreateEnquiryUseCase,
@@ -94,26 +97,40 @@ export class EnquiryController {
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
-    const result = await this.listEnquiries.execute({
-      actorUserId: user.userId,
-      actorRole: user.role,
-      status: query.status as 'ACTIVE' | 'CLOSED' | undefined,
-      search: query.search,
-      followUpToday: query.followUpToday === 'true',
-      page: query.page ?? 1,
-      pageSize: query.limit ?? 20,
-    });
-    return mapResultToResponse(result, req);
+    this.logger.log(`[LIST] userId=${user.userId} role=${user.role} status=${query.status} search=${query.search} page=${query.page} limit=${query.limit}`);
+    try {
+      const result = await this.listEnquiries.execute({
+        actorUserId: user.userId,
+        actorRole: user.role,
+        status: query.status as 'ACTIVE' | 'CLOSED' | undefined,
+        search: query.search,
+        followUpToday: query.followUpToday === 'true',
+        page: query.page ?? 1,
+        pageSize: query.limit ?? 20,
+      });
+      this.logger.log(`[LIST] ok=${result.ok} ${result.ok ? `count=${result.value.data.length} total=${result.value.pagination.total}` : `error=${result.error.code} msg=${result.error.message}`}`);
+      return mapResultToResponse(result, req);
+    } catch (error) {
+      this.logger.error(`[LIST] EXCEPTION: ${error instanceof Error ? error.message : String(error)}`, error instanceof Error ? error.stack : undefined);
+      throw error;
+    }
   }
 
   @Get('summary')
   @ApiOperation({ summary: 'Get enquiry summary counters' })
   async summary(@CurrentUser() user: CurrentUserType, @Req() req: Request) {
-    const result = await this.getEnquirySummary.execute({
-      actorUserId: user.userId,
-      actorRole: user.role,
-    });
-    return mapResultToResponse(result, req);
+    this.logger.log(`[SUMMARY] userId=${user.userId} role=${user.role}`);
+    try {
+      const result = await this.getEnquirySummary.execute({
+        actorUserId: user.userId,
+        actorRole: user.role,
+      });
+      this.logger.log(`[SUMMARY] ok=${result.ok}`);
+      return mapResultToResponse(result, req);
+    } catch (error) {
+      this.logger.error(`[SUMMARY] EXCEPTION: ${error instanceof Error ? error.message : String(error)}`, error instanceof Error ? error.stack : undefined);
+      throw error;
+    }
   }
 
   @Get(':id')
