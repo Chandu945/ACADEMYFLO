@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsPositive, IsIn, Matches, MinLength } from 'class-validator';
+import { IsString, IsNumber, IsPositive, Max, IsIn, Matches, MinLength } from 'class-validator';
 
 export class ConvertToStudentDto {
   @IsString()
@@ -7,6 +7,7 @@ export class ConvertToStudentDto {
 
   @IsNumber()
   @IsPositive()
+  @Max(999999, { message: 'monthlyFee must not exceed ₹9,99,999' })
   monthlyFee!: number;
 
   @IsString()

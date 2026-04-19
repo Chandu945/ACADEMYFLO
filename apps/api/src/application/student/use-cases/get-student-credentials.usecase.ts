@@ -4,8 +4,11 @@ import type { AppError } from '@shared/kernel';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { StudentErrors } from '../../common/errors';
 import type { UserRole } from '@playconnect/contracts';
+import { randomUUID } from 'crypto';
 
 export interface GetStudentCredentialsInput {
   actorUserId: string;
@@ -27,6 +30,8 @@ export class GetStudentCredentialsUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly academyRepo: AcademyRepository,
+    private readonly parentLinkRepo: ParentStudentLinkRepository,
+    private readonly passwordHasher: PasswordHasher,
   ) {}
 
   async execute(input: GetStudentCredentialsInput): Promise<Result<StudentCredentialsOutput, AppError>> {
@@ -50,22 +55,42 @@ export class GetStudentCredentialsUseCase {
     const academy = await this.academyRepo.findById(actor.academyId);
     const academyName = academy?.academyName ?? 'Academy';
 
-    const loginId = student.guardian?.mobile || student.email || '';
-    const loginIdType: 'MOBILE' | 'EMAIL' = student.guardian?.mobile ? 'MOBILE' : 'EMAIL';
-    const hasPassword = false;
+    // Find linked parent user
+    const links = await this.parentLinkRepo.findByStudentId(input.studentId);
+    const parentLink = links[0]; // first linked parent
+    const parentUser = parentLink ? await this.userRepo.findById(parentLink.parentUserId) : null;
+
+    const loginId = parentUser?.emailNormalized || student.email || '';
+    const loginIdType: 'MOBILE' | 'EMAIL' = 'EMAIL';
 
     let shareText: string;
-    if (!loginId) {
-      shareText = `${academyName}\n─────────────────\nStudent: ${student.fullName}\n\nLogin credentials have not been set up yet. Please contact the academy.`;
-    } else {
-      shareText = `${academyName}\n─────────────────\nStudent: ${student.fullName}\nLogin ID: ${loginId}\n\nPlease contact the academy for your password.`;
+    if (!parentUser || !loginId) {
+      // No parent account — tell owner to invite first
+      shareText = `${academyName}\n─────────────────\nStudent: ${student.fullName}\n\nNo parent login has been created yet. Please use "Invite Parent" first.`;
+
+      return ok({
+        studentName: student.fullName,
+        loginId,
+        loginIdType,
+        hasPassword: false,
+        academyName,
+        shareText,
+      });
     }
+
+    // Generate a new temporary password and reset the parent's password
+    const tempPassword = randomUUID().substring(0, 8);
+    const passwordHash = await this.passwordHasher.hash(tempPassword);
+    const updatedUser = parentUser.changePassword(passwordHash);
+    await this.userRepo.save(updatedUser);
+
+    shareText = `${academyName}\n─────────────────\nStudent: ${student.fullName}\nLogin ID: ${loginId}\nPassword: ${tempPassword}\n\nPlease change your password after first login.`;
 
     return ok({
       studentName: student.fullName,
       loginId,
       loginIdType,
-      hasPassword,
+      hasPassword: true,
       academyName,
       shareText,
     });

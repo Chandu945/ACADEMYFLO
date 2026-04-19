@@ -122,8 +122,8 @@ function FeeStatusIcon({ status }: { status: string }) {
     return <AppIcon name="check-circle" size={20} color={colors.success} />;
   }
   if (status === 'DUE') {
-    
-    return <AppIcon name="alert-circle" size={20} color={colors.danger} />;
+
+    return <AppIcon name="clock-alert-outline" size={20} color={colors.warningAccent} />;
   }
   
   return <AppIcon name="clock-outline" size={20} color={colors.textDisabled} />;
@@ -362,7 +362,7 @@ export function ChildDetailScreen() {
                           fee.status === 'PAID'
                             ? colors.successBg
                             : fee.status === 'DUE'
-                              ? colors.dangerBg
+                              ? colors.warningLightBg
                               : colors.bgSubtle,
                       },
                     ]}
@@ -375,7 +375,7 @@ export function ChildDetailScreen() {
                             fee.status === 'PAID'
                               ? colors.successText
                               : fee.status === 'DUE'
-                                ? colors.dangerText
+                                ? colors.warningText
                                 : colors.textSecondary,
                         },
                       ]}
@@ -401,8 +401,7 @@ export function ChildDetailScreen() {
             )}
             {fee.status === 'DUE' && fee.lateFee > 0 && (
               <View style={styles.lateFeeNotice}>
-                
-                <AppIcon name="alert-circle-outline" size={14} color={colors.danger} />
+                <AppIcon name="clock-alert-outline" size={14} color={colors.warningAccent} />
                 <Text style={styles.lateFeeNoticeText}>
                   Late fee of {formatCurrency(fee.lateFee)} applied
                 </Text>
@@ -444,9 +443,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   content: { padding: spacing.base, paddingBottom: spacing['2xl'] },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorBanner: {
-    backgroundColor: colors.dangerBg,
+    backgroundColor: colors.warningLightBg,
     borderWidth: 1,
-    borderColor: colors.dangerBorder,
+    borderColor: colors.warningBorder,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -565,12 +564,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.sm,
     padding: spacing.sm,
-    backgroundColor: colors.dangerBg,
+    backgroundColor: colors.warningLightBg,
     borderRadius: radius.sm,
   },
   lateFeeNoticeText: {
     fontSize: fontSizes.xs,
-    color: colors.danger,
+    color: colors.warningText,
     fontWeight: fontWeights.medium,
     flex: 1,
   },

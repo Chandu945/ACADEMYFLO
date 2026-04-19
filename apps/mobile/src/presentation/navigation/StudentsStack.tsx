@@ -39,7 +39,13 @@ export function StudentsStack() {
           title: route.params.mode === 'create' ? 'Add Student' : 'Edit Student',
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('StudentsList')}
+              onPress={() => {
+                if (route.params.mode === 'edit' && route.params.student) {
+                  navigation.navigate('StudentDetail', { student: route.params.student });
+                } else {
+                  navigation.navigate('StudentsList');
+                }
+              }}
             />
           ),
         })}
@@ -47,7 +53,12 @@ export function StudentsStack() {
       <Stack.Screen
         name="StudentDetail"
         component={StudentDetailScreen}
-        options={{ title: 'Student Detail' }}
+        options={({ navigation }) => ({
+          title: 'Student Detail',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('StudentsList')} />
+          ),
+        })}
       />
     </Stack.Navigator>
   );

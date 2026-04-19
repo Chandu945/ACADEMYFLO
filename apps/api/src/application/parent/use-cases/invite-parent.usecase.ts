@@ -52,8 +52,18 @@ export class InviteParentUseCase {
 
     const guardian = student.guardian;
     // Email: prefer guardian.email, fall back to student.email (Contact Information field)
-    const parentEmail = (guardian?.email || student.email || '').trim().toLowerCase();
-    if (!parentEmail) return err(ParentErrors.guardianEmailRequired());
+    let parentEmail = (guardian?.email || student.email || '').trim().toLowerCase();
+
+    // If no email, generate a dummy login email based on student name
+    if (!parentEmail) {
+      const cleanName = student.fullName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .trim()
+        .replace(/\s+/g, '_');
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      parentEmail = `${cleanName}_${rand}@academyflo.com`;
+    }
 
     const guardianPhone = (guardian?.mobile || '').trim();
     const guardianName = (guardian?.name || student.fullName || '').trim();
@@ -126,7 +136,9 @@ export class InviteParentUseCase {
     await this.linkRepo.save(link);
 
     // Fire-and-forget: send welcome email with credentials to new parents
-    if (tempPassword && parentEmail && this.emailSender) {
+    // Skip for dummy @academyflo.com emails — no real inbox
+    const isDummyEmail = parentEmail.endsWith('@academyflo.com');
+    if (tempPassword && parentEmail && !isDummyEmail && this.emailSender) {
       const academy = await this.academyRepo.findById(owner.academyId!);
       const academyName = academy?.academyName ?? 'Your Academy';
       this.emailSender

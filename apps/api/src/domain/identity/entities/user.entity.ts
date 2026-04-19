@@ -172,6 +172,14 @@ export class User extends Entity<UserProps> {
     });
   }
 
+  updateEmail(newEmail: string): User {
+    return User.reconstitute(this.id.toString(), {
+      ...this.props,
+      email: Email.create(newEmail),
+      audit: updateAuditFields(this.props.audit),
+    });
+  }
+
   changePassword(newHash: string): User {
     return User.reconstitute(this.id.toString(), {
       ...this.props,

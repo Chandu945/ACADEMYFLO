@@ -267,7 +267,7 @@ export function BatchDetailScreen() {
               const result = await deleteBatch(batch.id);
               if (result.ok) {
                 invalidateBatchCache();
-                navigation.goBack();
+                (navigation as any).navigate('BatchesList');
               } else {
                 crossAlert('Error', result.error.message);
               }

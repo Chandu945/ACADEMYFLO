@@ -50,7 +50,6 @@ const OWNER_SECTIONS: MenuSection[] = [
     title: 'Settings',
     items: [
       { key: 'academy-settings', icon: 'cog-outline', label: 'Academy Settings', screen: 'AcademySettings' },
-      { key: 'institute-info', icon: 'office-building-outline', label: 'Institute Information', screen: 'InstituteInfo' },
       { key: 'subscription', icon: 'card-account-details-outline', label: 'Subscription', screen: 'Subscription' },
     ],
   },

@@ -14,8 +14,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { StudentsStackParamList } from '../../navigation/StudentsStack';
 import type { StudentListItem } from '../../../domain/student/student.types';
+import { ActivityIndicator } from 'react-native';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { getStudentPhotoUploadPath, getStudent } from '../../../infra/student/student-api';
+import { getStudentFees } from '../../../infra/fees/fees-api';
+import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { InlineError } from '../../components/ui/InlineError';
@@ -75,12 +78,34 @@ export function StudentDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
+  const [fees, setFees] = useState<FeeDueItem[]>([]);
+  const [feesLoading, setFeesLoading] = useState(true);
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  const loadFees = useCallback(async () => {
+    if (!studentId) return;
+    setFeesLoading(true);
+    try {
+      const now = new Date();
+      const from = `${now.getFullYear() - 1}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const result = await getStudentFees(studentId, from, to);
+      if (mountedRef.current && result.ok) {
+        setFees(result.value);
+      }
+    } catch {
+      // best-effort
+    } finally {
+      if (mountedRef.current) setFeesLoading(false);
+    }
+  }, [studentId]);
+
+  useEffect(() => { loadFees(); }, [loadFees]);
 
   const refetchStudent = useCallback(async () => {
     if (!studentId) return;
@@ -116,9 +141,9 @@ export function StudentDetailScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refetchStudent();
+      await Promise.all([refetchStudent(), loadFees()]);
     } catch {
-      // Handled inside refetchStudent
+      // Handled inside callbacks
     } finally {
       setRefreshing(false);
     }
@@ -239,6 +264,13 @@ export function StudentDetailScreen() {
             <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
           </View>
 
+          {!student.guardian?.mobile && !student.mobileNumber && !student.whatsappNumber && !student.email && !student.guardian?.email && !student.addressText && (
+            <View style={styles.contactEmpty}>
+              <AppIcon name="account-off-outline" size={28} color={colors.textDisabled} />
+              <Text style={styles.contactEmptyText}>No contact details added yet</Text>
+            </View>
+          )}
+
           {/* Phone tile */}
           {student.guardian?.mobile && (
             <View style={styles.contactTile}>
@@ -307,6 +339,86 @@ export function StudentDetailScreen() {
               </View>
             </View>
           ) : null}
+        </View>
+
+        {/* Fee History */}
+        <View style={styles.card}>
+          <View style={styles.contactSectionHeader}>
+            <View style={[styles.contactSectionIcon, { backgroundColor: colors.primarySoft }]}>
+              <AppIcon name="currency-inr" size={18} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Fee History</Text>
+          </View>
+
+          {feesLoading ? (
+            <View style={styles.feeLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : fees.length === 0 ? (
+            <View style={styles.contactEmpty}>
+              <AppIcon name="receipt" size={28} color={colors.textDisabled} />
+              <Text style={styles.contactEmptyText}>No fee records yet</Text>
+            </View>
+          ) : (
+            <>
+              {/* Summary */}
+              <View style={styles.feeSummaryRow}>
+                <View style={[styles.feeSummaryChip, { backgroundColor: colors.successBg }]}>
+                  <Text style={[styles.feeSummaryValue, { color: colors.success }]}>
+                    {fees.filter((f) => f.status === 'PAID').length}
+                  </Text>
+                  <Text style={[styles.feeSummaryLabel, { color: colors.successText }]}>Paid</Text>
+                </View>
+                <View style={[styles.feeSummaryChip, { backgroundColor: colors.warningLightBg }]}>
+                  <Text style={[styles.feeSummaryValue, { color: colors.warningAccent }]}>
+                    {fees.filter((f) => f.status === 'DUE').length}
+                  </Text>
+                  <Text style={[styles.feeSummaryLabel, { color: colors.warningText }]}>Due</Text>
+                </View>
+                <View style={[styles.feeSummaryChip, { backgroundColor: colors.bgSubtle }]}>
+                  <Text style={[styles.feeSummaryValue, { color: colors.textMedium }]}>
+                    {fees.filter((f) => f.status === 'UPCOMING').length}
+                  </Text>
+                  <Text style={[styles.feeSummaryLabel, { color: colors.textSecondary }]}>Upcoming</Text>
+                </View>
+              </View>
+
+              {/* Fee rows */}
+              {fees.map((fee) => {
+                const isPaid = fee.status === 'PAID';
+                const isDue = fee.status === 'DUE';
+                const monthLabel = (() => {
+                  try {
+                    const [y, m] = fee.monthKey.split('-');
+                    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    return `${names[parseInt(m!, 10) - 1]} ${y}`;
+                  } catch { return fee.monthKey; }
+                })();
+
+                return (
+                  <View key={fee.id} style={styles.feeRow}>
+                    <View style={[styles.feeStatusDot, {
+                      backgroundColor: isPaid ? colors.success : isDue ? colors.warningAccent : colors.textDisabled,
+                    }]} />
+                    <View style={styles.feeRowInfo}>
+                      <Text style={styles.feeMonth}>{monthLabel}</Text>
+                      <Text style={styles.feeStatus}>
+                        {isPaid ? `Paid${fee.paidAt ? ` · ${formatDate(fee.paidAt)}` : ''}` : fee.status}
+                      </Text>
+                    </View>
+                    <View style={styles.feeRowAmounts}>
+                      <Text style={[styles.feeAmount, isPaid && { color: colors.success }]}>
+                        {'\u20B9'}{fee.amount.toLocaleString('en-IN')}
+                      </Text>
+                      {fee.lateFee > 0 && (
+                        <Text style={styles.feeLateFee}>+{'\u20B9'}{fee.lateFee.toLocaleString('en-IN')} late</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </>
+          )}
         </View>
 
       </ScrollView>
@@ -446,6 +558,80 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
+  },
+  contactEmpty: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+  },
+  contactEmptyText: {
+    fontSize: fontSizes.sm,
+    color: colors.textDisabled,
+  },
+
+  /* Fee History */
+  feeLoading: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  feeSummaryRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  feeSummaryChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+  },
+  feeSummaryValue: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+  },
+  feeSummaryLabel: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.medium,
+    marginTop: 2,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  feeStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.md,
+  },
+  feeRowInfo: {
+    flex: 1,
+  },
+  feeMonth: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
+  feeStatus: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  feeRowAmounts: {
+    alignItems: 'flex-end',
+  },
+  feeAmount: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  feeLateFee: {
+    fontSize: fontSizes.xs,
+    color: colors.warningAccent,
+    marginTop: 1,
   },
   contactSectionIcon: {
     width: 32,

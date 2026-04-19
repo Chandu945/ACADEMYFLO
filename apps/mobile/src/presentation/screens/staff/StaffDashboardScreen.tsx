@@ -324,69 +324,70 @@ export function StaffDashboardScreen() {
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
                   <View style={[styles.cardHeaderIcon, { backgroundColor: colors.successBg }]}>
-                    
                     <AppIcon name="calendar-check-outline" size={18} color={colors.success} />
                   </View>
                   <Text style={styles.cardTitle}>Today's Attendance</Text>
                 </View>
-                
                 <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
 
-              <View style={styles.attendanceStats}>
-                <View style={styles.attendanceStat}>
-                  <Text style={[styles.attendanceStatValue, { color: colors.success }]}>
-                    {attendance.presentCount}
-                  </Text>
-                  <Text style={styles.attendanceStatLabel}>Present</Text>
+              {attendance.isHoliday ? (
+                <View style={styles.holidayInline}>
+                  <AppIcon name="party-popper" size={22} color={colors.warningAccent} />
+                  <Text style={styles.holidayInlineText}>Holiday — no attendance today</Text>
                 </View>
-                <View style={styles.attendanceDivider} />
-                <View style={styles.attendanceStat}>
-                  <Text style={[styles.attendanceStatValue, { color: colors.danger }]}>
-                    {attendance.absentCount}
-                  </Text>
-                  <Text style={styles.attendanceStatLabel}>Absent</Text>
-                </View>
-                <View style={styles.attendanceDivider} />
-                <View style={styles.attendanceStat}>
-                  <Text style={styles.attendanceStatValue}>{totalStudents}</Text>
-                  <Text style={styles.attendanceStatLabel}>Total</Text>
-                </View>
-              </View>
-
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${attendancePct}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressLabel}>
-                {attendance.isHoliday
-                  ? 'Today is a holiday — no attendance required'
-                  : totalStudents > 0
-                    ? `${attendancePct}% attendance rate`
-                    : 'No attendance data'}
-              </Text>
-
-              {attendance.absentCount > 0 && (
-                <View style={styles.absentPreview}>
-                  <Text style={styles.absentPreviewTitle}>Absent Students</Text>
-                  {attendance.absentStudents.slice(0, 3).map((s) => (
-                    <View key={s.studentId} style={styles.absentRow}>
-                      <View style={styles.absentAvatar}>
-                        <Text style={styles.absentInitial}>{s.fullName[0]}</Text>
-                      </View>
-                      <Text style={styles.absentName} numberOfLines={1}>{s.fullName}</Text>
+              ) : (
+                <>
+                  {/* Percentage + counts row */}
+                  <View style={styles.attOverviewRow}>
+                    <View style={styles.attPctCircle}>
+                      <Text style={styles.attPctValue}>{attendancePct}%</Text>
                     </View>
-                  ))}
-                  {attendance.absentStudents.length > 3 && (
-                    <Text style={styles.absentMoreText}>
-                      +{attendance.absentStudents.length - 3} more absent
-                    </Text>
+                    <View style={styles.attCountsCol}>
+                      <View style={styles.attCountRow}>
+                        <View style={[styles.attCountDot, { backgroundColor: colors.success }]} />
+                        <Text style={styles.attCountLabel}>Present</Text>
+                        <Text style={[styles.attCountNum, { color: colors.success }]}>{attendance.presentCount}</Text>
+                      </View>
+                      <View style={styles.attCountRow}>
+                        <View style={[styles.attCountDot, { backgroundColor: colors.textSecondary }]} />
+                        <Text style={styles.attCountLabel}>Absent</Text>
+                        <Text style={styles.attCountNum}>{attendance.absentCount}</Text>
+                      </View>
+                      <View style={styles.attCountRow}>
+                        <View style={[styles.attCountDot, { backgroundColor: colors.primary }]} />
+                        <Text style={styles.attCountLabel}>Total</Text>
+                        <Text style={styles.attCountNum}>{totalStudents}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Progress bar */}
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${attendancePct}%` as any }]} />
+                  </View>
+
+                  {/* Absent students preview */}
+                  {attendance.absentCount > 0 && attendance.absentStudents.length > 0 && (
+                    <View style={styles.absentPreview}>
+                      <Text style={styles.absentPreviewTitle}>
+                        Absent ({attendance.absentCount})
+                      </Text>
+                      <View style={styles.absentChipRow}>
+                        {attendance.absentStudents.slice(0, 4).map((s) => (
+                          <View key={s.studentId} style={styles.absentChip}>
+                            <Text style={styles.absentChipText}>{s.fullName.split(' ')[0]}</Text>
+                          </View>
+                        ))}
+                        {attendance.absentStudents.length > 4 && (
+                          <View style={[styles.absentChip, styles.absentChipMore]}>
+                            <Text style={styles.absentChipMoreText}>+{attendance.absentStudents.length - 4}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
                   )}
-                </View>
+                </>
               )}
             </TouchableOpacity>
           )}
@@ -627,93 +628,114 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadows.sm,
   },
-  attendanceStats: {
+  holidayInline: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.warningLightBg,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+  },
+  holidayInlineText: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.medium,
+    color: colors.warningText,
+  },
+  attOverviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
     marginBottom: spacing.md,
   },
-  attendanceStat: {
-    flex: 1,
+  attPctCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: colors.primary,
     alignItems: 'center',
-    paddingVertical: spacing.xs,
+    justifyContent: 'center',
   },
-  attendanceStatValue: {
-    fontSize: fontSizes['2xl'],
+  attPctValue: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
+  },
+  attCountsCol: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  attCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  attCountDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.sm,
+  },
+  attCountLabel: {
+    flex: 1,
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+  },
+  attCountNum: {
+    fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.text,
   },
-  attendanceStatLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  attendanceDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: colors.border,
-  },
   progressTrack: {
-    height: 8,
+    height: 6,
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.full,
     overflow: 'hidden',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
   progressFill: {
     height: '100%',
     backgroundColor: colors.success,
     borderRadius: radius.full,
   },
-  progressLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
   absentPreview: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
   },
   absentPreviewTitle: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
-    color: colors.danger,
-    marginBottom: spacing.xs,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
-  absentRow: {
+  absentChipRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  absentChip: {
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-  absentAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.dangerBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
+  absentChipText: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.medium,
+    color: colors.textMedium,
   },
-  absentInitial: {
+  absentChipMore: {
+    backgroundColor: colors.primarySoft,
+  },
+  absentChipMoreText: {
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.bold,
-    color: colors.danger,
+    color: colors.primary,
   },
-  absentName: {
-    flex: 1,
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.medium,
-    color: colors.text,
-  },
-  absentMoreText: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    paddingTop: spacing.xs,
+  attendanceDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: colors.border,
   },
 
   /* ── Requests Card ──────────────────────────────── */

@@ -131,7 +131,11 @@ export function BatchFormScreen() {
         submittedRef.current = true;
         invalidateBatchCache();
         showToast(mode === 'create' ? 'Batch created' : 'Batch updated');
-        (navigation as any).navigate('BatchesList');
+        if (mode === 'edit' && result.value) {
+          (navigation as any).replace('BatchDetail', { batch: result.value });
+        } else {
+          (navigation as any).navigate('BatchesList');
+        }
         return;
       } else {
         if (result.error.fieldErrors) {

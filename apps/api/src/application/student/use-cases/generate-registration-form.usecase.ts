@@ -72,12 +72,13 @@ export class GenerateRegistrationFormUseCase {
       addField('Mobile', student.mobileNumber);
       addField('WhatsApp', student.whatsappNumber);
       addField('Email', student.email);
-      addField('Address', student.addressText ?? [
+      addField('Address', student.addressText ?? ([
         student.address.line1,
         student.address.line2,
         student.address.city,
-        `${student.address.state} - ${student.address.pincode}`,
-      ].filter(Boolean).join(', '));
+        student.address.state,
+        student.address.pincode,
+      ].filter((v) => v && v !== '-' && v !== '000000').join(', ') || null));
 
       // Guardian Information
       addSection('Guardian Information');

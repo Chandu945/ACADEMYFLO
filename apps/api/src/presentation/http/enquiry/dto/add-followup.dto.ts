@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsDateString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsDateString, MaxLength, MinLength } from 'class-validator';
 
 export class AddFollowUpDto {
   @IsNotEmpty()
@@ -7,6 +7,7 @@ export class AddFollowUpDto {
 
   @IsNotEmpty()
   @IsString()
+  @MinLength(1)
   @MaxLength(1000)
   notes!: string;
 

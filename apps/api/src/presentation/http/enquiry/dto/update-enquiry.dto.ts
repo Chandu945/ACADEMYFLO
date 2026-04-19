@@ -3,6 +3,7 @@ import {
   IsString,
   IsIn,
   IsDateString,
+  IsEmail,
   MaxLength,
   MinLength,
   Matches,
@@ -33,6 +34,7 @@ export class UpdateEnquiryDto {
 
   @IsOptional()
   @IsString()
+  @IsEmail({}, { message: 'email must be a valid email address' })
   email?: string | null;
 
   @IsOptional()

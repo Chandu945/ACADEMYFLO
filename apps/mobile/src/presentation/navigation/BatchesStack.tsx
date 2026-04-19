@@ -41,7 +41,13 @@ export function BatchesStack() {
           title: route.params.mode === 'create' ? 'Add Batch' : 'Edit Batch',
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('BatchesList')}
+              onPress={() => {
+                if (route.params.mode === 'edit' && route.params.batch) {
+                  navigation.navigate('BatchDetail', { batch: route.params.batch });
+                } else {
+                  navigation.navigate('BatchesList');
+                }
+              }}
             />
           ),
         })}
@@ -49,7 +55,12 @@ export function BatchesStack() {
       <Stack.Screen
         name="BatchDetail"
         component={BatchDetailScreen}
-        options={{ title: 'Batch Details' }}
+        options={({ navigation }) => ({
+          title: 'Batch Details',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('BatchesList')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="AddStudentToBatch"

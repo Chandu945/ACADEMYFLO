@@ -83,7 +83,7 @@ export class ListEnquiriesUseCase {
         page: input.page,
         limit: input.pageSize,
         total,
-        totalPages: Math.ceil(total / input.pageSize) || 1,
+        totalPages: total === 0 ? 0 : Math.ceil(total / input.pageSize),
       },
     });
   }

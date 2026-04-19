@@ -110,7 +110,9 @@ export function EnquiryListScreen() {
   }, []);
 
   const extractDate = useCallback((dateStr: string): string => {
-    return dateStr.includes('T') ? dateStr.split('T')[0]! : dateStr;
+    if (!dateStr.includes('T')) return dateStr;
+    const parts = dateStr.split('T');
+    return parts[0] ?? dateStr;
   }, []);
 
   const isOverdue = useCallback((dateStr: string | null): boolean => {

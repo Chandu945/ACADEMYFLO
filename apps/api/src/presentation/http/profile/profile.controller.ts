@@ -10,7 +10,7 @@ import {
   UploadedFile,
   Req,
 } from '@nestjs/common';
-import { IsOptional, IsString, IsNotEmpty, MinLength, Matches } from 'class-validator';
+import { IsOptional, IsString, IsEmail, IsNotEmpty, MinLength, Matches } from 'class-validator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -34,6 +34,10 @@ class UpdateProfileDto {
   @IsString()
   @MinLength(2)
   fullName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()
@@ -108,6 +112,17 @@ export class ProfileController {
 
     if (dto.fullName || dto.phoneNumber) {
       updated = updated.updateProfile(dto.fullName, dto.phoneNumber);
+    }
+
+    if (dto.email) {
+      const normalized = dto.email.trim().toLowerCase();
+      if (normalized !== found.emailNormalized) {
+        const existing = await this.userRepo.findByEmail(normalized);
+        if (existing && existing.id.toString() !== found.id.toString()) {
+          return mapResultToResponse(errResult(AppError.conflict('This email is already in use')), req);
+        }
+        updated = updated.updateEmail(normalized);
+      }
     }
 
     if (dto.profilePhotoUrl !== undefined) {

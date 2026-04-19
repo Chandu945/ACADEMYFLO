@@ -72,11 +72,11 @@ function buildCalendarGrid(
   return rows;
 }
 
-function getStatusBg(colors: Colors): Record<DayStatus, string> {
+function getStatusBg(_colors: Colors): Record<DayStatus, string> {
   return {
-    present: colors.successBg,
-    absent: colors.dangerBg,
-    holiday: colors.warningBg,
+    present: 'rgba(22, 163, 74, 0.18)',
+    absent: 'rgba(239, 68, 68, 0.12)',
+    holiday: 'rgba(245, 158, 11, 0.15)',
     future: 'transparent',
     empty: 'transparent',
   };
@@ -84,9 +84,9 @@ function getStatusBg(colors: Colors): Record<DayStatus, string> {
 
 function getStatusText(colors: Colors): Record<DayStatus, string> {
   return {
-    present: colors.successText,
-    absent: colors.dangerText,
-    holiday: colors.warningText,
+    present: colors.success,
+    absent: colors.danger,
+    holiday: colors.warningAccent,
     future: colors.textDisabled,
     empty: 'transparent',
   };

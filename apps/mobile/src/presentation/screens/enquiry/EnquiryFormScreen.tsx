@@ -116,8 +116,8 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         const result = await enquiryApi.updateEnquiry(enquiry.id, {
           prospectName: prospectName.trim(),
           guardianName: guardianName.trim() || null,
-          mobileNumber: /^\d{10}$/.test(mobileNumber.trim()) ? `91${mobileNumber.trim()}` : mobileNumber.trim().replace(/^\+/, ''),
-          whatsappNumber: whatsappNumber.trim() ? (/^\d{10}$/.test(whatsappNumber.trim()) ? `91${whatsappNumber.trim()}` : whatsappNumber.trim()) : null,
+          mobileNumber: (() => { const cleaned = mobileNumber.trim().replace(/^(\+)?91/, '').replace(/^0/, ''); return /^\d{10}$/.test(cleaned) ? `91${cleaned}` : cleaned; })(),
+          whatsappNumber: (() => { if (!whatsappNumber.trim()) return null; const cleaned = whatsappNumber.trim().replace(/^(\+)?91/, '').replace(/^0/, ''); return /^\d{10}$/.test(cleaned) ? `91${cleaned}` : cleaned; })(),
           email: email.trim() || null,
           address: address.trim() || null,
           interestedIn: interestedIn.trim() || null,
@@ -129,7 +129,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         if (result.ok) {
           submittedRef.current = true;
           showToast('Enquiry updated');
-          (navigation as any).navigate('EnquiryList');
+          (navigation as any).replace('EnquiryDetail', { enquiryId: enquiry!.id });
           return;
         } else {
           crossAlert('Error', result.error.message);
@@ -138,8 +138,8 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         const result = await enquiryApi.createEnquiry({
           prospectName: prospectName.trim(),
           guardianName: guardianName.trim() || undefined,
-          mobileNumber: /^\d{10}$/.test(mobileNumber.trim()) ? `91${mobileNumber.trim()}` : mobileNumber.trim().replace(/^\+/, ''),
-          whatsappNumber: whatsappNumber.trim() ? (/^\d{10}$/.test(whatsappNumber.trim()) ? `91${whatsappNumber.trim()}` : whatsappNumber.trim()) : undefined,
+          mobileNumber: (() => { const cleaned = mobileNumber.trim().replace(/^(\+)?91/, '').replace(/^0/, ''); return /^\d{10}$/.test(cleaned) ? `91${cleaned}` : cleaned; })(),
+          whatsappNumber: (() => { if (!whatsappNumber.trim()) return undefined; const cleaned = whatsappNumber.trim().replace(/^(\+)?91/, '').replace(/^0/, ''); return /^\d{10}$/.test(cleaned) ? `91${cleaned}` : cleaned; })(),
           email: email.trim() || undefined,
           address: address.trim() || undefined,
           interestedIn: interestedIn.trim() || undefined,

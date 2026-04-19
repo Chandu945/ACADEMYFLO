@@ -164,7 +164,11 @@ export function EventFormScreen(props: EventFormScreenProps) {
       if (result.ok) {
         submittedRef.current = true;
         showToast(mode === 'create' ? 'Event created' : 'Event updated');
-        (navigation as any).navigate('EventList');
+        if (mode === 'edit' && event) {
+          (navigation as any).replace('EventDetail', { eventId: event.id });
+        } else {
+          (navigation as any).navigate('EventList');
+        }
         return;
       } else {
         setServerError(result.error.message);

@@ -168,12 +168,12 @@ export function MoreStack() {
       <Stack.Screen
         name="EditEnquiry"
         component={EditEnquiryScreen}
-        options={({ navigation }) => ({
+        options={({ route, navigation }) => ({
           title: 'Edit Enquiry',
           headerBackVisible: true,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('EnquiryList')}
+              onPress={() => navigation.navigate('EnquiryDetail', { enquiryId: (route.params as { enquiry: { id: string } }).enquiry.id })}
             />
           ),
         })}
@@ -199,12 +199,12 @@ export function MoreStack() {
       <Stack.Screen
         name="EditEvent"
         component={EditEventScreen}
-        options={({ navigation }) => ({
+        options={({ route, navigation }) => ({
           title: 'Edit Event',
           headerBackVisible: true,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('EventList')}
+              onPress={() => navigation.navigate('EventDetail', { eventId: (route.params as { event: { id: string } }).event.id })}
             />
           ),
         })}
@@ -317,7 +317,13 @@ export function MoreStack() {
           title: route.params.mode === 'create' ? 'Add Batch' : 'Edit Batch',
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('BatchesList')}
+              onPress={() => {
+                if (route.params.mode === 'edit' && route.params.batch) {
+                  navigation.navigate('BatchDetail', { batch: route.params.batch });
+                } else {
+                  navigation.navigate('BatchesList');
+                }
+              }}
             />
           ),
         })}
@@ -325,7 +331,12 @@ export function MoreStack() {
       <Stack.Screen
         name="BatchDetail"
         component={BatchDetailScreen}
-        options={{ title: 'Batch Details' }}
+        options={({ navigation }) => ({
+          title: 'Batch Details',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('BatchesList')} />
+          ),
+        })}
       />
       <Stack.Screen
         name="AddStudentToBatch"

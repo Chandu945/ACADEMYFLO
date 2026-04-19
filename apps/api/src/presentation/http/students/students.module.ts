@@ -63,6 +63,12 @@ import {
 } from '@infrastructure/database/schemas/student-attendance.schema';
 import { MongoAcademyRepository } from '@infrastructure/repositories/mongo-academy.repository';
 import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/mongo-student-attendance.repository';
+import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
+import { ParentStudentLinkModel, ParentStudentLinkSchema } from '@infrastructure/database/schemas/parent-student-link.schema';
+import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
+import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
+import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 
 @Module({
   imports: [
@@ -76,6 +82,7 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
       { name: BatchModel.name, schema: BatchSchema },
       { name: AcademyModel.name, schema: AcademySchema },
       { name: StudentAttendanceModel.name, schema: StudentAttendanceSchema },
+      { name: ParentStudentLinkModel.name, schema: ParentStudentLinkSchema },
     ]),
   ],
   controllers: [StudentsController],
@@ -86,6 +93,7 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
     { provide: STUDENT_QUERY_REPOSITORY, useClass: MongoStudentQueryRepository },
     { provide: STUDENT_BATCH_REPOSITORY, useClass: MongoStudentBatchRepository },
     { provide: BATCH_REPOSITORY, useClass: MongoBatchRepository },
+    { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
     { provide: ACADEMY_REPOSITORY, useClass: MongoAcademyRepository },
     { provide: STUDENT_ATTENDANCE_REPOSITORY, useClass: MongoStudentAttendanceRepository },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
@@ -189,8 +197,10 @@ import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/m
         userRepo: UserRepository,
         studentRepo: StudentRepository,
         academyRepo: AcademyRepository,
-      ) => new GetStudentCredentialsUseCase(userRepo, studentRepo, academyRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, ACADEMY_REPOSITORY],
+        linkRepo: ParentStudentLinkRepository,
+        hasher: PasswordHasher,
+      ) => new GetStudentCredentialsUseCase(userRepo, studentRepo, academyRepo, linkRepo, hasher),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, ACADEMY_REPOSITORY, PARENT_STUDENT_LINK_REPOSITORY, PASSWORD_HASHER],
     },
     {
       provide: 'GENERATE_STUDENT_REPORT_USE_CASE',

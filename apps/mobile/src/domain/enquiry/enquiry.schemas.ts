@@ -43,7 +43,7 @@ export const enquiryDetailSchema = z.object({
   source: z.string().nullable(),
   notes: z.string().nullable(),
   status: z.enum(['ACTIVE', 'CLOSED']),
-  closureReason: z.enum(['CONVERTED', 'NOT_INTERESTED', 'OTHER']).nullable(),
+  closureReason: z.string().nullable(),
   convertedStudentId: z.string().nullable(),
   closedBy: z.string().nullable(),
   closedAt: z.string().nullable(),

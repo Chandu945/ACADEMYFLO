@@ -37,9 +37,14 @@ type Route = RouteProp<MoreStackParamList, 'EnquiryDetail'>;
 function safeFormatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
   try {
-    // Strip time portion if it's a full ISO datetime, then parse as local date
-    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0]! : dateStr;
-    const d = new Date(dateOnly + 'T00:00:00');
+    let d: Date;
+    if (dateStr.includes('T')) {
+      // Full ISO datetime — parse directly to preserve timezone info
+      d = new Date(dateStr);
+    } else {
+      // Date-only string (YYYY-MM-DD) — parse as local date
+      d = new Date(dateStr + 'T00:00:00');
+    }
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   } catch {

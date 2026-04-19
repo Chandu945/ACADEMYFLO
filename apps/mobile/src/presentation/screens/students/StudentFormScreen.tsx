@@ -88,7 +88,7 @@ export function StudentFormScreen() {
     student?.addressText ??
       (student?.address
         ? [student.address.line1, student.address.line2, student.address.city, student.address.state, student.address.pincode]
-            .filter(Boolean)
+            .filter((v) => v && v !== '-' && v !== '000000')
             .join(', ')
         : ''),
   );
@@ -360,8 +360,9 @@ export function StudentFormScreen() {
         }
 
         submittedRef.current = true;
-        if (mode === 'create') {
-          (navigation as unknown as { navigate: (name: string) => void }).navigate('StudentsList');
+        if (mode === 'edit' && result.value) {
+          // Replace so the edit form is removed from stack — back from Detail goes to List
+          (navigation as unknown as { replace: (name: string, params?: unknown) => void }).replace('StudentDetail', { student: result.value });
         } else {
           (navigation as unknown as { navigate: (name: string) => void }).navigate('StudentsList');
         }
@@ -483,8 +484,6 @@ export function StudentFormScreen() {
 
       {/* Section: Contact Information */}
       <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
-      <Text style={styles.sectionSubtitle}>Phone numbers with country code.</Text>
-
       <Input
         ref={mobileRef}
         label="Mobile Number (Optional)"

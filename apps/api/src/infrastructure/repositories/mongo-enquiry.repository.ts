@@ -4,6 +4,7 @@ import type { Model } from 'mongoose';
 import type { EnquiryRepository, EnquiryListFilter, EnquirySummaryResult } from '@domain/enquiry/ports/enquiry.repository';
 import { Enquiry } from '@domain/enquiry/entities/enquiry.entity';
 import type { EnquirySource, ClosureReason, FollowUp } from '@domain/enquiry/entities/enquiry.entity';
+import { ENQUIRY_SOURCES, CLOSURE_REASONS } from '@playconnect/contracts';
 import { EnquiryModel } from '../database/schemas/enquiry.schema';
 import type { EnquiryDocument } from '../database/schemas/enquiry.schema';
 import { getTransactionSession } from '../database/transaction-context';
@@ -186,10 +187,10 @@ export class MongoEnquiryRepository implements EnquiryRepository {
       email: d.email ?? null,
       address: d.address ?? null,
       interestedIn: d.interestedIn ?? null,
-      source: (d.source as EnquirySource) ?? null,
+      source: (d.source && (ENQUIRY_SOURCES as readonly string[]).includes(d.source) ? d.source as EnquirySource : null),
       notes: d.notes ?? null,
       status: d.status as 'ACTIVE' | 'CLOSED',
-      closureReason: (d.closureReason as ClosureReason) ?? null,
+      closureReason: (d.closureReason && (CLOSURE_REASONS as readonly string[]).includes(d.closureReason) ? d.closureReason as ClosureReason : null),
       convertedStudentId: d.convertedStudentId ?? null,
       closedBy: d.closedBy ?? null,
       closedAt: d.closedAt ? new Date(d.closedAt) : null,
