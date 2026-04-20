@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
@@ -70,7 +70,7 @@ import { AppConfigService } from '@shared/config/config.service';
       { name: DeviceTokenModel.name, schema: DeviceTokenSchema },
     ]),
     JwtModule.register({}),
-    AuditLogsModule,
+    forwardRef(() => AuditLogsModule),
   ],
   controllers: [AuthController],
   providers: [

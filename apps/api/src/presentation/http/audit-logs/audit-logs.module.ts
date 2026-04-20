@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuditLogsController } from './audit-logs.controller';
 import { AuthModule } from '../auth/auth.module';
@@ -16,7 +16,11 @@ import { LOGGER_PORT } from '@shared/logging/logger.port';
 
 @Module({
   imports: [
-    AuthModule,
+    // AuthModule now also imports AuditLogsModule (for AUDIT_RECORDER_PORT on
+    // password-reset flows, added in F9-C3). forwardRef is required on one
+    // side of the cycle; Nest wires the actual providers after both modules
+    // finish declaring themselves.
+    forwardRef(() => AuthModule),
     MongooseModule.forFeature([{ name: AuditLogModel.name, schema: AuditLogSchema }]),
   ],
   controllers: [AuditLogsController],
