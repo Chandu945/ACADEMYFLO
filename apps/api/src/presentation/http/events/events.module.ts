@@ -105,9 +105,9 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
     },
     {
       provide: 'CHANGE_EVENT_STATUS_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository) =>
-        new ChangeEventStatusUseCase(userRepo, eventRepo),
-      inject: [USER_REPOSITORY, EVENT_REPOSITORY],
+      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>
+        new ChangeEventStatusUseCase(userRepo, eventRepo, auditRecorder),
+      inject: [USER_REPOSITORY, EVENT_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'LIST_GALLERY_PHOTOS_USE_CASE',

@@ -10,7 +10,7 @@ import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import { canInviteParent } from '@domain/parent/rules/parent.rules';
 import { ParentStudentLink } from '@domain/parent/entities/parent-student-link.entity';
 import { AuthErrors, ParentErrors, StudentErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderParentInviteEmail } from '../../notifications/templates/parent-invite-template';
 import { randomUUID } from 'crypto';
@@ -122,9 +122,22 @@ export class InviteParentUseCase {
       await this.userRepo.save(parentWithAcademy);
     }
 
-    // Check if link already exists
+    // Idempotent retry: if the same (parent, student) link already exists,
+    // return a successful no-op instead of failing. Owners routinely double-
+    // click "Invite Parent" and the previous error response made retries
+    // look broken. We intentionally don't resend credentials — the parent
+    // already received them (or has changed the password), and rotating the
+    // password on every retry would lock them out.
     const existingLink = await this.linkRepo.findByParentAndStudent(parentUserId, input.studentId);
-    if (existingLink) return err(ParentErrors.linkAlreadyExists());
+    if (existingLink) {
+      return ok({
+        parentId: parentUserId,
+        tempPassword: '',
+        studentId: input.studentId,
+        parentEmail,
+        isExistingUser: true,
+      });
+    }
 
     // Create link
     const link = ParentStudentLink.create({

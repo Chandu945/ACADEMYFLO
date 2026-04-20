@@ -1,6 +1,4 @@
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+import { escapeHtml, renderEmailLayout } from './_email-layout';
 
 export interface PasswordChangedTemplateData {
   userName: string;
@@ -8,17 +6,22 @@ export interface PasswordChangedTemplateData {
 }
 
 export function renderPasswordChangedEmail(data: PasswordChangedTemplateData): string {
-  const userName = escapeHtml(data.userName);
   const userEmail = escapeHtml(data.userEmail);
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-  <h2>Password Changed Successfully</h2>
-  <p>Dear ${userName},</p>
-  <p>Your password for account <strong>${userEmail}</strong> on Academyflo has been changed successfully.</p>
-  <p>All your active sessions on other devices have been signed out for security.</p>
-  <p><strong>If you did not make this change, please reset your password immediately or contact support.</strong></p>
-  <p>Thank you,<br>Academyflo Team</p>
-</body></html>`;
+  return renderEmailLayout({
+    preheader: 'Your Academyflo password was changed just now.',
+    title: 'Your password was changed',
+    greeting: `Dear ${data.userName},`,
+    tone: 'info',
+    body: `
+      <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#0F172A;">
+        The password for your Academyflo account <strong>${userEmail}</strong> was changed a few moments ago.
+      </p>
+      <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#0F172A;">
+        For your security, we've signed you out of every other device. The next time
+        you open Academyflo on those devices, you'll need to log in again with the new password.
+      </p>
+    `,
+    footerNote: 'If this wasn\'t you, please reset your password immediately and contact support@academyflo.com.',
+  });
 }

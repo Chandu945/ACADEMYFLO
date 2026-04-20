@@ -1,6 +1,6 @@
-# PlayConnect — Academy Management Application
+# Academyflo — Academy Management Application
 
-Enterprise monorepo for PlayConnect MVP.
+Enterprise monorepo for Academyflo MVP.
 
 ## Architecture
 
@@ -109,7 +109,7 @@ The compose stack includes:
 ### Docker Build (standalone)
 
 ```bash
-docker build -t playconnect-api:local -f apps/api/Dockerfile .
+docker build -t academyflo-api:local -f apps/api/Dockerfile .
 ```
 
 ## Quality Gates

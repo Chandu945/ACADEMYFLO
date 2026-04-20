@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -359,6 +359,9 @@ function StatusChangeModal({
   const [selectedStatus, setSelectedStatus] = useState<StudentStatus | ''>('');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
+  // Defense-in-depth dedup: setSaving(true) is async, so a fast double-tap can
+  // queue two calls before the disabled state propagates to the button.
+  const inflightRef = useRef(false);
 
   const options: { value: StudentStatus; label: string }[] = student.status === 'ACTIVE'
     ? [
@@ -372,18 +375,42 @@ function StatusChangeModal({
       crossAlert('Validation', 'Please select a status');
       return;
     }
+    if (inflightRef.current) return;
+    inflightRef.current = true;
     setSaving(true);
-    const result = await studentApi.changeStudentStatus(student.id, {
-      status: selectedStatus,
-      reason: reason.trim() || undefined,
-    });
-    setSaving(false);
-    if (result.ok) {
-      setSelectedStatus('');
-      setReason('');
-      onChanged();
-    } else {
-      crossAlert('Error', result.error.message);
+    try {
+      const result = await studentApi.changeStudentStatus(student.id, {
+        status: selectedStatus,
+        reason: reason.trim() || undefined,
+      });
+      if (result.ok) {
+        setSelectedStatus('');
+        setReason('');
+        onChanged();
+      } else {
+        // Map common server error codes to actionable messages so the user
+        // knows whether to retry, fix input, or contact an admin.
+        const code = result.error.code;
+        let title = 'Error';
+        let msg = result.error.message;
+        if (code === 'FORBIDDEN') {
+          title = 'Not allowed';
+          msg = 'You do not have permission to change this student’s status.';
+        } else if (code === 'NOT_FOUND') {
+          title = 'Not found';
+          msg = 'This student no longer exists. Please refresh.';
+        } else if (code === 'CONFLICT') {
+          title = 'Conflict';
+          msg = result.error.message;
+        } else if (code === 'NETWORK' || code === 'UNKNOWN') {
+          title = 'Network error';
+          msg = 'Could not reach the server. Check your connection and try again.';
+        }
+        crossAlert(title, msg);
+      }
+    } finally {
+      inflightRef.current = false;
+      setSaving(false);
     }
   };
 

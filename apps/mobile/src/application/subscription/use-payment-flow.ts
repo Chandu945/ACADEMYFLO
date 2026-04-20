@@ -9,8 +9,9 @@ import { pollSubscriptionPaymentStatusUseCase } from './use-cases/poll-subscript
 import type { SubscriptionApiPort } from './ports';
 import type { CheckoutPort } from '../payments/ports';
 
-const POLL_INTERVAL_MS = 3000;
-const MAX_POLL_ATTEMPTS = 20;
+/** Exponential backoff schedule (ms). Roughly ~2 minutes total — enough for
+ *  a real Cashfree confirmation without battering the server for minutes. */
+const POLL_SCHEDULE_MS = [2000, 3000, 5000, 8000, 13000, 21000, 30000, 30000];
 
 export type UsePaymentFlowReturn = {
   status: PaymentFlowStatus;
@@ -18,6 +19,10 @@ export type UsePaymentFlowReturn = {
   orderId: string | null;
   paymentResult: PaymentStatusResponse | null;
   startPayment: () => Promise<void>;
+  /** Resume polling for a PENDING payment from a previous session (e.g. after
+   *  an app kill mid-checkout). Idempotent: safe to call repeatedly; a no-op
+   *  if a flow is already in progress. */
+  resumePayment: (orderId: string) => void;
   reset: () => void;
 };
 
@@ -58,10 +63,19 @@ export function usePaymentFlow(
   }, []);
 
   const pollStatus = useCallback(
-    async (oid: string, attempt = 0) => {
+    async (oid: string, attempt = 0, sessionExpiresAtMs?: number) => {
       if (!mountedRef.current) return;
 
-      if (attempt >= MAX_POLL_ATTEMPTS) {
+      // Bail early if the Cashfree session has expired. `sessionExpiresAtMs`
+      // is undefined on the resume path (server will still surface EXPIRED
+      // via the status endpoint thanks to the poll-time verification).
+      if (sessionExpiresAtMs && Date.now() > sessionExpiresAtMs) {
+        setStatus('failed');
+        setError('Payment session expired. Please try again.');
+        return;
+      }
+
+      if (attempt >= POLL_SCHEDULE_MS.length) {
         setStatus('failed');
         setError('Payment verification timed out. Please check back later.');
         return;
@@ -71,6 +85,8 @@ export function usePaymentFlow(
 
       if (!mountedRef.current) return;
 
+      const nextDelay = POLL_SCHEDULE_MS[attempt] ?? 30000;
+
       if (!result.ok) {
         const code = result.error.code;
         if (code === 'FORBIDDEN' || code === 'NOT_FOUND' || code === 'VALIDATION') {
@@ -78,9 +94,12 @@ export function usePaymentFlow(
           setError(result.error.message);
           return;
         }
-        // Transient error — retry (only if still mounted)
+        // Transient error — retry with the next backoff slot.
         if (mountedRef.current) {
-          pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+          pollRef.current = setTimeout(
+            () => pollStatus(oid, attempt + 1, sessionExpiresAtMs),
+            nextDelay,
+          );
         }
         return;
       }
@@ -100,9 +119,12 @@ export function usePaymentFlow(
         return;
       }
 
-      // Still PENDING — continue polling (only if still mounted)
+      // Still PENDING — continue polling with the next backoff slot.
       if (mountedRef.current) {
-        pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+        pollRef.current = setTimeout(
+          () => pollStatus(oid, attempt + 1, sessionExpiresAtMs),
+          nextDelay,
+        );
       }
     },
     [deps, onSuccess],
@@ -142,9 +164,13 @@ export function usePaymentFlow(
 
       if (!mountedRef.current) return;
 
-      // Start polling for payment status
+      // Start polling for payment status. If Cashfree gave us an expiresAt
+      // we use it to fail fast once the session is known to be dead.
+      const expiresAtMs = Number.isFinite(Date.parse(data.expiresAt))
+        ? Date.parse(data.expiresAt)
+        : undefined;
       setStatus('polling');
-      pollStatus(data.orderId);
+      pollStatus(data.orderId, 0, expiresAtMs);
     } finally {
       startingRef.current = false;
     }
@@ -158,12 +184,27 @@ export function usePaymentFlow(
     setPaymentResult(null);
   }, [stopPolling]);
 
+  const resumePayment = useCallback(
+    (oid: string) => {
+      // Only resume when genuinely idle — never clobber an in-flight flow.
+      if (status !== 'idle') return;
+      if (!oid) return;
+      setError(null);
+      setPaymentResult(null);
+      setOrderId(oid);
+      setStatus('polling');
+      pollStatus(oid);
+    },
+    [status, pollStatus],
+  );
+
   return {
     status,
     error,
     orderId,
     paymentResult,
     startPayment,
+    resumePayment,
     reset,
   };
 }

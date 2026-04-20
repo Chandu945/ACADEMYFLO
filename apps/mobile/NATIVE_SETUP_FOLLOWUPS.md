@@ -31,7 +31,7 @@ defending against a targeted MITM on a specifically-compromised WiFi.
 ### Trigger to implement
 
 Add pinning as part of the **custom-domain cutover release** — the same
-release that points the mobile app at `api.playconnect.in` (or whatever
+release that points the mobile app at `api.academyflo.in` (or whatever
 final domain). At that point:
 
 1. Issue your own cert. Let's Encrypt (cert-manager / certbot with
@@ -39,7 +39,7 @@ final domain). At that point:
 2. Pin the **intermediate CA public key**, not the leaf:
 
    ```bash
-   echo | openssl s_client -servername api.playconnect.in -connect api.playconnect.in:443 -showcerts 2>/dev/null \
+   echo | openssl s_client -servername api.academyflo.in -connect api.academyflo.in:443 -showcerts 2>/dev/null \
      | awk '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/' \
      | openssl x509 -pubkey -noout \
      | openssl pkey -pubin -outform der 2>/dev/null \
@@ -59,7 +59,7 @@ final domain). At that point:
      pinned domain. Reference it from `AndroidManifest.xml`
      `android:networkSecurityConfig="@xml/network_security_config"`.
    - **iOS**: `Info.plist`
-     `NSAppTransportSecurity > NSPinnedDomains > api.playconnect.in >
+     `NSAppTransportSecurity > NSPinnedDomains > api.academyflo.in >
      NSPinnedCAIdentities` with the base64 hash.
 
 4. **Only enable in release builds**. Dev/staging must be unpinned so
@@ -149,7 +149,7 @@ branch — leaving it creates two paths with different semantics.
 
 ### Dependency on Bug 18h
 SSL pinning affects the Cashfree SDK's internal network calls too. Coordinate
-rollout: pin both PlayConnect API and Cashfree's public API hashes, OR scope
+rollout: pin both Academyflo API and Cashfree's public API hashes, OR scope
 the pinning allowlist to our own domain only and let the Cashfree SDK use
 plain TLS.
 

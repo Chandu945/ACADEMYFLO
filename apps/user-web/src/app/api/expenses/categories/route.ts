@@ -5,6 +5,7 @@ import { apiGet, apiPost, apiDelete } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { toErrorResponse } from '@/infra/http/error-mapper';
+import { isValidObjectId } from '@/infra/validation/ids';
 
 export async function GET(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
@@ -38,7 +39,10 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const id = searchParams.get('id');
-  const result = await apiDelete(`/api/v1/expense-categories/${encodeURIComponent(id || '')}`, { accessToken });
+  if (!isValidObjectId(id)) {
+    return NextResponse.json({ message: 'Invalid category id' }, { status: 400 });
+  }
+  const result = await apiDelete(`/api/v1/expense-categories/${encodeURIComponent(id)}`, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,6 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
-import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeConfig } from '@playconnect/contracts';
+import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeConfig } from '@academyflo/contracts';
 
 export interface FeeDueProps {
   academyId: string;

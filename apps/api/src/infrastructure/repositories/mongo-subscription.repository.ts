@@ -5,7 +5,7 @@ import type { SubscriptionRepository } from '@domain/subscription/ports/subscrip
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import { SubscriptionModel } from '../database/schemas/subscription.schema';
 import type { SubscriptionDocument } from '../database/schemas/subscription.schema';
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 

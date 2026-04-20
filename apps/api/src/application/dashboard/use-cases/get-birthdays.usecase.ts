@@ -4,7 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository, BirthdayStudent } from '@domain/student/ports/student.repository';
 import { FeeErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetBirthdaysInput {
   actorUserId: string;
@@ -41,12 +41,18 @@ export class GetBirthdaysUseCase {
 
     const academyId = user.academyId;
 
-    // Use IST (UTC+5:30) for "today"
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-    const month = istNow.getUTCMonth() + 1;
-    const day = istNow.getUTCDate();
+    // Resolve "today" in IST via Intl so we don't depend on the server TZ
+    // and avoid the UTC-offset-on-shifted-Date anti-pattern. Returns a
+    // YYYY-MM-DD string we can split safely.
+    const istToday = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    const [, mStr, dStr] = istToday.split('-');
+    const month = Number(mStr);
+    const day = Number(dStr);
 
     let results: BirthdayStudent[];
     if (input.scope === 'today') {

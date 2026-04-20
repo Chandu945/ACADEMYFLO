@@ -38,6 +38,7 @@ export class AdminAuthController {
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { limit: 5, ttl: 10_000 }, medium: { limit: 10, ttl: 60_000 }, long: { limit: 30, ttl: 900_000 } })
   @ApiOperation({ summary: 'Admin login' })
   async login(@Body() dto: AdminLoginDto, @Req() req: Request) {
     const result = await this.adminLogin.execute({

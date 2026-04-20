@@ -9,7 +9,7 @@ import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-att
 import { validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { StaffAttendanceErrors } from '../../common/errors';
 import type { DailyStaffAttendanceReportDto } from '../dtos/staff-attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetDailyStaffAttendanceReportInput {
   actorUserId: string;
@@ -51,7 +51,7 @@ export class GetDailyStaffAttendanceReportUseCase {
     const [holiday, totalActive, presentRecords] = await Promise.all([
       this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date),
       this.userRepo.countActiveByAcademyAndRole(actor.academyId, 'STAFF'),
-      this.staffAttendanceRepo.findAbsentByAcademyAndDate(actor.academyId, input.date),
+      this.staffAttendanceRepo.findPresentByAcademyAndDate(actor.academyId, input.date),
     ]);
     const isHoliday = holiday !== null;
 

@@ -12,7 +12,7 @@ Continuous monitoring by the on-call engineer immediately after cutover.
 
 - [ ] `GET /api/v1/health/liveness` returns 200
 - [ ] `GET /api/v1/health/readiness` returns 200
-- [ ] Admin web login page loads (`https://admin.playconnect.app/login`)
+- [ ] Admin web login page loads (`https://admin.academyflo.com/login`)
 
 ### Error Monitoring
 

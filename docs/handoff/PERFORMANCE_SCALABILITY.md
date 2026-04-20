@@ -1,6 +1,6 @@
 # Performance & Scalability
 
-Summary of performance controls and scalability patterns in the PlayConnect system.
+Summary of performance controls and scalability patterns in the Academyflo system.
 
 ---
 

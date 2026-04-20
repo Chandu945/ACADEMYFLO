@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 @Injectable()
 export class RbacGuard implements CanActivate {

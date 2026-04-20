@@ -58,8 +58,14 @@ export function StaffListScreen() {
     }
   }, [refetch]);
 
+  // Defense-in-depth dedup: setToggling(true) is async, so a fast double-tap
+  // on the confirm button can fire two PATCHes before the disabled state
+  // propagates.
+  const toggleInflightRef = useRef(false);
   const handleToggleStatus = useCallback(async () => {
     if (!toggleTarget) return;
+    if (toggleInflightRef.current) return;
+    toggleInflightRef.current = true;
     setToggling(true);
     setToggleError(null);
 
@@ -75,12 +81,24 @@ export function StaffListScreen() {
         setToggleTarget(null);
         refetch();
       } else {
-        setToggleError(result.error.message);
+        // Code-aware mapping so the user sees an actionable message instead
+        // of the raw transport error.
+        const code = result.error.code;
+        let msg = result.error.message;
+        if (code === 'FORBIDDEN') {
+          msg = 'You do not have permission to change this staff member’s status.';
+        } else if (code === 'NOT_FOUND') {
+          msg = 'This staff member no longer exists. Please refresh.';
+        } else if (code === 'NETWORK' || code === 'UNKNOWN') {
+          msg = 'Could not reach the server. Check your connection and try again.';
+        }
+        setToggleError(msg);
       }
     } catch (e) {
       if (__DEV__) console.error('[StaffListScreen] Toggle status failed:', e);
       setToggleError('Something went wrong. Please try again.');
     } finally {
+      toggleInflightRef.current = false;
       setToggling(false);
     }
   }, [toggleTarget, refetch]);

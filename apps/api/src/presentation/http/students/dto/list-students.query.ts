@@ -1,7 +1,7 @@
 import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { STUDENT_STATUSES, FEE_FILTERS } from '@playconnect/contracts';
-import type { StudentStatus, FeeFilter } from '@playconnect/contracts';
+import { STUDENT_STATUSES, FEE_FILTERS } from '@academyflo/contracts';
+import type { StudentStatus, FeeFilter } from '@academyflo/contracts';
 import { PaginationQueryDto } from '../../common/dto/pagination.query';
 
 export class ListStudentsQueryDto extends PaginationQueryDto {

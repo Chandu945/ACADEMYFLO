@@ -147,7 +147,7 @@ async function request<T>(
 
     if (!res.ok) {
       const json = await res.json().catch(() => null);
-      return err(mapHttpError(res.status, json));
+      return err(mapHttpError(res.status, json, res.headers.get('retry-after')));
     }
 
     if (res.status === 204) return ok(undefined as T);

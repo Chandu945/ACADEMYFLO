@@ -113,7 +113,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /opt/playconnect
+            cd /opt/academyflo
             export DOCKER_REGISTRY=${{ env.DOCKER_REGISTRY }}
             export IMAGE_TAG=${{ needs.validate-tag.outputs.version }}
             docker compose -f docker-compose.prod.yml pull

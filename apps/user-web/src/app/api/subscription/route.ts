@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { apiGet, apiPost } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { validateCsrfToken } from '@/infra/auth/csrf-token';
 import { toErrorResponse } from '@/infra/http/error-mapper';
 
 export async function GET(request: NextRequest) {
@@ -17,6 +18,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) return NextResponse.json({ message: 'Invalid origin' }, { status: 403 });
+  // Initiating a payment is state-changing and must be CSRF-protected even
+  // though the upstream API validates the session cookie — defense in depth.
+  if (!(await validateCsrfToken(request))) {
+    return NextResponse.json({ message: 'CSRF token invalid or missing' }, { status: 403 });
+  }
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 

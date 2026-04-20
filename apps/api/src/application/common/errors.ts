@@ -140,7 +140,6 @@ export const ParentErrors = {
   inviteNotAllowed: () => AppError.forbidden('Only owners can invite parents'),
   parentNotFound: (id: string) => AppError.notFound('Parent', id),
   linkNotFound: () => AppError.notFound('ParentStudentLink'),
-  linkAlreadyExists: () => AppError.conflict('Parent is already linked to this student'),
   childNotLinked: () => AppError.forbidden('You are not linked to this student'),
   payNotAllowed: () => AppError.forbidden('Only parents can pay fees online'),
   feeDueNotFound: (id: string) => AppError.notFound('FeeDue', id),
@@ -163,6 +162,8 @@ export const EnquiryErrors = {
   closeNotAllowed: () => AppError.forbidden('Only academy owner can close enquiries'),
   convertNotAllowed: () => AppError.forbidden('Only academy owner can convert enquiries to students'),
   manageNotAllowed: () => AppError.forbidden('Only owners and staff can manage enquiries'),
+  concurrencyConflict: () =>
+    AppError.conflict('This enquiry was modified by someone else. Please reload and try again.'),
 } as const;
 
 export const InstituteInfoErrors = {
@@ -190,6 +191,8 @@ export const EventErrors = {
   missingStartTime: () => AppError.validation('Start time is required for non-all-day events'),
   invalidStatusTransition: (from: string, to: string) =>
     AppError.validation(`Cannot change event status from ${from} to ${to}`),
+  concurrencyConflict: () =>
+    AppError.conflict('This event was modified by someone else. Please reload and try again.'),
 } as const;
 
 export const AdminErrors = {

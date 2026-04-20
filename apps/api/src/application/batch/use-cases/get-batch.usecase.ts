@@ -8,7 +8,7 @@ import { BatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
 import { requireBatchInAcademy } from '../common/require-batch';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetBatchInput {
   actorUserId: string;

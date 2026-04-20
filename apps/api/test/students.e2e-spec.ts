@@ -27,6 +27,12 @@ import {
   InMemoryStudentBatchRepository,
 } from './helpers/in-memory-repos';
 import { createTestTokenService, createInMemoryAuditRecorder } from './helpers/test-services';
+import {
+  noopParentLinkRepo,
+  noopAttendanceRepo,
+  noopPaymentRequestRepo,
+  passthroughTransaction,
+} from './helpers/soft-delete-deps';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { FeeDue } from '../src/domain/fee/entities/fee-due.entity';
 import { STUDENT_QUERY_REPOSITORY } from '../src/domain/student/ports/student-query.repository';
@@ -110,13 +116,23 @@ describe('Students Endpoints (e2e)', () => {
         {
           provide: 'CHANGE_STUDENT_STATUS_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository) =>
-            new ChangeStudentStatusUseCase(ur, sr, auditRecorder),
+            new ChangeStudentStatusUseCase(ur, sr, auditRecorder, undefined, passthroughTransaction),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY],
         },
         {
           provide: 'SOFT_DELETE_STUDENT_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository) =>
-            new SoftDeleteStudentUseCase(ur, sr, auditRecorder),
+            new SoftDeleteStudentUseCase(
+              ur,
+              sr,
+              auditRecorder,
+              feeDueRepo,
+              studentBatchRepo,
+              noopParentLinkRepo,
+              noopAttendanceRepo,
+              noopPaymentRequestRepo,
+              passthroughTransaction,
+            ),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY],
         },
         {

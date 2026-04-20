@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from '@playconnect/contracts';
+import type { SubscriptionStatus } from '@academyflo/contracts';
 
 /**
  * Academy access evaluation rule.

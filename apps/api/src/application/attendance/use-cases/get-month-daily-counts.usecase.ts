@@ -9,7 +9,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canViewAttendance, validateMonthKey } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
 import type { MonthDailyCountsDto, MonthDailyCountDay } from '../dtos/attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetMonthDailyCountsInput {
   actorUserId: string;
@@ -54,7 +54,7 @@ export class GetMonthDailyCountsUseCase {
     // Fetch all data in parallel (3 queries instead of 30+)
     const [totalStudents, presentRecords, holidays] = await Promise.all([
       this.studentRepo.countActiveByAcademy(academyId),
-      this.attendanceRepo.findAbsentByAcademyAndMonth(academyId, input.month),
+      this.attendanceRepo.findPresentByAcademyAndMonth(academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(academyId, input.month),
     ]);
 

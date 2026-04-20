@@ -7,7 +7,7 @@ import type { ClockPort } from '../../common/clock.port';
 import type { Result } from '@shared/kernel';
 import { ok } from '@shared/kernel';
 import { formatLocalDate } from '@shared/date-utils';
-import { computeLateFee } from '@playconnect/contracts';
+import { computeLateFee } from '@academyflo/contracts';
 
 /** Minimal interface so we can accept QueueService without a hard dependency */
 interface NotificationQueuePort {

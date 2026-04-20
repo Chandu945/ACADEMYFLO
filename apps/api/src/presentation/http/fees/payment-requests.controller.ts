@@ -31,13 +31,14 @@ import {
   ListTransactionLogsQueryDto,
 } from './dto/payment-request.dto';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { PushNotificationService } from '@application/notifications/push-notification.service';
 import { PUSH_NOTIFICATION_SERVICE } from '../device-tokens/device-tokens.module';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
-import type { PaymentRequestStatus } from '@playconnect/contracts';
+import type { PaymentRequestStatus } from '@academyflo/contracts';
 import type { Request } from 'express';
 
 @ApiTags('Payment Requests')
@@ -135,7 +136,7 @@ export class PaymentRequestsController {
   @Roles('STAFF')
   @ApiOperation({ summary: 'Edit a payment request (staff, own, pending only)' })
   async edit(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: EditPaymentRequestDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -160,7 +161,7 @@ export class PaymentRequestsController {
   @Put(':id/cancel')
   @Roles('STAFF')
   @ApiOperation({ summary: 'Cancel a payment request (staff, own only)' })
-  async cancel(@Param('id') id: string, @CurrentUser() user: CurrentUserType, @Req() req: Request) {
+  async cancel(@Param('id', ParseObjectIdPipe) id: string, @CurrentUser() user: CurrentUserType, @Req() req: Request) {
     const result = await this.cancelPaymentRequest.execute({
       actorUserId: user.userId,
       actorRole: user.role,
@@ -181,7 +182,7 @@ export class PaymentRequestsController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Approve a payment request (owner only)' })
   async approve(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -221,7 +222,7 @@ export class PaymentRequestsController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Reject a payment request (owner only)' })
   async reject(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: RejectPaymentRequestDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,

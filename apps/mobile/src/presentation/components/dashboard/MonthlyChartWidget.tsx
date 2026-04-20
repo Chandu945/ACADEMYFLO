@@ -54,10 +54,13 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
   const [data, setData] = useState<MonthlyChartPoint[] | null>(null);
   const [year, setYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  // null = no error; string = mapped error message
+  const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
     setSelectedMonth(null);
+    setError(null);
 
     // Use cache for past years
     if (year < currentYear && chartCache.has(year)) {
@@ -74,6 +77,17 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
       if (year < currentYear) {
         chartCache.set(year, result.value.data);
       }
+    } else {
+      // Surface load failures so the user can retry instead of seeing an
+      // empty/silent widget.
+      const code = result.error.code;
+      const msg =
+        code === 'NETWORK' || code === 'UNKNOWN'
+          ? 'Could not load chart. Check your connection.'
+          : code === 'FORBIDDEN'
+            ? 'You do not have permission to view this chart.'
+            : result.error.message;
+      setError(msg);
     }
   }, [year, currentYear]);
 
@@ -85,6 +99,19 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
     };
   }, [load]);
 
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Monthly chart</Text>
+        <Text style={[styles.title, { color: colors.danger, fontSize: fontSizes.sm, marginTop: spacing.sm }]}>
+          {error}
+        </Text>
+        <TouchableOpacity onPress={load} style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}>
+          <Text style={{ color: colors.primary, fontWeight: fontWeights.semibold }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   if (!data) return null;
 
   const maxValue = Math.max(...data.map((d) => Math.max(d.income, d.expense)), 1);

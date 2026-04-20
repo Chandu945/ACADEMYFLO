@@ -45,22 +45,24 @@ function buildDeps() {
     save: jest.fn(),
     deleteByAcademyStudentDate: jest.fn(),
     findByAcademyStudentDate: jest.fn(),
-    findAbsentByAcademyAndDate: jest.fn(),
-    findAbsentByAcademyStudentAndMonth: jest.fn(),
-    findAbsentByAcademyAndMonth: jest.fn(),
+    findPresentByAcademyAndDate: jest.fn(),
+    findPresentByAcademyStudentAndMonth: jest.fn(),
+    findPresentByAcademyAndMonth: jest.fn(),
     deleteByAcademyAndDate: jest.fn(),
-    countAbsentByAcademyAndDate: jest.fn(),
+    countPresentByAcademyAndDate: jest.fn(),
+    deleteAllByAcademyAndStudent: jest.fn(),
   };
-  return { userRepo, holidayRepo, attendanceRepo };
+  const auditRecorder = { record: jest.fn() };
+  return { userRepo, holidayRepo, attendanceRepo, auditRecorder };
 }
 
 describe('DeclareHolidayUseCase', () => {
   it('should declare a holiday successfully', async () => {
-    const { userRepo, holidayRepo, attendanceRepo } = buildDeps();
+    const { userRepo, holidayRepo, attendanceRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
     holidayRepo.findByAcademyAndDate.mockResolvedValue(null);
 
-    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo);
+    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
@@ -81,7 +83,7 @@ describe('DeclareHolidayUseCase', () => {
   });
 
   it('should be idempotent when holiday already exists', async () => {
-    const { userRepo, holidayRepo, attendanceRepo } = buildDeps();
+    const { userRepo, holidayRepo, attendanceRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
     holidayRepo.findByAcademyAndDate.mockResolvedValue(
       Holiday.create({
@@ -93,7 +95,7 @@ describe('DeclareHolidayUseCase', () => {
       }),
     );
 
-    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo);
+    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
@@ -105,9 +107,9 @@ describe('DeclareHolidayUseCase', () => {
   });
 
   it('should reject STAFF from declaring holidays (403)', async () => {
-    const { userRepo, holidayRepo, attendanceRepo } = buildDeps();
+    const { userRepo, holidayRepo, attendanceRepo, auditRecorder } = buildDeps();
 
-    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo);
+    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'staff-1',
       actorRole: 'STAFF',
@@ -121,10 +123,10 @@ describe('DeclareHolidayUseCase', () => {
   });
 
   it('should reject when no academy', async () => {
-    const { userRepo, holidayRepo, attendanceRepo } = buildDeps();
+    const { userRepo, holidayRepo, attendanceRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner(null));
 
-    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo);
+    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo, auditRecorder);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
@@ -138,9 +140,9 @@ describe('DeclareHolidayUseCase', () => {
   });
 
   it('should reject invalid date', async () => {
-    const { userRepo, holidayRepo, attendanceRepo } = buildDeps();
+    const { userRepo, holidayRepo, attendanceRepo, auditRecorder } = buildDeps();
 
-    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo);
+    const uc = new DeclareHolidayUseCase(userRepo, holidayRepo, attendanceRepo, auditRecorder);
     userRepo.findById.mockResolvedValue(createOwner());
 
     const result = await uc.execute({

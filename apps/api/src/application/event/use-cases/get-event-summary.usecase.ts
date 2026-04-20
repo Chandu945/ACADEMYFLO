@@ -4,7 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EventRepository } from '@domain/event/ports/event.repository';
 import { EventErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetEventSummaryInput {
   actorUserId: string;

@@ -1,5 +1,5 @@
-export type { LocalDate, MonthKey } from '@playconnect/contracts';
-import type { StudentAttendanceStatus } from '@playconnect/contracts';
+export type { LocalDate, MonthKey } from '@academyflo/contracts';
+import type { StudentAttendanceStatus } from '@academyflo/contracts';
 
 export type AttendanceStatus = StudentAttendanceStatus;
 

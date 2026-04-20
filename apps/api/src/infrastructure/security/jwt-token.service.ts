@@ -27,8 +27,8 @@ export class JwtTokenService implements TokenService {
     return this.jwt.sign(payload, {
       secret: this.config.jwtAccessSecret,
       expiresIn: this.config.jwtAccessTtl,
-      issuer: 'playconnect-api',
-      audience: 'playconnect',
+      issuer: 'academyflo-api',
+      audience: 'academyflo',
     });
   }
 
@@ -40,8 +40,8 @@ export class JwtTokenService implements TokenService {
     try {
       return this.jwt.verify<AccessTokenPayload>(token, {
         secret: this.config.jwtAccessSecret,
-        issuer: 'playconnect-api',
-        audience: 'playconnect',
+        issuer: 'academyflo-api',
+        audience: 'academyflo',
       });
     } catch {
       return null;

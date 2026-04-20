@@ -8,7 +8,8 @@ import type { EnquiryRepository } from '@domain/enquiry/ports/enquiry.repository
 import { Enquiry } from '@domain/enquiry/entities/enquiry.entity';
 import type { EnquirySource } from '@domain/enquiry/entities/enquiry.entity';
 import { EnquiryErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface CreateEnquiryInput {
   actorUserId: string;
@@ -48,6 +49,7 @@ export class CreateEnquiryUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly enquiryRepo: EnquiryRepository,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: CreateEnquiryInput): Promise<Result<CreateEnquiryOutput, AppError>> {
@@ -67,10 +69,15 @@ export class CreateEnquiryUseCase {
       return err(AppErrorClass.validation('Mobile number must be 10-15 digits'));
     }
 
+    // Normalize mobile (strip whitespace/dashes/parens) so the dedup query
+    // matches the same canonical form the entity persists. Otherwise
+    // "+91 98765 43210" wouldn't match a stored "+919876543210".
+    const normalizedMobile = input.mobileNumber.replace(/[\s\-()]/g, '');
+
     // Check for duplicate active enquiry (soft warning)
     const existing = await this.enquiryRepo.findActiveByMobileAndAcademy(
       actor.academyId,
-      input.mobileNumber,
+      normalizedMobile,
     );
 
     const nextFollowUp = input.nextFollowUpDate ? new Date(input.nextFollowUpDate) : null;
@@ -92,6 +99,18 @@ export class CreateEnquiryUseCase {
     });
 
     await this.enquiryRepo.save(enquiry);
+
+    await this.auditRecorder.record({
+      academyId: actor.academyId,
+      actorUserId: input.actorUserId,
+      action: 'ENQUIRY_CREATED',
+      entityType: 'ENQUIRY',
+      entityId: enquiry.id.toString(),
+      context: {
+        prospectName: enquiry.prospectName,
+        mobileNumber: enquiry.mobileNumber,
+      },
+    });
 
     const output: CreateEnquiryOutput = {
       id: enquiry.id.toString(),

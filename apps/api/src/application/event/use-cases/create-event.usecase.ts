@@ -9,7 +9,7 @@ import { CalendarEvent, deriveEventStatus } from '@domain/event/entities/event.e
 import type { EventType, TargetAudience } from '@domain/event/entities/event.entity';
 import { EventErrors } from '../../common/errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface CreateEventInput {
   actorUserId: string;

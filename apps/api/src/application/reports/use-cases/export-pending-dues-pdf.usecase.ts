@@ -9,7 +9,7 @@ import { canViewReports } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
 import type { StudentWiseDueItemDto } from '../dtos/student-wise-dues.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ExportPendingDuesPdfInput {
   actorUserId: string;
@@ -36,10 +36,21 @@ export class ExportPendingDuesPdfUseCase {
 
     const academyId = user.academyId;
 
-    const [monthDues, allUnpaid] = await Promise.all([
+    const [monthDues, allUnpaidRaw] = await Promise.all([
       this.feeDueRepo.listByAcademyAndMonth(academyId, input.month),
       this.feeDueRepo.listUnpaidByAcademy(academyId),
     ]);
+
+    // Sanity cap: a runaway academy with 50k+ unpaid dues would OOM the PDF
+    // path. Truncate and log so we degrade rather than crash; product can
+    // tighten if this ever fires legitimately.
+    const MAX_UNPAID_ROWS = 5000;
+    if (allUnpaidRaw.length > MAX_UNPAID_ROWS) {
+      console.warn(
+        `[export-pending-dues-pdf] academy=${academyId} unpaid=${allUnpaidRaw.length} > cap=${MAX_UNPAID_ROWS}; truncating`,
+      );
+    }
+    const allUnpaid = allUnpaidRaw.slice(0, MAX_UNPAID_ROWS);
 
     const unpaidByStudent = new Map<string, { count: number; totalAmount: number }>();
     for (const due of allUnpaid) {
@@ -49,14 +60,13 @@ export class ExportPendingDuesPdfUseCase {
       unpaidByStudent.set(due.studentId, existing);
     }
 
+    // Batch student lookups to avoid N+1 — a 200-student academy was making
+    // 200 sequential findById calls and timing out the PDF endpoint.
     const studentIds = [...new Set(monthDues.map((d) => d.studentId))];
-    const studentMap = new Map<string, string>();
-    for (const sid of studentIds) {
-      const student = await this.studentRepo.findById(sid);
-      if (student) {
-        studentMap.set(sid, student.fullName);
-      }
-    }
+    const students = await this.studentRepo.findByIds(studentIds);
+    const studentMap = new Map<string, string>(
+      students.map((s) => [s.id.toString(), s.fullName]),
+    );
 
     const items: StudentWiseDueItemDto[] = monthDues.map((due) => {
       const unpaid = unpaidByStudent.get(due.studentId) ?? { count: 0, totalAmount: 0 };

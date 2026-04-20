@@ -8,7 +8,7 @@ import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { AttendanceErrors } from '../../common/errors';
 import type { HolidayDto } from '../dtos/attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ListHolidaysInput {
   actorUserId: string;

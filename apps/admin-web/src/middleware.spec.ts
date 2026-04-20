@@ -13,7 +13,7 @@ function createMockRequest(pathname: string, hasCookie: boolean): NextRequest {
   return {
     nextUrl: createMockUrl(pathname),
     cookies: {
-      has: (name: string) => hasCookie && name === 'pc_admin_session',
+      has: (name: string) => hasCookie && name === 'af_admin_session',
     },
   } as unknown as NextRequest;
 }

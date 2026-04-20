@@ -6,10 +6,11 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import { canManageStaff } from '@domain/identity/rules/staff.rules';
 import { AuthErrors, StaffErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { renderStaffWelcomeEmail } from '../../notifications/templates/staff-welcome-template';
 import { randomUUID } from 'crypto';
 
@@ -54,6 +55,7 @@ export class CreateStaffUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly passwordHasher: PasswordHasher,
+    private readonly auditRecorder: AuditRecorderPort,
     private readonly academyRepo?: AcademyRepository,
     private readonly emailSender?: EmailSenderPort,
   ) {}
@@ -128,6 +130,18 @@ export class CreateStaffUseCase {
       }
       throw error;
     }
+
+    await this.auditRecorder.record({
+      academyId: owner.academyId,
+      actorUserId: input.ownerUserId,
+      action: 'STAFF_CREATED',
+      entityType: 'USER',
+      entityId: staffId,
+      context: {
+        staffName: staffWithAcademy.fullName,
+        email: staffWithAcademy.emailNormalized,
+      },
+    });
 
     // Fire-and-forget: send welcome email to new staff
     if (this.academyRepo && this.emailSender) {

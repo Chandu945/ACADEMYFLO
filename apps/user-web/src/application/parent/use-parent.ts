@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type ChildSummary = { studentId: string; fullName: string; status: string; monthlyFee: number; currentMonthAttendancePercent: number | null };
 type ParentProfile = { fullName: string; email: string; phoneNumber: string; profilePhotoUrl?: string | null };
@@ -120,7 +121,7 @@ export function usePaymentHistory() {
 
 export async function updateParentProfile(body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch('/api/parent/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body) });
+    const res = await fetch('/api/parent/profile', { method: 'PUT', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify(body) });
     const json = await res.json();
     return res.ok ? { ok: true as const, data: json } : { ok: false as const, error: json.message };
   } catch {
@@ -130,7 +131,7 @@ export async function updateParentProfile(body: Record<string, unknown>, accessT
 
 export async function changeParentPassword(currentPassword: string, newPassword: string, accessToken?: string | null) {
   try {
-    const res = await fetch('/api/parent/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ changePassword: true, currentPassword, newPassword }) });
+    const res = await fetch('/api/parent/profile', { method: 'PUT', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify({ changePassword: true, currentPassword, newPassword }) });
     const json = await res.json();
     return res.ok ? { ok: true as const } : { ok: false as const, error: json.message };
   } catch {

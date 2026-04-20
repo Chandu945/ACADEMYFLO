@@ -8,7 +8,7 @@ import { canViewReports } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
 import type { MonthWiseDuesSummaryDto, MonthWiseDueItemDto } from '../dtos/month-wise-dues.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetMonthWiseDuesReportInput {
   actorUserId: string;

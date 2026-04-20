@@ -1,6 +1,4 @@
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+import { escapeHtml, renderEmailLayout } from './_email-layout';
 
 export interface TrialStartedTemplateData {
   ownerName: string;
@@ -10,18 +8,23 @@ export interface TrialStartedTemplateData {
 }
 
 export function renderTrialStartedEmail(data: TrialStartedTemplateData): string {
-  const ownerName = escapeHtml(data.ownerName);
-  const academyName = escapeHtml(data.academyName);
-  const trialEndDate = escapeHtml(data.trialEndDate);
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-  <h2>Your Free Trial Has Started!</h2>
-  <p>Dear ${ownerName},</p>
-  <p>Your <strong>${data.trialDurationDays}-day free trial</strong> for <strong>${academyName}</strong> on Academyflo is now active.</p>
-  <p>Your trial expires on <strong>${trialEndDate}</strong>. During this period, you have full access to all features.</p>
-  <p>To continue using Academyflo after your trial ends, subscribe to a plan from the Subscription page.</p>
-  <p>Happy managing!<br>Academyflo Team</p>
-</body></html>`;
+  return renderEmailLayout({
+    preheader: `Your ${data.trialDurationDays}-day trial is active until ${data.trialEndDate}.`,
+    title: 'Your free trial is live',
+    greeting: `Dear ${data.ownerName},`,
+    tone: 'success',
+    body: `
+      <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#0F172A;">
+        Your <strong>${data.trialDurationDays}-day free trial</strong> for
+        <strong>${escapeHtml(data.academyName)}</strong> is now active. Every feature on Academyflo is
+        available to you during the trial — no credit card required.
+      </p>
+    `,
+    infoRows: [
+      { label: 'Trial ends on', value: escapeHtml(data.trialEndDate) },
+      { label: 'Duration', value: `${data.trialDurationDays} days` },
+    ],
+    cta: { label: 'Start exploring', url: 'https://academyflo.com/dashboard' },
+    footerNote: 'Before the trial ends, head to the Subscription page to pick a plan and keep your academy running smoothly.',
+  });
 }

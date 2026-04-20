@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type EnquiryListItem = { id: string; prospectName: string; mobileNumber: string; source: string | null; status: string; nextFollowUpDate: string | null; createdAt: string };
 type EnquiryDetail = EnquiryListItem & { guardianName: string | null; whatsappNumber: string | null; email: string | null; address: string | null; interestedIn: string | null; notes: string | null; closureReason: string | null; convertedStudentId: string | null; followUps: { id: string; date: string; notes: string; nextFollowUpDate: string | null; createdAt: string }[]; updatedAt: string };
@@ -16,12 +17,25 @@ type EnquiriesPagination = { page: number; limit: number; total: number; totalPa
 export function useEnquiries(
   filters: { status?: string; search?: string; page?: number; limit?: number } = {},
 ) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [data, setData] = useState<EnquiryListItem[]>([]);
   const [pagination, setPagination] = useState<EnquiriesPagination>({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Cross-account safety: clear cache when authenticated user changes
+  // (logout + login as different owner). Mirrors useStaff F4-H3.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setData([]);
+      setError(null);
+      setPagination({ page: 1, limit: 20, total: 0, totalPages: 1 });
+    }
+  }, [userId]);
 
   const { status, search, page = 1, limit = 20 } = filters;
 
@@ -143,7 +157,7 @@ export function useEnquiryDetail(id: string | null) {
 
 export async function createEnquiry(body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch('/api/enquiries', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const res = await fetch('/api/enquiries', { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
     const json = await safeJson(res);
     if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to create enquiry', fieldErrors: json?.['fieldErrors'] as Record<string, string> | undefined };
     return { ok: true as const, data: json };
@@ -152,16 +166,16 @@ export async function createEnquiry(body: Record<string, unknown>, accessToken?:
 
 export async function updateEnquiry(id: string, body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/enquiries/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const res = await fetch(`/api/enquiries/${encodeURIComponent(id)}`, { method: 'PUT', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
     const json = await safeJson(res);
-    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to update enquiry' };
+    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to update enquiry', fieldErrors: json?.['fieldErrors'] as Record<string, string> | undefined };
     return { ok: true as const, data: json };
   } catch { return { ok: false as const, error: 'Network error. Please try again.' }; }
 }
 
 export async function addFollowUp(enquiryId: string, body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/enquiries/${enquiryId}/follow-ups`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const res = await fetch(`/api/enquiries/${encodeURIComponent(enquiryId)}/follow-ups`, { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
     const json = await safeJson(res);
     if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to add follow-up' };
     return { ok: true as const, data: json };
@@ -170,7 +184,7 @@ export async function addFollowUp(enquiryId: string, body: Record<string, unknow
 
 export async function closeEnquiry(id: string, reason: string, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/enquiries/${id}/close`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ closureReason: reason }), signal: AbortSignal.timeout(15000) });
+    const res = await fetch(`/api/enquiries/${encodeURIComponent(id)}/close`, { method: 'PUT', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify({ closureReason: reason }), signal: AbortSignal.timeout(15000) });
     if (!res.ok) { const json = await safeJson(res); return { ok: false as const, error: (json?.['message'] as string) || 'Failed to close enquiry' }; }
     return { ok: true as const };
   } catch { return { ok: false as const, error: 'Network error. Please try again.' }; }
@@ -178,7 +192,7 @@ export async function closeEnquiry(id: string, reason: string, accessToken?: str
 
 export async function convertEnquiry(id: string, body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/enquiries/${id}/convert`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const res = await fetch(`/api/enquiries/${encodeURIComponent(id)}/convert`, { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
     const json = await safeJson(res);
     if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to convert enquiry' };
     return { ok: true as const, data: json };

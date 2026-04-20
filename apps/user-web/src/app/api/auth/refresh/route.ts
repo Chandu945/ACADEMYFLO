@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { apiPost } from '@/infra/http/api-client';
 import { getSessionCookie, setSessionCookie, clearSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { setCsrfCookie } from '@/infra/auth/csrf-token';
 
 type RefreshUser = {
   id: string;
@@ -51,6 +52,9 @@ export async function POST(request: NextRequest) {
     phoneNumber: backendUser?.phoneNumber ?? session.phoneNumber,
     profilePhotoUrl: backendUser?.profilePhotoUrl ?? session.profilePhotoUrl,
   });
+  // Rotate CSRF token alongside session refresh — keeps it in sync and prevents
+  // the token from going stale if the tab lives longer than the cookie TTL.
+  await setCsrfCookie();
 
   return NextResponse.json({
     accessToken: result.data.accessToken,

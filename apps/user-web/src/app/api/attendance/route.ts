@@ -6,6 +6,10 @@ import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { buildSafeParams } from '@/infra/http/query-sanitizer';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { toErrorResponse } from '@/infra/http/error-mapper';
+import { isValidObjectId } from '@/infra/validation/ids';
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_RE = /^\d{4}-\d{2}$/;
 
 export async function GET(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
@@ -36,7 +40,13 @@ export async function GET(request: NextRequest) {
   if (type === 'student-monthly') {
     const studentId = searchParams.get('studentId');
     const month = searchParams.get('month');
-    const result = await apiGet(`/api/v1/attendance/reports/monthly/student/${encodeURIComponent(studentId || '')}?month=${encodeURIComponent(month || '')}`, { accessToken });
+    if (!isValidObjectId(studentId)) {
+      return NextResponse.json({ message: 'Invalid studentId' }, { status: 400 });
+    }
+    if (!month || !MONTH_RE.test(month)) {
+      return NextResponse.json({ message: 'month must be YYYY-MM' }, { status: 400 });
+    }
+    const result = await apiGet(`/api/v1/attendance/reports/monthly/student/${encodeURIComponent(studentId)}?month=${encodeURIComponent(month)}`, { accessToken });
     if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
@@ -73,26 +83,50 @@ export async function PUT(request: NextRequest) {
   }
 
   const date = body['date'];
-  if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (typeof date !== 'string' || !DATE_RE.test(date)) {
     return NextResponse.json({ message: 'date is required and must be in YYYY-MM-DD format' }, { status: 400 });
   }
 
   if (body['bulk']) {
-    const updates = body['updates'] as { studentId: string; status: string }[] | undefined;
-    const absentStudentIds = Array.isArray(updates)
-      ? updates.filter((u) => u.status === 'ABSENT').map((u) => u.studentId)
-      : [];
+    const rawUpdates = body['updates'];
+    if (!Array.isArray(rawUpdates)) {
+      return NextResponse.json({ message: 'updates must be an array' }, { status: 400 });
+    }
+    // Hard cap — protects the API and avoids accidentally sending a huge payload.
+    if (rawUpdates.length > 1000) {
+      return NextResponse.json({ message: 'updates exceeds 1000 items' }, { status: 400 });
+    }
+    const absentStudentIds: string[] = [];
+    for (const u of rawUpdates) {
+      if (!u || typeof u !== 'object') {
+        return NextResponse.json({ message: 'each update must be an object' }, { status: 400 });
+      }
+      const record = u as Record<string, unknown>;
+      const sid = record['studentId'];
+      const status = record['status'];
+      if (!isValidObjectId(sid)) {
+        return NextResponse.json({ message: 'invalid studentId in updates' }, { status: 400 });
+      }
+      if (status !== 'PRESENT' && status !== 'ABSENT') {
+        return NextResponse.json({ message: 'status must be PRESENT or ABSENT' }, { status: 400 });
+      }
+      if (status === 'ABSENT') absentStudentIds.push(sid);
+    }
     const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(date)}`, { absentStudentIds }, { accessToken });
     if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
   const studentId = body['studentId'];
-  if (!studentId || typeof studentId !== 'string') {
-    return NextResponse.json({ message: 'studentId is required' }, { status: 400 });
+  if (!isValidObjectId(studentId)) {
+    return NextResponse.json({ message: 'studentId is required and must be a valid id' }, { status: 400 });
+  }
+  const status = body['status'];
+  if (status !== 'PRESENT' && status !== 'ABSENT') {
+    return NextResponse.json({ message: 'status must be PRESENT or ABSENT' }, { status: 400 });
   }
 
-  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(studentId)}?date=${encodeURIComponent(date)}`, { status: body['status'] }, { accessToken });
+  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(studentId)}?date=${encodeURIComponent(date)}`, { status }, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

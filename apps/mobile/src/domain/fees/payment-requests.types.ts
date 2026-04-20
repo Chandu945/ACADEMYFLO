@@ -1,5 +1,5 @@
-import type { PaymentRequestStatus } from '@playconnect/contracts';
-export type { PaymentRequestStatus } from '@playconnect/contracts';
+import type { PaymentRequestStatus } from '@academyflo/contracts';
+export type { PaymentRequestStatus } from '@academyflo/contracts';
 
 export type PaymentRequestItem = {
   id: string;

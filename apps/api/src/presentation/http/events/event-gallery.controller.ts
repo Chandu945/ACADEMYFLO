@@ -20,6 +20,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUser as CurrentUserType } from '@application/common/current-user';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import type { ListGalleryPhotosUseCase } from '@application/event/use-cases/list-gallery-photos.usecase';
 import type { UploadGalleryPhotoUseCase } from '@application/event/use-cases/upload-gallery-photo.usecase';
 import type { DeleteGalleryPhotoUseCase } from '@application/event/use-cases/delete-gallery-photo.usecase';
@@ -46,7 +47,7 @@ export class EventGalleryController {
   @Roles('OWNER', 'STAFF', 'PARENT')
   @ApiOperation({ summary: 'List gallery photos for an event' })
   async list(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseObjectIdPipe) eventId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -65,7 +66,7 @@ export class EventGalleryController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMAGE_FILE_SIZE } }))
   async upload(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseObjectIdPipe) eventId: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -89,8 +90,8 @@ export class EventGalleryController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Delete a photo from event gallery' })
   async remove(
-    @Param('eventId') eventId: string,
-    @Param('photoId') photoId: string,
+    @Param('eventId', ParseObjectIdPipe) eventId: string,
+    @Param('photoId', ParseObjectIdPipe) photoId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {

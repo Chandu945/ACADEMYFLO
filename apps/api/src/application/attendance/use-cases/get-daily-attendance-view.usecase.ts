@@ -12,7 +12,7 @@ import { canViewAttendance, validateLocalDate } from '@domain/attendance/rules/a
 import { formatLocalDate } from '../../../shared/date-utils';
 import { AttendanceErrors } from '../../common/errors';
 import type { DailyAttendanceViewItem } from '../dtos/attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetDailyAttendanceViewInput {
   actorUserId: string;
@@ -142,7 +142,7 @@ export class GetDailyAttendanceViewUseCase {
     }
 
     // Fetch present records for these students on this date
-    const presentRecords = await this.attendanceRepo.findAbsentByAcademyAndDate(
+    const presentRecords = await this.attendanceRepo.findPresentByAcademyAndDate(
       actor.academyId,
       input.date,
     );

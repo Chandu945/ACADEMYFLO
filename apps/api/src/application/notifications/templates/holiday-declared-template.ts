@@ -1,6 +1,4 @@
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+import { escapeHtml, renderEmailLayout, type EmailInfoRow } from './_email-layout';
 
 export interface HolidayDeclaredTemplateData {
   parentName: string;
@@ -10,18 +8,22 @@ export interface HolidayDeclaredTemplateData {
 }
 
 export function renderHolidayDeclaredEmail(data: HolidayDeclaredTemplateData): string {
-  const parentName = escapeHtml(data.parentName);
-  const academyName = escapeHtml(data.academyName);
-  const date = escapeHtml(data.date);
+  const rows: EmailInfoRow[] = [
+    { label: 'Date', value: escapeHtml(data.date) },
+  ];
+  if (data.reason) rows.push({ label: 'Reason', value: escapeHtml(data.reason) });
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-  <h2>Holiday Notification</h2>
-  <p>Dear ${parentName},</p>
-  <p><strong>${academyName}</strong> has declared a holiday on <strong>${date}</strong>.</p>
-  ${data.reason ? `<p><strong>Reason:</strong> ${escapeHtml(data.reason)}</p>` : ''}
-  <p>Regular classes will resume on the next working day.</p>
-  <p>Thank you,<br>${academyName}</p>
-</body></html>`;
+  return renderEmailLayout({
+    preheader: `${data.academyName} will be closed on ${data.date}.`,
+    title: 'Holiday notification',
+    greeting: `Dear ${data.parentName},`,
+    tone: 'info',
+    body: `
+      <p style="margin:0;font-size:16px;line-height:24px;color:#0F172A;">
+        <strong>${escapeHtml(data.academyName)}</strong> will be closed on
+        <strong>${escapeHtml(data.date)}</strong>. Regular classes will resume on the next working day.
+      </p>
+    `,
+    infoRows: rows,
+  });
 }

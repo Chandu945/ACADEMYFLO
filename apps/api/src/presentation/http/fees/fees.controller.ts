@@ -13,6 +13,7 @@ import type { ListOverdueStudentsUseCase } from '@application/fee/use-cases/list
 import { FeesMonthQueryDto, FeesMonthPaginatedQueryDto, StudentFeeRangeQueryDto } from './dto/fee.query';
 import { MarkFeePaidBodyDto } from './dto/mark-fee-paid.dto';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { Request } from 'express';
@@ -92,7 +93,7 @@ export class FeesController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Get fee history for a student' })
   async getStudentHistory(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Query() query: StudentFeeRangeQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -112,7 +113,7 @@ export class FeesController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Mark a fee due as paid (owner only)' })
   async pay(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Param('month') month: string,
     @Body() body: MarkFeePaidBodyDto,
     @CurrentUser() user: CurrentUserType,

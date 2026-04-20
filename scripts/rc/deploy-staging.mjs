@@ -10,7 +10,7 @@
  *   STAGING_HOST       - staging server hostname/IP
  *   STAGING_USER       - SSH username
  *   STAGING_SSH_KEY    - path to SSH private key (or set in ssh-agent)
- *   STAGING_DEPLOY_DIR - deploy directory on server (default: /opt/playconnect)
+ *   STAGING_DEPLOY_DIR - deploy directory on server (default: /opt/academyflo)
  *   IMAGE_TAG          - docker image tag to deploy
  *   DOCKER_REGISTRY    - registry URL
  */
@@ -20,9 +20,9 @@ import { execSync } from 'node:child_process';
 const HOST = process.env.STAGING_HOST;
 const USER = process.env.STAGING_USER;
 const KEY = process.env.STAGING_SSH_KEY;
-const DEPLOY_DIR = process.env.STAGING_DEPLOY_DIR || '/opt/playconnect';
+const DEPLOY_DIR = process.env.STAGING_DEPLOY_DIR || '/opt/academyflo';
 const TAG = process.env.IMAGE_TAG;
-const REGISTRY = process.env.DOCKER_REGISTRY || 'ghcr.io/playconnect';
+const REGISTRY = process.env.DOCKER_REGISTRY || 'ghcr.io/academyflo';
 
 if (!HOST || !USER || !TAG) {
   console.error('Missing required environment variables: STAGING_HOST, STAGING_USER, IMAGE_TAG');

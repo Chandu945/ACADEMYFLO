@@ -1,4 +1,4 @@
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 import { TIER_TABLE } from '@domain/subscription/rules/subscription-tier.rules';
 import { randomUUID } from 'node:crypto';
 

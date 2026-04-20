@@ -8,7 +8,8 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { ClockPort } from '../../common/clock.port';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderTrialStartedEmail } from '../../notifications/templates/trial-started-template';
-import { TRIAL_DURATION_DAYS } from '@playconnect/contracts';
+import { formatIstDate } from '@shared/utils/date-format';
+import { TRIAL_DURATION_DAYS } from '@academyflo/contracts';
 import { randomUUID } from 'crypto';
 
 export interface CreateTrialOutput {
@@ -60,7 +61,8 @@ export class CreateTrialSubscriptionUseCase {
           html: renderTrialStartedEmail({
             ownerName: owner.fullName,
             academyName: academy.academyName,
-            trialEndDate: trialEndAt.toISOString().split('T')[0] ?? '',
+            // IST calendar date (not UTC) so owners see the same day they'd see on their phone.
+            trialEndDate: formatIstDate(trialEndAt),
             trialDurationDays: TRIAL_DURATION_DAYS,
           }),
         }).catch(() => {});

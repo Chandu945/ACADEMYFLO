@@ -1,4 +1,4 @@
-import type { StudentStatus, Gender, FeeFilter } from '@playconnect/contracts';
+import type { StudentStatus, Gender, FeeFilter } from '@academyflo/contracts';
 
 export type { StudentStatus, Gender, FeeFilter };
 

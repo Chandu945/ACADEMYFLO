@@ -6,7 +6,7 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { ParentErrors } from '../../common/errors';
 import type { AcademyInfoDto } from '../dtos/parent.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetAcademyInfoInput {
   parentUserId: string;

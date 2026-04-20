@@ -11,7 +11,7 @@ import type { StudentDocument } from '../database/schemas/student.schema';
 import { FeeDueModel } from '../database/schemas/fee-due.schema';
 import type { FeeDueDocument } from '../database/schemas/fee-due.schema';
 import { toMonthKeyFromDate } from '@shared/date-utils';
-import type { Gender, StudentStatus } from '@playconnect/contracts';
+import type { Gender, StudentStatus } from '@academyflo/contracts';
 import { escapeRegex } from '@shared/utils/escape-regex';
 
 @Injectable()

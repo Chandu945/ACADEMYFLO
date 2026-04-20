@@ -1,5 +1,5 @@
-import type { UserRole } from '@playconnect/contracts';
-import { STUDENT_ATTENDANCE_STATUSES } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import { STUDENT_ATTENDANCE_STATUSES } from '@academyflo/contracts';
 import { isValidLocalDate, isValidMonthKey } from '../value-objects/local-date.vo';
 import { formatLocalDate } from '@shared/date-utils';
 

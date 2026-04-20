@@ -1,6 +1,6 @@
 import type { FeeDue } from '@domain/fee/entities/fee-due.entity';
-import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeConfig } from '@playconnect/contracts';
-import { computeLateFee } from '@playconnect/contracts';
+import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeConfig } from '@academyflo/contracts';
+import { computeLateFee } from '@academyflo/contracts';
 
 export interface FeeDueDto {
   id: string;

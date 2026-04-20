@@ -1,4 +1,4 @@
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 export type BatchListItem = {
   id: string;
@@ -127,10 +128,10 @@ export async function createBatch(body: Record<string, unknown>, accessToken?: s
   try {
     const res = await fetch('/api/batches', {
       method: 'POST',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -150,12 +151,12 @@ export async function createBatch(body: Record<string, unknown>, accessToken?: s
 
 export async function updateBatch(id: string, body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/batches/${id}`, {
+    const res = await fetch(`/api/batches/${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -175,9 +176,9 @@ export async function updateBatch(id: string, body: Record<string, unknown>, acc
 
 export async function deleteBatch(id: string, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/batches/${id}`, {
+    const res = await fetch(`/api/batches/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: csrfHeaders(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {

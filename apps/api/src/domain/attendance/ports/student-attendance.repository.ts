@@ -10,13 +10,15 @@ export interface StudentAttendanceRepository {
     studentId: string,
     date: string,
   ): Promise<StudentAttendance | null>;
-  findAbsentByAcademyAndDate(academyId: string, date: string): Promise<StudentAttendance[]>;
-  findAbsentByAcademyStudentAndMonth(
+  findPresentByAcademyAndDate(academyId: string, date: string): Promise<StudentAttendance[]>;
+  findPresentByAcademyStudentAndMonth(
     academyId: string,
     studentId: string,
     monthPrefix: string,
   ): Promise<StudentAttendance[]>;
-  findAbsentByAcademyAndMonth(academyId: string, monthPrefix: string): Promise<StudentAttendance[]>;
+  findPresentByAcademyAndMonth(academyId: string, monthPrefix: string): Promise<StudentAttendance[]>;
   deleteByAcademyAndDate(academyId: string, date: string): Promise<void>;
-  countAbsentByAcademyAndDate(academyId: string, date: string): Promise<number>;
+  countPresentByAcademyAndDate(academyId: string, date: string): Promise<number>;
+  /** Cascade-delete all attendance records for a student. Returns count removed. */
+  deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number>;
 }

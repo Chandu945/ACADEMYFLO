@@ -1,5 +1,5 @@
 import { Entity, UniqueId } from '@shared/kernel';
-import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType } from '@academyflo/contracts';
 import { randomUUID } from 'crypto';
 
 export interface AuditLogProps {

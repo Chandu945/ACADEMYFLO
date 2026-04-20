@@ -7,7 +7,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { StudentErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import {
   ALLOWED_IMAGE_MIME_TYPES,
@@ -60,7 +60,7 @@ export class UploadStudentPhotoUseCase {
       return err(AppErrorClass.validation('File size must not exceed 5MB'));
     }
 
-    const bufferCheck = validateImageBuffer(input.buffer, input.mimeType);
+    const bufferCheck = await validateImageBuffer(input.buffer, input.mimeType);
     if (!bufferCheck.valid) {
       return err(AppErrorClass.validation(bufferCheck.reason));
     }

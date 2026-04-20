@@ -1,5 +1,5 @@
 import type { AuditLog } from '../entities/audit-log.entity';
-import type { AuditActionType, AuditEntityType, Paginated } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType, Paginated } from '@academyflo/contracts';
 
 export const AUDIT_LOG_REPOSITORY = Symbol('AUDIT_LOG_REPOSITORY');
 

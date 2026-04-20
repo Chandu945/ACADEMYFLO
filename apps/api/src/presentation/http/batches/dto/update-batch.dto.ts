@@ -13,8 +13,8 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { WEEKDAYS } from '@playconnect/contracts';
-import type { Weekday } from '@playconnect/contracts';
+import { WEEKDAYS } from '@academyflo/contracts';
+import type { Weekday } from '@academyflo/contracts';
 
 export class UpdateBatchDto {
   @ApiPropertyOptional({ example: 'Evening Batch' })

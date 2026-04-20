@@ -7,7 +7,7 @@ import type {
   AccessTokenPayload,
 } from '../../src/application/identity/ports/token-service.port';
 import type { AuditRecorderPort } from '../../src/application/audit/ports/audit-recorder.port';
-import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType } from '@academyflo/contracts';
 
 export type CapturedAuditCall = {
   academyId: string;

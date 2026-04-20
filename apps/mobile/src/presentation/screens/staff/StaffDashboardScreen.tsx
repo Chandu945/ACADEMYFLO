@@ -84,9 +84,23 @@ export function StaffDashboardScreen() {
 
       if (!mountedRef.current) return;
 
-      const allFailed = !attendanceRes.ok && !requestsRes.ok && !eventsRes.ok && !enquiryRes.ok && !birthdayRes.ok;
+      const results = [attendanceRes, requestsRes, eventsRes, enquiryRes, birthdayRes];
+      const allFailed = results.every((r) => !r.ok);
       if (allFailed) {
-        setError('Failed to load dashboard data. Please try again.');
+        // All five calls failed — pick the most actionable error code from
+        // the first failure to give the user something specific instead of
+        // a generic "try again" message.
+        const first = results.find((r) => !r.ok);
+        const code = first && !first.ok ? first.error.code : 'UNKNOWN';
+        const msg =
+          code === 'NETWORK' || code === 'UNKNOWN'
+            ? 'Could not reach the server. Check your connection and try again.'
+            : code === 'FORBIDDEN'
+              ? 'You do not have permission to view this dashboard.'
+              : code === 'UNAUTHORIZED'
+                ? 'Your session has expired. Please sign in again.'
+                : 'Failed to load dashboard data. Please try again.';
+        setError(msg);
       }
 
       setData({
@@ -98,7 +112,7 @@ export function StaffDashboardScreen() {
       });
     } catch {
       if (!mountedRef.current) return;
-      setError('Failed to load dashboard data. Please try again.');
+      setError('Could not reach the server. Check your connection and try again.');
     }
     setLoading(false);
   }, []);

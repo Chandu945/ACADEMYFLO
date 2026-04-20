@@ -1,5 +1,5 @@
-import type { AdminAcademyStatus } from '@playconnect/contracts';
-import type { TierKey } from '@playconnect/contracts';
+import type { AdminAcademyStatus } from '@academyflo/contracts';
+import type { TierKey } from '@academyflo/contracts';
 
 export type AcademyStatusFilter = AdminAcademyStatus;
 

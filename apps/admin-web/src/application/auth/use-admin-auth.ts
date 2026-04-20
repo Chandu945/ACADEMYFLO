@@ -29,13 +29,20 @@ type AdminAuthContextValue = {
 
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 
-function decodeAdminUser(token: string): AdminUser | null {
+export function decodeAdminUser(token: string): AdminUser | null {
   try {
     const base64Url = token.split('.')[1] ?? '';
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(atob(base64));
+    // Reject tokens whose exp (seconds since epoch) is in the past.
+    // Server still enforces this on every request; this just avoids a
+    // brief "logged in" UI state before the next call 401s.
+    if (typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()) {
+      return null;
+    }
+    if (!payload.sub) return null;
     return {
-      id: payload.sub ?? '',
+      id: payload.sub,
       email: payload.email ?? '',
       fullName: payload.fullName ?? '',
       role: 'SUPER_ADMIN',

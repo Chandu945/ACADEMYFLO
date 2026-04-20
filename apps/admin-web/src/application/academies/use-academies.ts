@@ -25,12 +25,15 @@ export function useAcademies(query: AcademiesQuery): UseAcademiesReturn {
     setFetchCount((c) => c + 1);
   }, []);
 
-  // Serialize query to a stable string for effect dependency
+  // Serialize query to a stable string for effect dependency. Re-parse inside
+  // the effect so we avoid closing over a fresh `query` object reference (which
+  // would either trigger infinite loops or require the linter disable).
   const queryKey = JSON.stringify(query);
 
   useEffect(() => {
     if (!accessToken) return;
     const token = accessToken;
+    const q: AcademiesQuery = JSON.parse(queryKey);
 
     let cancelled = false;
 
@@ -38,7 +41,7 @@ export function useAcademies(query: AcademiesQuery): UseAcademiesReturn {
       setLoading(true);
       setError(null);
 
-      const result = await academiesService.listAcademies(query, token);
+      const result = await academiesService.listAcademies(q, token);
 
       if (cancelled) return;
 
@@ -58,7 +61,6 @@ export function useAcademies(query: AcademiesQuery): UseAcademiesReturn {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryKey, accessToken, fetchCount]);
 
   return { data, loading, error, refetch };

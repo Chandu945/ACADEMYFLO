@@ -1,5 +1,5 @@
 import type { Student } from '../entities/student.entity';
-import type { StudentStatus } from '@playconnect/contracts';
+import type { StudentStatus } from '@academyflo/contracts';
 
 export const STUDENT_REPOSITORY = Symbol('STUDENT_REPOSITORY');
 

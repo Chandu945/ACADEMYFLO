@@ -98,7 +98,7 @@ describe('Academy Data Retention (e2e)', () => {
     const admin = User.create({
       id: 'admin-1',
       fullName: 'Super Admin',
-      email: 'admin@playconnect.app',
+      email: 'admin@academyflo.com',
       phoneNumber: '+910000000000',
       role: 'SUPER_ADMIN',
       passwordHash: 'hashed',
@@ -208,7 +208,7 @@ describe('Academy Data Retention (e2e)', () => {
 
   function makeAdminToken() {
     return jwtService.sign(
-      { sub: 'admin-1', role: 'SUPER_ADMIN', email: 'admin@playconnect.app', tokenVersion: 0 },
+      { sub: 'admin-1', role: 'SUPER_ADMIN', email: 'admin@academyflo.com', tokenVersion: 0 },
       { secret: 'test-access-secret-that-is-at-least-32-characters-long', expiresIn: 900 },
     );
   }

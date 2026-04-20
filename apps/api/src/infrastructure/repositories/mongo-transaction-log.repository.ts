@@ -5,7 +5,7 @@ import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log
 import { TransactionLog } from '@domain/fee/entities/transaction-log.entity';
 import { TransactionLogModel } from '../database/schemas/transaction-log.schema';
 import type { TransactionLogDocument } from '../database/schemas/transaction-log.schema';
-import type { PaidSource } from '@playconnect/contracts';
+import type { PaidSource } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 import { escapeRegex } from '@shared/utils/escape-regex';
 

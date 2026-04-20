@@ -13,7 +13,7 @@ import type { LoggerPort } from '@shared/logging/logger.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { TransactionLog } from '@domain/fee/entities/transaction-log.entity';
 import { generateReceiptNumber } from '@domain/fee/rules/payment-request.rules';
-import { DEFAULT_RECEIPT_PREFIX } from '@playconnect/contracts';
+import { DEFAULT_RECEIPT_PREFIX } from '@academyflo/contracts';
 import { randomUUID } from 'node:crypto';
 import type { FeePaymentStatusOutput } from '../dtos/parent.dto';
 

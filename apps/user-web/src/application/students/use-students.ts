@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 export type StudentListItem = {
   id: string;
@@ -170,10 +171,10 @@ export async function createStudent(body: Record<string, unknown>, accessToken?:
   try {
     const res = await fetch('/api/students', {
       method: 'POST',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -193,12 +194,12 @@ export async function createStudent(body: Record<string, unknown>, accessToken?:
 
 export async function updateStudent(id: string, body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/students/${id}`, {
+    const res = await fetch(`/api/students/${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -214,12 +215,12 @@ export async function updateStudent(id: string, body: Record<string, unknown>, a
 
 export async function inviteParent(studentId: string, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/students/${studentId}/invite-parent`, {
+    const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/invite-parent`, {
       method: 'POST',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify({}),
       signal: AbortSignal.timeout(15000),
     });
@@ -235,9 +236,9 @@ export async function inviteParent(studentId: string, accessToken?: string | nul
 
 export async function deleteStudent(id: string, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/students/${id}`, {
+    const res = await fetch(`/api/students/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: csrfHeaders(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {

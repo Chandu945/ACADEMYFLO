@@ -102,6 +102,8 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
     setHasMoreUnpaid(unpaidResult.value.meta.page < unpaidResult.value.meta.totalPages);
     setPaidItems(paidResult.value);
     setLoading(false);
+    // Deps omit *Ref.current reads — refs are stable identities. If any ref
+    // is ever promoted to state, re-add it here.
   }, [month, feesApi]);
 
   const fetchMoreUnpaid = useCallback(async () => {

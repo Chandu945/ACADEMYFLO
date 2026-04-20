@@ -4,6 +4,9 @@ import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { serverEnv } from '@/infra/env';
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) return NextResponse.json({ message: 'Invalid origin' }, { status: 403 });
   const accessToken = await resolveAccessToken(request);
@@ -19,6 +22,14 @@ export async function POST(request: NextRequest) {
   const file = incomingForm.get('file');
   if (!file || !(file instanceof Blob)) {
     return NextResponse.json({ message: 'File is required' }, { status: 400 });
+  }
+
+  if (file.size > MAX_IMAGE_SIZE) {
+    return NextResponse.json({ message: 'Image must be 5 MB or smaller' }, { status: 413 });
+  }
+
+  if (file.type && !ALLOWED_IMAGE_MIMES.has(file.type)) {
+    return NextResponse.json({ message: 'Only JPEG, PNG, and WebP images are allowed' }, { status: 400 });
   }
 
   const outgoingForm = new FormData();

@@ -1,5 +1,5 @@
 {
-  "name": "@playconnect/contracts",
+  "name": "@academyflo/contracts",
   "version": "0.0.0",
   "private": true,
   "description": "Shared type contracts for Academyflo (API envelopes, pagination, roles, constants)",
@@ -9,12 +9,12 @@
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'No tests for contracts (types only)'"
+    "test": "npm run build && node test/smoke.mjs"
   },
   "devDependencies": {
-    "@playconnect/eslint-config": "*",
-    "@playconnect/tsconfig": "*",
-    "eslint": "^8.57.1",
+    "@academyflo/eslint-config": "*",
+    "@academyflo/tsconfig": "*",
+    "eslint": "^9.39.4",
     "typescript": "^5.7.3"
   }
 }

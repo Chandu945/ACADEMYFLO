@@ -1,6 +1,6 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields } from '@shared/kernel';
-import type { Weekday } from '@playconnect/contracts';
+import type { Weekday } from '@academyflo/contracts';
 
 export type BatchStatus = 'ACTIVE' | 'INACTIVE';
 

@@ -1,5 +1,5 @@
 import type { PaymentRequest } from '../entities/payment-request.entity';
-import type { PaymentRequestStatus } from '@playconnect/contracts';
+import type { PaymentRequestStatus } from '@academyflo/contracts';
 
 export const PAYMENT_REQUEST_REPOSITORY = Symbol('PAYMENT_REQUEST_REPOSITORY');
 
@@ -13,4 +13,6 @@ export interface PaymentRequestRepository {
   ): Promise<PaymentRequest[]>;
   listByStaffAndAcademy(staffUserId: string, academyId: string): Promise<PaymentRequest[]>;
   countPendingByAcademy(academyId: string): Promise<number>;
+  /** Cascade-delete all payment requests for a student (used when student is soft-deleted). Returns count removed. */
+  deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number>;
 }

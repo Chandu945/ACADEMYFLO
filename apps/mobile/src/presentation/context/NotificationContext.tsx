@@ -31,12 +31,47 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { phase, user } = useAuth();
   const { showToast } = useToast();
   const registeredTokenRef = useRef<string | null>(null);
+  // Track a per-token backoff so onTokenRefresh callbacks and mount-time
+  // registrations don't race each other into an amplification loop on a
+  // flaky network. Retries are capped; we don't re-attempt indefinitely.
+  const retryStateRef = useRef<{ token: string; nextAttemptAt: number; attempts: number } | null>(
+    null,
+  );
+  const RETRY_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000, 32000];
+  const MAX_REGISTRATION_ATTEMPTS = RETRY_BACKOFF_MS.length;
 
   const registerToken = useCallback(async (token: string) => {
     if (registeredTokenRef.current === token) return;
+    const now = Date.now();
+    const retryState = retryStateRef.current;
+    if (retryState && retryState.token === token) {
+      if (retryState.attempts >= MAX_REGISTRATION_ATTEMPTS) {
+        if (__DEV__) console.warn('[notifications] registration gave up after max attempts');
+        return;
+      }
+      if (now < retryState.nextAttemptAt) return;
+    }
+
     const result = await registerPushTokenUseCase(token, { pushTokenApi });
     if (result.ok) {
       registeredTokenRef.current = token;
+      retryStateRef.current = null;
+      return;
+    }
+
+    const attempts = retryState?.token === token ? retryState.attempts + 1 : 1;
+    const backoff =
+      result.error.code === 'RATE_LIMITED' && result.error.retryAfterSeconds != null
+        ? result.error.retryAfterSeconds * 1000
+        : RETRY_BACKOFF_MS[Math.min(attempts - 1, RETRY_BACKOFF_MS.length - 1)]!;
+    retryStateRef.current = { token, nextAttemptAt: now + backoff, attempts };
+
+    if (__DEV__) {
+      console.warn(
+        `[notifications] push token registration failed (attempt ${attempts}/${MAX_REGISTRATION_ATTEMPTS}):`,
+        result.error.code,
+        result.error.message,
+      );
     }
   }, []);
 
@@ -75,9 +110,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         await registerToken(token);
       }
 
-      // Listen for token refreshes
+      // Listen for token refreshes. Guard with `cancelled` so a late callback
+      // (after the user has logged out or the provider unmounted) doesn't
+      // re-register a token for a session that no longer exists.
       if (!cancelled) {
         tokenRefreshUnsubscribe = onTokenRefresh((newToken) => {
+          if (cancelled) return;
           registerToken(newToken).catch(() => {});
         });
       }

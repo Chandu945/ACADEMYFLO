@@ -20,7 +20,7 @@ import { TransactionLogModel } from '../database/schemas/transaction-log.schema'
 import type { TransactionLogDocument } from '../database/schemas/transaction-log.schema';
 import { evaluateSubscriptionStatus } from '@domain/subscription/rules/subscription.rules';
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
-import type { AdminAcademyStatus, TierKey } from '@playconnect/contracts';
+import type { AdminAcademyStatus, TierKey } from '@academyflo/contracts';
 
 @Injectable()
 export class MongoAdminQueryRepository implements AdminQueryRepository {

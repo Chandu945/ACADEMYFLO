@@ -26,3 +26,27 @@ export const dateRangeSchema = z
     to: z.string().regex(LOCAL_DATE_RE, 'to must be YYYY-MM-DD'),
   })
   .refine((d) => d.from <= d.to, { message: 'from must be <= to' });
+
+export const monthlyChartPointSchema = z.object({
+  month: z.string(),
+  income: z.number(),
+  expense: z.number(),
+});
+
+export const monthlyChartDataSchema = z.object({
+  year: z.number().int(),
+  data: z.array(monthlyChartPointSchema),
+});
+
+export const birthdayStudentSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  profilePhotoUrl: z.string().nullable(),
+  dateOfBirth: z.string(),
+  guardianMobile: z.string(),
+});
+
+export const birthdaysResultSchema = z.object({
+  scope: z.enum(['today', 'month']),
+  students: z.array(birthdayStudentSchema),
+});

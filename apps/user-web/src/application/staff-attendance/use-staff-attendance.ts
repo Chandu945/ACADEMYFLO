@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type StaffAttendanceItem = { staffUserId: string; fullName: string; status: string };
 type MonthlyStaffSummary = { staffUserId: string; fullName: string; presentCount: number; absentCount: number; holidayCount: number };
@@ -54,7 +55,7 @@ export function useMonthlyStaffSummary(month: string) {
 
 export async function markStaffAttendance(staffUserId: string, date: string, status: string, accessToken?: string | null) {
   try {
-    const res = await fetch('/api/staff-attendance', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ staffUserId, date, status }) });
+    const res = await fetch('/api/staff-attendance', { method: 'PUT', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify({ staffUserId, date, status }) });
     const json = await res.json();
     return res.ok ? { ok: true as const, data: json } : { ok: false as const, error: json.message };
   } catch {

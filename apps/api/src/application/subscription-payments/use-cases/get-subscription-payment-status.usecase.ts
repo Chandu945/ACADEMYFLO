@@ -15,7 +15,7 @@ import { Subscription } from '@domain/subscription/entities/subscription.entity'
 import { computePaidDates } from '@domain/subscription-payments/rules/subscription-payment.rules';
 import { requiredTierForCount } from '@domain/subscription/rules/subscription-tier.rules';
 import type { PaymentStatusOutput } from '../dtos/subscription-payment.dto';
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 
 export class GetSubscriptionPaymentStatusUseCase {
   constructor(
@@ -76,14 +76,39 @@ export class GetSubscriptionPaymentStatusUseCase {
         if (cfOrder.orderStatus === 'PAID') {
           // Defense-in-depth: same amount check the webhook does. Prevents
           // activating if the provider's order amount diverges from what we stored.
+          // On mismatch we MUST mark the payment FAILED (not leave it PENDING) so
+          // the owner can see the failure and start a new payment instead of being
+          // stuck in limbo. Use CAS to avoid racing a concurrent webhook that has
+          // already marked the payment SUCCESS.
           if (cfOrder.orderAmount !== pendingPayment.amountInr) {
             this.logger.error('Poll-verification amount mismatch', {
               orderId,
               cashfreeAmount: cfOrder.orderAmount,
               storedAmount: pendingPayment.amountInr,
             });
-            return err(AppError.validation('Payment amount mismatch between provider and stored record'));
-          }
+            const failed = pendingPayment.markFailed('AMOUNT_MISMATCH');
+            const transitioned = await this.paymentRepo.saveWithStatusPrecondition(failed, 'PENDING');
+            if (transitioned) {
+              await this.auditRecorder.record({
+                academyId: pendingPayment.academyId,
+                actorUserId: pendingPayment.ownerUserId,
+                action: 'SUBSCRIPTION_PAYMENT_FAILED',
+                entityType: 'SUBSCRIPTION_PAYMENT',
+                entityId: orderId,
+                context: {
+                  reason: 'AMOUNT_MISMATCH',
+                  tierKey: pendingPayment.tierKey,
+                  storedAmountInr: String(pendingPayment.amountInr),
+                  providerAmountInr: String(cfOrder.orderAmount),
+                  verifiedBy: 'server_poll',
+                },
+              });
+            }
+            // Re-load: either the failed state we just wrote, or whatever the
+            // concurrent webhook wrote (SUCCESS is possible if it ran first).
+            payment = (await this.paymentRepo.findByOrderId(orderId)) ?? failed;
+            // fall through to return the authoritative status below
+          } else {
 
           // Cashfree confirms payment — mark as SUCCESS and activate subscription
           const now = this.clock.now();
@@ -123,6 +148,7 @@ export class GetSubscriptionPaymentStatusUseCase {
 
           // Re-load payment to get updated status
           payment = (await this.paymentRepo.findByOrderId(orderId)) ?? pendingPayment;
+          } // end amount-match else
         } else if (cfOrder.orderStatus === 'EXPIRED') {
           // Order expired at Cashfree — mark as FAILED
           const expired = pendingPayment.markFailed('ORDER_EXPIRED');

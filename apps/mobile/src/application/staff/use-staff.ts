@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppError } from '../../domain/common/errors';
 import type { StaffListItem } from '../../domain/staff/staff.types';
 import { listStaffUseCase, type StaffApiPort } from './use-cases/list-staff.usecase';
+import { useAuth } from '../../presentation/context/AuthContext';
 
 type UseStaffResult = {
   items: StaffListItem[];
@@ -67,6 +68,11 @@ export function useStaff(staffApi: StaffApiPort): UseStaffResult {
   );
 
   const refetch = useCallback(() => {
+    // Reset items + page state so a post-mutation refetch reflects the
+    // current filter cleanly (mirrors useStudents F3-H4 fix).
+    setItems([]);
+    setPage(1);
+    setHasMore(true);
     load(1, false);
   }, [load]);
 
@@ -83,6 +89,22 @@ export function useStaff(staffApi: StaffApiPort): UseStaffResult {
       mountedRef.current = false;
     };
   }, [load]);
+
+  // Cross-account safety: clear cached staff list when the authenticated
+  // user changes (logout + login as a different owner). Mirror of
+  // useStudents F3-M1.
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setItems([]);
+      setPage(1);
+      setHasMore(true);
+      setError(null);
+    }
+  }, [userId]);
 
   return { items, loading, loadingMore, error, hasMore, refetch, fetchMore };
 }

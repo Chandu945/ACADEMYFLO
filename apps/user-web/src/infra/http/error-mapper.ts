@@ -9,7 +9,11 @@ export function toErrorResponse(error: AppError): NextResponse {
   if (error.fieldErrors) {
     body['fieldErrors'] = error.fieldErrors;
   }
-  return NextResponse.json(body, { status: errorCodeToStatus(error.code) });
+  const headers: Record<string, string> = {};
+  if (error.code === 'RATE_LIMITED' && error.retryAfterSeconds != null) {
+    headers['Retry-After'] = String(error.retryAfterSeconds);
+  }
+  return NextResponse.json(body, { status: errorCodeToStatus(error.code), headers });
 }
 
 export function errorCodeToStatus(code: AppErrorCode): number {
@@ -25,7 +29,11 @@ export function errorCodeToStatus(code: AppErrorCode): number {
   }
 }
 
-export function mapApiError(status: number, body?: Record<string, unknown>): AppError {
+export function mapApiError(
+  status: number,
+  body?: Record<string, unknown>,
+  retryAfterHeader?: string | null,
+): AppError {
   const message = typeof body?.['message'] === 'string' ? body['message'] : undefined;
   const fieldErrors =
     body?.['fieldErrors'] && typeof body['fieldErrors'] === 'object'
@@ -44,10 +52,25 @@ export function mapApiError(status: number, body?: Record<string, unknown>): App
     case 409:
       return AppError.conflict(message ?? 'Conflict');
     case 429:
-      return AppError.rateLimited(message ?? 'Too many requests');
+      return AppError.rateLimited(message ?? 'Too many requests', parseRetryAfter(retryAfterHeader));
     case 503:
       return AppError.unknown(message ?? 'Service temporarily unavailable');
     default:
       return AppError.unknown(message ?? 'Something went wrong');
   }
+}
+
+// Retry-After is either delta-seconds or an HTTP-date per RFC 7231. We only
+// expect delta-seconds from our own upstream but handle HTTP-date defensively
+// so a future proxy change doesn't silently drop the signal.
+function parseRetryAfter(value: string | null | undefined): number | undefined {
+  if (!value) return undefined;
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber) && asNumber >= 0) return Math.ceil(asNumber);
+  const asDate = Date.parse(value);
+  if (!Number.isNaN(asDate)) {
+    const diff = Math.ceil((asDate - Date.now()) / 1000);
+    return diff > 0 ? diff : undefined;
+  }
+  return undefined;
 }

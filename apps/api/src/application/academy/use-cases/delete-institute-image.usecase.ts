@@ -5,7 +5,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { InstituteInfoErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { ImageType } from './upload-institute-image.usecase';
 
 export interface DeleteInstituteImageInput {

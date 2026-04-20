@@ -1,5 +1,5 @@
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
-import { ALLOWED_REPEAT_INTERVALS } from '@playconnect/contracts';
+import { ALLOWED_REPEAT_INTERVALS } from '@academyflo/contracts';
 
 export class UpdateAcademySettingsDto {
   @IsOptional()

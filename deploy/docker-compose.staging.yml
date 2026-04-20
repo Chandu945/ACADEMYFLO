@@ -9,7 +9,7 @@
 services:
   mongo:
     image: mongo:7
-    container_name: playconnect-staging-mongo
+    container_name: academyflo-staging-mongo
     restart: unless-stopped
     volumes:
       - staging_mongo_data:/data/db
@@ -29,11 +29,11 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - playconnect-net
+      - academyflo-net
 
   redis:
     image: redis:7-alpine
-    container_name: playconnect-staging-redis
+    container_name: academyflo-staging-redis
     restart: unless-stopped
     volumes:
       - staging_redis_data:/data
@@ -44,10 +44,10 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - playconnect-net
+      - academyflo-net
 
   api:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/api:${IMAGE_TAG:-staging-latest}
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/api:${IMAGE_TAG:-staging-latest}
     restart: unless-stopped
     expose:
       - '3001'
@@ -58,7 +58,7 @@ services:
       NODE_ENV: production
       PORT: '3001'
       TZ: Asia/Kolkata
-      MONGODB_URI: mongodb://mongo:27017/playconnect_staging?replicaSet=rs0
+      MONGODB_URI: mongodb://mongo:27017/academyflo_staging?replicaSet=rs0
       REDIS_URL: redis://redis:6379
     healthcheck:
       test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3001/api/v1/health/liveness']
@@ -82,11 +82,11 @@ services:
         delay: 5s
         max_attempts: 3
     networks:
-      - playconnect-net
+      - academyflo-net
 
   admin-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/admin-web:${IMAGE_TAG:-staging-latest}
-    container_name: playconnect-staging-admin
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/admin-web:${IMAGE_TAG:-staging-latest}
+    container_name: academyflo-staging-admin
     restart: unless-stopped
     expose:
       - '3002'
@@ -102,11 +102,11 @@ services:
     depends_on:
       - api
     networks:
-      - playconnect-net
+      - academyflo-net
 
   user-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/user-web:${IMAGE_TAG:-staging-latest}
-    container_name: playconnect-staging-user-web
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/user-web:${IMAGE_TAG:-staging-latest}
+    container_name: academyflo-staging-user-web
     restart: unless-stopped
     expose:
       - '3003'
@@ -120,11 +120,11 @@ services:
     depends_on:
       - api
     networks:
-      - playconnect-net
+      - academyflo-net
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: playconnect-staging-nginx
+    container_name: academyflo-staging-nginx
     restart: unless-stopped
     ports:
       - '80:80'
@@ -139,12 +139,12 @@ services:
       - admin-web
       - user-web
     networks:
-      - playconnect-net
+      - academyflo-net
 
 volumes:
   staging_mongo_data:
   staging_redis_data:
 
 networks:
-  playconnect-net:
+  academyflo-net:
     driver: bridge

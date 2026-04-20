@@ -19,7 +19,7 @@ import {
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
-import type { Gender, UserRole } from '@playconnect/contracts';
+import type { Gender, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface UpdateStudentAddress {
@@ -138,9 +138,16 @@ export class UpdateStudentUseCase {
       }
     }
 
-    // Duplicate email check (exclude current student)
-    const newEmail = input.email !== undefined ? input.email : student.email;
-    const newGuardianEmail = input.guardian?.email !== undefined ? input.guardian.email : student.guardian?.email;
+    // Normalize email-like fields to a single canonical (lowercased, trimmed)
+    // representation so dedup, storage, and downstream comparisons all agree.
+    const normEmail = (e: string | null | undefined): string | null =>
+      e ? e.trim().toLowerCase() : (e === '' ? null : e ?? null);
+
+    const newEmailRaw = input.email !== undefined ? input.email : student.email;
+    const newGuardianEmailRaw =
+      input.guardian?.email !== undefined ? input.guardian.email : student.guardian?.email;
+    const newEmail = normEmail(newEmailRaw);
+    const newGuardianEmail = normEmail(newGuardianEmailRaw);
     const emailToCheck = newEmail || newGuardianEmail;
     if (emailToCheck) {
       const existingByEmail = await this.studentRepo.findByEmailInAcademy(actor.academyId, emailToCheck, input.studentId);
@@ -175,7 +182,9 @@ export class UpdateStudentUseCase {
       ? {
           name: input.guardian.name ?? student.guardian?.name ?? '',
           mobile: input.guardian.mobile ?? student.guardian?.mobile ?? '',
-          email: input.guardian.email ?? student.guardian?.email ?? '',
+          email: (input.guardian.email !== undefined
+            ? normEmail(input.guardian.email) ?? ''
+            : student.guardian?.email ?? ''),
         }
       : student.guardian;
 
@@ -193,7 +202,7 @@ export class UpdateStudentUseCase {
       monthlyFee: input.monthlyFee ?? student.monthlyFee,
       mobileNumber:
         input.mobileNumber !== undefined ? (input.mobileNumber ?? null) : student.mobileNumber,
-      email: input.email !== undefined ? (input.email ?? null) : student.email,
+      email: input.email !== undefined ? normEmail(input.email) : student.email,
       profilePhotoUrl: student.profilePhotoUrl,
       fatherName: input.fatherName !== undefined ? (input.fatherName ?? null) : student.fatherName,
       motherName: input.motherName !== undefined ? (input.motherName ?? null) : student.motherName,

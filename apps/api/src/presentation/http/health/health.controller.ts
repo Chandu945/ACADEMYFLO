@@ -6,6 +6,7 @@ import { MongoDbHealthIndicator } from '../../../infrastructure/database/mongodb
 import { AppConfigService } from '../../../shared/config/config.service';
 import { getRequestId } from '../../../shared/logging/request-id.interceptor';
 import { Public } from '../common/decorators/public.decorator';
+import { AppVersionQueryDto } from './dto/app-version.query';
 
 function compareVersions(current: string, minimum: string): boolean {
   const cur = current.split('.').map(Number);
@@ -109,10 +110,8 @@ export class HealthController {
       },
     },
   })
-  appVersion(
-    @Query('platform') platform: string,
-    @Query('version') version: string,
-  ) {
+  appVersion(@Query() query: AppVersionQueryDto) {
+    const { platform, version } = query;
     const isAndroid = platform === 'android';
     const minVersion = isAndroid
       ? this.config.minAppVersionAndroid
@@ -122,11 +121,11 @@ export class HealthController {
       ? 'https://play.google.com/store/apps/details?id=com.academyflo'
       : 'https://apps.apple.com/app/academyflo/id000000000';
 
-    const updateRequired = !compareVersions(version || '0.0.0', minVersion);
+    const updateRequired = !compareVersions(version, minVersion);
 
     return {
       updateRequired,
-      currentVersion: version || '0.0.0',
+      currentVersion: version,
       minVersion,
       storeUrl,
     };

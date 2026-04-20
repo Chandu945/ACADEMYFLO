@@ -28,7 +28,8 @@ import { SetStaffStatusUseCase } from '../src/application/staff/use-cases/set-st
 import { InMemoryUserRepository, InMemorySessionRepository,
   InMemoryDeviceTokenRepository
 } from './helpers/in-memory-repos';
-import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
+import { createTestTokenService, createTestPasswordHasher, createInMemoryAuditRecorder } from './helpers/test-services';
+import { noopPaymentRequestRepo } from './helpers/soft-delete-deps';
 import { User } from '../src/domain/identity/entities/user.entity';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
 import type { SessionRepository } from '../src/domain/identity/ports/session.repository';
@@ -89,6 +90,7 @@ describe('Sensitive Field Leak Prevention (e2e)', () => {
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
 
+    const auditRecorder = createInMemoryAuditRecorder();
     const moduleFixture = await Test.createTestingModule({
       imports: [
         AppConfigModule,
@@ -158,12 +160,12 @@ describe('Sensitive Field Leak Prevention (e2e)', () => {
             oh: OtpHasher,
             ph: PasswordHasher,
             dtr: DeviceTokenRepository,
-          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr),
+          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr, { isLocked: async () => false, recordFailure: async () => undefined, recordSuccess: async () => undefined }),
           inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_RESET_CHALLENGE_REPOSITORY, OTP_HASHER, PASSWORD_HASHER],
         },
         {
           provide: 'CREATE_STAFF_USE_CASE',
-          useFactory: (ur: UserRepository, h: PasswordHasher) => new CreateStaffUseCase(ur, h),
+          useFactory: (ur: UserRepository, h: PasswordHasher) => new CreateStaffUseCase(ur, h, auditRecorder),
           inject: [USER_REPOSITORY, PASSWORD_HASHER],
         },
         {
@@ -173,13 +175,13 @@ describe('Sensitive Field Leak Prevention (e2e)', () => {
         },
         {
           provide: 'UPDATE_STAFF_USE_CASE',
-          useFactory: (ur: UserRepository, h: PasswordHasher) => new UpdateStaffUseCase(ur, h),
+          useFactory: (ur: UserRepository, h: PasswordHasher) => new UpdateStaffUseCase(ur, h, auditRecorder),
           inject: [USER_REPOSITORY, PASSWORD_HASHER],
         },
         {
           provide: 'SET_STAFF_STATUS_USE_CASE',
           useFactory: (ur: UserRepository, sr: SessionRepository) =>
-            new SetStaffStatusUseCase(ur, sr),
+            new SetStaffStatusUseCase(ur, sr, auditRecorder, noopPaymentRequestRepo),
           inject: [USER_REPOSITORY, SESSION_REPOSITORY],
         },
       ],

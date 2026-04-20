@@ -11,6 +11,7 @@ import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import type { LinkingOptions } from '@react-navigation/native';
 import { AuthProvider } from './presentation/context/AuthContext';
 import { NotificationProvider } from './presentation/context/NotificationContext';
 import { ThemeProvider, useTheme } from './presentation/context/ThemeContext';
@@ -27,12 +28,19 @@ import { OfflineBanner } from './presentation/components/global/OfflineBanner';
 import * as Sentry from '@sentry/react-native';
 
 /**
- * Deep linking configuration for Academyflo.
- * Expand the `screens` map as new linkable routes are added.
+ * Deep linking configuration — intentionally narrow.
+ *
+ * Only pre-auth routes (Login, ForgotPassword) are registered. Authenticated
+ * screens require a session that's restored in-app, so they are deliberately
+ * NOT reachable via external deep links. Any unregistered path is dropped by
+ * React Navigation (safe default); we do not want to silently route attacker-
+ * crafted links like `academyflo://enquiry/<id>` into authenticated screens.
+ *
+ * Before registering a new authenticated route here, also add param validation
+ * in that screen (don't trust the deep-link payload).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const linking: any = {
-  prefixes: ['playconnect://', 'https://playconnect.app'],
+const linking: LinkingOptions<ReactNavigation.RootParamList> = {
+  prefixes: ['academyflo://', 'https://academyflo.com'],
   config: {
     screens: {
       AuthStack: {

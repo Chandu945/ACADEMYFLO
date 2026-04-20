@@ -1,5 +1,5 @@
 {
-  "name": "@playconnect/mobile",
+  "name": "@academyflo/mobile",
   "version": "0.0.0",
   "private": true,
   "description": "Academyflo Mobile — React Native (Owner + Staff)",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@cashfreepayments/cashfree-js": "^1.0.6",
-    "@playconnect/contracts": "*",
+    "@academyflo/contracts": "*",
     "@react-native-firebase/app": "^21.6.1",
     "@react-native-firebase/messaging": "^21.6.1",
     "@react-navigation/bottom-tabs": "^7.15.5",
@@ -39,8 +39,8 @@
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
     "@babel/runtime": "^7.26.0",
-    "@playconnect/eslint-config": "*",
-    "@playconnect/tsconfig": "*",
+    "@academyflo/eslint-config": "*",
+    "@academyflo/tsconfig": "*",
     "@react-native-community/cli": "15.0.1",
     "@react-native-community/cli-platform-android": "15.0.1",
     "@react-native-community/cli-platform-ios": "15.0.1",

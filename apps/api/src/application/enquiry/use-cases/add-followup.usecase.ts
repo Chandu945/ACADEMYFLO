@@ -8,7 +8,8 @@ import type { EnquiryRepository } from '@domain/enquiry/ports/enquiry.repository
 import { EnquiryErrors } from '../../common/errors';
 import { toEnquiryDetail } from './get-enquiry-detail.usecase';
 import type { EnquiryDetailOutput } from './get-enquiry-detail.usecase';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface AddFollowUpInput {
   actorUserId: string;
@@ -23,6 +24,7 @@ export class AddFollowUpUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly enquiryRepo: EnquiryRepository,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: AddFollowUpInput): Promise<Result<EnquiryDetailOutput, AppError>> {
@@ -51,6 +53,7 @@ export class AddFollowUpUseCase {
     const followUpDate = new Date(input.date);
     const nextFollowUp = input.nextFollowUpDate ? new Date(input.nextFollowUpDate) : null;
 
+    const loadedVersion = enquiry.audit.version;
     const updated = enquiry.addFollowUp({
       id: randomUUID(),
       date: followUpDate,
@@ -60,7 +63,21 @@ export class AddFollowUpUseCase {
       createdAt: new Date(),
     });
 
-    await this.enquiryRepo.save(updated);
+    const saved = await this.enquiryRepo.saveWithVersionPrecondition(updated, loadedVersion);
+    if (!saved) return err(EnquiryErrors.concurrencyConflict());
+
+    await this.auditRecorder.record({
+      academyId: actor.academyId,
+      actorUserId: input.actorUserId,
+      action: 'ENQUIRY_FOLLOWUP_ADDED',
+      entityType: 'ENQUIRY',
+      entityId: input.enquiryId,
+      context: {
+        date: followUpDate.toISOString(),
+        ...(nextFollowUp ? { nextFollowUpDate: nextFollowUp.toISOString() } : {}),
+      },
+    });
+
     return ok(toEnquiryDetail(updated));
   }
 }

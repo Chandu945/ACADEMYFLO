@@ -67,6 +67,10 @@ import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/m
 import { ParentStudentLinkModel, ParentStudentLinkSchema } from '@infrastructure/database/schemas/parent-student-link.schema';
 import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
+import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
+import { PaymentRequestModel, PaymentRequestSchema } from '@infrastructure/database/schemas/payment-request.schema';
+import { MongoPaymentRequestRepository } from '@infrastructure/repositories/mongo-payment-request.repository';
 import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 
@@ -83,6 +87,7 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
       { name: AcademyModel.name, schema: AcademySchema },
       { name: StudentAttendanceModel.name, schema: StudentAttendanceSchema },
       { name: ParentStudentLinkModel.name, schema: ParentStudentLinkSchema },
+      { name: PaymentRequestModel.name, schema: PaymentRequestSchema },
     ]),
   ],
   controllers: [StudentsController],
@@ -96,6 +101,7 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
     { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
     { provide: ACADEMY_REPOSITORY, useClass: MongoAcademyRepository },
     { provide: STUDENT_ATTENDANCE_REPOSITORY, useClass: MongoStudentAttendanceRepository },
+    { provide: PAYMENT_REQUEST_REPOSITORY, useClass: MongoPaymentRequestRepository },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     {
@@ -153,14 +159,32 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         audit: AuditRecorderPort,
         feeDueRepo: FeeDueRepository,
         studentBatchRepo: StudentBatchRepository,
+        parentLinkRepo: ParentStudentLinkRepository,
+        attendanceRepo: StudentAttendanceRepository,
+        paymentRequestRepo: PaymentRequestRepository,
+        transaction: TransactionPort,
       ) =>
-        new SoftDeleteStudentUseCase(userRepo, studentRepo, audit, feeDueRepo, studentBatchRepo),
+        new SoftDeleteStudentUseCase(
+          userRepo,
+          studentRepo,
+          audit,
+          feeDueRepo,
+          studentBatchRepo,
+          parentLinkRepo,
+          attendanceRepo,
+          paymentRequestRepo,
+          transaction,
+        ),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
         AUDIT_RECORDER_PORT,
         FEE_DUE_REPOSITORY,
         STUDENT_BATCH_REPOSITORY,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        STUDENT_ATTENDANCE_REPOSITORY,
+        PAYMENT_REQUEST_REPOSITORY,
+        TRANSACTION_PORT,
       ],
     },
     {

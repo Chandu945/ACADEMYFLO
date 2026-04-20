@@ -1,4 +1,4 @@
-# @playconnect/mobile
+# @academyflo/mobile
 
 React Native application for **Owner + Staff** roles.
 

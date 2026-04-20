@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { AccountDeletionRequestRepository } from '@domain/account-deletion/ports/account-deletion-request.repository';
 import { AccountDeletionRequest } from '@domain/account-deletion/entities/account-deletion-request.entity';
 import type { DeletionStatus } from '@domain/account-deletion/entities/account-deletion-request.entity';

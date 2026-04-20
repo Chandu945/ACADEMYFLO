@@ -119,7 +119,9 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
   controllers: [
     ParentController,
     FeePaymentWebhookController,
-    ...(process.env['APP_ENV'] === 'development' ? [FeePaymentTestController] : []),
+    ...(process.env['NODE_ENV'] !== 'production' && process.env['APP_ENV'] === 'development'
+      ? [FeePaymentTestController]
+      : []),
   ],
   providers: [
     // Repositories

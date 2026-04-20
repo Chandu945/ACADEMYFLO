@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type { AuditActionType } from '@/domain/admin/audit-logs';
-import { AUDIT_ACTION_TYPES } from '@playconnect/contracts';
+import { AUDIT_ACTION_TYPES } from '@academyflo/contracts';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';

@@ -13,8 +13,8 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { GENDERS } from '@playconnect/contracts';
-import type { Gender } from '@playconnect/contracts';
+import { GENDERS } from '@academyflo/contracts';
+import type { Gender } from '@academyflo/contracts';
 import { trimAndCollapse, normalizeEmail } from '../../common/sanitizers/string-sanitizer';
 
 export class StudentAddressDto {

@@ -8,7 +8,7 @@ import type { LoggerPort } from '@shared/logging/logger.port';
 import type { ClockPort } from '../../common/clock.port';
 import type { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import type { Student } from '@domain/student/entities/student.entity';
-import type { FeeReminderRunSummary } from '@playconnect/contracts';
+import type { FeeReminderRunSummary } from '@academyflo/contracts';
 import type { Result } from '@shared/kernel';
 import { ok } from '@shared/kernel';
 import { formatLocalDate, addDaysToLocalDate } from '@shared/date-utils';

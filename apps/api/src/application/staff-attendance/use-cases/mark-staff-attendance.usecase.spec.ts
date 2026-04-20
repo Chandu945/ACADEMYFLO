@@ -59,43 +59,18 @@ function buildDeps() {
   const staffAttendanceRepo: jest.Mocked<StaffAttendanceRepository> = {
     save: jest.fn(),
     deleteByAcademyStaffDate: jest.fn(),
-    findAbsentByAcademyAndDate: jest.fn(),
-    findAbsentByAcademyDateAndStaffIds: jest.fn().mockResolvedValue([]),
-    findAbsentByAcademyAndMonth: jest.fn(),
-    countAbsentByAcademyStaffAndMonth: jest.fn(),
+    findPresentByAcademyAndDate: jest.fn(),
+    findPresentByAcademyDateAndStaffIds: jest.fn().mockResolvedValue([]),
+    findPresentByAcademyAndMonth: jest.fn(),
+    countPresentByAcademyStaffAndMonth: jest.fn(),
   };
   const auditRecorder = { record: jest.fn() };
   return { userRepo, staffAttendanceRepo, auditRecorder };
 }
 
 describe('MarkStaffAttendanceUseCase', () => {
-  it('should create absent record when marking ABSENT', async () => {
-    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
-    userRepo.findById.mockImplementation(async (id: string) => {
-      if (id === 'owner-1') return createOwner();
-      if (id === 'staff-1') return createStaff();
-      return null;
-    });
-
-    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
-    const result = await uc.execute({
-      actorUserId: 'owner-1',
-      actorRole: 'OWNER',
-      staffUserId: 'staff-1',
-      date: TODAY,
-      status: 'ABSENT',
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.status).toBe('ABSENT');
-      expect(result.value.staffUserId).toBe('staff-1');
-      expect(result.value.date).toBe(TODAY);
-    }
-    expect(staffAttendanceRepo.save).toHaveBeenCalled();
-  });
-
-  it('should delete absent record when marking PRESENT', async () => {
+  // Absence-only model: records mean PRESENT. Absence = no record.
+  it('should create a present record when marking PRESENT', async () => {
     const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockImplementation(async (id: string) => {
       if (id === 'owner-1') return createOwner();
@@ -110,6 +85,32 @@ describe('MarkStaffAttendanceUseCase', () => {
       staffUserId: 'staff-1',
       date: TODAY,
       status: 'PRESENT',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.status).toBe('PRESENT');
+      expect(result.value.staffUserId).toBe('staff-1');
+      expect(result.value.date).toBe(TODAY);
+    }
+    expect(staffAttendanceRepo.save).toHaveBeenCalled();
+  });
+
+  it('should delete the present record when marking ABSENT', async () => {
+    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    userRepo.findById.mockImplementation(async (id: string) => {
+      if (id === 'owner-1') return createOwner();
+      if (id === 'staff-1') return createStaff();
+      return null;
+    });
+
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const result = await uc.execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      staffUserId: 'staff-1',
+      date: TODAY,
+      status: 'ABSENT',
     });
 
     expect(result.ok).toBe(true);

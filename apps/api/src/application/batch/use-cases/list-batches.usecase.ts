@@ -8,7 +8,7 @@ import { canReadBatch } from '@domain/batch/rules/batch.rules';
 import { BatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ListBatchesInput {
   actorUserId: string;

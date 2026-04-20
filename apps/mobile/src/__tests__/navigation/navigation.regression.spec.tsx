@@ -121,6 +121,7 @@ const activeSub: SubscriptionInfo = {
   requiredTierKey: 'TIER_0_50',
   pendingTierChange: null,
   tiers: [],
+  pendingPaymentOrderId: null,
 };
 
 describe('Navigation Regression', () => {

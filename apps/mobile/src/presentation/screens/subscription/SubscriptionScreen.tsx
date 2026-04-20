@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Screen } from '../../components/ui/Screen';
@@ -186,6 +186,20 @@ export function SubscriptionScreen() {
   }, [refreshSubscription]);
 
   const paymentFlow = usePaymentFlow(paymentDeps, handleRefresh);
+
+  // Resume polling for a PENDING payment carried over from a previous app
+  // session (e.g. user force-killed the app mid-checkout). The backend's
+  // `/subscription/me` surfaces the open orderId; we only resume once per
+  // orderId — the hook itself guards against re-entry.
+  const resumedOrderRef = useRef<string | null>(null);
+  useEffect(() => {
+    const pendingId = subscription?.pendingPaymentOrderId ?? null;
+    if (!pendingId) return;
+    if (resumedOrderRef.current === pendingId) return;
+    if (paymentFlow.status !== 'idle') return;
+    resumedOrderRef.current = pendingId;
+    paymentFlow.resumePayment(pendingId);
+  }, [subscription, paymentFlow]);
 
   if (!subscription) {
     return (

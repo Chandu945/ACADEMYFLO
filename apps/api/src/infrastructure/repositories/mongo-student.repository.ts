@@ -9,7 +9,7 @@ import type {
 import { Student } from '@domain/student/entities/student.entity';
 import { StudentModel } from '../database/schemas/student.schema';
 import type { StudentDocument } from '../database/schemas/student.schema';
-import type { Gender, StudentStatus } from '@playconnect/contracts';
+import type { Gender, StudentStatus } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 import { escapeRegex } from '@shared/utils/escape-regex';
 

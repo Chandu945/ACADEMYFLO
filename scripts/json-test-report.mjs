@@ -119,7 +119,7 @@ function runGate(gate) {
 // Ensure artifacts directory exists
 mkdirSync(ARTIFACTS_DIR, { recursive: true });
 
-process.stdout.write('=== PlayConnect CI Verification ===\n\n');
+process.stdout.write('=== Academyflo CI Verification ===\n\n');
 
 const results = [];
 let allPassed = true;

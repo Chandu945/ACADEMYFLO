@@ -1,5 +1,5 @@
 import { IsIn, IsNotEmpty } from 'class-validator';
-import { EVENT_STATUSES } from '@playconnect/contracts';
+import { EVENT_STATUSES } from '@academyflo/contracts';
 
 export class ChangeEventStatusDto {
   @IsNotEmpty()

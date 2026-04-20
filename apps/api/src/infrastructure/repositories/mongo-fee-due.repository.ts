@@ -5,7 +5,7 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import { FeeDueModel } from '../database/schemas/fee-due.schema';
 import type { FeeDueDocument } from '../database/schemas/fee-due.schema';
-import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeRepeatInterval } from '@playconnect/contracts';
+import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeRepeatInterval } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 

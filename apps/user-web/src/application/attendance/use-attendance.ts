@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type AttendanceItem = {
   studentId: string;
@@ -88,10 +89,10 @@ export async function markAttendance(studentId: string, date: string, status: st
   try {
     const res = await fetch('/api/attendance', {
       method: 'PUT',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify({ studentId, date, status }),
       signal: AbortSignal.timeout(10000),
     });
@@ -109,10 +110,10 @@ export async function markBulkAttendance(date: string, updates: { studentId: str
   try {
     const res = await fetch('/api/attendance', {
       method: 'PUT',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify({ bulk: true, date, updates }),
       signal: AbortSignal.timeout(15000),
     });
@@ -243,9 +244,9 @@ export async function removeHoliday(date: string, accessToken?: string | null) {
     const params = new URLSearchParams({ date });
     const res = await fetch(`/api/attendance/holidays?${params}`, {
       method: 'DELETE',
-      headers: {
+      headers: csrfHeaders({
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       signal: AbortSignal.timeout(10000),
     });
     const json = await safeJson(res);

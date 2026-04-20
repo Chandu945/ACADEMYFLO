@@ -9,7 +9,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canViewAttendance, validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
 import type { DailyAttendanceReportDto } from '../dtos/attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetDailyAttendanceReportInput {
   actorUserId: string;
@@ -61,7 +61,7 @@ export class GetDailyAttendanceReportUseCase {
     const totalActive = allActiveStudents.length;
 
     // Get all present records for the day (records now mean PRESENT)
-    const presentRecords = await this.attendanceRepo.findAbsentByAcademyAndDate(
+    const presentRecords = await this.attendanceRepo.findPresentByAcademyAndDate(
       actor.academyId,
       input.date,
     );

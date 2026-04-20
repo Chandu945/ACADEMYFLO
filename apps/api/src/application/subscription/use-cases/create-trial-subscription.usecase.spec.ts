@@ -3,7 +3,7 @@ import type { SubscriptionRepository } from '@domain/subscription/ports/subscrip
 import type { ClockPort } from '../../common/clock.port';
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import { createAuditFields } from '@shared/kernel';
-import { TRIAL_DURATION_DAYS } from '@playconnect/contracts';
+import { TRIAL_DURATION_DAYS } from '@academyflo/contracts';
 
 const NOW = new Date('2025-06-15T12:00:00Z');
 const DAY_MS = 24 * 60 * 60 * 1000;

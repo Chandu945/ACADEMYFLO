@@ -6,7 +6,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { ParentErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ChangePasswordInput {
   parentUserId: string;

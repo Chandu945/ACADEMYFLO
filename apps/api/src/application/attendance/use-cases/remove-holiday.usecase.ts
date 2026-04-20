@@ -6,7 +6,8 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canDeclareHoliday, validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface RemoveHolidayInput {
   actorUserId: string;
@@ -18,6 +19,7 @@ export class RemoveHolidayUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly holidayRepo: HolidayRepository,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: RemoveHolidayInput): Promise<Result<{ date: string }, AppError>> {
@@ -36,8 +38,24 @@ export class RemoveHolidayUseCase {
       return err(AttendanceErrors.academyRequired());
     }
 
-    // Idempotent: if no holiday, still return success
+    // Only emit audit if a holiday was actually deleted — remove is idempotent,
+    // and auditing a no-op pollutes the feed.
+    const existing = await this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date);
     await this.holidayRepo.deleteByAcademyAndDate(actor.academyId, input.date);
+
+    if (existing) {
+      await this.auditRecorder.record({
+        academyId: actor.academyId,
+        actorUserId: input.actorUserId,
+        action: 'HOLIDAY_REMOVED',
+        entityType: 'HOLIDAY',
+        entityId: existing.id.toString(),
+        context: {
+          date: existing.date,
+          reason: existing.reason ?? '',
+        },
+      });
+    }
 
     return ok({ date: input.date });
   }

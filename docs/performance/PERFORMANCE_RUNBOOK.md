@@ -1,6 +1,6 @@
 # Performance Runbook
 
-Diagnosing and resolving performance issues in PlayConnect.
+Diagnosing and resolving performance issues in Academyflo.
 
 ## 1. Interpreting Slow Query Logs
 
@@ -187,7 +187,7 @@ db.users.getIndexes();
 1. **Check health endpoints:**
 
    ```bash
-   curl -s https://playconnect.app/api/v1/health/readiness | jq .
+   curl -s https://academyflo.com/api/v1/health/readiness | jq .
    ```
 
 2. **Check container resource usage:**

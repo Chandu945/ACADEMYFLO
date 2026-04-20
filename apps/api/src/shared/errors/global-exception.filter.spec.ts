@@ -111,4 +111,20 @@ describe('GlobalExceptionFilter', () => {
     expect(body.statusCode).toBe(401);
     expect(body.message).toBe('Not authorized');
   });
+
+  it('should strip validation details on 400 in production (no schema enumeration)', () => {
+    const prodFilter = new GlobalExceptionFilter(true);
+    const exception = new BadRequestException({
+      message: ['property secretField should not exist', 'password must be longer than 8'],
+      error: 'Bad Request',
+      statusCode: 400,
+    });
+
+    prodFilter.catch(exception, mockHost as never);
+
+    const body = mockResponse.json.mock.calls[0][0] as ErrorEnvelope;
+    expect(body.statusCode).toBe(400);
+    expect(body.message).toBe('Validation failed');
+    expect(body.details).toEqual([]);
+  });
 });

@@ -16,7 +16,7 @@ import {
 import { BatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
-import type { Weekday, UserRole } from '@playconnect/contracts';
+import type { Weekday, UserRole } from '@academyflo/contracts';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import { randomUUID } from 'crypto';
 

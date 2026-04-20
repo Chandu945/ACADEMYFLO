@@ -1,6 +1,6 @@
 # Release Readiness Checklist
 
-Go/no-go gates for every PlayConnect release. All items must be checked before deploying to production.
+Go/no-go gates for every Academyflo release. All items must be checked before deploying to production.
 
 ## Go/No-Go Gates
 
@@ -83,14 +83,14 @@ Go/no-go gates for every PlayConnect release. All items must be checked before d
 3. **Verify health endpoints**:
 
    ```bash
-   curl https://playconnect.app/api/v1/health/liveness
-   curl https://playconnect.app/api/v1/health/readiness
+   curl https://academyflo.com/api/v1/health/liveness
+   curl https://academyflo.com/api/v1/health/readiness
    ```
 
 4. **Run smoke check**:
 
    ```bash
-   API_URL=https://playconnect.app ADMIN_URL=https://admin.playconnect.app \
+   API_URL=https://academyflo.com ADMIN_URL=https://admin.academyflo.com \
      node scripts/smoke-check.mjs
    ```
 
@@ -107,7 +107,7 @@ Go/no-go gates for every PlayConnect release. All items must be checked before d
 
    ```bash
    curl -H "X-Metrics-Token: $METRICS_TOKEN" \
-     https://playconnect.app/api/v1/metrics
+     https://academyflo.com/api/v1/metrics
    ```
 
 3. **Check logs for errors**:

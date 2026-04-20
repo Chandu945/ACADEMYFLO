@@ -103,7 +103,11 @@ function buildDetailsSummary(details: unknown[]): string | undefined {
   return messages.map((m) => `\u2022 ${m}`).join('\n');
 }
 
-export function mapHttpError(status: number, body: unknown): AppError {
+export function mapHttpError(
+  status: number,
+  body: unknown,
+  retryAfterHeader?: string | null,
+): AppError {
   const code: AppErrorCode = STATUS_MAP[status] ?? 'UNKNOWN';
 
   let serverMessage: string | undefined;
@@ -140,5 +144,21 @@ export function mapHttpError(status: number, body: unknown): AppError {
     message = SAFE_MESSAGES[code];
   }
 
-  return { code, message, fieldErrors };
+  const retryAfterSeconds =
+    code === 'RATE_LIMITED' ? parseRetryAfter(retryAfterHeader) : undefined;
+
+  return { code, message, fieldErrors, retryAfterSeconds };
+}
+
+// Retry-After is either delta-seconds or an HTTP-date per RFC 7231.
+function parseRetryAfter(value: string | null | undefined): number | undefined {
+  if (!value) return undefined;
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber) && asNumber >= 0) return Math.ceil(asNumber);
+  const asDate = Date.parse(value);
+  if (!Number.isNaN(asDate)) {
+    const diff = Math.ceil((asDate - Date.now()) / 1000);
+    return diff > 0 ? diff : undefined;
+  }
+  return undefined;
 }

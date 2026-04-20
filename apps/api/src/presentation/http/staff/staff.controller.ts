@@ -24,6 +24,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUser as CurrentUserType } from '@application/common/current-user';
 import type { CreateStaffUseCase } from '@application/staff/use-cases/create-staff.usecase';
 import type { ListStaffUseCase } from '@application/staff/use-cases/list-staff.usecase';
+import type { GetStaffUseCase } from '@application/staff/use-cases/get-staff.usecase';
 import type { UpdateStaffUseCase } from '@application/staff/use-cases/update-staff.usecase';
 import type { SetStaffStatusUseCase } from '@application/staff/use-cases/set-staff-status.usecase';
 import type { UploadStaffPhotoUseCase } from '@application/staff/use-cases/upload-staff-photo.usecase';
@@ -32,6 +33,7 @@ import { ListStaffQueryDto } from './dto/list-staff-query.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { SetStaffStatusDto } from './dto/set-staff-status.dto';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import { MAX_IMAGE_FILE_SIZE } from '@shared/utils/image-validation';
@@ -46,6 +48,7 @@ export class StaffController {
   constructor(
     @Inject('CREATE_STAFF_USE_CASE') private readonly createStaff: CreateStaffUseCase,
     @Inject('LIST_STAFF_USE_CASE') private readonly listStaff: ListStaffUseCase,
+    @Inject('GET_STAFF_USE_CASE') private readonly getStaff: GetStaffUseCase,
     @Inject('UPDATE_STAFF_USE_CASE') private readonly updateStaff: UpdateStaffUseCase,
     @Inject('SET_STAFF_STATUS_USE_CASE') private readonly setStaffStatus: SetStaffStatusUseCase,
     @Inject('UPLOAD_STAFF_PHOTO_USE_CASE') private readonly uploadStaffPhoto: UploadStaffPhotoUseCase,
@@ -99,15 +102,31 @@ export class StaffController {
       ownerRole: user.role,
       page: query.page,
       pageSize: query.pageSize,
+      status: query.status,
     });
 
+    return mapResultToResponse(result, req);
+  }
+
+  @Get(':staffUserId')
+  @ApiOperation({ summary: 'Get a single staff member by id' })
+  async getOne(
+    @Param('staffUserId', ParseObjectIdPipe) staffUserId: string,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    const result = await this.getStaff.execute({
+      ownerUserId: user.userId,
+      ownerRole: user.role,
+      staffId: staffUserId,
+    });
     return mapResultToResponse(result, req);
   }
 
   @Patch(':staffUserId')
   @ApiOperation({ summary: 'Update a staff member' })
   async update(
-    @Param('staffUserId') staffUserId: string,
+    @Param('staffUserId', ParseObjectIdPipe) staffUserId: string,
     @Body() dto: UpdateStaffDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -151,7 +170,7 @@ export class StaffController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMAGE_FILE_SIZE } }))
   async uploadPhoto(
-    @Param('staffUserId') staffUserId: string,
+    @Param('staffUserId', ParseObjectIdPipe) staffUserId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -180,7 +199,7 @@ export class StaffController {
   @Patch(':staffUserId/status')
   @ApiOperation({ summary: 'Activate or deactivate a staff member' })
   async setStatus(
-    @Param('staffUserId') staffUserId: string,
+    @Param('staffUserId', ParseObjectIdPipe) staffUserId: string,
     @Body() dto: SetStaffStatusDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,

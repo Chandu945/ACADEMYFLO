@@ -1,6 +1,6 @@
 # Architecture Compliance
 
-Evidence of Clean Architecture + DDD enforcement in the PlayConnect codebase.
+Evidence of Clean Architecture + DDD enforcement in the Academyflo codebase.
 
 ---
 

@@ -2,7 +2,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
 const { MongoClient } = require('../../../node_modules/mongoose/node_modules/mongodb');
 
-const TARGET_OWNER_EMAIL = 'deletetest@playconnect.dev';
+const TARGET_OWNER_EMAIL = 'deletetest@academyflo.dev';
 const TARGET_ACADEMY_ID = 'e8efdbb4-fd98-4d6d-be9b-23dd7a41beb8';
 const URI = process.env.MONGODB_URI;
 
@@ -34,7 +34,7 @@ async function snapshot(db) {
 (async () => {
   const client = new MongoClient(URI);
   await client.connect();
-  const db = client.db('playconnect');
+  const db = client.db('academyflo');
 
   console.log('--- BEFORE ---');
   console.log(await snapshot(db));
@@ -63,7 +63,7 @@ async function snapshot(db) {
   console.log('--- AFTER ---');
   const c2 = new MongoClient(URI);
   await c2.connect();
-  const d2 = c2.db('playconnect');
+  const d2 = c2.db('academyflo');
   console.log(await snapshot(d2));
 
   const owner = await d2.collection('users').findOne({ emailNormalized: TARGET_OWNER_EMAIL });

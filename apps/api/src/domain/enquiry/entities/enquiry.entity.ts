@@ -1,8 +1,17 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
-import type { EnquiryStatus, EnquirySource, ClosureReason } from '@playconnect/contracts';
+import type { EnquiryStatus, EnquirySource, ClosureReason } from '@academyflo/contracts';
 
-export type { EnquiryStatus, EnquirySource, ClosureReason } from '@playconnect/contracts';
+export type { EnquiryStatus, EnquirySource, ClosureReason } from '@academyflo/contracts';
+
+// Strip whitespace and dashes from phone-like inputs so dedup
+// `findActiveByMobileAndAcademy` can match "+91 98765 43210" against
+// "+919876543210". Keeps the leading + (preserves country code intent).
+// We don't enforce E.164 here — DTO regex already covers that — we just
+// normalize so input variants converge to one canonical form.
+function normalizePhoneInput(raw: string): string {
+  return raw.replace(/[\s\-()]/g, '');
+}
 
 export interface FollowUp {
   id: string;
@@ -59,9 +68,9 @@ export class Enquiry extends Entity<EnquiryProps> {
       academyId: params.academyId,
       prospectName: params.prospectName.trim(),
       guardianName: params.guardianName ?? null,
-      mobileNumber: params.mobileNumber,
-      whatsappNumber: params.whatsappNumber ?? null,
-      email: params.email ?? null,
+      mobileNumber: normalizePhoneInput(params.mobileNumber),
+      whatsappNumber: params.whatsappNumber ? normalizePhoneInput(params.whatsappNumber) : null,
+      email: params.email ? params.email.trim().toLowerCase() : null,
       address: params.address ?? null,
       interestedIn: params.interestedIn ?? null,
       source: params.source ?? null,
@@ -120,9 +129,13 @@ export class Enquiry extends Entity<EnquiryProps> {
       ...this.props,
       prospectName: params.prospectName !== undefined ? params.prospectName.trim() : this.props.prospectName,
       guardianName: params.guardianName !== undefined ? params.guardianName : this.props.guardianName,
-      mobileNumber: params.mobileNumber !== undefined ? params.mobileNumber : this.props.mobileNumber,
-      whatsappNumber: params.whatsappNumber !== undefined ? params.whatsappNumber : this.props.whatsappNumber,
-      email: params.email !== undefined ? params.email : this.props.email,
+      mobileNumber: params.mobileNumber !== undefined ? normalizePhoneInput(params.mobileNumber) : this.props.mobileNumber,
+      whatsappNumber: params.whatsappNumber !== undefined
+        ? (params.whatsappNumber ? normalizePhoneInput(params.whatsappNumber) : null)
+        : this.props.whatsappNumber,
+      email: params.email !== undefined
+        ? (params.email ? params.email.trim().toLowerCase() : null)
+        : this.props.email,
       address: params.address !== undefined ? params.address : this.props.address,
       interestedIn: params.interestedIn !== undefined ? params.interestedIn : this.props.interestedIn,
       source: params.source !== undefined ? params.source : this.props.source,

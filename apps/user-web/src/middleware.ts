@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const COOKIE_NAME = 'pc_user_session';
+const COOKIE_NAME = 'af_user_session';
 const LOGIN_PATH = '/login';
 const DASHBOARD_PATH = '/dashboard';
 const AUTH_PATHS = ['/login', '/signup', '/forgot-password'];

@@ -11,8 +11,10 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderStaffDeactivatedEmail } from '../../notifications/templates/staff-deactivated-template';
 import { AuthErrors, StaffErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 
 export interface SetStaffStatusInput {
   ownerUserId: string;
@@ -45,6 +47,8 @@ export class SetStaffStatusUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly sessionRepo: SessionRepository,
+    private readonly auditRecorder: AuditRecorderPort,
+    private readonly paymentRequestRepo: PaymentRequestRepository,
     private readonly emailSender?: EmailSenderPort,
     private readonly academyRepo?: AcademyRepository,
     private readonly deviceTokenRepo?: DeviceTokenRepository,
@@ -103,10 +107,35 @@ export class SetStaffStatusUseCase {
     // Note: user auth cache (user:auth:{staffId}) will be invalidated on next
     // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
 
+    let pendingPrCount = 0;
     if (input.status === 'INACTIVE') {
       await this.sessionRepo.revokeAllByUserIds([input.staffId]);
       await this.deviceTokenRepo?.removeByUserIds([input.staffId]);
+      // Surface (don't auto-cancel) PRs the deactivated staff filed — owner
+      // should triage these manually so we don't quietly drop a parent's
+      // payment intent.
+      const allByStaff = await this.paymentRequestRepo.listByStaffAndAcademy(
+        input.staffId,
+        owner.academyId,
+      );
+      pendingPrCount = allByStaff.filter((p) => p.status === 'PENDING').length;
     }
+
+    await this.auditRecorder.record({
+      academyId: owner.academyId,
+      actorUserId: input.ownerUserId,
+      action: input.status === 'INACTIVE' ? 'STAFF_DEACTIVATED' : 'STAFF_REACTIVATED',
+      entityType: 'USER',
+      entityId: input.staffId,
+      context: {
+        staffName: staff.fullName,
+        fromStatus: staff.status,
+        toStatus: input.status,
+        ...(input.status === 'INACTIVE'
+          ? { pendingPaymentRequests: String(pendingPrCount) }
+          : {}),
+      },
+    });
 
     // Fire-and-forget: notify staff about status change
     if (this.emailSender && this.academyRepo) {

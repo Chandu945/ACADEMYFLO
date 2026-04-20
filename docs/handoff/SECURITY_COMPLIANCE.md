@@ -1,6 +1,6 @@
 # Security Compliance Summary
 
-Summary of security controls implemented across the PlayConnect system.
+Summary of security controls implemented across the Academyflo system.
 
 ---
 

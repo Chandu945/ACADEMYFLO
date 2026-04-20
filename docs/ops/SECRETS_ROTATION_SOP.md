@@ -1,6 +1,6 @@
 # Secrets Rotation SOP
 
-Procedures for rotating sensitive credentials in PlayConnect.
+Procedures for rotating sensitive credentials in Academyflo.
 
 ## General Process
 
@@ -36,20 +36,20 @@ Procedures for rotating sensitive credentials in PlayConnect.
 
    ```bash
    # Edit .env.prod with new values
-   vi /opt/playconnect/.env.prod
+   vi /opt/academyflo/.env.prod
    ```
 
 3. Restart the API:
 
    ```bash
-   cd /opt/playconnect
+   cd /opt/academyflo
    docker compose -f deploy/docker-compose.prod.yml restart api
    ```
 
 4. Verify health:
 
    ```bash
-   curl -s https://playconnect.app/api/v1/health/readiness | jq .
+   curl -s https://academyflo.com/api/v1/health/readiness | jq .
    ```
 
 5. **Expected behavior:** All active sessions are invalidated. Users will see 401 on their next request and will need to re-login. This is the intended security behavior.
@@ -73,7 +73,7 @@ Procedures for rotating sensitive credentials in PlayConnect.
 2. Update on the production server:
 
    ```bash
-   vi /opt/playconnect/.env.prod
+   vi /opt/academyflo/.env.prod
    # Update SMTP_USER and SMTP_PASS
    ```
 
@@ -116,7 +116,7 @@ Procedures for rotating sensitive credentials in PlayConnect.
 2. Update on the production server:
 
    ```bash
-   vi /opt/playconnect/.env.prod
+   vi /opt/academyflo/.env.prod
    # Update METRICS_TOKEN
    ```
 
@@ -132,7 +132,7 @@ Procedures for rotating sensitive credentials in PlayConnect.
 
    ```bash
    curl -H "X-Metrics-Token: $NEW_TOKEN" \
-     https://playconnect.app/api/v1/metrics
+     https://academyflo.com/api/v1/metrics
    ```
 
 ## MongoDB Credential Rotation
@@ -162,7 +162,7 @@ Procedures for rotating sensitive credentials in PlayConnect.
 3. Update the connection URI:
 
    ```bash
-   vi /opt/playconnect/.env.prod
+   vi /opt/academyflo/.env.prod
    # Update MONGODB_URI with new credentials
    ```
 
@@ -175,7 +175,7 @@ Procedures for rotating sensitive credentials in PlayConnect.
 5. Verify:
 
    ```bash
-   curl -s https://playconnect.app/api/v1/health/readiness | jq .
+   curl -s https://academyflo.com/api/v1/health/readiness | jq .
    # Should show mongodb: "up"
    ```
 

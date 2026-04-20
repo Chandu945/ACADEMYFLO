@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 
 import { apiGet } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 import { buildSafeParams } from '@/infra/http/query-sanitizer';
 import { serverEnv } from '@/infra/env';
 
@@ -32,28 +33,49 @@ export async function GET(request: NextRequest) {
     return proxyPdf(backendPath, month, accessToken);
   }
 
+  // Common JSON-path validation: every report below accepts month and most
+  // accept page/pageSize. Reject obvious garbage at the BFF so the backend
+  // doesn't have to triage it.
+  if (month && !/^\d{4}-\d{2}$/.test(month)) {
+    return NextResponse.json({ message: "month must be 'YYYY-MM'" }, { status: 400 });
+  }
+  const pageRaw = searchParams.get('page');
+  const pageSizeRaw = searchParams.get('pageSize');
+  if (pageRaw && (!/^\d+$/.test(pageRaw) || Number(pageRaw) < 1)) {
+    return NextResponse.json({ message: 'page must be a positive integer' }, { status: 400 });
+  }
+  if (pageSizeRaw) {
+    if (!/^\d+$/.test(pageSizeRaw)) {
+      return NextResponse.json({ message: 'pageSize must be a positive integer' }, { status: 400 });
+    }
+    const ps = Number(pageSizeRaw);
+    if (ps < 1 || ps > 100) {
+      return NextResponse.json({ message: 'pageSize must be between 1 and 100' }, { status: 400 });
+    }
+  }
+
   if (type === 'monthly-revenue') {
     const params = buildSafeParams({ month: month || undefined });
     const result = await apiGet(`/api/v1/reports/monthly-revenue?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
   if (type === 'student-wise-dues') {
     const params = buildSafeParams({
       month: month || undefined,
-      page: searchParams.get('page') || '1',
-      pageSize: searchParams.get('pageSize') || '20',
+      page: pageRaw || '1',
+      pageSize: pageSizeRaw || '20',
     });
     const result = await apiGet(`/api/v1/reports/student-wise-dues?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 
   if (type === 'month-wise-dues') {
     const params = buildSafeParams({ month: month || undefined });
     const result = await apiGet(`/api/v1/reports/month-wise-dues?${params}`, { accessToken });
-    if (!result.ok) return NextResponse.json({ message: result.error.message }, { status: 400 });
+    if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
 

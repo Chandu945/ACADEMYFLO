@@ -12,7 +12,7 @@ import {
   validateDateRange,
 } from '@domain/attendance/rules/attendance.rules';
 import { StaffAttendanceErrors } from '../../common/errors';
-import type { StaffAttendanceViewStatus, UserRole } from '@playconnect/contracts';
+import type { StaffAttendanceViewStatus, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { randomUUID } from 'crypto';
 
@@ -83,7 +83,7 @@ export class MarkStaffAttendanceUseCase {
 
     if (input.status === 'PRESENT') {
       // Check if a present record already exists to avoid overwriting audit data
-      const existing = await this.staffAttendanceRepo.findAbsentByAcademyDateAndStaffIds(
+      const existing = await this.staffAttendanceRepo.findPresentByAcademyDateAndStaffIds(
         actor.academyId,
         input.date,
         [input.staffUserId],

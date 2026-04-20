@@ -66,7 +66,7 @@ export class UploadsController {
       );
     }
 
-    const bufferCheck = validateImageBuffer(file.buffer, file.mimetype);
+    const bufferCheck = await validateImageBuffer(file.buffer, file.mimetype);
     if (!bufferCheck.valid) {
       return mapResultToResponse(
         err(AppError.validation(bufferCheck.reason)),

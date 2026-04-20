@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { SubscriptionStatus, TierKey } from '@playconnect/contracts';
+import type { SubscriptionStatus, TierKey } from '@academyflo/contracts';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type SubscriptionInfo = { status: SubscriptionStatus; trialEndAt: string; paidEndAt: string | null; tierKey: TierKey | null; daysRemaining: number; canAccessApp: boolean; blockReason: string | null; activeStudentCount: number; currentTierKey: TierKey | null; requiredTierKey: TierKey; tiers: { key: TierKey; label: string; priceInr: number; maxStudents: number | null }[] };
 
@@ -50,7 +51,7 @@ export function useSubscription() {
 
 export async function initiatePayment(tierKey: string, accessToken?: string | null) {
   try {
-    const res = await fetch('/api/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify({ tierKey }), signal: AbortSignal.timeout(15000) });
+    const res = await fetch('/api/subscription', { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify({ tierKey }), signal: AbortSignal.timeout(15000) });
     const json = await safeJson(res);
     if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to initiate payment' };
     return { ok: true as const, data: json };

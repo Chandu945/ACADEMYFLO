@@ -16,7 +16,7 @@ function mockConfig(overrides: Partial<AppConfigService> = {}): AppConfigService
     smtpSecure: false,
     smtpUser: '',
     smtpPass: '',
-    smtpFrom: 'noreply@playconnect.app',
+    smtpFrom: 'noreply@academyflo.com',
     ...overrides,
   } as unknown as AppConfigService;
 }

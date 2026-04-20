@@ -8,7 +8,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import { StudentBatch } from '@domain/batch/entities/student-batch.entity';
 import { BatchErrors, StudentBatchErrors } from '../../common/errors';
 import { requireBatchInAcademy } from '../common/require-batch';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { randomUUID } from 'crypto';
 
 export interface AddStudentToBatchInput {

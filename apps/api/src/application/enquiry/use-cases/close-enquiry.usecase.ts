@@ -7,7 +7,8 @@ import type { ClosureReason } from '@domain/enquiry/entities/enquiry.entity';
 import { EnquiryErrors } from '../../common/errors';
 import { toEnquiryDetail } from './get-enquiry-detail.usecase';
 import type { EnquiryDetailOutput } from './get-enquiry-detail.usecase';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface CloseEnquiryInput {
   actorUserId: string;
@@ -21,6 +22,7 @@ export class CloseEnquiryUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly enquiryRepo: EnquiryRepository,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: CloseEnquiryInput): Promise<Result<EnquiryDetailOutput, AppError>> {
@@ -42,8 +44,23 @@ export class CloseEnquiryUseCase {
       return err(EnquiryErrors.alreadyClosed());
     }
 
+    const loadedVersion = enquiry.audit.version;
     const closed = enquiry.close(input.closureReason, input.actorUserId, new Date(), input.convertedStudentId);
-    await this.enquiryRepo.save(closed);
+    const saved = await this.enquiryRepo.saveWithVersionPrecondition(closed, loadedVersion);
+    if (!saved) return err(EnquiryErrors.concurrencyConflict());
+
+    await this.auditRecorder.record({
+      academyId: actor.academyId,
+      actorUserId: input.actorUserId,
+      action: 'ENQUIRY_CLOSED',
+      entityType: 'ENQUIRY',
+      entityId: input.enquiryId,
+      context: {
+        closureReason: input.closureReason,
+        ...(input.convertedStudentId ? { convertedStudentId: input.convertedStudentId } : {}),
+      },
+    });
+
     return ok(toEnquiryDetail(closed));
   }
 }

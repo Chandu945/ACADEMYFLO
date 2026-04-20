@@ -1,6 +1,6 @@
 # SRS Guardrails
 
-Explicit boundaries for PlayConnect development. These guardrails prevent scope creep and ensure the codebase stays aligned with the Software Requirements Specification.
+Explicit boundaries for Academyflo development. These guardrails prevent scope creep and ensure the codebase stays aligned with the Software Requirements Specification.
 
 ## Do Not Implement in MVP
 

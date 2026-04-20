@@ -4,6 +4,7 @@ import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import {
@@ -25,6 +26,7 @@ export class UploadStaffPhotoUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly fileStorage: FileStoragePort,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: UploadStaffPhotoInput): Promise<Result<{ url: string }, AppError>> {
@@ -54,7 +56,7 @@ export class UploadStaffPhotoUseCase {
       return err(AppErrorClass.validation('File size must not exceed 5MB'));
     }
 
-    const bufferCheck = validateImageBuffer(input.buffer, input.mimeType);
+    const bufferCheck = await validateImageBuffer(input.buffer, input.mimeType);
     if (!bufferCheck.valid) {
       return err(AppErrorClass.validation(bufferCheck.reason));
     }
@@ -74,6 +76,15 @@ export class UploadStaffPhotoUseCase {
     const updated = staff.updateProfilePhoto(url);
 
     await this.userRepo.save(updated);
+
+    await this.auditRecorder.record({
+      academyId: actor.academyId,
+      actorUserId: input.actorUserId,
+      action: 'STAFF_PHOTO_UPLOADED',
+      entityType: 'USER',
+      entityId: input.staffUserId,
+      context: { mimeType: input.mimeType },
+    });
 
     return ok({ url });
   }

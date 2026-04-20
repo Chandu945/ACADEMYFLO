@@ -8,7 +8,7 @@ import { canCancelPaymentRequest } from '@domain/fee/rules/payment-request.rules
 import { PaymentRequestErrors } from '../../common/errors';
 import type { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { toPaymentRequestDto } from '../dtos/payment-request.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface CancelPaymentRequestInput {

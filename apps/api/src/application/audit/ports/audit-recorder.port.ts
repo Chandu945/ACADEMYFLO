@@ -1,4 +1,4 @@
-import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType } from '@academyflo/contracts';
 
 export const AUDIT_RECORDER_PORT = Symbol('AUDIT_RECORDER_PORT');
 

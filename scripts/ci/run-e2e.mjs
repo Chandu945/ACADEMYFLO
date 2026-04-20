@@ -65,7 +65,7 @@ async function main() {
     run('npm run test:e2e:api', {
       env: {
         ...process.env,
-        MONGODB_URI: 'mongodb://localhost:27017/playconnect_e2e_test?replicaSet=rs0',
+        MONGODB_URI: 'mongodb://localhost:27017/academyflo_e2e_test?replicaSet=rs0',
         APP_ENV: 'test',
         NODE_ENV: 'test',
       },

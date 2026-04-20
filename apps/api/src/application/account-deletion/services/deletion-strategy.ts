@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { Result } from '@shared/kernel';
 import { AppError, err, ok } from '@shared/kernel';
 import type { AccountDeletionRequest } from '@domain/account-deletion/entities/account-deletion-request.entity';

@@ -8,7 +8,7 @@ import { CalendarEvent, deriveEventStatus } from '@domain/event/entities/event.e
 import type { EventType, TargetAudience } from '@domain/event/entities/event.entity';
 import { EventErrors } from '../../common/errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface UpdateEventInput {
   actorUserId: string;
@@ -86,6 +86,7 @@ export class UpdateEventUseCase {
       status = deriveEventStatus(startDate, endDate);
     }
 
+    const loadedVersion = event.audit.version;
     const updated = CalendarEvent.reconstitute(input.eventId, {
       academyId: event.academyId,
       title,
@@ -104,7 +105,8 @@ export class UpdateEventUseCase {
       audit: updateAuditFields(event.audit),
     });
 
-    await this.eventRepo.save(updated);
+    const saved = await this.eventRepo.saveWithVersionPrecondition(updated, loadedVersion);
+    if (!saved) return err(EventErrors.concurrencyConflict());
 
     await this.auditRecorder.record({
       academyId: actor.academyId,

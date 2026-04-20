@@ -1,5 +1,5 @@
 import type { User } from '../entities/user.entity';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
 

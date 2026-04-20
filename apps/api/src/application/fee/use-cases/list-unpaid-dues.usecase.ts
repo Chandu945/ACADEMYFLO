@@ -11,7 +11,7 @@ import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo'
 import { FeeErrors } from '../../common/errors';
 import type { FeeDueDto } from '../dtos/fee-due.dto';
 import { toFeeDueDto } from '../dtos/fee-due.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { ClockPort } from '../../common/clock.port';
 import { formatLocalDate } from '../../../shared/date-utils';
 import { buildLateFeeConfigFromAcademy } from '../common/late-fee';

@@ -13,7 +13,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
 import styles from './page.module.css';
 
-import { GENDERS } from '@playconnect/contracts';
+import { GENDERS } from '@academyflo/contracts';
 const GENDER_OPTIONS = GENDERS.map((g) => ({ value: g, label: g.charAt(0) + g.slice(1).toLowerCase() }));
 
 const SALARY_FREQUENCIES = [
@@ -108,34 +108,45 @@ export default function NewStaffPage() {
     return Object.keys(errors).length === 0;
   }, [form]);
 
+  // Defense-in-depth dedup: setLoading is async, so a fast double-submit
+  // (Enter + click, or two quick clicks) can fire two POSTs and create two
+  // staff records for the same email before the disabled state takes effect.
+  const inflightRef = useRef(false);
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (inflightRef.current) return;
     setError(null);
     setFieldErrors({});
     if (!validate()) return;
 
+    inflightRef.current = true;
     setLoading(true);
-    const result = await createStaff(
-      {
-        fullName: form.fullName.trim(),
-        email: form.email.trim().toLowerCase(),
-        phoneNumber: form.phoneNumber.trim(),
-        password: form.password,
-        whatsappNumber: normalizePhone(form.whatsappNumber) || undefined,
-        mobileNumber: normalizePhone(form.mobileNumber) || undefined,
-        address: form.address.trim() || undefined,
-        startDate: form.startDate || undefined,
-        gender: form.gender || undefined,
-        qualificationInfo: (form.qualification.trim() || form.position.trim())
-          ? { qualification: form.qualification.trim() || null, position: form.position.trim() || null }
-          : undefined,
-        salaryConfig: form.salaryAmount
-          ? { amount: Number(form.salaryAmount), frequency: form.salaryFrequency }
-          : undefined,
-      },
-      accessToken,
-    );
-    setLoading(false);
+    let result;
+    try {
+      result = await createStaff(
+        {
+          fullName: form.fullName.trim(),
+          email: form.email.trim().toLowerCase(),
+          phoneNumber: form.phoneNumber.trim(),
+          password: form.password,
+          whatsappNumber: normalizePhone(form.whatsappNumber) || undefined,
+          mobileNumber: normalizePhone(form.mobileNumber) || undefined,
+          address: form.address.trim() || undefined,
+          startDate: form.startDate || undefined,
+          gender: form.gender || undefined,
+          qualificationInfo: (form.qualification.trim() || form.position.trim())
+            ? { qualification: form.qualification.trim() || null, position: form.position.trim() || null }
+            : undefined,
+          salaryConfig: form.salaryAmount
+            ? { amount: Number(form.salaryAmount), frequency: form.salaryFrequency }
+            : undefined,
+        },
+        accessToken,
+      );
+    } finally {
+      inflightRef.current = false;
+      setLoading(false);
+    }
 
     if (!result.ok) {
       setError(result.error);

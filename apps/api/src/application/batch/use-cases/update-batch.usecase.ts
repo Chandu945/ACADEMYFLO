@@ -17,7 +17,7 @@ import { BatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
 import { requireBatchInAcademy } from '../common/require-batch';
-import type { Weekday, UserRole } from '@playconnect/contracts';
+import type { Weekday, UserRole } from '@academyflo/contracts';
 import { AppError as AppErrorClass } from '@shared/kernel';
 
 import type { BatchStatus } from '@domain/batch/entities/batch.entity';

@@ -1,5 +1,5 @@
 # =============================================================================
-# PlayConnect API — Multi-stage Dockerfile
+# Academyflo API — Multi-stage Dockerfile
 # Base image: Node 20 LTS (pinned major)
 # Build context: repository root (monorepo)
 # =============================================================================
@@ -30,10 +30,10 @@ COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
 # Build contracts first (shared types required by API)
-RUN npm run build --workspace=@playconnect/contracts
+RUN npm run build --workspace=@academyflo/contracts
 
 # Build the NestJS application
-RUN npm run build --workspace=@playconnect/api
+RUN npm run build --workspace=@academyflo/api
 
 # ---------------------------------------------------------------------------
 # Stage 2: Production runner (minimal, secure)

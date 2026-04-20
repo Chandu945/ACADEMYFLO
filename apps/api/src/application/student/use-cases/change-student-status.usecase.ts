@@ -16,7 +16,7 @@ export interface ChangeStudentStatusOutput {
   student: StudentDto;
   deletedUpcomingDuesCount: number;
 }
-import type { StudentStatus, UserRole } from '@playconnect/contracts';
+import type { StudentStatus, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { TransactionPort } from '../../common/transaction.port';
@@ -107,11 +107,13 @@ export class ChangeStudentStatusUseCase {
 
     // SAFETY: If fee cleanup is needed, a transaction is required to keep
     // student status and fee-due deletion atomic. Without a transaction,
-    // a failure after save but before delete (or vice-versa) leaves data inconsistent.
+    // a failure after save but before delete (or vice-versa) leaves data
+    // inconsistent. We previously warned and proceeded — that risked silent
+    // data corruption in production. Now we hard-fail so the misconfiguration
+    // is caught at the request boundary, not days later via a stale dashboard.
     if (needsFeeCleanup && !this.transaction) {
-      console.warn(
-        `[ChangeStudentStatusUseCase] Transaction is missing but fee cleanup is needed for student ${input.studentId}. ` +
-        `This risks partial updates — ensure TransactionPort is injected.`,
+      throw new Error(
+        '[ChangeStudentStatusUseCase] TransactionPort is required when changing status to INACTIVE/LEFT (fee cleanup must be atomic). Inject TransactionPort.',
       );
     }
 

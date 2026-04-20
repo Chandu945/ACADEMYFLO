@@ -109,6 +109,7 @@ describe('RootNavigator', () => {
           requiredTierKey: 'TIER_0_50',
           pendingTierChange: null,
           tiers: [],
+          pendingPaymentOrderId: null,
         },
       }),
     );
@@ -141,6 +142,7 @@ describe('RootNavigator', () => {
           requiredTierKey: 'TIER_0_50',
           pendingTierChange: null,
           tiers: [],
+          pendingPaymentOrderId: null,
         },
       }),
     );
@@ -172,6 +174,7 @@ describe('RootNavigator', () => {
           requiredTierKey: 'TIER_0_50',
           pendingTierChange: null,
           tiers: [],
+          pendingPaymentOrderId: null,
         },
       }),
     );

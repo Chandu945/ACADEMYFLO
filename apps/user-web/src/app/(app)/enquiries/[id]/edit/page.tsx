@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEnquiryDetail, updateEnquiry } from '@/application/enquiries/use-enquiries';
 import { useAuth } from '@/application/auth/use-auth';
+import { isValidObjectId } from '@/infra/validation/ids';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -47,7 +48,8 @@ export default function EditEnquiryPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken } = useAuth();
-  const { data: enquiry, loading: fetching } = useEnquiryDetail(params.id);
+  const idIsValid = isValidObjectId(params.id);
+  const { data: enquiry, loading: fetching } = useEnquiryDetail(idIsValid ? params.id : null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +169,7 @@ export default function EditEnquiryPage() {
     redirectTimer.current = setTimeout(() => router.push(`/enquiries/${params.id}`), 1200);
   }, [form, accessToken, router, validate, params.id]);
 
+  if (!idIsValid) return <Alert variant="error" message="Invalid enquiry id" />;
   if (fetching) return <Spinner centered size="lg" />;
   if (!enquiry) return <Alert variant="error" message="Enquiry not found" />;
 

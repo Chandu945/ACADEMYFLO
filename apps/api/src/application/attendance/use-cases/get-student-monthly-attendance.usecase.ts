@@ -10,7 +10,7 @@ import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
 import { isValidMonthKey, getDaysInMonth, getAllDatesInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { AttendanceErrors } from '../../common/errors';
 import type { StudentMonthlyAttendanceDto } from '../dtos/attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetStudentMonthlyAttendanceInput {
   actorUserId: string;
@@ -55,7 +55,7 @@ export class GetStudentMonthlyAttendanceUseCase {
     }
 
     const [presentRecords, holidays] = await Promise.all([
-      this.attendanceRepo.findAbsentByAcademyStudentAndMonth(
+      this.attendanceRepo.findPresentByAcademyStudentAndMonth(
         actor.academyId,
         input.studentId,
         input.month,

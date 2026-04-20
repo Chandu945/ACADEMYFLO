@@ -329,7 +329,7 @@ export function OwnerSignupScreen() {
             <Text
               style={styles.termsLink}
               accessibilityRole="link"
-              onPress={() => Linking.openURL('https://playconnect.in/terms')}
+              onPress={() => Linking.openURL('https://academyflo.in/terms')}
             >
               Terms of Service
             </Text>
@@ -337,7 +337,7 @@ export function OwnerSignupScreen() {
             <Text
               style={styles.termsLink}
               accessibilityRole="link"
-              onPress={() => Linking.openURL('https://playconnect.in/privacy')}
+              onPress={() => Linking.openURL('https://academyflo.in/privacy')}
             >
               Privacy Policy
             </Text>

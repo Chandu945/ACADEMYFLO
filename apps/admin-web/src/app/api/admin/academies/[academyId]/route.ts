@@ -27,11 +27,16 @@ type BackendDetailResponse = {
   };
 };
 
+const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ academyId: string }> },
 ) {
   const { academyId } = await context.params;
+  if (!OBJECT_ID_RE.test(academyId)) {
+    return NextResponse.json({ error: 'Invalid academy id' }, { status: 400 });
+  }
 
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) {

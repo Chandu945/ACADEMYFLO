@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useStudentDetail, deleteStudent, updateStudent, inviteParent } from '@/application/students/use-students';
@@ -97,24 +97,33 @@ export default function StudentDetailPage() {
     setStatusModalOpen(true);
   }, [student]);
 
+  // Defense-in-depth dedup: setStatusChanging(true) is async, so a fast
+  // double-click can fire two requests before the disabled state propagates.
+  const statusInflightRef = useRef(false);
   const handleStatusChange = useCallback(async () => {
     if (!params.id || !newStatus) return;
+    if (statusInflightRef.current) return;
+    statusInflightRef.current = true;
     setStatusChanging(true);
     setStatusError(null);
-    const result = await updateStudent(
-      params.id,
-      { status: newStatus, statusChangeReason: statusReason.trim() || undefined },
-      accessToken,
-    );
-    setStatusChanging(false);
-    if (!result.ok) {
-      setStatusError(result.error || 'Failed to change status');
-      return;
+    try {
+      const result = await updateStudent(
+        params.id,
+        { status: newStatus, statusChangeReason: statusReason.trim() || undefined },
+        accessToken,
+      );
+      if (!result.ok) {
+        setStatusError(result.error || 'Failed to change status');
+        return;
+      }
+      setStatusModalOpen(false);
+      setStatusSuccess('Status changed successfully');
+      refetch();
+      setTimeout(() => setStatusSuccess(null), 3000);
+    } finally {
+      statusInflightRef.current = false;
+      setStatusChanging(false);
     }
-    setStatusModalOpen(false);
-    setStatusSuccess('Status changed successfully');
-    refetch();
-    setTimeout(() => setStatusSuccess(null), 3000);
   }, [params.id, newStatus, statusReason, accessToken, refetch]);
 
   const handleDelete = useCallback(async () => {

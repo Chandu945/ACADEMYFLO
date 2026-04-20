@@ -10,7 +10,7 @@
 services:
   mongo:
     image: mongo:7
-    container_name: playconnect-staging-mongo
+    container_name: academyflo-staging-mongo
     restart: unless-stopped
     volumes:
       - staging_mongo_data:/data/db
@@ -32,7 +32,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: playconnect-staging-redis
+    container_name: academyflo-staging-redis
     restart: unless-stopped
     volumes:
       - staging_redis_data:/data
@@ -44,8 +44,8 @@ services:
       retries: 3
 
   api:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/api:${IMAGE_TAG:-latest}
-    container_name: playconnect-staging-api
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/api:${IMAGE_TAG:-latest}
+    container_name: academyflo-staging-api
     restart: unless-stopped
     ports:
       - '3001:3001'
@@ -56,7 +56,7 @@ services:
       NODE_ENV: production
       PORT: '3001'
       TZ: Asia/Kolkata
-      MONGODB_URI: mongodb://mongo:27017/playconnect_staging?replicaSet=rs0
+      MONGODB_URI: mongodb://mongo:27017/academyflo_staging?replicaSet=rs0
       REDIS_URL: redis://redis:6379
     healthcheck:
       test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:3001/api/v1/health/liveness']
@@ -71,8 +71,8 @@ services:
         condition: service_healthy
 
   admin-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/admin-web:${IMAGE_TAG:-latest}
-    container_name: playconnect-staging-admin
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/admin-web:${IMAGE_TAG:-latest}
+    container_name: academyflo-staging-admin
     restart: unless-stopped
     ports:
       - '3002:3002'
@@ -87,8 +87,8 @@ services:
       - api
 
   user-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/user-web:${IMAGE_TAG:-latest}
-    container_name: playconnect-staging-user-web
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/user-web:${IMAGE_TAG:-latest}
+    container_name: academyflo-staging-user-web
     restart: unless-stopped
     ports:
       - '3003:3003'

@@ -10,7 +10,7 @@ import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { isValidMonthKey, getDaysInMonth, getAllDatesInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { ParentErrors } from '../../common/errors';
 import type { ChildAttendanceSummaryDto } from '../dtos/parent.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetChildAttendanceInput {
   parentUserId: string;
@@ -79,7 +79,7 @@ export class GetChildAttendanceUseCase {
 
     const [presentRecords, holidays, student] = await Promise.all([
       // Records now represent PRESENT (presence-only model)
-      this.attendanceRepo.findAbsentByAcademyStudentAndMonth(
+      this.attendanceRepo.findPresentByAcademyStudentAndMonth(
         link.academyId,
         input.studentId,
         input.month,

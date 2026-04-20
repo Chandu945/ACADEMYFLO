@@ -7,7 +7,7 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import { isEligibleForDue, shouldFlipToDue, computeDueDate } from '@domain/fee/rules/fee.rules';
 import { toMonthKeyFromDate, formatLocalDate, daysBetweenLocalDates } from '@shared/date-utils';
-import { DEFAULT_DUE_DATE_DAY } from '@playconnect/contracts';
+import { DEFAULT_DUE_DATE_DAY } from '@academyflo/contracts';
 import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
 import { randomUUID } from 'crypto';
 

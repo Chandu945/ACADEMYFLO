@@ -11,7 +11,7 @@ import { GalleryPhoto } from '@domain/event/entities/gallery-photo.entity';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { GalleryErrors, EventErrors } from '../../common/errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   MAX_IMAGE_FILE_SIZE,
@@ -62,7 +62,9 @@ export class UploadGalleryPhotoUseCase {
     if (!event) return err(GalleryErrors.eventNotFound());
     if (event.academyId !== actor.academyId) return err(EventErrors.notInAcademy());
 
-    // Check max photos limit
+    // Pre-flight max-photos check (UX): bail early if we're already at 50
+    // so we don't burn an upload+audit cycle. The post-save check below is
+    // the actual race-safe guard.
     const photoCount = await this.galleryPhotoRepo.countByEventId(input.eventId);
     if (photoCount >= 50) {
       return err(GalleryErrors.maxPhotosReached());
@@ -97,7 +99,27 @@ export class UploadGalleryPhotoUseCase {
     try {
       const result = await this.fileStorage.upload(folder, filename, input.buffer, actualMime);
       url = result.url;
-    } catch {
+    } catch (e) {
+      // Distinguish transient (network/timeout) from terminal (auth/quota)
+      // failures so the client can decide whether retrying is sensible.
+      const errLike = e as { code?: string; name?: string; message?: string };
+      const code = (errLike.code ?? errLike.name ?? '').toLowerCase();
+      const message = errLike.message ?? '';
+      if (code.includes('timeout') || code.includes('econn') || code.includes('network')) {
+        return err(new AppErrorClass(
+          'NETWORK',
+          'Could not reach storage service. Please retry.',
+        ));
+      }
+      if (code.includes('accessdenied') || code.includes('forbidden')) {
+        return err(new AppErrorClass(
+          'UPLOAD_FAILED',
+          'Storage service rejected the upload (permissions). Contact support.',
+        ));
+      }
+      // Surface root cause to logs so ops can diagnose without leaking
+      // provider internals to the API consumer.
+      console.error('[upload-gallery-photo] storage upload failed', { code, message });
       return err(GalleryErrors.uploadFailed());
     }
 
@@ -114,6 +136,17 @@ export class UploadGalleryPhotoUseCase {
     });
 
     await this.galleryPhotoRepo.save(photo);
+
+    // Race-safe cap enforcement: re-count after save and if we've gone over,
+    // roll back this insertion + remove the just-uploaded blob. Two parallel
+    // requests can both pass the pre-flight count, so we need a post-write
+    // check too. Whichever request finds itself > 50 cleans up after itself.
+    const finalCount = await this.galleryPhotoRepo.countByEventId(input.eventId);
+    if (finalCount > 50) {
+      await this.galleryPhotoRepo.delete(photoId).catch(() => { /* best-effort */ });
+      await this.fileStorage.delete(url).catch(() => { /* best-effort */ });
+      return err(GalleryErrors.maxPhotosReached());
+    }
 
     await this.auditRecorder.record({
       academyId: actor.academyId,

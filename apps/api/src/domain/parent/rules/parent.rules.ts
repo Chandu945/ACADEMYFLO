@@ -1,4 +1,4 @@
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { randomUUID } from 'node:crypto';
 
 export function canInviteParent(role: UserRole): { allowed: boolean; reason?: string } {

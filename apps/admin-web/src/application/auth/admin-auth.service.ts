@@ -1,4 +1,4 @@
-import type { AuthSession } from '@/domain/admin/auth';
+import { authSessionSchema, refreshResponseSchema, type AuthSession } from '@/domain/admin/auth';
 import { AppError } from '@/domain/common/errors';
 import { BFF_LOGIN, BFF_LOGOUT, BFF_REFRESH } from '@/infra/auth/bff-routes';
 import { csrfHeaders } from '@/infra/auth/csrf-client';
@@ -19,7 +19,11 @@ export async function login(email: string, password: string): Promise<AuthSessio
     throw AppError.unknown(message);
   }
 
-  return json as AuthSession;
+  const parsed = authSessionSchema.safeParse(json);
+  if (!parsed.success) {
+    throw AppError.unknown('Invalid login response from server');
+  }
+  return parsed.data;
 }
 
 export async function refreshAccessToken(): Promise<{ accessToken: string }> {
@@ -35,7 +39,11 @@ export async function refreshAccessToken(): Promise<{ accessToken: string }> {
     throw AppError.unauthorized(message);
   }
 
-  return json as { accessToken: string };
+  const parsed = refreshResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw AppError.unauthorized('Invalid refresh response from server');
+  }
+  return parsed.data;
 }
 
 export async function logout(accessToken?: string): Promise<void> {

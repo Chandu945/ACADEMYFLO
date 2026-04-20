@@ -44,6 +44,7 @@ function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
       requiredTierKey: 'TIER_0_50',
       pendingTierChange: null,
       tiers: [],
+      pendingPaymentOrderId: null,
     },
     login: jest.fn().mockResolvedValue(null),
     signup: jest.fn().mockResolvedValue(null),

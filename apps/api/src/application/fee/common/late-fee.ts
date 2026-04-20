@@ -1,4 +1,4 @@
-import type { LateFeeConfig, LateFeeRepeatInterval } from '@playconnect/contracts';
+import type { LateFeeConfig, LateFeeRepeatInterval } from '@academyflo/contracts';
 
 /**
  * Minimal shape of an Academy that provides live late-fee config fields.

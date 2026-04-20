@@ -7,10 +7,38 @@ import type {
   StudentCredentials,
   InviteParentResponse,
 } from '../../domain/student/student.types';
-import type { StudentListApiResponse } from '../../domain/student/student.schemas';
+import {
+  studentListItemSchema,
+  studentListResponseSchema,
+  studentCredentialsSchema,
+  inviteParentResponseSchema,
+  studentMutationResponseSchema,
+  type StudentListApiResponse,
+  type StudentMutationApiResponse,
+} from '../../domain/student/student.schemas';
 import type { AppError } from '../../domain/common/errors';
-import type { Result } from '../../domain/common/result';
+import { err, ok, type Result } from '../../domain/common/result';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../http/api-client';
+import type { ZodSchema } from 'zod';
+
+// Same pattern as subscriptionApi / holidaysApi: validate every response so
+// backend drift surfaces as a clear VALIDATION rather than `undefined.foo`
+// crashes deep in the UI tree.
+function validateResponse<T>(
+  schema: ZodSchema<T>,
+  result: Result<unknown, AppError>,
+  label: string,
+): Result<T, AppError> {
+  if (!result.ok) return result;
+  const parsed = schema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error(`[studentApi] ${label} schema mismatch:`, parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data);
+}
 
 function buildListPath(filters: StudentListFilters, page: number, pageSize: number): string {
   const parts: string[] = [`page=${page}`, `pageSize=${pageSize}`];
@@ -24,27 +52,41 @@ function buildListPath(filters: StudentListFilters, page: number, pageSize: numb
   return `/api/v1/students?${parts.join('&')}`;
 }
 
-export function listStudents(
+export async function listStudents(
   filters: StudentListFilters,
   page: number,
   pageSize: number,
 ): Promise<Result<StudentListApiResponse, AppError>> {
-  return apiGet<StudentListApiResponse>(buildListPath(filters, page, pageSize));
+  const result = await apiGet<unknown>(buildListPath(filters, page, pageSize));
+  return validateResponse(
+    studentListResponseSchema as unknown as ZodSchema<StudentListApiResponse>,
+    result,
+    'listStudents',
+  );
 }
 
-export function createStudent(req: CreateStudentRequest): Promise<Result<unknown, AppError>> {
-  return apiPost('/api/v1/students', req);
+export async function createStudent(
+  req: CreateStudentRequest,
+): Promise<Result<StudentMutationApiResponse, AppError>> {
+  const result = await apiPost<unknown>('/api/v1/students', req);
+  return validateResponse(studentMutationResponseSchema, result, 'createStudent');
 }
 
-export function updateStudent(
+export async function updateStudent(
   id: string,
   req: UpdateStudentRequest,
-): Promise<Result<unknown, AppError>> {
-  return apiPatch(`/api/v1/students/${id}`, req);
+): Promise<Result<StudentMutationApiResponse, AppError>> {
+  const result = await apiPatch<unknown>(`/api/v1/students/${id}`, req);
+  return validateResponse(studentMutationResponseSchema, result, 'updateStudent');
 }
 
-export function getStudent(id: string): Promise<Result<StudentListItem, AppError>> {
-  return apiGet<StudentListItem>(`/api/v1/students/${id}`);
+export async function getStudent(id: string): Promise<Result<StudentListItem, AppError>> {
+  const result = await apiGet<unknown>(`/api/v1/students/${id}`);
+  return validateResponse(
+    studentListItemSchema as unknown as ZodSchema<StudentListItem>,
+    result,
+    'getStudent',
+  );
 }
 
 export function deleteStudent(id: string): Promise<Result<unknown, AppError>> {
@@ -58,10 +100,15 @@ export function changeStudentStatus(
   return apiPatch(`/api/v1/students/${id}/status`, req);
 }
 
-export function getStudentCredentials(
+export async function getStudentCredentials(
   id: string,
 ): Promise<Result<StudentCredentials, AppError>> {
-  return apiGet<StudentCredentials>(`/api/v1/students/${id}/credentials`);
+  const result = await apiGet<unknown>(`/api/v1/students/${id}/credentials`);
+  return validateResponse(
+    studentCredentialsSchema as unknown as ZodSchema<StudentCredentials>,
+    result,
+    'getStudentCredentials',
+  );
 }
 
 export function getStudentDocumentUrl(
@@ -71,18 +118,26 @@ export function getStudentDocumentUrl(
 ): string {
   let path = `/api/v1/students/${id}/documents/${docType}`;
   if (params?.fromMonth || params?.toMonth) {
-    const qs = new URLSearchParams();
-    if (params.fromMonth) qs.set('fromMonth', params.fromMonth);
-    if (params.toMonth) qs.set('toMonth', params.toMonth);
-    path += `?${qs.toString()}`;
+    const parts: string[] = [];
+    if (params.fromMonth) parts.push(`fromMonth=${encodeURIComponent(params.fromMonth)}`);
+    if (params.toMonth) parts.push(`toMonth=${encodeURIComponent(params.toMonth)}`);
+    path += `?${parts.join('&')}`;
   }
   return path;
 }
 
-export function inviteParent(
+export async function inviteParent(
   studentId: string,
 ): Promise<Result<InviteParentResponse, AppError>> {
-  return apiPost<InviteParentResponse>(`/api/v1/students/${encodeURIComponent(studentId)}/invite-parent`, {});
+  const result = await apiPost<unknown>(
+    `/api/v1/students/${encodeURIComponent(studentId)}/invite-parent`,
+    {},
+  );
+  return validateResponse(
+    inviteParentResponseSchema as unknown as ZodSchema<InviteParentResponse>,
+    result,
+    'inviteParent',
+  );
 }
 
 export function getStudentPhotoUploadPath(id: string): string {

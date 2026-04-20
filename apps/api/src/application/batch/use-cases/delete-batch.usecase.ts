@@ -7,7 +7,7 @@ import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.r
 import type { TransactionPort } from '../../common/transaction.port';
 import { BatchErrors } from '../../common/errors';
 import { requireBatchInAcademy } from '../common/require-batch';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface DeleteBatchInput {
   actorUserId: string;

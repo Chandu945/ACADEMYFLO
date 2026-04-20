@@ -1,7 +1,7 @@
 import { IsIn, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { STAFF_STATUSES } from '@playconnect/contracts';
-import type { StaffStatus } from '@playconnect/contracts';
+import { STAFF_STATUSES } from '@academyflo/contracts';
+import type { StaffStatus } from '@academyflo/contracts';
 
 export class SetStaffStatusDto {
   @ApiProperty({ enum: [...STAFF_STATUSES], example: 'INACTIVE' })

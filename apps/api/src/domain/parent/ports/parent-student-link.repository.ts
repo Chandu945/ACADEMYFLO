@@ -10,4 +10,6 @@ export interface ParentStudentLinkRepository {
   findByAcademyId(academyId: string): Promise<ParentStudentLink[]>;
   deleteByParentAndStudent(parentUserId: string, studentId: string): Promise<void>;
   deleteAllByParentUserId(parentUserId: string): Promise<number>;
+  /** Cascade-delete every parent link for a student. Returns count removed. */
+  deleteAllByStudentId(studentId: string): Promise<number>;
 }

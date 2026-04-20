@@ -7,7 +7,7 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { StudentErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { randomUUID } from 'crypto';
 
 export interface GetStudentCredentialsInput {

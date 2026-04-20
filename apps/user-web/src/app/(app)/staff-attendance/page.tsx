@@ -20,7 +20,8 @@ function formatDateLabel(dateStr: string) {
 }
 
 function toISODate(d: Date) {
-  return d.toLocaleDateString('en-CA');
+  // Always IST so today / navigated dates are stable regardless of device TZ.
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
 
 type MonthlySummaryItem = {
@@ -32,7 +33,11 @@ type MonthlySummaryItem = {
 };
 
 function toMonthString(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  // IST year/month to match backend month buckets.
+  const ist = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit',
+  }).format(d);
+  return ist.slice(0, 7);
 }
 
 function formatMonthLabel(monthStr: string) {

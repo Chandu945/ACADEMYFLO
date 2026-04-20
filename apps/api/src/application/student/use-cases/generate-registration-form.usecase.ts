@@ -7,7 +7,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import { StudentErrors } from '../../common/errors';
 import { PdfGeneratorService } from '@infrastructure/pdf/pdf-generator.service';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GenerateRegistrationFormInput {
   actorUserId: string;

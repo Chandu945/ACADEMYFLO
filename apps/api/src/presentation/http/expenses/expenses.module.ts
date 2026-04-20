@@ -85,9 +85,9 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
     },
     {
       provide: 'CREATE_CATEGORY_USE_CASE',
-      useFactory: (userRepo: UserRepository, categoryRepo: ExpenseCategoryRepository) =>
-        new CreateCategoryUseCase(userRepo, categoryRepo),
-      inject: [USER_REPOSITORY, EXPENSE_CATEGORY_REPOSITORY],
+      useFactory: (userRepo: UserRepository, categoryRepo: ExpenseCategoryRepository, auditRecorder: AuditRecorderPort) =>
+        new CreateCategoryUseCase(userRepo, categoryRepo, auditRecorder),
+      inject: [USER_REPOSITORY, EXPENSE_CATEGORY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'LIST_CATEGORIES_USE_CASE',
@@ -101,8 +101,9 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
         userRepo: UserRepository,
         categoryRepo: ExpenseCategoryRepository,
         expenseRepo: ExpenseRepository,
-      ) => new DeleteCategoryUseCase(userRepo, categoryRepo, expenseRepo),
-      inject: [USER_REPOSITORY, EXPENSE_CATEGORY_REPOSITORY, EXPENSE_REPOSITORY],
+        auditRecorder: AuditRecorderPort,
+      ) => new DeleteCategoryUseCase(userRepo, categoryRepo, expenseRepo, auditRecorder),
+      inject: [USER_REPOSITORY, EXPENSE_CATEGORY_REPOSITORY, EXPENSE_REPOSITORY, AUDIT_RECORDER_PORT],
     },
   ],
   exports: [EXPENSE_REPOSITORY],

@@ -1,7 +1,7 @@
 import type { Result } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
 import { canManageExpenses } from '@domain/expense/rules/expense.rules';

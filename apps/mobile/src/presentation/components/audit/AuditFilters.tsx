@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
-import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@playconnect/contracts';
+import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@academyflo/contracts';
 import type { AuditFilters as AuditFiltersType } from '../../../application/audit/use-audit-logs';
 import { Button } from '../ui/Button';
 import { DatePickerInput } from '../ui/DatePickerInput';

@@ -5,7 +5,7 @@ import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request
 import { PaymentRequest } from '@domain/fee/entities/payment-request.entity';
 import { PaymentRequestModel } from '../database/schemas/payment-request.schema';
 import type { PaymentRequestDocument } from '../database/schemas/payment-request.schema';
-import type { PaymentRequestStatus } from '@playconnect/contracts';
+import type { PaymentRequestStatus } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 
@@ -81,6 +81,14 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
 
   async countPendingByAcademy(academyId: string): Promise<number> {
     return this.model.countDocuments({ academyId, status: 'PENDING' });
+  }
+
+  async deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
+    const res = await this.model.deleteMany(
+      { academyId, studentId },
+      { session: getTransactionSession() },
+    );
+    return res.deletedCount ?? 0;
   }
 
   private toDomain(doc: unknown): PaymentRequest {

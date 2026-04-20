@@ -10,7 +10,7 @@ import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import { computePaidDates } from '@domain/subscription-payments/rules/subscription-payment.rules';
 import { requiredTierForCount } from '@domain/subscription/rules/subscription-tier.rules';
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
@@ -50,8 +50,9 @@ export class HandleCashfreeWebhookUseCase {
       return err(AppError.unauthorized('Invalid webhook signature'));
     }
 
-    // 1b. Replay detection: reject webhooks older than 5 minutes
-    const WEBHOOK_TOLERANCE_SECONDS = 300;
+    // 1b. Replay detection: reject webhooks with clock skew > 60 seconds.
+    // Tight window shrinks the attack surface if a signature ever leaks.
+    const WEBHOOK_TOLERANCE_SECONDS = 60;
     const rawTimestamp = Number(headers.timestamp);
     // Cashfree sends timestamp in milliseconds; normalize to seconds
     const webhookTimestamp = rawTimestamp > 1e12 ? Math.floor(rawTimestamp / 1000) : rawTimestamp;

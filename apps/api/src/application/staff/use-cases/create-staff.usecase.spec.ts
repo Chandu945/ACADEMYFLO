@@ -42,17 +42,18 @@ function buildDeps() {
     compare: jest.fn(),
   };
 
-  return { userRepo, hasher };
+  const auditRecorder = { record: jest.fn() };
+  return { userRepo, hasher, auditRecorder };
 }
 
 describe('CreateStaffUseCase', () => {
   it('should create staff with role=STAFF, status=ACTIVE, correct academyId', async () => {
-    const { userRepo, hasher } = buildDeps();
+    const { userRepo, hasher, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner('academy-1'));
     userRepo.findByEmail.mockResolvedValue(null);
     userRepo.findByPhone.mockResolvedValue(null);
 
-    const uc = new CreateStaffUseCase(userRepo, hasher);
+    const uc = new CreateStaffUseCase(userRepo, hasher, auditRecorder);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',
@@ -75,8 +76,8 @@ describe('CreateStaffUseCase', () => {
   });
 
   it('should reject non-OWNER', async () => {
-    const { userRepo, hasher } = buildDeps();
-    const uc = new CreateStaffUseCase(userRepo, hasher);
+    const { userRepo, hasher, auditRecorder } = buildDeps();
+    const uc = new CreateStaffUseCase(userRepo, hasher, auditRecorder);
     const result = await uc.execute({
       ownerUserId: 'staff-1',
       ownerRole: 'STAFF',
@@ -93,10 +94,10 @@ describe('CreateStaffUseCase', () => {
   });
 
   it('should reject when owner has no academy', async () => {
-    const { userRepo, hasher } = buildDeps();
+    const { userRepo, hasher, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner(null));
 
-    const uc = new CreateStaffUseCase(userRepo, hasher);
+    const uc = new CreateStaffUseCase(userRepo, hasher, auditRecorder);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',
@@ -113,11 +114,11 @@ describe('CreateStaffUseCase', () => {
   });
 
   it('should reject duplicate email', async () => {
-    const { userRepo, hasher } = buildDeps();
+    const { userRepo, hasher, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner('academy-1'));
     userRepo.findByEmail.mockResolvedValue(createOwner('academy-1'));
 
-    const uc = new CreateStaffUseCase(userRepo, hasher);
+    const uc = new CreateStaffUseCase(userRepo, hasher, auditRecorder);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',
@@ -134,12 +135,12 @@ describe('CreateStaffUseCase', () => {
   });
 
   it('should reject duplicate phone', async () => {
-    const { userRepo, hasher } = buildDeps();
+    const { userRepo, hasher, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner('academy-1'));
     userRepo.findByEmail.mockResolvedValue(null);
     userRepo.findByPhone.mockResolvedValue(createOwner('academy-1'));
 
-    const uc = new CreateStaffUseCase(userRepo, hasher);
+    const uc = new CreateStaffUseCase(userRepo, hasher, auditRecorder);
     const result = await uc.execute({
       ownerUserId: 'owner-1',
       ownerRole: 'OWNER',

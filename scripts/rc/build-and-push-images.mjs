@@ -7,7 +7,7 @@
  *   node scripts/rc/build-and-push-images.mjs
  *
  * Environment:
- *   DOCKER_REGISTRY - registry URL (default: ghcr.io/playconnect)
+ *   DOCKER_REGISTRY - registry URL (default: ghcr.io/academyflo)
  *   IMAGE_TAG       - tag to apply (default: rc-<shortsha>)
  *   GITHUB_SHA      - full commit SHA (used for default tag)
  */
@@ -16,7 +16,7 @@ import { execSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const REGISTRY = process.env.DOCKER_REGISTRY || 'ghcr.io/playconnect';
+const REGISTRY = process.env.DOCKER_REGISTRY || 'ghcr.io/academyflo';
 const SHA = process.env.GITHUB_SHA || execSync('git rev-parse HEAD').toString().trim();
 const TAG = process.env.IMAGE_TAG || `rc-${SHA.slice(0, 7)}`;
 

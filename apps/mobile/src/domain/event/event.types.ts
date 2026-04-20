@@ -1,5 +1,5 @@
-import type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
-export type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
+import type { EventStatus, EventType, TargetAudience } from '@academyflo/contracts';
+export type { EventStatus, EventType, TargetAudience } from '@academyflo/contracts';
 
 export type EventListItem = {
   id: string;

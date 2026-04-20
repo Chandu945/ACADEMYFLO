@@ -5,7 +5,7 @@ import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { Batch } from '@domain/batch/entities/batch.entity';
 import { BatchModel } from '../database/schemas/batch.schema';
 import type { BatchDocument } from '../database/schemas/batch.schema';
-import type { Weekday } from '@playconnect/contracts';
+import type { Weekday } from '@academyflo/contracts';
 import type { BatchStatus } from '@domain/batch/entities/batch.entity';
 import { getTransactionSession } from '../database/transaction-context';
 import { escapeRegex } from '@shared/utils/escape-regex';

@@ -1,7 +1,7 @@
 services:
   mongo:
     image: mongo:7
-    container_name: playconnect-mongo
+    container_name: academyflo-mongo
     restart: unless-stopped
     ports:
       - '27017:27017'
@@ -30,7 +30,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: playconnect-redis
+    container_name: academyflo-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -52,7 +52,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: playconnect-api
+    container_name: academyflo-api
     restart: unless-stopped
     ports:
       - '3001:3001'
@@ -61,7 +61,7 @@ services:
       NODE_ENV: production
       PORT: '3001'
       TZ: Asia/Kolkata
-      MONGODB_URI: mongodb://mongo:27017/playconnect?replicaSet=rs0
+      MONGODB_URI: mongodb://mongo:27017/academyflo?replicaSet=rs0
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: info
     depends_on:
@@ -85,7 +85,7 @@ services:
     build:
       context: .
       dockerfile: apps/admin-web/Dockerfile
-    container_name: playconnect-admin-web
+    container_name: academyflo-admin-web
     restart: unless-stopped
     ports:
       - '3002:3002'
@@ -107,7 +107,7 @@ services:
     build:
       context: .
       dockerfile: apps/user-web/Dockerfile
-    container_name: playconnect-user-web
+    container_name: academyflo-user-web
     restart: unless-stopped
     ports:
       - '3003:3003'

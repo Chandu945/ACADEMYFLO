@@ -5,8 +5,8 @@ import {
   TIER_KEYS,
   AUDIT_ACTION_TYPES,
   AUDIT_ENTITY_TYPES,
-} from '@playconnect/contracts';
-import type { AdminAcademyStatus, TierKey, AuditActionType, AuditEntityType } from '@playconnect/contracts';
+} from '@academyflo/contracts';
+import type { AdminAcademyStatus, TierKey, AuditActionType, AuditEntityType } from '@academyflo/contracts';
 import { PaginationQueryDto } from '../../common/dto/pagination.query';
 
 export class ListAcademiesQueryDto extends PaginationQueryDto {

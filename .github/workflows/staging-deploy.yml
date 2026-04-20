@@ -89,7 +89,7 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            cd /opt/playconnect
+            cd /opt/academyflo
             export DOCKER_REGISTRY=${{ env.DOCKER_REGISTRY }}
             export IMAGE_TAG=${{ env.IMAGE_TAG }}
             docker compose -f docker-compose.staging.yml pull

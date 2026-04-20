@@ -7,7 +7,7 @@ import { canManageStudent } from '@domain/student/rules/student.rules';
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetStudentInput {
   actorUserId: string;

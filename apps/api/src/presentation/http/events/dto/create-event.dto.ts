@@ -11,7 +11,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
-import { EVENT_TYPES, TARGET_AUDIENCES } from '@playconnect/contracts';
+import { EVENT_TYPES, TARGET_AUDIENCES } from '@academyflo/contracts';
 
 export class CreateEventDto {
   @IsNotEmpty()

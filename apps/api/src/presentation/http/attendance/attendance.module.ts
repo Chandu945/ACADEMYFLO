@@ -134,14 +134,24 @@ import type { TransactionPort } from '@application/common/transaction.port';
     },
     {
       provide: 'DECLARE_HOLIDAY_USE_CASE',
-      useFactory: (ur: UserRepository, hr: HolidayRepository, ar: StudentAttendanceRepository) =>
-        new DeclareHolidayUseCase(ur, hr, ar),
-      inject: [USER_REPOSITORY, HOLIDAY_REPOSITORY, STUDENT_ATTENDANCE_REPOSITORY],
+      useFactory: (
+        ur: UserRepository,
+        hr: HolidayRepository,
+        ar: StudentAttendanceRepository,
+        audit: AuditRecorderPort,
+      ) => new DeclareHolidayUseCase(ur, hr, ar, audit),
+      inject: [
+        USER_REPOSITORY,
+        HOLIDAY_REPOSITORY,
+        STUDENT_ATTENDANCE_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'REMOVE_HOLIDAY_USE_CASE',
-      useFactory: (ur: UserRepository, hr: HolidayRepository) => new RemoveHolidayUseCase(ur, hr),
-      inject: [USER_REPOSITORY, HOLIDAY_REPOSITORY],
+      useFactory: (ur: UserRepository, hr: HolidayRepository, audit: AuditRecorderPort) =>
+        new RemoveHolidayUseCase(ur, hr, audit),
+      inject: [USER_REPOSITORY, HOLIDAY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'LIST_HOLIDAYS_USE_CASE',

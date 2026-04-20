@@ -261,6 +261,31 @@ describe('HandleCashfreeWebhookUseCase', () => {
     if (!result.ok) expect(result.error.code).toBe('UNAUTHORIZED');
   });
 
+  it('rejects webhooks older than 60 seconds (was 300)', async () => {
+    // Regression: pre-fix tolerance of 300s allowed a 120s-old webhook through.
+    // Post-fix tolerance is 60s, so 120s must now be rejected.
+    const deps = makeDeps();
+    const uc = new HandleCashfreeWebhookUseCase(
+      deps.paymentRepo as never,
+      deps.subscriptionRepo as never,
+      deps.signatureVerifier as never,
+      deps.clock,
+      deps.logger as never,
+      deps.auditRecorder as never,
+      deps.transaction as never,
+      deps.studentCounter as never,
+    );
+
+    const twoMinutesOld = String(Math.floor(Date.now() / 1000) - 120);
+    const result = await uc.execute(
+      makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'),
+      { signature: 'valid', timestamp: twoMinutesOld },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('UNAUTHORIZED');
+  });
+
   it('rejects webhook with amount mismatch', async () => {
     const deps = makeDeps();
     const uc = new HandleCashfreeWebhookUseCase(

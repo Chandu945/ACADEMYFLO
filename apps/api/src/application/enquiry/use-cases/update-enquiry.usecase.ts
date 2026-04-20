@@ -8,7 +8,8 @@ import type { EnquirySource } from '@domain/enquiry/entities/enquiry.entity';
 import { EnquiryErrors } from '../../common/errors';
 import { toEnquiryDetail } from './get-enquiry-detail.usecase';
 import type { EnquiryDetailOutput } from './get-enquiry-detail.usecase';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface UpdateEnquiryInput {
   actorUserId: string;
@@ -30,6 +31,7 @@ export class UpdateEnquiryUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly enquiryRepo: EnquiryRepository,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: UpdateEnquiryInput): Promise<Result<EnquiryDetailOutput, AppError>> {
@@ -58,6 +60,7 @@ export class UpdateEnquiryUseCase {
       return err(AppErrorClass.validation('Mobile number must be 10-15 digits'));
     }
 
+    const loadedVersion = enquiry.audit.version;
     const updated = enquiry.update({
       prospectName: input.prospectName,
       guardianName: input.guardianName,
@@ -73,7 +76,21 @@ export class UpdateEnquiryUseCase {
         : undefined,
     });
 
-    await this.enquiryRepo.save(updated);
+    const saved = await this.enquiryRepo.saveWithVersionPrecondition(updated, loadedVersion);
+    if (!saved) return err(EnquiryErrors.concurrencyConflict());
+
+    await this.auditRecorder.record({
+      academyId: actor.academyId,
+      actorUserId: input.actorUserId,
+      action: 'ENQUIRY_UPDATED',
+      entityType: 'ENQUIRY',
+      entityId: input.enquiryId,
+      context: {
+        ...(input.prospectName !== undefined ? { prospectName: input.prospectName } : {}),
+        ...(input.mobileNumber !== undefined ? { mobileNumber: input.mobileNumber } : {}),
+      },
+    });
+
     return ok(toEnquiryDetail(updated));
   }
 }

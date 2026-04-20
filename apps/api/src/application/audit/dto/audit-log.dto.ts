@@ -1,5 +1,5 @@
 import type { AuditLog } from '@domain/audit/entities/audit-log.entity';
-import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType } from '@academyflo/contracts';
 
 export interface AuditLogDto {
   id: string;

@@ -18,6 +18,13 @@ export interface EnquirySummaryResult {
 
 export interface EnquiryRepository {
   save(enquiry: Enquiry): Promise<void>;
+  /**
+   * Optimistic-concurrency save: persist only if the stored version equals
+   * `expectedVersion`. Returns true on success, false on version mismatch.
+   * Mutations (close, follow-up, update, convert) should use this to prevent
+   * lost updates under concurrent edits.
+   */
+  saveWithVersionPrecondition(enquiry: Enquiry, expectedVersion: number): Promise<boolean>;
   findById(id: string): Promise<Enquiry | null>;
   findActiveByMobileAndAcademy(academyId: string, mobileNumber: string): Promise<Enquiry | null>;
   list(filter: EnquiryListFilter, page: number, pageSize: number): Promise<{ enquiries: Enquiry[]; total: number }>;

@@ -210,7 +210,7 @@ describe('Academy Disable Login + Force Logout (e2e)', () => {
     const user = User.create({
       id: 'admin-1',
       fullName: 'Super Admin',
-      email: 'admin@playconnect.app',
+      email: 'admin@academyflo.com',
       phoneNumber: '+910000000000',
       role: 'SUPER_ADMIN',
       passwordHash: 'hashed',

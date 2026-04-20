@@ -6,7 +6,7 @@ import type { EventRepository } from '@domain/event/ports/event.repository';
 import type { GalleryPhotoRepository } from '@domain/event/ports/gallery-photo.repository';
 import { GalleryErrors } from '../../common/errors';
 import { EventErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ListGalleryPhotosInput {
   actorUserId: string;

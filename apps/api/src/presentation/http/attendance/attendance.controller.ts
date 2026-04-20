@@ -34,6 +34,7 @@ import { BulkSetAbsencesDto } from './dto/bulk-set-absences.dto';
 import { DeclareHolidayDto } from './dto/declare-holiday.dto';
 import { MonthlyQueryDto, MonthlyPaginatedQueryDto } from './dto/monthly.query';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { Request } from 'express';
@@ -121,7 +122,7 @@ export class AttendanceController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Mark attendance for a single student' })
   async markOne(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Query() query: DateOnlyQueryDto,
     @Body() dto: MarkStudentAttendanceDto,
     @CurrentUser() user: CurrentUserType,
@@ -238,7 +239,7 @@ export class AttendanceController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Get monthly attendance for a specific student' })
   async monthlyStudent(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Query() query: MonthlyQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,

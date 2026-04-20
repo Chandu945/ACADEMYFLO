@@ -1,7 +1,7 @@
 import { IsBoolean, IsDateString, IsIn, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TIER_RANGES } from '@playconnect/contracts';
-import type { TierKey } from '@playconnect/contracts';
+import { TIER_RANGES } from '@academyflo/contracts';
+import type { TierKey } from '@academyflo/contracts';
 
 const TIER_KEYS = Object.keys(TIER_RANGES);
 

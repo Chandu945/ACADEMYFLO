@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-import { ADMIN_ACADEMY_STATUSES, TIER_KEYS } from '@playconnect/contracts';
+import { ADMIN_ACADEMY_STATUSES, TIER_KEYS } from '@academyflo/contracts';
 import { apiGet } from '@/infra/http/api-client';
 import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 import { sanitizeQueryValue } from '@/infra/http/query-sanitizer';

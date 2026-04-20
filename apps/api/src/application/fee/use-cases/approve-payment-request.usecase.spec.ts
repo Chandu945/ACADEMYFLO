@@ -80,6 +80,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       listByAcademyAndStatuses: jest.fn(),
       listByStaffAndAcademy: jest.fn(),
       countPendingByAcademy: jest.fn(),
+      deleteAllByAcademyAndStudent: jest.fn(),
     } as jest.Mocked<PaymentRequestRepository>;
 
     txLogRepo = {

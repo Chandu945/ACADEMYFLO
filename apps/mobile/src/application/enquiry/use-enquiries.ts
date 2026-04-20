@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppError } from '../../domain/common/errors';
 import type { EnquiryListItem, EnquiryStatus } from '../../domain/enquiry/enquiry.types';
 import { listEnquiriesUseCase, type EnquiryApiPort } from './use-cases/list-enquiries.usecase';
+import { useAuth } from '../../presentation/context/AuthContext';
 
 const PAGE_SIZE = 20;
 
@@ -29,9 +30,13 @@ export function useEnquiries(
   const [error, setError] = useState<AppError | null>(null);
   const mountedRef = useRef(true);
   const fetchingMoreRef = useRef(false);
+  // Monotonic counter to discard stale responses from superseded filter changes
+  // (mirrors useStudents F3 fix).
+  const requestIdRef = useRef(0);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
+      const requestId = ++requestIdRef.current;
       if (append) {
         setLoadingMore(true);
       } else {
@@ -45,7 +50,7 @@ export function useEnquiries(
           { status, search, followUpToday, page: targetPage, limit: PAGE_SIZE },
         );
 
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || requestId !== requestIdRef.current) return;
 
         if (result.ok) {
           if (append) {
@@ -59,13 +64,12 @@ export function useEnquiries(
           setError(result.error);
         }
       } catch (e) {
-        console.error('[useEnquiries] Load failed:', e);
-        if (mountedRef.current) {
-          const msg = e instanceof Error ? e.message : 'Something went wrong.';
-          setError({ code: 'UNKNOWN', message: msg });
+        if (__DEV__) console.error('[useEnquiries] Load failed:', e);
+        if (mountedRef.current && requestId === requestIdRef.current) {
+          setError({ code: 'UNKNOWN', message: 'Something went wrong.' });
         }
       } finally {
-        if (mountedRef.current) {
+        if (mountedRef.current && requestId === requestIdRef.current) {
           setLoading(false);
           setLoadingMore(false);
         }
@@ -75,6 +79,11 @@ export function useEnquiries(
   );
 
   const refetch = useCallback(() => {
+    // Reset items + page so a post-mutation refetch reflects the current
+    // filter cleanly (mirrors useStudents F3-H4 + useStaff F4-H4).
+    setItems([]);
+    setPage(1);
+    setHasMore(true);
     load(1, false);
   }, [load]);
 
@@ -91,6 +100,21 @@ export function useEnquiries(
       mountedRef.current = false;
     };
   }, [load]);
+
+  // Cross-account safety: clear cached enquiry list when the authenticated
+  // user changes (mirror useStudents F3-M1).
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setItems([]);
+      setPage(1);
+      setHasMore(true);
+      setError(null);
+    }
+  }, [userId]);
 
   return { items, loading, loadingMore, error, hasMore, refetch, fetchMore };
 }

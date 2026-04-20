@@ -9,7 +9,7 @@ import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-att
 import { validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { StaffAttendanceErrors } from '../../common/errors';
 import type { DailyStaffAttendanceViewItem } from '../dtos/staff-attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetDailyStaffAttendanceViewInput {
   actorUserId: string;
@@ -75,7 +75,7 @@ export class GetDailyStaffAttendanceViewUseCase {
     const staffIds = activeStaff.map((s) => s.id.toString());
 
     // Fetch present records for these staff on this date
-    const presentRecords = await this.staffAttendanceRepo.findAbsentByAcademyDateAndStaffIds(
+    const presentRecords = await this.staffAttendanceRepo.findPresentByAcademyDateAndStaffIds(
       actor.academyId,
       input.date,
       staffIds,

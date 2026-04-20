@@ -1,4 +1,4 @@
-# @playconnect/api
+# @academyflo/api
 
 NestJS backend following Clean Architecture + DDD principles.
 
@@ -38,7 +38,7 @@ cp apps/api/.env.example apps/api/.env
 # Edit .env with your local values
 
 # Run in development
-npm run start:dev --workspace=@playconnect/api
+npm run start:dev --workspace=@academyflo/api
 ```
 
 ## Scripts

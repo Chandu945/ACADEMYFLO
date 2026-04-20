@@ -1,6 +1,6 @@
 import { IsIn, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { STUDENT_ATTENDANCE_STATUSES } from '@playconnect/contracts';
+import { STUDENT_ATTENDANCE_STATUSES } from '@academyflo/contracts';
 
 export class MarkStudentAttendanceDto {
   @ApiProperty({ example: 'ABSENT', enum: [...STUDENT_ATTENDANCE_STATUSES] })

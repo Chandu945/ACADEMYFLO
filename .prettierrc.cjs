@@ -1,2 +1,2 @@
-module.exports = require('@playconnect/prettier-config');
+module.exports = require('@academyflo/prettier-config');
 

@@ -16,6 +16,27 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { ExpenseItem, ExpenseCategory } from '../../../domain/expense/expense.types';
+import type { AppError } from '../../../domain/common/errors';
+
+// Map common server error codes to actionable messages so the user sees
+// "Check your connection" instead of a raw transport error string.
+function friendlyExpenseError(error: AppError, action: 'save' | 'delete'): { title: string; message: string } {
+  switch (error.code) {
+    case 'FORBIDDEN':
+      return { title: 'Not allowed', message: `You do not have permission to ${action} this expense.` };
+    case 'NOT_FOUND':
+      return { title: 'Not found', message: 'This expense no longer exists. Please refresh.' };
+    case 'CONFLICT':
+      return { title: 'Conflict', message: error.message || 'This expense was modified by someone else.' };
+    case 'VALIDATION':
+      return { title: 'Invalid input', message: error.message };
+    case 'NETWORK':
+    case 'UNKNOWN':
+      return { title: 'Network error', message: 'Could not reach the server. Check your connection and try again.' };
+    default:
+      return { title: 'Error', message: error.message };
+  }
+}
 import { useExpenses } from '../../../application/expense/use-expenses';
 import { getExpenseSummaryUseCase } from '../../../application/expense/use-cases/get-expense-summary.usecase';
 import { deleteExpenseUseCase } from '../../../application/expense/use-cases/delete-expense.usecase';
@@ -250,6 +271,9 @@ export function ExpensesHomeScreen() {
     return [{ key: 'category', label: 'Category', value: selectedCategoryName, onRemove: clearCategoryFilter }];
   }, [selectedCategoryName, clearCategoryFilter]);
 
+  // Defense-in-depth dedup: the alert button doesn't disable, so a fast
+  // double-tap can fire two DELETEs before the first response returns.
+  const deleteInflightRef = useRef(false);
   const handleDelete = useCallback((item: ExpenseItem) => {
     crossAlert(
       'Delete Expense',
@@ -260,14 +284,22 @@ export function ExpensesHomeScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            if (deleteInflightRef.current) return;
+            deleteInflightRef.current = true;
             try {
               const result = await deleteExpenseUseCase({ expenseApi: stableApi }, item.id);
               if (result.ok) {
                 refetch();
                 loadSummary();
+              } else {
+                const m = friendlyExpenseError(result.error, 'delete');
+                crossAlert(m.title, m.message);
               }
             } catch (e) {
               if (__DEV__) console.error('[ExpensesHomeScreen] Delete failed:', e);
+              crossAlert('Network error', 'Could not delete the expense. Please try again.');
+            } finally {
+              deleteInflightRef.current = false;
             }
           },
         },

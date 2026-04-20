@@ -1,6 +1,6 @@
 # Security Runbook
 
-Procedures for handling security events in PlayConnect.
+Procedures for handling security events in Academyflo.
 
 ## 1. Handling Suspicious Login Activity
 
@@ -27,7 +27,7 @@ Procedures for handling security events in PlayConnect.
 3. If a specific academy is being targeted, disable their login via super admin:
 
    ```bash
-   curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/login-disabled \
+   curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/login-disabled \
      -H "Authorization: Bearer $ADMIN_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"disabled": true}'
@@ -38,7 +38,7 @@ Procedures for handling security events in PlayConnect.
 5. Re-enable login after investigation:
 
    ```bash
-   curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/login-disabled \
+   curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/login-disabled \
      -H "Authorization: Bearer $ADMIN_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"disabled": false}'
@@ -48,12 +48,12 @@ Procedures for handling security events in PlayConnect.
 
 When a user's session must be immediately invalidated (compromised credentials, fired staff, etc.):
 
-**How it works:** PlayConnect uses a `tokenVersion` field on the User entity. When incremented, all existing JWTs for that user become invalid on next verification.
+**How it works:** Academyflo uses a `tokenVersion` field on the User entity. When incremented, all existing JWTs for that user become invalid on next verification.
 
 **Force logout all users of an academy:**
 
 ```bash
-curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/force-logout \
+curl -X POST https://academyflo.com/api/v1/admin/academies/{academyId}/force-logout \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -67,7 +67,7 @@ This increments `tokenVersion` for all users in the academy, immediately invalid
 When an academy owner loses access or credentials are compromised:
 
 ```bash
-curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/reset-password \
+curl -X POST https://academyflo.com/api/v1/admin/academies/{academyId}/reset-password \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -82,13 +82,13 @@ To prevent all logins for an academy (e.g., abuse, non-payment escalation):
 
 ```bash
 # Disable
-curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/login-disabled \
+curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/login-disabled \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"disabled": true}'
 
 # Re-enable
-curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/login-disabled \
+curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/login-disabled \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"disabled": false}'

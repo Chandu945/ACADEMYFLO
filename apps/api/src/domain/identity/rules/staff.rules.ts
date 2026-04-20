@@ -1,4 +1,4 @@
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { User } from '../entities/user.entity';
 
 export function canManageStaff(role: UserRole): { allowed: boolean; reason?: string } {

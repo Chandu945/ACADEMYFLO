@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { publicEnv, serverEnv } from '@/infra/env';
 
-const COOKIE_NAME = 'pc_admin_session';
+const COOKIE_NAME = 'af_admin_session';
 const ALGORITHM = 'aes-256-gcm';
 
 const sessionPayloadSchema = z.object({
@@ -52,6 +52,12 @@ export async function setSessionCookie(refreshToken: string, deviceId: string, u
 
   cookieStore.set(COOKIE_NAME, encrypted, {
     httpOnly: true,
+    // sameSite: 'lax' (not 'strict') is a deliberate choice. Strict would break
+    // link-based flows (e.g. password-reset email → /login redirects) where the
+    // top-level navigation originates off-site. CSRF on state-changing routes is
+    // handled by the double-submit token in csrf-token.ts, so weakening SameSite
+    // here does not reduce protection on POST/PUT/DELETE. Revisit if we remove
+    // all email-originated nav paths into the admin app.
     sameSite: 'lax',
     secure: NEXT_PUBLIC_APP_ENV !== 'development',
     path: '/',

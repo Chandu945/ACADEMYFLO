@@ -59,10 +59,14 @@ function StaffAttendanceRowComponent({ item, onToggle, isHoliday }: StaffAttenda
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPresent = item.status === 'PRESENT';
 
+  // Holiday is a visual banner, not a block: API policy explicitly allows
+  // staff attendance on holidays (unlike student attendance). Show the actual
+  // present/absent status and keep the toggle interactive; rowCardHoliday
+  // tint conveys the holiday context.
   return (
     <View style={[styles.rowCard, isHoliday && styles.rowCardHoliday]} testID={`staff-attendance-row-${item.staffUserId}`}>
-      <View style={[styles.avatar, isHoliday ? styles.avatarHoliday : isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
-        <Text style={[styles.avatarText, isHoliday ? styles.avatarTextHoliday : isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
+      <View style={[styles.avatar, isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
+        <Text style={[styles.avatarText, isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
           {getInitials(item.fullName)}
         </Text>
       </View>
@@ -72,9 +76,9 @@ function StaffAttendanceRowComponent({ item, onToggle, isHoliday }: StaffAttenda
           {item.fullName}
         </Text>
         <View style={styles.statusRow}>
-          <View style={[styles.statusDot, isHoliday ? styles.dotHoliday : isPresent ? styles.dotPresent : styles.dotAbsent]} />
-          <Text style={[styles.statusLabel, isHoliday ? styles.labelHoliday : isPresent ? styles.labelPresent : styles.labelAbsent]}>
-            {isHoliday ? 'Holiday' : isPresent ? 'Present' : 'Absent'}
+          <View style={[styles.statusDot, isPresent ? styles.dotPresent : styles.dotAbsent]} />
+          <Text style={[styles.statusLabel, isPresent ? styles.labelPresent : styles.labelAbsent]}>
+            {isPresent ? 'Present' : 'Absent'}
           </Text>
         </View>
       </View>
@@ -82,7 +86,6 @@ function StaffAttendanceRowComponent({ item, onToggle, isHoliday }: StaffAttenda
       <Toggle
         value={isPresent}
         onValueChange={onToggle}
-        disabled={isHoliday}
         accessibilityLabel={`${item.fullName} attendance toggle`}
         testID={`toggle-staff-${item.staffUserId}`}
       />

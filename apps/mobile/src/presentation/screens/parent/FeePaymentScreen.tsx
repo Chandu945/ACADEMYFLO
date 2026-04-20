@@ -22,7 +22,7 @@ const feePaymentDeps = {
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { formatMonthKey, formatCurrency } from '../../utils/format';
-import { CONVENIENCE_FEE_RATE } from '@playconnect/contracts';
+import { CONVENIENCE_FEE_RATE } from '@academyflo/contracts';
 import { useTheme } from '../../context/ThemeContext';
 
 type FeePaymentRouteParams = {

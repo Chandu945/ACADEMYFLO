@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import type { Result } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
 import type { ExpenseCategoryRepository } from '@domain/expense/ports/expense-category.repository';
@@ -43,7 +43,15 @@ export class CreateExpenseUseCase {
     const check = canManageExpenses(input.actorRole);
     if (!check.allowed) return err(ExpenseErrors.notAllowed());
 
-    if (input.amount <= 0) return err(ExpenseErrors.invalidAmount());
+    // Reject NaN/Infinity in addition to <= 0 — class-validator's @IsNumber()
+    // accepts both, and `Infinity > 1` would otherwise pass `@Min(1)` too.
+    if (!Number.isFinite(input.amount) || input.amount <= 0) {
+      return err(ExpenseErrors.invalidAmount());
+    }
+
+    if (!/^[0-9a-fA-F]{24}$/.test(input.categoryId)) {
+      return err(ExpenseErrors.invalidCategoryId());
+    }
 
     // Reject future-dated expenses (compare in IST)
     const now = new Date();

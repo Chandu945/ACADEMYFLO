@@ -59,9 +59,9 @@ export async function getDetail(academyId: string, accessToken?: string): Promis
     },
     subscription: d.subscription
       ? {
-          status: d.subscription.status as AdminAcademyDetail['subscription']['status'],
-          tierKey: d.subscription.tierKey as AdminAcademyDetail['subscription']['tierKey'],
-          pendingTierKey: d.subscription.pendingTierKey as AdminAcademyDetail['subscription']['pendingTierKey'],
+          status: d.subscription.status,
+          tierKey: d.subscription.tierKey,
+          pendingTierKey: d.subscription.pendingTierKey,
           pendingTierEffectiveAt: d.subscription.pendingTierEffectiveAt,
           trialEndAt: d.subscription.trialEndAt,
           paidStartAt: d.subscription.paidStartAt,
@@ -70,7 +70,7 @@ export async function getDetail(academyId: string, accessToken?: string): Promis
           paymentReference: d.subscription.paymentReference,
         }
       : {
-          status: 'BLOCKED' as AdminAcademyDetail['subscription']['status'],
+          status: 'BLOCKED',
           tierKey: null,
           pendingTierKey: null,
           pendingTierEffectiveAt: null,

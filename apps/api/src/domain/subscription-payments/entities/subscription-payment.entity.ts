@@ -1,6 +1,6 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 
 export type SubscriptionPaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 

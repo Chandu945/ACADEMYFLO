@@ -33,6 +33,28 @@ export class MongoExpenseRepository implements ExpenseRepository {
     );
   }
 
+  async saveWithVersionPrecondition(expense: Expense, expectedVersion: number): Promise<boolean> {
+    const result = await this.model.findOneAndUpdate(
+      { _id: expense.id.toString(), version: expectedVersion },
+      {
+        $set: {
+          academyId: expense.academyId,
+          date: expense.date,
+          categoryId: expense.categoryId,
+          category: expense.categoryName,
+          amount: expense.amount,
+          notes: expense.notes,
+          createdBy: expense.createdBy,
+          deletedAt: expense.softDelete.deletedAt,
+          deletedBy: expense.softDelete.deletedBy,
+          version: expense.audit.version,
+        },
+      },
+      { session: getTransactionSession() },
+    ).exec();
+    return result !== null;
+  }
+
   async findById(id: string): Promise<Expense | null> {
     const doc = await this.model.findById(id).lean().exec();
     return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;

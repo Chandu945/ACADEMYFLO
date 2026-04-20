@@ -3,6 +3,9 @@ import { envSchema } from './env.schema';
 const REQUIRED_FIELDS = {
   JWT_ACCESS_SECRET: 'test-access-secret-that-is-at-least-32-characters-long',
   JWT_REFRESH_SECRET: 'test-refresh-secret-that-is-at-least-32-characters-long',
+  // After L9: SUPER_ADMIN_PASSWORD has no default and is required everywhere
+  // so no dev/test instance silently boots with the old 'change-me-in-production'.
+  SUPER_ADMIN_PASSWORD: 'test-admin-password-123',
 };
 
 describe('envSchema', () => {
@@ -98,6 +101,10 @@ describe('envSchema', () => {
       SUPER_ADMIN_PASSWORD: 'a-secure-production-password-123',
       SMTP_HOST: 'smtp.example.com',
       CASHFREE_WEBHOOK_SECRET: 'webhook-secret-value',
+      CASHFREE_CLIENT_ID: 'cf-client-id',
+      CASHFREE_CLIENT_SECRET: 'cf-client-secret',
+      // Use the prod Cashfree host in prod to pass the no-sandbox rule
+      CASHFREE_BASE_URL: 'https://api.cashfree.com/pg',
     };
     for (const env of ['development', 'staging', 'production']) {
       const fields = env === 'development' ? { ...REQUIRED_FIELDS } : { ...prodFields };

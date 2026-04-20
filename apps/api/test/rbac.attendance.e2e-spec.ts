@@ -121,13 +121,13 @@ describe('RBAC — Attendance Endpoints (e2e)', () => {
             ur: UserRepository,
             hr: HolidayRepository,
             ar: StudentAttendanceRepository,
-          ) => new DeclareHolidayUseCase(ur, hr, ar),
+          ) => new DeclareHolidayUseCase(ur, hr, ar, auditRecorder),
           inject: [USER_REPOSITORY, HOLIDAY_REPOSITORY, STUDENT_ATTENDANCE_REPOSITORY],
         },
         {
           provide: 'REMOVE_HOLIDAY_USE_CASE',
           useFactory: (ur: UserRepository, hr: HolidayRepository) =>
-            new RemoveHolidayUseCase(ur, hr),
+            new RemoveHolidayUseCase(ur, hr, auditRecorder),
           inject: [USER_REPOSITORY, HOLIDAY_REPOSITORY],
         },
         {

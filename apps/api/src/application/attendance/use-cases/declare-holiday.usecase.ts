@@ -13,7 +13,8 @@ import {
 } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
 import type { HolidayDto } from '../dtos/attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { randomUUID } from 'crypto';
 
 export interface DeclareHolidayInput {
@@ -29,6 +30,7 @@ export class DeclareHolidayUseCase {
     private readonly holidayRepo: HolidayRepository,
     // Kept for DI compatibility — absences are intentionally preserved when declaring a holiday
     private readonly _attendanceRepo: StudentAttendanceRepository,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {
     void this._attendanceRepo;
   }
@@ -79,8 +81,20 @@ export class DeclareHolidayUseCase {
 
     await this.holidayRepo.save(holiday);
 
-    // Note: We intentionally preserve absent records — they will be hidden
+    // Note: We intentionally preserve attendance records — they will be hidden
     // while the holiday is active and restored if the holiday is removed.
+
+    await this.auditRecorder.record({
+      academyId: actor.academyId,
+      actorUserId: input.actorUserId,
+      action: 'HOLIDAY_DECLARED',
+      entityType: 'HOLIDAY',
+      entityId: holiday.id.toString(),
+      context: {
+        date: holiday.date,
+        reason: holiday.reason ?? '',
+      },
+    });
 
     return ok({
       id: holiday.id.toString(),

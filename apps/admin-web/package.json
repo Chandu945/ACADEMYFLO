@@ -1,5 +1,5 @@
 {
-  "name": "@playconnect/admin-web",
+  "name": "@academyflo/admin-web",
   "version": "0.0.0",
   "private": true,
   "description": "Academyflo Admin Web — Next.js (Super Admin only)",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@next/swc-darwin-arm64": "^15.5.12",
-    "@playconnect/contracts": "*",
+    "@academyflo/contracts": "*",
     "lucide-react": "^0.511.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
@@ -22,8 +22,8 @@
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^15.5.12",
-    "@playconnect/eslint-config": "*",
-    "@playconnect/tsconfig": "*",
+    "@academyflo/eslint-config": "*",
+    "@academyflo/tsconfig": "*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",

@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY || 'ghcr.io/playconnect' }}
+  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY || 'ghcr.io/academyflo' }}
   SHORT_SHA: ${{ github.sha && format('{0}', github.sha) }}
 
 jobs:
@@ -214,7 +214,7 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            cd ${{ secrets.STAGING_DEPLOY_DIR || '/opt/playconnect' }}
+            cd ${{ secrets.STAGING_DEPLOY_DIR || '/opt/academyflo' }}
             export IMAGE_TAG=${{ needs.build-images.outputs.image_tag }}
             export DOCKER_REGISTRY=${{ env.DOCKER_REGISTRY }}
             docker compose -f deploy/docker-compose.staging.yml pull

@@ -148,11 +148,24 @@ describe('InitiateSubscriptionPaymentUseCase', () => {
     if (!result.ok) expect(result.error.code).toBe('FORBIDDEN');
   });
 
-  it('rejects if PENDING payment already exists', async () => {
+  it('resumes a recent PENDING payment instead of creating a new Cashfree order', async () => {
+    // Clock is 2026-03-15T12:00:00+05:30. PENDING created 2 min earlier is well
+    // within the 5-min resume window, so initiate should hand back the SAME
+    // orderId+paymentSessionId and never call Cashfree.
+    const recentPending = {
+      orderId: 'pc_sub_existing_xyz',
+      paymentSessionId: 'session_existing_abc',
+      cfOrderId: 'cf_existing_123',
+      amountInr: 299,
+      currency: 'INR',
+      tierKey: 'TIER_0_50',
+      audit: { createdAt: new Date('2026-03-15T11:58:00+05:30') },
+    };
     const deps = makeDeps({
       paymentRepo: {
-        findPendingByAcademyId: jest.fn().mockResolvedValue({ orderId: 'old-order', audit: { createdAt: new Date('2026-03-15T11:50:00+05:30') } }),
+        findPendingByAcademyId: jest.fn().mockResolvedValue(recentPending),
         save: jest.fn(),
+        saveWithStatusPrecondition: jest.fn(),
       },
     });
     const uc = new InitiateSubscriptionPaymentUseCase(
@@ -168,8 +181,13 @@ describe('InitiateSubscriptionPaymentUseCase', () => {
     );
 
     const result = await uc.execute('user-1');
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe('CONFLICT');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.orderId).toBe('pc_sub_existing_xyz');
+      expect(result.value.paymentSessionId).toBe('session_existing_abc');
+    }
+    expect(deps.cashfreeGateway.createOrder).not.toHaveBeenCalled();
+    expect(deps.paymentRepo.save).not.toHaveBeenCalled();
   });
 
   it('returns error when Cashfree API fails', async () => {

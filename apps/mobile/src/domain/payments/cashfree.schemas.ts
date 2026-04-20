@@ -1,24 +1,60 @@
 import { z } from 'zod';
 
+const tierKeySchema = z.enum(['TIER_0_50', 'TIER_51_100', 'TIER_101_PLUS']);
+const subscriptionStatusSchema = z.enum([
+  'TRIAL',
+  'ACTIVE_PAID',
+  'EXPIRED_GRACE',
+  'BLOCKED',
+  'DISABLED',
+]);
+
 export const initiatePaymentResponseSchema = z.object({
-  orderId: z.string(),
-  paymentSessionId: z.string(),
-  amountInr: z.number(),
+  orderId: z.string().min(1),
+  paymentSessionId: z.string().min(1),
+  amountInr: z.number().int().positive(),
   currency: z.string(),
-  tierKey: z.enum(['TIER_0_50', 'TIER_51_100', 'TIER_101_PLUS']),
+  tierKey: tierKeySchema,
   expiresAt: z.string(),
 });
 
 export const paymentStatusResponseSchema = z.object({
-  orderId: z.string(),
+  orderId: z.string().min(1),
   status: z.enum(['PENDING', 'SUCCESS', 'FAILED']),
-  tierKey: z.enum(['TIER_0_50', 'TIER_51_100', 'TIER_101_PLUS']),
-  amountInr: z.number(),
+  tierKey: tierKeySchema,
+  amountInr: z.number().int().positive(),
   providerPaymentId: z.string().nullable(),
   paidAt: z.string().nullable(),
   subscription: z.object({
-    status: z.string(),
+    status: subscriptionStatusSchema,
     paidStartAt: z.string().nullable(),
     paidEndAt: z.string().nullable(),
   }),
+});
+
+export const tierPricingSchema = z.object({
+  tierKey: tierKeySchema,
+  min: z.number().int().min(0),
+  max: z.number().int().nullable(),
+  priceInr: z.number().int().positive(),
+});
+
+export const pendingTierChangeSchema = z.object({
+  tierKey: tierKeySchema,
+  effectiveAt: z.string(),
+});
+
+export const subscriptionInfoSchema = z.object({
+  status: subscriptionStatusSchema,
+  trialEndAt: z.string(),
+  paidEndAt: z.string().nullable(),
+  tierKey: tierKeySchema.nullable(),
+  daysRemaining: z.number().int(),
+  canAccessApp: z.boolean(),
+  blockReason: z.string().nullable(),
+  activeStudentCount: z.number().int().min(0),
+  currentTierKey: tierKeySchema.nullable(),
+  requiredTierKey: tierKeySchema,
+  pendingTierChange: pendingTierChangeSchema.nullable(),
+  tiers: z.array(tierPricingSchema),
 });

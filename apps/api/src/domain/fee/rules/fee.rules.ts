@@ -1,4 +1,4 @@
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
 
 /**

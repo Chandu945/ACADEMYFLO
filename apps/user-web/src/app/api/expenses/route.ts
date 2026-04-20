@@ -6,6 +6,7 @@ import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { buildSafeParams } from '@/infra/http/query-sanitizer';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { toErrorResponse } from '@/infra/http/error-mapper';
+import { isValidObjectId } from '@/infra/validation/ids';
 
 export async function GET(request: NextRequest) {
   const accessToken = await resolveAccessToken(request);
@@ -60,8 +61,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
   const { id, ...data } = body;
-  if (!id || typeof id !== 'string') {
-    return NextResponse.json({ message: 'id is required' }, { status: 400 });
+  if (!isValidObjectId(id)) {
+    return NextResponse.json({ message: 'id is required and must be a valid id' }, { status: 400 });
   }
   const result = await apiPut(`/api/v1/expenses/${encodeURIComponent(id)}`, data, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
@@ -75,8 +76,8 @@ export async function DELETE(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const id = searchParams.get('id');
-  if (!id) {
-    return NextResponse.json({ message: 'id query parameter is required' }, { status: 400 });
+  if (!isValidObjectId(id)) {
+    return NextResponse.json({ message: 'id query parameter is required and must be a valid id' }, { status: 400 });
   }
   const result = await apiDelete(`/api/v1/expenses/${encodeURIComponent(id)}`, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);

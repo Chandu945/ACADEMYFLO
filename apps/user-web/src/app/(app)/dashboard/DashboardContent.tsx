@@ -163,6 +163,16 @@ export default function DashboardContent() {
     return typeof raw === 'number' && !Number.isNaN(raw) ? raw : 0;
   };
 
+  /**
+   * Render a KPI numeric value, distinguishing "real zero" from "not loaded
+   * yet / load failed". Returns an em-dash so users don't mistake a missing
+   * KPI for "you have ₹0".
+   */
+  const renderKpiAmount = (key: keyof DashboardKpis): string => {
+    if (!kpis || kpisError) return '—';
+    return formatCurrency(getKpiValue(key));
+  };
+
   // Split birthdays: today vs rest of month
   const { todayBirthdays, monthBirthdays } = useMemo(() => {
     const today: typeof birthdays = [];
@@ -288,17 +298,17 @@ export default function DashboardContent() {
             <section>
               <h2 className={styles.sectionTitle}>Financial Overview</h2>
               <div className={styles.financialGrid}>
-                <div className={`${styles.financialCard} ${styles.collected}`} role="region" aria-label={`Collected This Month: ${formatCurrency(getKpiValue('totalCollected'))}`}>
+                <div className={`${styles.financialCard} ${styles.collected}`} role="region" aria-label={`Collected This Month: ${renderKpiAmount('totalCollected')}`}>
                   <span className={styles.financialLabel}>Collected This Month</span>
-                  <span className={styles.financialValue}>{formatCurrency(getKpiValue('totalCollected'))}</span>
+                  <span className={styles.financialValue}>{renderKpiAmount('totalCollected')}</span>
                 </div>
-                <div className={`${styles.financialCard} ${styles.pending}`} role="region" aria-label={`Pending Amount: ${formatCurrency(getKpiValue('totalPendingAmount'))}`}>
+                <div className={`${styles.financialCard} ${styles.pending}`} role="region" aria-label={`Pending Amount: ${renderKpiAmount('totalPendingAmount')}`}>
                   <span className={styles.financialLabel}>Pending Amount</span>
-                  <span className={styles.financialValue}>{formatCurrency(getKpiValue('totalPendingAmount'))}</span>
+                  <span className={styles.financialValue}>{renderKpiAmount('totalPendingAmount')}</span>
                 </div>
-                <div className={`${styles.financialCard} ${styles.expenses}`} role="region" aria-label={`Total Expenses: ${formatCurrency(getKpiValue('totalExpenses'))}`}>
+                <div className={`${styles.financialCard} ${styles.expenses}`} role="region" aria-label={`Total Expenses: ${renderKpiAmount('totalExpenses')}`}>
                   <span className={styles.financialLabel}>Total Expenses</span>
-                  <span className={styles.financialValue}>{formatCurrency(getKpiValue('totalExpenses'))}</span>
+                  <span className={styles.financialValue}>{renderKpiAmount('totalExpenses')}</span>
                 </div>
               </div>
             </section>

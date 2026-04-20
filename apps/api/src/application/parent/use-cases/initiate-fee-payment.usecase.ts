@@ -16,7 +16,7 @@ import { generateFeeOrderId } from '@domain/parent/rules/parent.rules';
 import { FeePayment } from '@domain/parent/entities/fee-payment.entity';
 import { ParentErrors } from '../../common/errors';
 import type { InitiateFeePaymentOutput } from '../dtos/parent.dto';
-import { type UserRole, type LateFeeConfig, type LateFeeRepeatInterval, computeConvenienceFee, computeLateFee } from '@playconnect/contracts';
+import { type UserRole, type LateFeeConfig, type LateFeeRepeatInterval, computeConvenienceFee, computeLateFee } from '@academyflo/contracts';
 import { randomUUID } from 'node:crypto';
 
 export interface InitiateFeePaymentInput {

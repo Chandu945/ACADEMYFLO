@@ -1,4 +1,4 @@
-import type { Weekday } from '@playconnect/contracts';
+import type { Weekday } from '@academyflo/contracts';
 
 export type { Weekday };
 

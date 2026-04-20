@@ -52,7 +52,7 @@ describe('FeeRemindersCronService (integration)', () => {
       smtpSecure: false,
       smtpUser: '',
       smtpPass: '',
-      smtpFrom: 'noreply@playconnect.app',
+      smtpFrom: 'noreply@academyflo.com',
     } as unknown as AppConfigService;
 
     const useCase = new SendFeeRemindersUseCase(

@@ -1,6 +1,6 @@
-import type { UserRole } from '@playconnect/contracts';
-import { GENDERS } from '@playconnect/contracts';
-import type { Gender } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import { GENDERS } from '@academyflo/contracts';
+import type { Gender } from '@academyflo/contracts';
 
 export function validateFullName(name: string): { valid: boolean; reason?: string } {
   const trimmed = name.trim();

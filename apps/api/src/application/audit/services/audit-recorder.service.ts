@@ -1,6 +1,6 @@
 import type { AuditRecorderPort } from '../ports/audit-recorder.port';
 import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repository';
-import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType } from '@academyflo/contracts';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import { AuditLog } from '@domain/audit/entities/audit-log.entity';
 import { sanitizeContext } from '@domain/audit/rules/audit.rules';

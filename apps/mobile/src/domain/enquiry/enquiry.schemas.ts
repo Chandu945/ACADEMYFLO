@@ -61,4 +61,12 @@ export const enquirySummarySchema = z.object({
   todayFollowUp: z.number(),
 });
 
+export const convertToStudentResponseSchema = z.object({
+  enquiry: enquiryDetailSchema,
+  studentId: z.string(),
+});
+
 export type EnquiryListApiResponse = z.infer<typeof enquiryListResponseSchema>;
+export type EnquiryDetailApiResponse = z.infer<typeof enquiryDetailSchema>;
+export type EnquirySummaryApiResponse = z.infer<typeof enquirySummarySchema>;
+export type ConvertToStudentApiResponse = z.infer<typeof convertToStudentResponseSchema>;

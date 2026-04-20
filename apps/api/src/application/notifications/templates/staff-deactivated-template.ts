@@ -1,6 +1,4 @@
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+import { escapeHtml, renderEmailLayout } from './_email-layout';
 
 export interface StaffDeactivatedTemplateData {
   staffName: string;
@@ -9,20 +7,30 @@ export interface StaffDeactivatedTemplateData {
 }
 
 export function renderStaffDeactivatedEmail(data: StaffDeactivatedTemplateData): string {
-  const staffName = escapeHtml(data.staffName);
-  const academyName = escapeHtml(data.academyName);
   const isDeactivated = data.newStatus === 'INACTIVE';
+  const title = isDeactivated ? 'Your staff account was deactivated' : 'Your staff account was reactivated';
+  const action = isDeactivated ? 'deactivated' : 'reactivated';
+  const detail = isDeactivated
+    ? 'You will not be able to log in until the academy owner reactivates your account. All your active sessions have been signed out.'
+    : 'You can now log in again with your existing credentials.';
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-  <h2>Account Status Updated</h2>
-  <p>Dear ${staffName},</p>
-  <p>Your staff account at <strong>${academyName}</strong> has been ${isDeactivated ? '<strong style="color:#d97706;">deactivated</strong>' : '<strong style="color:#16a34a;">reactivated</strong>'}.</p>
-  ${isDeactivated
-    ? '<p>You will no longer be able to log in until the academy owner reactivates your account. All your active sessions have been revoked.</p>'
-    : '<p>You can now log in again with your existing credentials.</p>'}
-  <p>If you have questions, please contact your academy owner.</p>
-  <p>Thank you,<br>Academyflo Team</p>
-</body></html>`;
+  return renderEmailLayout({
+    preheader: `Your access to ${data.academyName} has been ${action}.`,
+    title,
+    greeting: `Dear ${data.staffName},`,
+    tone: isDeactivated ? 'warning' : 'success',
+    body: `
+      <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#0F172A;">
+        Your staff account at <strong>${escapeHtml(data.academyName)}</strong> has been
+        <strong>${action}</strong>.
+      </p>
+      <p style="margin:0;font-size:16px;line-height:24px;color:#0F172A;">
+        ${escapeHtml(detail)}
+      </p>
+    `,
+    cta: isDeactivated
+      ? undefined
+      : { label: 'Sign in to Academyflo', url: 'https://academyflo.com/login' },
+    footerNote: 'If you have any questions, please contact your academy owner.',
+  });
 }

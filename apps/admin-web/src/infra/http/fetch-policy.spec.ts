@@ -9,8 +9,14 @@ import {
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-function okResponse() {
-  return { ok: true, status: 200, text: async () => 'ok' } as unknown as Response;
+// Narrow mock that only fills the fields fetch-policy actually reads. Using
+// Pick over `as unknown as Response` keeps the type-check honest: if the code
+// under test starts reading a new Response field, the test (rather than a
+// runtime `undefined`) will surface it.
+type MockResponse = Pick<Response, 'ok' | 'status' | 'text'>;
+
+function okResponse(): MockResponse {
+  return { ok: true, status: 200, text: async () => 'ok' };
 }
 
 describe('fetch-policy', () => {

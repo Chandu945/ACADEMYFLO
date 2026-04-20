@@ -16,6 +16,7 @@ import {
 import { MarkStaffAttendanceDto } from './dto/mark-staff-attendance.dto';
 import { StaffAttendanceMonthlyQueryDto } from './dto/monthly.query';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { Request } from 'express';
@@ -59,7 +60,7 @@ export class StaffAttendanceController {
   @Put(':staffUserId')
   @ApiOperation({ summary: 'Mark staff attendance for a date' })
   async markOne(
-    @Param('staffUserId') staffUserId: string,
+    @Param('staffUserId', ParseObjectIdPipe) staffUserId: string,
     @Query() query: StaffAttendanceDateOnlyQueryDto,
     @Body() dto: MarkStaffAttendanceDto,
     @CurrentUser() user: CurrentUserType,

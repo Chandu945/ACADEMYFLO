@@ -32,6 +32,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { ChangeEventStatusDto } from './dto/change-event-status.dto';
 import { ListEventsQuery } from './dto/list-events.query';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import type { Request } from 'express';
 
 @ApiTags('Events')
@@ -118,7 +119,7 @@ export class EventsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get event detail' })
   async detail(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -133,7 +134,7 @@ export class EventsController {
   @Put(':id')
   @ApiOperation({ summary: 'Update an event' })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: UpdateEventDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -161,7 +162,7 @@ export class EventsController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Delete an event (owner only)' })
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -177,7 +178,7 @@ export class EventsController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Change event status (owner only)' })
   async changeStatus(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: ChangeEventStatusDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,

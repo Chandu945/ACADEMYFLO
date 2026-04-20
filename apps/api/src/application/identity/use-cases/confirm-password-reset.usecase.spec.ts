@@ -5,6 +5,7 @@ import type { PasswordResetChallengeRepository } from '@domain/identity/ports/pa
 import type { OtpHasher } from '../ports/otp-hasher.port';
 import type { PasswordHasher } from '../ports/password-hasher.port';
 import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
+import type { OtpAttemptTrackerPort } from '../services/otp-attempt-tracker';
 import { User } from '@domain/identity/entities/user.entity';
 import { PasswordResetChallenge } from '@domain/identity/entities/password-reset-challenge.entity';
 
@@ -77,14 +78,19 @@ function buildDeps() {
 
   const deviceTokenRepo: jest.Mocked<DeviceTokenRepository> = {
     upsert: jest.fn(),
-    removeByToken: jest.fn(),
     removeByUserIdAndToken: jest.fn(),
     removeByUserIds: jest.fn().mockResolvedValue(0),
     findByUserId: jest.fn(),
     findByUserIds: jest.fn(),
   };
 
-  return { userRepo, sessionRepo, challengeRepo, otpHasher, passwordHasher, deviceTokenRepo };
+  const otpAttemptTracker: jest.Mocked<OtpAttemptTrackerPort> = {
+    isLocked: jest.fn().mockResolvedValue(false),
+    recordFailure: jest.fn().mockResolvedValue(undefined),
+    recordSuccess: jest.fn().mockResolvedValue(undefined),
+  };
+
+  return { userRepo, sessionRepo, challengeRepo, otpHasher, passwordHasher, deviceTokenRepo, otpAttemptTracker };
 }
 
 describe('ConfirmPasswordResetUseCase', () => {
@@ -105,6 +111,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     const result = await uc.execute({
       email: 'test@example.com',
@@ -141,6 +148,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     await uc.execute({ email: 'test@example.com', otp: '123456', newPassword: 'NewPass123!' });
 
@@ -160,6 +168,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     const result = await uc.execute({
       email: 'noone@example.com',
@@ -185,6 +194,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     const result = await uc.execute({
       email: 'test@example.com',
@@ -224,6 +234,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     const result = await uc.execute({
       email: 'test@example.com',
@@ -261,6 +272,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     const result = await uc.execute({
       email: 'test@example.com',
@@ -308,6 +320,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     const result = await uc.execute({
       email: 'test@example.com',
@@ -344,6 +357,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       deps.otpHasher,
       deps.passwordHasher,
       deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
     );
     const result = await uc.execute({
       email: 'test@example.com',

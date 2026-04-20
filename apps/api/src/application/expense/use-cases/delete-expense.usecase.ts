@@ -1,7 +1,7 @@
 import type { Result } from '@shared/kernel';
 import { ok, err, isDeleted } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
 import { canManageExpenses } from '@domain/expense/rules/expense.rules';
@@ -37,8 +37,10 @@ export class DeleteExpenseUseCase {
       return err(ExpenseErrors.notInAcademy());
     }
 
+    const loadedVersion = expense.audit.version;
     const deleted = expense.markDeleted(input.actorUserId);
-    await this.expenseRepo.save(deleted);
+    const saved = await this.expenseRepo.saveWithVersionPrecondition(deleted, loadedVersion);
+    if (!saved) return err(ExpenseErrors.concurrencyConflict());
 
     await this.auditRecorder.record({
       academyId: deleted.academyId,

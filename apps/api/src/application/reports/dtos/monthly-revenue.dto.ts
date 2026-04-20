@@ -1,4 +1,4 @@
-import type { PaidSource } from '@playconnect/contracts';
+import type { PaidSource } from '@academyflo/contracts';
 
 export interface MonthlyRevenueItemDto {
   id: string;

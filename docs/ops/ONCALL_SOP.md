@@ -17,7 +17,7 @@ Standard operating procedures for on-call engineers.
 1. Check production health:
 
    ```bash
-   API_URL=https://playconnect.app ADMIN_URL=https://admin.playconnect.app \
+   API_URL=https://academyflo.com ADMIN_URL=https://admin.academyflo.com \
      node scripts/smoke-check.mjs
    ```
 
@@ -53,7 +53,7 @@ Perform these checks once per shift:
 | ---------------- | -------------------------------------------- | ------------------- |
 | API liveness     | `curl .../api/v1/health/liveness`            | 200                 |
 | API readiness    | `curl .../api/v1/health/readiness`           | 200, mongodb: up    |
-| Admin web        | `curl https://admin.playconnect.app/`        | 200 or 3xx          |
+| Admin web        | `curl https://admin.academyflo.com/`        | 200 or 3xx          |
 | Container status | `docker compose ps`                          | All containers "Up" |
 | Disk space       | `df -h`                                      | < 80% usage         |
 | Recent errors    | `logs api --since 8h \| grep error \| wc -l` | < 50                |

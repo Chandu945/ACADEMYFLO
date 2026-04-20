@@ -1,6 +1,6 @@
-# PlayConnect Operational Documentation
+# Academyflo Operational Documentation
 
-Enterprise operational docs for the PlayConnect platform. All procedures align to the SRS and reference actual repo scripts, endpoints, and workflows.
+Enterprise operational docs for the Academyflo platform. All procedures align to the SRS and reference actual repo scripts, endpoints, and workflows.
 
 ## Index
 

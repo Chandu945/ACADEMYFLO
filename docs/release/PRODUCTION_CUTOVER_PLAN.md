@@ -1,6 +1,6 @@
 # Production Cutover Plan
 
-Detailed, actionable plan for deploying PlayConnect to production with zero-downtime strategies, validation steps, and rollback procedures.
+Detailed, actionable plan for deploying Academyflo to production with zero-downtime strategies, validation steps, and rollback procedures.
 
 ---
 
@@ -29,7 +29,7 @@ All items must be verified before initiating the cutover.
   - Atlas: daily snapshot present (record timestamp: `________`)
   - Self-hosted: `mongodump` archive exists at known path
   - Restore test completed in staging within last 7 days (date: `________`)
-- [ ] **DNS configured** — `playconnect.app` and `admin.playconnect.app` point to production server
+- [ ] **DNS configured** — `academyflo.com` and `admin.academyflo.com` point to production server
 - [ ] **TLS certificates** — valid cert + key at configured paths for nginx
 - [ ] **Stakeholder sign-off** — product owner + engineering lead approved
 
@@ -71,18 +71,18 @@ Two identical stacks behind nginx. Only one is active at any time.
 
    ```bash
    # On production server
-   cat /opt/playconnect/active-stack  # outputs "blue" or "green"
+   cat /opt/academyflo/active-stack  # outputs "blue" or "green"
    ```
 
 2. **Deploy new version to INACTIVE stack**
 
    ```bash
    INACTIVE=green  # or blue, whichever is inactive
-   cd /opt/playconnect
+   cd /opt/academyflo
 
    # Set new image tag
    export IMAGE_TAG=rc-abc1234  # from RC sign-off bundle
-   export DOCKER_REGISTRY=ghcr.io/playconnect
+   export DOCKER_REGISTRY=ghcr.io/academyflo
 
    docker compose -f deploy/docker-compose.${INACTIVE}.yml pull
    docker compose -f deploy/docker-compose.${INACTIVE}.yml up -d
@@ -110,11 +110,11 @@ Two identical stacks behind nginx. Only one is active at any time.
 
    ```bash
    # Update nginx config to point to inactive stack
-   sed -i "s/upstream_active/${INACTIVE}/" /etc/nginx/conf.d/playconnect.conf
+   sed -i "s/upstream_active/${INACTIVE}/" /etc/nginx/conf.d/academyflo.conf
    nginx -t && nginx -s reload
 
    # Record new active stack
-   echo "$INACTIVE" > /opt/playconnect/active-stack
+   echo "$INACTIVE" > /opt/academyflo/active-stack
    ```
 
 6. **Monitor for 15–30 minutes**
@@ -124,7 +124,7 @@ Two identical stacks behind nginx. Only one is active at any time.
    docker compose -f deploy/docker-compose.${INACTIVE}.yml logs -f api --since 1m
 
    # Check error rate
-   curl -s https://playconnect.app/api/v1/health/readiness | jq .
+   curl -s https://academyflo.com/api/v1/health/readiness | jq .
    ```
 
 7. **Keep old stack running** for quick rollback (minimum 2 hours, ideally 24 hours)
@@ -134,9 +134,9 @@ Two identical stacks behind nginx. Only one is active at any time.
 ```bash
 # Switch back to previous active stack
 PREVIOUS=blue  # whichever was active before
-sed -i "s/upstream_active/${PREVIOUS}/" /etc/nginx/conf.d/playconnect.conf
+sed -i "s/upstream_active/${PREVIOUS}/" /etc/nginx/conf.d/academyflo.conf
 nginx -t && nginx -s reload
-echo "$PREVIOUS" > /opt/playconnect/active-stack
+echo "$PREVIOUS" > /opt/academyflo/active-stack
 ```
 
 Time to rollback: **< 30 seconds** (nginx reload only).
@@ -152,7 +152,7 @@ Update images and restart services sequentially within the same compose stack.
 1. **Record current image tags** (for rollback)
 
    ```bash
-   cd /opt/playconnect
+   cd /opt/academyflo
    docker compose -f deploy/docker-compose.prod.yml config | grep image: > /tmp/previous-images.txt
    cat /tmp/previous-images.txt
    ```
@@ -161,7 +161,7 @@ Update images and restart services sequentially within the same compose stack.
 
    ```bash
    export IMAGE_TAG=rc-abc1234
-   export DOCKER_REGISTRY=ghcr.io/playconnect
+   export DOCKER_REGISTRY=ghcr.io/academyflo
    docker compose -f deploy/docker-compose.prod.yml pull
    ```
 
@@ -191,7 +191,7 @@ Update images and restart services sequentially within the same compose stack.
 5. **Run smoke check**
 
    ```bash
-   API_URL=https://playconnect.app ADMIN_URL=https://admin.playconnect.app \
+   API_URL=https://academyflo.com ADMIN_URL=https://admin.academyflo.com \
      node scripts/smoke-check.mjs
    ```
 
@@ -214,15 +214,15 @@ After deployment (either strategy), run all validation steps sequentially:
 
 | # | Check | Command | Expected |
 |---|-------|---------|----------|
-| 1 | API liveness | `curl https://playconnect.app/api/v1/health/liveness` | 200 |
-| 2 | API readiness | `curl https://playconnect.app/api/v1/health/readiness` | 200 |
-| 3 | Admin web loads | `curl -s -o /dev/null -w "%{http_code}" https://admin.playconnect.app/login` | 200 |
+| 1 | API liveness | `curl https://academyflo.com/api/v1/health/liveness` | 200 |
+| 2 | API readiness | `curl https://academyflo.com/api/v1/health/readiness` | 200 |
+| 3 | Admin web loads | `curl -s -o /dev/null -w "%{http_code}" https://admin.academyflo.com/login` | 200 |
 | 4 | Admin login | Login via admin-web with super admin credentials | Dashboard loads |
 | 5 | Owner login | `POST /api/v1/auth/login` with smoke owner credentials | 200 + token |
 | 6 | Subscription status | `GET /api/v1/subscription/me` with owner token | 200 + valid status |
 | 7 | Dashboard KPIs | `GET /api/v1/dashboard/owner?kpiPreset=THIS_MONTH` | 200 |
 | 8 | Students list | `GET /api/v1/students?page=1&pageSize=20` | 200 + items array |
-| 9 | Cashfree webhook reachable | `curl -s -o /dev/null -w "%{http_code}" -X POST https://playconnect.app/api/v1/subscription-payments/cashfree/webhook` | 400 (missing headers, not 404) |
+| 9 | Cashfree webhook reachable | `curl -s -o /dev/null -w "%{http_code}" -X POST https://academyflo.com/api/v1/subscription-payments/cashfree/webhook` | 400 (missing headers, not 404) |
 | 10 | Full smoke suite | `node scripts/rc/smoke-suite.mjs` | All checks pass |
 
 **Do NOT test with real Cashfree payments** unless a planned test transaction is coordinated.

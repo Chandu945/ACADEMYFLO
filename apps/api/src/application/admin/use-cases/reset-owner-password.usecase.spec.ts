@@ -58,7 +58,6 @@ function buildDeps() {
 
   const deviceTokenRepo: jest.Mocked<DeviceTokenRepository> = {
     upsert: jest.fn(),
-    removeByToken: jest.fn(),
     removeByUserIdAndToken: jest.fn(),
     removeByUserIds: jest.fn().mockResolvedValue(0),
     findByUserId: jest.fn(),

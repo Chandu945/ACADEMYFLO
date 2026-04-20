@@ -1,6 +1,6 @@
 import { IsOptional, IsIn } from 'class-validator';
-import { PAYMENT_LABELS } from '@playconnect/contracts';
-import type { PaymentLabel } from '@playconnect/contracts';
+import { PAYMENT_LABELS } from '@academyflo/contracts';
+import type { PaymentLabel } from '@academyflo/contracts';
 
 export class MarkFeePaidBodyDto {
   @IsOptional()

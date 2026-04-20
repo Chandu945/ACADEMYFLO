@@ -1,4 +1,4 @@
-import type { FeeDueStatus, PaidSource } from '@playconnect/contracts';
+import type { FeeDueStatus, PaidSource } from '@academyflo/contracts';
 
 export interface MonthWiseDueItemDto {
   id: string;

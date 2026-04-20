@@ -75,6 +75,7 @@ describe('CreatePaymentRequestUseCase', () => {
       listByAcademyAndStatuses: jest.fn(),
       listByStaffAndAcademy: jest.fn(),
       countPendingByAcademy: jest.fn(),
+      deleteAllByAcademyAndStudent: jest.fn(),
     } as jest.Mocked<PaymentRequestRepository>;
 
     const auditRecorder = { record: jest.fn() };

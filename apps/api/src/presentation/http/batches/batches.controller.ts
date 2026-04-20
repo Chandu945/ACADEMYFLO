@@ -37,6 +37,7 @@ import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
 import { ListBatchesQueryDto } from './dto/list-batches.query';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import { MAX_IMAGE_FILE_SIZE } from '@shared/utils/image-validation';
@@ -94,7 +95,7 @@ export class BatchesController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Update a batch' })
   async update(
-    @Param('batchId') batchId: string,
+    @Param('batchId', ParseObjectIdPipe) batchId: string,
     @Body() dto: UpdateBatchDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -146,7 +147,7 @@ export class BatchesController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'List students in a batch' })
   async listStudents(
-    @Param('batchId') batchId: string,
+    @Param('batchId', ParseObjectIdPipe) batchId: string,
     @Query() query: ListBatchesQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -168,8 +169,8 @@ export class BatchesController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Add a student to a batch' })
   async addStudent(
-    @Param('batchId') batchId: string,
-    @Param('studentId') studentId: string,
+    @Param('batchId', ParseObjectIdPipe) batchId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -187,8 +188,8 @@ export class BatchesController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Remove a student from a batch' })
   async removeStudent(
-    @Param('batchId') batchId: string,
-    @Param('studentId') studentId: string,
+    @Param('batchId', ParseObjectIdPipe) batchId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -206,7 +207,7 @@ export class BatchesController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Delete a batch (OWNER only, cascades student unassignment)' })
   async remove(
-    @Param('batchId') batchId: string,
+    @Param('batchId', ParseObjectIdPipe) batchId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -233,7 +234,7 @@ export class BatchesController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMAGE_FILE_SIZE } }))
   async uploadPhoto(
-    @Param('batchId') batchId: string,
+    @Param('batchId', ParseObjectIdPipe) batchId: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -258,7 +259,7 @@ export class BatchesController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Get a batch by ID' })
   async get(
-    @Param('batchId') batchId: string,
+    @Param('batchId', ParseObjectIdPipe) batchId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {

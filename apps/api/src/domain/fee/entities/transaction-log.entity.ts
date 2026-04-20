@@ -1,6 +1,6 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields } from '@shared/kernel';
-import type { PaidSource } from '@playconnect/contracts';
+import type { PaidSource } from '@academyflo/contracts';
 
 export interface TransactionLogProps {
   academyId: string;

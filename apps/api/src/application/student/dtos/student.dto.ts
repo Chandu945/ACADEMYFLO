@@ -1,4 +1,4 @@
-import type { Gender, StudentStatus } from '@playconnect/contracts';
+import type { Gender, StudentStatus } from '@academyflo/contracts';
 import type { Student } from '@domain/student/entities/student.entity';
 import type { StudentListRow } from '@domain/student/ports/student-query.repository';
 

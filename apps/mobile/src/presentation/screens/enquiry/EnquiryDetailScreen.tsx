@@ -23,6 +23,27 @@ import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { getTodayIST } from '../../../domain/common/date-utils';
 import { enquiryDetailSchema } from '../../../domain/enquiry/enquiry.schemas';
 import { useAuth } from '../../context/AuthContext';
+import type { AppError } from '../../../domain/common/errors';
+
+// Map common server error codes to actionable messages so the user sees
+// "Check your connection" instead of a raw transport error string.
+function friendlyEnquiryError(error: AppError, action: 'follow-up' | 'close' | 'convert'): { title: string; message: string } {
+  switch (error.code) {
+    case 'FORBIDDEN':
+      return { title: 'Not allowed', message: `You do not have permission to ${action} this enquiry.` };
+    case 'NOT_FOUND':
+      return { title: 'Not found', message: 'This enquiry no longer exists. Please refresh.' };
+    case 'CONFLICT':
+      return { title: 'Conflict', message: error.message || 'This enquiry was modified by someone else. Please reload.' };
+    case 'VALIDATION':
+      return { title: 'Invalid input', message: error.message };
+    case 'NETWORK':
+    case 'UNKNOWN':
+      return { title: 'Network error', message: 'Could not reach the server. Check your connection and try again.' };
+    default:
+      return { title: 'Error', message: error.message };
+  }
+}
 import { AppIcon } from '../../components/ui/AppIcon';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -42,11 +63,17 @@ function safeFormatDate(dateStr: string | null | undefined): string {
       // Full ISO datetime — parse directly to preserve timezone info
       d = new Date(dateStr);
     } else {
-      // Date-only string (YYYY-MM-DD) — parse as local date
-      d = new Date(dateStr + 'T00:00:00');
+      // Date-only string (YYYY-MM-DD) — anchor at IST midnight so the calendar
+      // day doesn't shift on non-IST devices
+      d = new Date(dateStr + 'T00:00:00+05:30');
     }
     if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    return d.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Asia/Kolkata',
+    });
   } catch {
     return dateStr;
   }
@@ -366,7 +393,8 @@ function AddFollowUpModal({
         setDate(''); setNotes(''); setNextDate('');
         onSaved();
       } else {
-        crossAlert('Error', result.error.message);
+        const m = friendlyEnquiryError(result.error, 'follow-up');
+        crossAlert(m.title, m.message);
       }
     } catch (err) {
       if (__DEV__) console.error('[EnquiryDetailScreen] handleSave failed:', err);
@@ -442,7 +470,8 @@ function CloseEnquiryModal({
         setReason('');
         onClosed();
       } else {
-        crossAlert('Error', result.error.message);
+        const m = friendlyEnquiryError(result.error, 'close');
+        crossAlert(m.title, m.message);
       }
     } catch (err) {
       if (__DEV__) console.error('[EnquiryDetailScreen] handleClose failed:', err);
@@ -550,7 +579,8 @@ function _ConvertToStudentModal({
         setAddressLine1(''); setCity(''); setState(''); setPincode('');
         onConverted();
       } else {
-        crossAlert('Error', result.error.message);
+        const m = friendlyEnquiryError(result.error, 'convert');
+        crossAlert(m.title, m.message);
       }
     } catch (err) {
       if (__DEV__) console.error('[EnquiryDetailScreen] handleConvert failed:', err);

@@ -9,7 +9,7 @@ import { Phone } from '@domain/identity/value-objects/phone.vo';
 import { UserModel } from '../database/schemas/user.schema';
 import type { UserDocument } from '../database/schemas/user.schema';
 import { getTransactionSession } from '../database/transaction-context';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { StaffQualificationInfo, SalaryFrequency } from '@domain/identity/entities/user.entity';
 
 @Injectable()

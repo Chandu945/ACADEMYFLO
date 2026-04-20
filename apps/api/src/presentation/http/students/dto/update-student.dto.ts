@@ -13,8 +13,8 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { GENDERS } from '@playconnect/contracts';
-import type { Gender } from '@playconnect/contracts';
+import { GENDERS } from '@academyflo/contracts';
+import type { Gender } from '@academyflo/contracts';
 import { trimAndCollapse, normalizeEmail } from '../../common/sanitizers/string-sanitizer';
 
 export class UpdateStudentAddressDto {
@@ -118,6 +118,9 @@ export class UpdateStudentDto {
   @ApiPropertyOptional({ example: '+919876543211' })
   @IsOptional()
   @IsString()
+  @Matches(/^\+[1-9]\d{6,14}$/, {
+    message: 'mobileNumber must be in E.164 format (e.g., +919876543210)',
+  })
   mobileNumber?: string | null;
 
   @ApiPropertyOptional({ example: 'arun@example.com' })

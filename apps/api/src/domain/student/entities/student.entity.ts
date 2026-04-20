@@ -1,7 +1,7 @@
 import type { AuditFields, SoftDeleteFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, initSoftDelete } from '@shared/kernel';
-import type { StudentStatus } from '@playconnect/contracts';
-import type { Gender } from '@playconnect/contracts';
+import type { StudentStatus } from '@academyflo/contracts';
+import type { Gender } from '@academyflo/contracts';
 
 export interface StudentAddress {
   line1: string;

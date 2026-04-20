@@ -1,6 +1,6 @@
 import type { AuditFields, SoftDeleteFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields, initSoftDelete } from '@shared/kernel';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { Email } from '../value-objects/email.vo';
 import { Phone } from '../value-objects/phone.vo';
 

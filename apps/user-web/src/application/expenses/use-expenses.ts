@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type ExpenseItem = { id: string; date: string; categoryId: string; categoryName: string; amount: number; notes: string | null; createdAt: string };
 type ExpenseCategory = { id: string; name: string };
@@ -16,12 +17,24 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
 }
 
 export function useExpenses(month?: string, categoryId?: string, page = 1) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [data, setData] = useState<ExpenseItem[]>([]);
   const [meta, setMeta] = useState<{ totalItems: number; totalPages: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Cross-account safety.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setData([]);
+      setMeta(null);
+      setError(null);
+    }
+  }, [userId]);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
@@ -59,11 +72,22 @@ export function useExpenses(month?: string, categoryId?: string, page = 1) {
 }
 
 export function useExpenseSummary(month?: string) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [data, setData] = useState<ExpenseSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Cross-account safety.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setData(null);
+      setError(null);
+    }
+  }, [userId]);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
@@ -99,10 +123,20 @@ export function useExpenseSummary(month?: string) {
 }
 
 export function useExpenseCategories() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [data, setData] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Cross-account safety.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setData([]);
+    }
+  }, [userId]);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
@@ -135,7 +169,7 @@ export async function createExpense(body: Record<string, unknown>, accessToken?:
   try {
     const res = await fetch('/api/expenses', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -151,7 +185,7 @@ export async function updateExpense(id: string, body: Record<string, unknown>, a
   try {
     const res = await fetch('/api/expenses', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }),
       body: JSON.stringify({ id, ...body }),
       signal: AbortSignal.timeout(15000),
     });
@@ -167,7 +201,7 @@ export async function createCategory(body: { name: string }, accessToken?: strin
   try {
     const res = await fetch('/api/expenses/categories', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -179,11 +213,28 @@ export async function createCategory(body: { name: string }, accessToken?: strin
   }
 }
 
+export async function deleteCategory(id: string, accessToken?: string | null) {
+  try {
+    const res = await fetch(`/api/expenses/categories?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: csrfHeaders(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      const json = await safeJson(res);
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to delete category' };
+    }
+    return { ok: true as const };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
+}
+
 export async function deleteExpense(id: string, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/expenses?id=${id}`, {
+    const res = await fetch(`/api/expenses?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: csrfHeaders(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {

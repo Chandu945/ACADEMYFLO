@@ -1,6 +1,6 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
-import type { PaymentRequestStatus } from '@playconnect/contracts';
+import type { PaymentRequestStatus } from '@academyflo/contracts';
 
 export interface PaymentRequestProps {
   academyId: string;

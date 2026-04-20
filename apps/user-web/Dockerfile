@@ -1,7 +1,18 @@
+# =============================================================================
+# Academyflo User Web — Multi-stage Dockerfile
+# Base image: Node 20 LTS (pinned major)
+# Build context: repository root (monorepo)
+# Requires output: 'standalone' in next.config.ts
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1: Install dependencies + build
+# ---------------------------------------------------------------------------
 FROM node:20-alpine AS builder
 
 WORKDIR /repo
 
+# Copy workspace manifests and lockfile first (cache-friendly layer)
 COPY package.json package-lock.json ./
 COPY apps/user-web/package.json ./apps/user-web/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
@@ -11,11 +22,15 @@ COPY packages/contracts/package.json ./packages/contracts/
 
 RUN npm ci --ignore-scripts
 
+# Copy sources after deps so a source change doesn't bust the install layer
 COPY packages/ ./packages/
 COPY apps/user-web/ ./apps/user-web/
 
-RUN npm run build --workspace=@playconnect/user-web
+RUN npm run build --workspace=@academyflo/user-web
 
+# ---------------------------------------------------------------------------
+# Stage 2: Minimal runtime image (Next.js standalone output + static assets)
+# ---------------------------------------------------------------------------
 FROM node:20-alpine AS runner
 
 RUN addgroup --system --gid 1001 appgroup && \

@@ -10,7 +10,7 @@ import type { LoggerPort } from '@shared/logging/logger.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { TransactionLog } from '@domain/fee/entities/transaction-log.entity';
 import { generateReceiptNumber } from '@domain/fee/rules/payment-request.rules';
-import { DEFAULT_RECEIPT_PREFIX } from '@playconnect/contracts';
+import { DEFAULT_RECEIPT_PREFIX } from '@academyflo/contracts';
 import { randomUUID } from 'node:crypto';
 
 export interface FeeWebhookSignatureVerifier {
@@ -40,8 +40,9 @@ export class HandleFeePaymentWebhookUseCase {
       return err(AppError.unauthorized('Invalid webhook signature'));
     }
 
-    // Replay detection: reject webhooks older than 5 minutes
-    const WEBHOOK_TOLERANCE_SECONDS = 300;
+    // Replay detection: reject webhooks with clock skew > 60 seconds.
+    // Tight window shrinks the attack surface if a signature ever leaks.
+    const WEBHOOK_TOLERANCE_SECONDS = 60;
     const rawTimestamp = Number(headers.timestamp);
     // Cashfree sends timestamp in milliseconds; normalize to seconds
     const webhookTimestamp = rawTimestamp > 1e12 ? Math.floor(rawTimestamp / 1000) : rawTimestamp;

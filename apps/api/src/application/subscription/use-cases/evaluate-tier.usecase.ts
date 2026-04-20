@@ -8,8 +8,8 @@ import {
   requiredTierForCount,
   computePendingTierChange,
 } from '@domain/subscription/rules/subscription-tier.rules';
-import type { TierKey } from '@playconnect/contracts';
-import { TIER_PRICING_INR } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
+import { TIER_PRICING_INR } from '@academyflo/contracts';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';

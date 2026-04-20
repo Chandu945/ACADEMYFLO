@@ -1,5 +1,5 @@
-import type { FeeDueStatus, PaidSource, PaymentLabel } from '@playconnect/contracts';
-export type { FeeDueStatus, PaidSource, PaymentLabel } from '@playconnect/contracts';
+import type { FeeDueStatus, PaidSource, PaymentLabel } from '@academyflo/contracts';
+export type { FeeDueStatus, PaidSource, PaymentLabel } from '@academyflo/contracts';
 
 export type FeeDueItem = {
   id: string;

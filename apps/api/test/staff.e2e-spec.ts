@@ -14,10 +14,12 @@ import { PASSWORD_HASHER } from '../src/application/identity/ports/password-hash
 import { TOKEN_SERVICE } from '../src/application/identity/ports/token-service.port';
 import { CreateStaffUseCase } from '../src/application/staff/use-cases/create-staff.usecase';
 import { ListStaffUseCase } from '../src/application/staff/use-cases/list-staff.usecase';
+import { GetStaffUseCase } from '../src/application/staff/use-cases/get-staff.usecase';
 import { UpdateStaffUseCase } from '../src/application/staff/use-cases/update-staff.usecase';
 import { SetStaffStatusUseCase } from '../src/application/staff/use-cases/set-staff-status.usecase';
 import { InMemoryUserRepository, InMemorySessionRepository } from './helpers/in-memory-repos';
-import { createTestTokenService, createTestPasswordHasher } from './helpers/test-services';
+import { createTestTokenService, createTestPasswordHasher, createInMemoryAuditRecorder } from './helpers/test-services';
+import { noopPaymentRequestRepo } from './helpers/soft-delete-deps';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { SESSION_REPOSITORY } from '../src/domain/identity/ports/session.repository';
 import type { UserRepository } from '../src/domain/identity/ports/user.repository';
@@ -45,6 +47,8 @@ describe('Staff Endpoints (e2e)', () => {
     const hasher = createTestPasswordHasher();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
+    const auditRecorder = createInMemoryAuditRecorder();
+    const noopPrRepoLocal = noopPaymentRequestRepo;
 
     const moduleFixture = await Test.createTestingModule({
       imports: [
@@ -61,7 +65,8 @@ describe('Staff Endpoints (e2e)', () => {
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'CREATE_STAFF_USE_CASE',
-          useFactory: (ur: UserRepository, h: PasswordHasher) => new CreateStaffUseCase(ur, h),
+          useFactory: (ur: UserRepository, h: PasswordHasher) =>
+            new CreateStaffUseCase(ur, h, auditRecorder),
           inject: [USER_REPOSITORY, PASSWORD_HASHER],
         },
         {
@@ -70,14 +75,20 @@ describe('Staff Endpoints (e2e)', () => {
           inject: [USER_REPOSITORY],
         },
         {
+          provide: 'GET_STAFF_USE_CASE',
+          useFactory: (ur: UserRepository) => new GetStaffUseCase(ur),
+          inject: [USER_REPOSITORY],
+        },
+        {
           provide: 'UPDATE_STAFF_USE_CASE',
-          useFactory: (ur: UserRepository, h: PasswordHasher) => new UpdateStaffUseCase(ur, h),
+          useFactory: (ur: UserRepository, h: PasswordHasher) =>
+            new UpdateStaffUseCase(ur, h, auditRecorder),
           inject: [USER_REPOSITORY, PASSWORD_HASHER],
         },
         {
           provide: 'SET_STAFF_STATUS_USE_CASE',
           useFactory: (ur: UserRepository, sr: SessionRepository) =>
-            new SetStaffStatusUseCase(ur, sr),
+            new SetStaffStatusUseCase(ur, sr, auditRecorder, noopPrRepoLocal),
           inject: [USER_REPOSITORY, SESSION_REPOSITORY],
         },
       ],

@@ -9,7 +9,7 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
 import { StudentErrors } from '../../common/errors';
 import { PdfGeneratorService } from '@infrastructure/pdf/pdf-generator.service';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GenerateStudentReportInput {
   actorUserId: string;
@@ -57,7 +57,7 @@ export class GenerateStudentReportUseCase {
     const months = this.getMonthRange(fromMonth, toMonth);
     const attendanceByMonth: { month: string; absentCount: number }[] = [];
     for (const month of months) {
-      const absentRecords = await this.attendanceRepo.findAbsentByAcademyStudentAndMonth(
+      const absentRecords = await this.attendanceRepo.findPresentByAcademyStudentAndMonth(
         actor.academyId, input.studentId, month,
       );
       attendanceByMonth.push({ month, absentCount: absentRecords.length });

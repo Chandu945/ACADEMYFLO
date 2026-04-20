@@ -86,6 +86,28 @@ module.exports = {
       from: { path: 'src/application/' },
       to: { path: 'src/presentation/' },
     },
+
+    // === DEPENDENCY HYGIENE ===
+
+    {
+      name: 'not-to-deprecated',
+      comment: 'Depending on a deprecated package is disallowed.',
+      severity: 'warn',
+      from: {},
+      to: { dependencyTypes: ['deprecated'] },
+    },
+
+    // === PRESENTATION → VENDOR DIRECT IMPORT GUARD (api) ===
+    // Presentation controllers should not reach into vendor SDKs directly;
+    // any SDK use belongs in infrastructure so it can be swapped behind a port.
+
+    {
+      name: 'presentation-no-direct-vendor-sdk-api',
+      comment: 'API presentation controllers must not import vendor SDKs (cashfree, mongoose, sharp, etc.) directly — go through infrastructure.',
+      severity: 'error',
+      from: { path: '^apps/api/src/presentation/' },
+      to: { path: '^node_modules/(mongoose|sharp|cashfree-pg|nodemailer|bullmq|ioredis)/' },
+    },
   ],
   options: {
     doNotFollow: {

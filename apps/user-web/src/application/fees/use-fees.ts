@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type FeeDueItem = {
   id: string;
@@ -249,10 +250,10 @@ export async function markFeePaid(studentId: string, month: string, paymentLabel
   try {
     const res = await fetch(`/api/fees/students/${studentId}`, {
       method: 'PUT',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify({ month, paymentLabel }),
       signal: AbortSignal.timeout(15000),
     });
@@ -270,10 +271,10 @@ export async function handlePaymentRequest(requestId: string, action: string, da
   try {
     const res = await fetch(`/api/fees/payment-requests/${requestId}`, {
       method: 'PUT',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify({ action, ...data }),
       signal: AbortSignal.timeout(15000),
     });

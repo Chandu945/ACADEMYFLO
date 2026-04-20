@@ -1,4 +1,4 @@
-# PlayConnect — Deployment Guide
+# Academyflo — Deployment Guide
 
 ## Architecture
 
@@ -76,12 +76,12 @@ Required secrets per environment:
 | `*_HOST`      | Staging server IP                 | Production server IP      |
 | `*_USER`      | SSH user                          | SSH user                  |
 | `*_SSH_KEY`   | SSH private key                   | SSH private key           |
-| `*_API_URL`   | `https://staging.playconnect.app` | `https://playconnect.app` |
-| `*_ADMIN_URL` | `https://staging.playconnect.app` | `https://playconnect.app` |
+| `*_API_URL`   | `https://staging.academyflo.com` | `https://academyflo.com` |
+| `*_ADMIN_URL` | `https://staging.academyflo.com` | `https://academyflo.com` |
 
 ## Networking
 
-- **Internal network**: `playconnect-net` (bridge driver)
+- **Internal network**: `academyflo-net` (bridge driver)
 - **Publicly exposed**: only nginx on ports 80 and 443
 - **Service discovery**: Docker DNS (`api:3001`, `admin-web:3002`)
 - API and admin-web use `expose` (not `ports`) — no host binding
@@ -102,7 +102,7 @@ Required secrets per environment:
 ```json
 {
   "status": "ok",
-  "service": "playconnect-api",
+  "service": "academyflo-api",
   "time": "2024-01-15T10:30:00.000Z",
   "requestId": "uuid"
 }
@@ -113,7 +113,7 @@ Required secrets per environment:
 ```json
 {
   "status": "ok",
-  "service": "playconnect-api",
+  "service": "academyflo-api",
   "time": "2024-01-15T10:30:00.000Z",
   "dependencies": { "mongodb": "up" },
   "requestId": "uuid"
@@ -125,7 +125,7 @@ Required secrets per environment:
 ```json
 {
   "status": "unavailable",
-  "service": "playconnect-api",
+  "service": "academyflo-api",
   "time": "2024-01-15T10:30:00.000Z",
   "dependencies": { "mongodb": "down" },
   "requestId": "uuid"
@@ -141,7 +141,7 @@ Run after deployment to verify all services are responding:
 node scripts/smoke-check.mjs
 
 # Custom URLs
-API_URL=https://staging.playconnect.app ADMIN_URL=https://staging.playconnect.app node scripts/smoke-check.mjs
+API_URL=https://staging.academyflo.com ADMIN_URL=https://staging.academyflo.com node scripts/smoke-check.mjs
 ```
 
 The script checks liveness, readiness, and admin-web endpoints with retries.
@@ -165,7 +165,7 @@ MONGODB_URI="mongodb://..." BACKUP_FILE="/backups/2024-01-15_02-00.tar.gz" \
 
 1. Place certificate and key files on the server
 2. Set `SSL_CERT_PATH` and `SSL_KEY_PATH` in `.env.*`
-3. Uncomment the HTTPS server block in `nginx/sites-enabled/playconnect.conf`
+3. Uncomment the HTTPS server block in `nginx/sites-enabled/academyflo.conf`
 4. Uncomment the HTTP→HTTPS redirect in the port 80 block
 5. Restart nginx: `docker compose restart nginx`
 
@@ -196,7 +196,7 @@ Backend service is not running or not on the Docker network:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
-docker network inspect deploy_playconnect-net
+docker network inspect deploy_academyflo-net
 ```
 
 ### Health check keeps failing

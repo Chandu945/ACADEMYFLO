@@ -251,7 +251,7 @@ describe('Admin Academies (e2e)', () => {
 
   function makeToken(sub = 'admin-1', role = 'SUPER_ADMIN') {
     return jwtService.sign(
-      { sub, role, email: 'admin@playconnect.app', tokenVersion: 0 },
+      { sub, role, email: 'admin@academyflo.com', tokenVersion: 0 },
       { secret: 'test-access-secret-that-is-at-least-32-characters-long', expiresIn: 900 },
     );
   }
@@ -260,7 +260,7 @@ describe('Admin Academies (e2e)', () => {
     const user = User.create({
       id: 'admin-1',
       fullName: 'Super Admin',
-      email: 'admin@playconnect.app',
+      email: 'admin@academyflo.com',
       phoneNumber: '+910000000000',
       role: 'SUPER_ADMIN',
       passwordHash: 'hashed',

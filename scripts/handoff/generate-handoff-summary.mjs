@@ -62,7 +62,7 @@ const dockerDigests = loadJsonSafe(join(ARTIFACTS, 'docker-digests.json'));
 const openApiSpec = loadJsonSafe(join(ROOT, 'apps/api/artifacts/swagger.json'));
 const openApiMeta = openApiSpec
   ? {
-      title: openApiSpec.info?.title || 'PlayConnect API',
+      title: openApiSpec.info?.title || 'Academyflo API',
       version: openApiSpec.info?.version || 'unknown',
       pathCount: Object.keys(openApiSpec.paths || {}).length,
     }
@@ -110,7 +110,7 @@ const handoffDocs = [
 
 const summary = {
   generatedAt: new Date().toISOString(),
-  project: 'PlayConnect',
+  project: 'Academyflo',
   version: openApiMeta?.version || 'unknown',
 
   traceability: traceability?.summary || null,

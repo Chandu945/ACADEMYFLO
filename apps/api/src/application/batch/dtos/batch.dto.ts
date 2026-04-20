@@ -1,4 +1,4 @@
-import type { Weekday } from '@playconnect/contracts';
+import type { Weekday } from '@academyflo/contracts';
 import type { Batch, BatchStatus } from '@domain/batch/entities/batch.entity';
 
 export interface BatchDto {

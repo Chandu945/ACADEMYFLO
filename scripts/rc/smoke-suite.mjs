@@ -9,8 +9,8 @@
  *   3. Owner API flows (subscription, dashboard, students)
  *
  * Environment:
- *   STAGING_API_URL       - e.g. https://staging-api.playconnect.app
- *   STAGING_ADMIN_URL     - e.g. https://staging-admin.playconnect.app
+ *   STAGING_API_URL       - e.g. https://staging-api.academyflo.com
+ *   STAGING_ADMIN_URL     - e.g. https://staging-admin.academyflo.com
  *   SMOKE_ADMIN_EMAIL     - super admin email for staging
  *   SMOKE_ADMIN_PASSWORD  - super admin password for staging
  *   SMOKE_OWNER_EMAIL     - owner email for staging

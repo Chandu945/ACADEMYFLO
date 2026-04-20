@@ -4,7 +4,7 @@ import type { Model } from 'mongoose';
 import type { EnquiryRepository, EnquiryListFilter, EnquirySummaryResult } from '@domain/enquiry/ports/enquiry.repository';
 import { Enquiry } from '@domain/enquiry/entities/enquiry.entity';
 import type { EnquirySource, ClosureReason, FollowUp } from '@domain/enquiry/entities/enquiry.entity';
-import { ENQUIRY_SOURCES, CLOSURE_REASONS } from '@playconnect/contracts';
+import { ENQUIRY_SOURCES, CLOSURE_REASONS } from '@academyflo/contracts';
 import { EnquiryModel } from '../database/schemas/enquiry.schema';
 import type { EnquiryDocument } from '../database/schemas/enquiry.schema';
 import { getTransactionSession } from '../database/transaction-context';
@@ -47,6 +47,46 @@ export class MongoEnquiryRepository implements EnquiryRepository {
       },
       { upsert: true, session: getTransactionSession() },
     );
+  }
+
+  async saveWithVersionPrecondition(enquiry: Enquiry, expectedVersion: number): Promise<boolean> {
+    // Match-on-version then bump-on-write. Prevents lost updates when two
+    // mutations race (e.g., owner closes while staff posts a follow-up).
+    const result = await this.model.findOneAndUpdate(
+      { _id: enquiry.id.toString(), version: expectedVersion },
+      {
+        $set: {
+          academyId: enquiry.academyId,
+          prospectName: enquiry.prospectName,
+          guardianName: enquiry.guardianName,
+          mobileNumber: enquiry.mobileNumber,
+          whatsappNumber: enquiry.whatsappNumber,
+          email: enquiry.email,
+          address: enquiry.address,
+          interestedIn: enquiry.interestedIn,
+          source: enquiry.source,
+          notes: enquiry.notes,
+          status: enquiry.status,
+          closureReason: enquiry.closureReason,
+          convertedStudentId: enquiry.convertedStudentId,
+          closedBy: enquiry.closedBy,
+          closedAt: enquiry.closedAt,
+          nextFollowUpDate: enquiry.nextFollowUpDate,
+          followUps: enquiry.followUps.map((f) => ({
+            _id: f.id,
+            date: f.date,
+            notes: f.notes,
+            nextFollowUpDate: f.nextFollowUpDate,
+            createdBy: f.createdBy,
+            createdAt: f.createdAt,
+          })),
+          createdBy: enquiry.createdBy,
+          version: enquiry.audit.version,
+        },
+      },
+      { session: getTransactionSession() },
+    ).exec();
+    return result !== null;
   }
 
   async findById(id: string): Promise<Enquiry | null> {

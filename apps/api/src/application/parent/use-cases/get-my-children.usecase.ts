@@ -9,7 +9,7 @@ import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { ParentErrors } from '../../common/errors';
 import type { ChildSummaryDto } from '../dtos/parent.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetMyChildrenInput {
   parentUserId: string;
@@ -59,7 +59,7 @@ export class GetMyChildrenUseCase {
         let currentMonthAttendancePercent: number | null = null;
 
         try {
-          const absentRecords = await this.attendanceRepo.findAbsentByAcademyStudentAndMonth(
+          const absentRecords = await this.attendanceRepo.findPresentByAcademyStudentAndMonth(
             academyId,
             sid,
             currentMonth,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type EventListItem = {
   id: string;
@@ -28,11 +29,22 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
 }
 
 export function useEvents(filters: { status?: string; eventType?: string } = {}) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [data, setData] = useState<EventListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Cross-account safety: clear when authenticated user flips.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setData([]);
+      setError(null);
+    }
+  }, [userId]);
 
   const { status, eventType } = filters;
 
@@ -71,13 +83,24 @@ export function useEvents(filters: { status?: string; eventType?: string } = {})
 }
 
 export function useEventDetail(id: string | null) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [data, setData] = useState<EventListItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => { setData(null); setError(null); }, [id]);
+
+  // Cross-account safety.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setData(null);
+      setError(null);
+    }
+  }, [userId]);
 
   const fetch_ = useCallback(async () => {
     if (!id || !accessToken) return;
@@ -114,7 +137,7 @@ export async function createEvent(body: Record<string, unknown>, accessToken?: s
   try {
     const res = await fetch('/api/events', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -128,14 +151,14 @@ export async function createEvent(body: Record<string, unknown>, accessToken?: s
 
 export async function updateEvent(id: string, body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/events/${id}`, {
+    const res = await fetch(`/api/events/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
     const json = await safeJson(res);
-    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to update event' };
+    if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to update event', fieldErrors: json?.['fieldErrors'] as Record<string, string> | undefined };
     return { ok: true as const, data: json };
   } catch {
     return { ok: false as const, error: 'Network error. Please try again.' };
@@ -144,9 +167,9 @@ export async function updateEvent(id: string, body: Record<string, unknown>, acc
 
 export async function deleteEvent(id: string, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/events/${id}`, {
+    const res = await fetch(`/api/events/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: csrfHeaders(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {
@@ -173,13 +196,24 @@ export type GalleryPhoto = {
 };
 
 export function useEventGallery(eventId: string | null) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => { setPhotos([]); setError(null); }, [eventId]);
+
+  // Cross-account safety.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setPhotos([]);
+      setError(null);
+    }
+  }, [userId]);
 
   const fetch_ = useCallback(async () => {
     if (!eventId || !accessToken) return;
@@ -218,9 +252,9 @@ export async function uploadGalleryPhoto(eventId: string, file: File, caption?: 
     formData.append('file', file);
     if (caption) formData.append('caption', caption);
 
-    const res = await fetch(`/api/events/${eventId}/gallery`, {
+    const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/gallery`, {
       method: 'POST',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: csrfHeaders(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       body: formData,
       signal: AbortSignal.timeout(30000),
     });
@@ -234,9 +268,9 @@ export async function uploadGalleryPhoto(eventId: string, file: File, caption?: 
 
 export async function deleteGalleryPhoto(eventId: string, photoId: string, accessToken?: string | null) {
   try {
-    const res = await fetch(`/api/events/${eventId}/gallery/${photoId}`, {
+    const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/gallery/${encodeURIComponent(photoId)}`, {
       method: 'DELETE',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: csrfHeaders(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {

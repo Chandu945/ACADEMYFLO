@@ -9,7 +9,7 @@ import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-att
 import { isValidMonthKey, getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { StaffAttendanceErrors } from '../../common/errors';
 import type { MonthlyStaffAttendanceSummaryItem } from '../dtos/staff-attendance.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetMonthlyStaffAttendanceSummaryInput {
   actorUserId: string;
@@ -63,7 +63,7 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
 
     // Get all present records and holidays for the month in bulk
     const [allPresent, holidays] = await Promise.all([
-      this.staffAttendanceRepo.findAbsentByAcademyAndMonth(actor.academyId, input.month),
+      this.staffAttendanceRepo.findPresentByAcademyAndMonth(actor.academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(actor.academyId, input.month),
     ]);
 

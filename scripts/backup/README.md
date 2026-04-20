@@ -1,4 +1,4 @@
-# PlayConnect — Backup & Restore
+# Academyflo — Backup & Restore
 
 ## MongoDB Atlas (Managed)
 
@@ -28,13 +28,13 @@ The `mongodump-backup.sh` script creates compressed backups with optional S3 upl
 
 ```bash
 # Basic usage
-MONGODB_URI="mongodb://localhost:27017/playconnect" ./mongodump-backup.sh
+MONGODB_URI="mongodb://localhost:27017/academyflo" ./mongodump-backup.sh
 
 # With S3 upload and custom retention
-MONGODB_URI="mongodb://localhost:27017/playconnect" \
+MONGODB_URI="mongodb://localhost:27017/academyflo" \
   BACKUP_DIR="/opt/backups" \
   BACKUP_RETENTION_DAYS=14 \
-  S3_BUCKET="playconnect-backups" \
+  S3_BUCKET="academyflo-backups" \
   ./mongodump-backup.sh
 ```
 
@@ -62,7 +62,7 @@ Add to crontab (`crontab -e`):
 
 ```cron
 # Daily backup at 2:00 AM
-0 2 * * * /opt/playconnect/scripts/backup/mongodump-backup.sh >> /var/log/playconnect-backup.log 2>&1
+0 2 * * * /opt/academyflo/scripts/backup/mongodump-backup.sh >> /var/log/academyflo-backup.log 2>&1
 ```
 
 ### Restore Script
@@ -72,7 +72,7 @@ The `restore-mongodump.sh` script restores from a `.tar.gz` backup archive.
 **WARNING**: This will DROP existing data in the target database.
 
 ```bash
-MONGODB_URI="mongodb://localhost:27017/playconnect" \
+MONGODB_URI="mongodb://localhost:27017/academyflo" \
   BACKUP_FILE="/backups/2024-01-15_02-00.tar.gz" \
   ./restore-mongodump.sh --confirm
 ```

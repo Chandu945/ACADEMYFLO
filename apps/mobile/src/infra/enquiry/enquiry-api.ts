@@ -9,64 +9,130 @@ import type {
   ConvertToStudentRequest,
   ConvertToStudentResponse,
 } from '../../domain/enquiry/enquiry.types';
-import type { EnquiryListApiResponse } from '../../domain/enquiry/enquiry.schemas';
+import {
+  enquiryListResponseSchema,
+  enquiryDetailSchema,
+  enquirySummarySchema,
+  convertToStudentResponseSchema,
+  type EnquiryListApiResponse,
+} from '../../domain/enquiry/enquiry.schemas';
 import type { AppError } from '../../domain/common/errors';
-import type { Result } from '../../domain/common/result';
+import { err, ok, type Result } from '../../domain/common/result';
 import { apiGet, apiPost, apiPut } from '../http/api-client';
+import type { ZodSchema } from 'zod';
 
-export function listEnquiries(
+// Same validateResponse pattern as student-api / staff-api / holidays-api.
+// Backend drift surfaces as a clear VALIDATION rather than `undefined.foo`
+// crashes deep in screens.
+function validateResponse<T>(
+  schema: ZodSchema<T>,
+  result: Result<unknown, AppError>,
+  label: string,
+): Result<T, AppError> {
+  if (!result.ok) return result;
+  const parsed = schema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error(`[enquiryApi] ${label} schema mismatch:`, parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data);
+}
+
+export async function listEnquiries(
   query: EnquiryListQuery,
 ): Promise<Result<EnquiryListApiResponse, AppError>> {
-  const params = new URLSearchParams();
-  if (query.status) params.set('status', query.status);
-  if (query.search) params.set('search', query.search);
-  if (query.followUpToday) params.set('followUpToday', 'true');
-  params.set('page', String(query.page));
-  params.set('limit', String(query.limit));
+  const parts: string[] = [];
+  if (query.status) parts.push(`status=${encodeURIComponent(query.status)}`);
+  if (query.search) parts.push(`search=${encodeURIComponent(query.search)}`);
+  if (query.followUpToday) parts.push('followUpToday=true');
+  parts.push(`page=${query.page}`);
+  parts.push(`limit=${query.limit}`);
 
-  return apiGet<EnquiryListApiResponse>(`/api/v1/enquiries?${params.toString()}`);
+  const result = await apiGet<unknown>(`/api/v1/enquiries?${parts.join('&')}`);
+  return validateResponse(
+    enquiryListResponseSchema as unknown as ZodSchema<EnquiryListApiResponse>,
+    result,
+    'listEnquiries',
+  );
 }
 
-export function getEnquiryDetail(id: string): Promise<Result<EnquiryDetail, AppError>> {
-  return apiGet<EnquiryDetail>(`/api/v1/enquiries/${id}`);
+export async function getEnquiryDetail(id: string): Promise<Result<EnquiryDetail, AppError>> {
+  const result = await apiGet<unknown>(`/api/v1/enquiries/${encodeURIComponent(id)}`);
+  return validateResponse(
+    enquiryDetailSchema as unknown as ZodSchema<EnquiryDetail>,
+    result,
+    'getEnquiryDetail',
+  );
 }
 
-export function getEnquirySummary(): Promise<Result<EnquirySummary, AppError>> {
-  return apiGet<EnquirySummary>('/api/v1/enquiries/summary');
+export async function getEnquirySummary(): Promise<Result<EnquirySummary, AppError>> {
+  const result = await apiGet<unknown>('/api/v1/enquiries/summary');
+  return validateResponse(
+    enquirySummarySchema as unknown as ZodSchema<EnquirySummary>,
+    result,
+    'getEnquirySummary',
+  );
 }
 
-export function createEnquiry(
+export async function createEnquiry(
   req: CreateEnquiryRequest,
 ): Promise<Result<EnquiryDetail, AppError>> {
-  return apiPost<EnquiryDetail>('/api/v1/enquiries', req);
+  const result = await apiPost<unknown>('/api/v1/enquiries', req);
+  return validateResponse(
+    enquiryDetailSchema as unknown as ZodSchema<EnquiryDetail>,
+    result,
+    'createEnquiry',
+  );
 }
 
-export function updateEnquiry(
+export async function updateEnquiry(
   id: string,
   req: UpdateEnquiryRequest,
 ): Promise<Result<EnquiryDetail, AppError>> {
-  return apiPut<EnquiryDetail>(`/api/v1/enquiries/${id}`, req);
+  const result = await apiPut<unknown>(`/api/v1/enquiries/${encodeURIComponent(id)}`, req);
+  return validateResponse(
+    enquiryDetailSchema as unknown as ZodSchema<EnquiryDetail>,
+    result,
+    'updateEnquiry',
+  );
 }
 
-export function addFollowUp(
+export async function addFollowUp(
   id: string,
   req: AddFollowUpRequest,
 ): Promise<Result<EnquiryDetail, AppError>> {
-  return apiPost<EnquiryDetail>(`/api/v1/enquiries/${id}/follow-ups`, req);
+  const result = await apiPost<unknown>(`/api/v1/enquiries/${encodeURIComponent(id)}/follow-ups`, req);
+  return validateResponse(
+    enquiryDetailSchema as unknown as ZodSchema<EnquiryDetail>,
+    result,
+    'addFollowUp',
+  );
 }
 
-export function closeEnquiry(
+export async function closeEnquiry(
   id: string,
   req: CloseEnquiryRequest,
 ): Promise<Result<EnquiryDetail, AppError>> {
-  return apiPut<EnquiryDetail>(`/api/v1/enquiries/${id}/close`, req);
+  const result = await apiPut<unknown>(`/api/v1/enquiries/${encodeURIComponent(id)}/close`, req);
+  return validateResponse(
+    enquiryDetailSchema as unknown as ZodSchema<EnquiryDetail>,
+    result,
+    'closeEnquiry',
+  );
 }
 
-export function convertToStudent(
+export async function convertToStudent(
   id: string,
   req: ConvertToStudentRequest,
 ): Promise<Result<ConvertToStudentResponse, AppError>> {
-  return apiPost<ConvertToStudentResponse>(`/api/v1/enquiries/${id}/convert`, req);
+  const result = await apiPost<unknown>(`/api/v1/enquiries/${encodeURIComponent(id)}/convert`, req);
+  return validateResponse(
+    convertToStudentResponseSchema as unknown as ZodSchema<ConvertToStudentResponse>,
+    result,
+    'convertToStudent',
+  );
 }
 
 export const enquiryApi = {

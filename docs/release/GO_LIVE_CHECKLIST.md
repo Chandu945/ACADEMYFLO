@@ -9,7 +9,7 @@ One-page go/no-go checklist for production deployment. Every item must be checke
 - [ ] Production server provisioned and accessible via SSH
 - [ ] Docker + Docker Compose installed and operational
 - [ ] nginx reverse proxy configured with TLS certificates
-- [ ] DNS records point to production server (`playconnect.app`, `admin.playconnect.app`)
+- [ ] DNS records point to production server (`academyflo.com`, `admin.academyflo.com`)
 - [ ] MongoDB Atlas cluster provisioned (or self-hosted replica set running)
 - [ ] Container registry accessible (GHCR or DockerHub)
 - [ ] Firewall rules allow inbound 80/443 and outbound SMTP + Cashfree API
@@ -20,7 +20,7 @@ One-page go/no-go checklist for production deployment. Every item must be checke
 - [ ] `JWT_REFRESH_SECRET` — unique, high-entropy, not reused from staging
 - [ ] `BCRYPT_COST` — set to 12 (production default)
 - [ ] `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` — production mail service configured
-- [ ] `SMTP_FROM` — production sender address (`noreply@playconnect.app`)
+- [ ] `SMTP_FROM` — production sender address (`noreply@academyflo.com`)
 - [ ] `EMAIL_DRY_RUN=false` — real emails enabled
 - [ ] `CASHFREE_CLIENT_ID` / `CASHFREE_CLIENT_SECRET` — production keys (not sandbox)
 - [ ] `CASHFREE_WEBHOOK_SECRET` — production webhook secret

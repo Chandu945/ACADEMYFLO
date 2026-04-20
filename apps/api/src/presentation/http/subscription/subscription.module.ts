@@ -5,10 +5,17 @@ import {
   SubscriptionModel,
   SubscriptionSchema,
 } from '@infrastructure/database/schemas/subscription.schema';
+import {
+  SubscriptionPaymentModel,
+  SubscriptionPaymentSchema,
+} from '@infrastructure/database/schemas/subscription-payment.schema';
 import { StudentModel, StudentSchema } from '@infrastructure/database/schemas/student.schema';
 import { MongoSubscriptionRepository } from '@infrastructure/repositories/mongo-subscription.repository';
+import { MongoSubscriptionPaymentRepository } from '@infrastructure/repositories/mongo-subscription-payment.repository';
 import { MongoActiveStudentCounter } from '@infrastructure/subscription/mongo-active-student-counter';
 import { SUBSCRIPTION_REPOSITORY } from '@domain/subscription/ports/subscription.repository';
+import { SUBSCRIPTION_PAYMENT_REPOSITORY } from '@domain/subscription-payments/ports/subscription-payment.repository';
+import type { SubscriptionPaymentRepository } from '@domain/subscription-payments/ports/subscription-payment.repository';
 import {
   ACTIVE_STUDENT_COUNTER,
   type ActiveStudentCounterPort,
@@ -35,12 +42,14 @@ import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboardin
     AcademyOnboardingModule,
     MongooseModule.forFeature([
       { name: SubscriptionModel.name, schema: SubscriptionSchema },
+      { name: SubscriptionPaymentModel.name, schema: SubscriptionPaymentSchema },
       { name: StudentModel.name, schema: StudentSchema },
     ]),
   ],
   controllers: [SubscriptionController],
   providers: [
     { provide: SUBSCRIPTION_REPOSITORY, useClass: MongoSubscriptionRepository },
+    { provide: SUBSCRIPTION_PAYMENT_REPOSITORY, useClass: MongoSubscriptionPaymentRepository },
     { provide: ACTIVE_STUDENT_COUNTER, useClass: MongoActiveStudentCounter },
     { provide: CLOCK_PORT, useClass: SystemClock },
     { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
@@ -64,6 +73,7 @@ import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboardin
         createTrial: CreateTrialSubscriptionUseCase,
         clock: ClockPort,
         studentCounter: ActiveStudentCounterPort,
+        paymentRepo: SubscriptionPaymentRepository,
       ) =>
         new GetMySubscriptionUseCase(
           userRepo,
@@ -72,6 +82,7 @@ import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboardin
           createTrial,
           clock,
           studentCounter,
+          paymentRepo,
         ),
       inject: [
         USER_REPOSITORY,
@@ -80,6 +91,7 @@ import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboardin
         'CREATE_TRIAL_SUBSCRIPTION_USE_CASE',
         CLOCK_PORT,
         ACTIVE_STUDENT_COUNTER,
+        SUBSCRIPTION_PAYMENT_REPOSITORY,
       ],
     },
   ],

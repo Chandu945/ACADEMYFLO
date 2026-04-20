@@ -6,7 +6,7 @@ import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log
 import { PaymentRequestErrors } from '../../common/errors';
 import type { TransactionLogDto } from '../dtos/transaction-log.dto';
 import { toTransactionLogDto } from '../dtos/transaction-log.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ListTransactionLogsInput {
   actorUserId: string;

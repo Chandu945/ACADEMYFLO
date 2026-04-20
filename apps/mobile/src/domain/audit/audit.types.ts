@@ -1,4 +1,4 @@
-import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType } from '@academyflo/contracts';
 
 export type { AuditActionType, AuditEntityType };
 

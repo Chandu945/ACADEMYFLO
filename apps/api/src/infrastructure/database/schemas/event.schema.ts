@@ -44,6 +44,11 @@ export class EventModel extends Document {
 
   @Prop({ type: String, required: true })
   createdBy!: string;
+
+  // Optimistic concurrency: bumped on every save. Used by
+  // saveWithVersionPrecondition to detect concurrent edits.
+  @Prop({ type: Number, default: 1 })
+  version!: number;
 }
 
 export const EventSchema = SchemaFactory.createForClass(EventModel);

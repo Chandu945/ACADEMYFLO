@@ -130,7 +130,7 @@ describe('Auth Failure Paths (e2e)', () => {
             oh: OtpHasher,
             ph: PasswordHasher,
             dtr: DeviceTokenRepository,
-          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr),
+          ) => new ConfirmPasswordResetUseCase(ur, sr, cr, oh, ph, dtr, { isLocked: async () => false, recordFailure: async () => undefined, recordSuccess: async () => undefined }),
           inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_RESET_CHALLENGE_REPOSITORY, OTP_HASHER, PASSWORD_HASHER],
         },
       ],

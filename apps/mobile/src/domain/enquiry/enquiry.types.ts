@@ -1,5 +1,5 @@
-import type { EnquirySource, EnquiryStatus, ClosureReason } from '@playconnect/contracts';
-export type { EnquirySource, EnquiryStatus, ClosureReason } from '@playconnect/contracts';
+import type { EnquirySource, EnquiryStatus, ClosureReason } from '@academyflo/contracts';
+export type { EnquirySource, EnquiryStatus, ClosureReason } from '@academyflo/contracts';
 
 export type FollowUp = {
   id: string;

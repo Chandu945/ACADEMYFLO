@@ -11,7 +11,7 @@
 services:
   redis:
     image: redis:7-alpine
-    container_name: playconnect-prod-redis
+    container_name: academyflo-prod-redis
     restart: unless-stopped
     volumes:
       - prod_redis_data:/data
@@ -27,10 +27,10 @@ services:
           memory: 512M
           cpus: '1.0'
     networks:
-      - playconnect-net
+      - academyflo-net
 
   api:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/api:${IMAGE_TAG}
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/api:${IMAGE_TAG}
     restart: unless-stopped
     expose:
       - '3001'
@@ -61,11 +61,11 @@ services:
         delay: 5s
         max_attempts: 3
     networks:
-      - playconnect-net
+      - academyflo-net
 
   admin-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/admin-web:${IMAGE_TAG}
-    container_name: playconnect-prod-admin
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/admin-web:${IMAGE_TAG}
+    container_name: academyflo-prod-admin
     restart: unless-stopped
     expose:
       - '3002'
@@ -86,11 +86,11 @@ services:
     depends_on:
       - api
     networks:
-      - playconnect-net
+      - academyflo-net
 
   user-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/user-web:${IMAGE_TAG}
-    container_name: playconnect-prod-user-web
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/user-web:${IMAGE_TAG}
+    container_name: academyflo-prod-user-web
     restart: unless-stopped
     expose:
       - '3003'
@@ -109,11 +109,11 @@ services:
     depends_on:
       - api
     networks:
-      - playconnect-net
+      - academyflo-net
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: playconnect-prod-nginx
+    container_name: academyflo-prod-nginx
     restart: unless-stopped
     ports:
       - '80:80'
@@ -128,11 +128,11 @@ services:
       - admin-web
       - user-web
     networks:
-      - playconnect-net
+      - academyflo-net
 
 volumes:
   prod_redis_data:
 
 networks:
-  playconnect-net:
+  academyflo-net:
     driver: bridge

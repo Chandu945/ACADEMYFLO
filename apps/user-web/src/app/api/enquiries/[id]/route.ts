@@ -5,6 +5,7 @@ import { apiGet, apiPut } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { toErrorResponse } from '@/infra/http/error-mapper';
+import { isValidObjectId } from '@/infra/validation/ids';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,6 +14,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
+  if (!isValidObjectId(id)) {
+    return NextResponse.json({ message: 'Invalid enquiry id' }, { status: 400 });
+  }
   const result = await apiGet(`/api/v1/enquiries/${encodeURIComponent(id)}`, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
@@ -24,6 +28,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
+  if (!isValidObjectId(id)) {
+    return NextResponse.json({ message: 'Invalid enquiry id' }, { status: 400 });
+  }
   let body: unknown;
   try {
     body = await request.json();

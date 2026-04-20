@@ -44,7 +44,7 @@ describe('Health Endpoints (e2e)', () => {
       const res = await request(app.getHttpServer()).get('/api/v1/health/liveness').expect(200);
 
       expect(res.body.status).toBe('ok');
-      expect(res.body.service).toBe('playconnect-api');
+      expect(res.body.service).toBe('academyflo-api');
       expect(res.body.time).toBeDefined();
       expect(new Date(res.body.time).toISOString()).toBe(res.body.time);
       expect(res.body.requestId).toBeDefined();
@@ -74,7 +74,7 @@ describe('Health Endpoints (e2e)', () => {
     it('should return readiness with not_configured mongodb when no URI', async () => {
       const res = await request(app.getHttpServer()).get('/api/v1/health/readiness').expect(200);
 
-      expect(res.body.service).toBe('playconnect-api');
+      expect(res.body.service).toBe('academyflo-api');
       expect(res.body.time).toBeDefined();
       expect(res.body.requestId).toBeDefined();
       expect(res.body.dependencies).toBeDefined();
@@ -115,8 +115,40 @@ describe('Health Endpoints (e2e)', () => {
       expect(res.body.status).toBe('unavailable');
       expect(res.body.dependencies.mongodb).toBe('down');
       expect(res.body.requestId).toBeDefined();
-      expect(res.body.service).toBe('playconnect-api');
+      expect(res.body.service).toBe('academyflo-api');
       expect(res.body.time).toBeDefined();
+    });
+  });
+
+  describe('GET /api/v1/health/app-version', () => {
+    it('accepts valid android+semver input', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/health/app-version')
+        .query({ platform: 'android', version: '1.2.3' })
+        .expect(200);
+      expect(res.body.currentVersion).toBe('1.2.3');
+      expect(res.body.storeUrl).toContain('play.google.com');
+    });
+
+    it('rejects an unknown platform', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/health/app-version')
+        .query({ platform: 'windows', version: '1.2.3' })
+        .expect(400);
+    });
+
+    it('rejects a malformed version', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/health/app-version')
+        .query({ platform: 'ios', version: 'not-a-version' })
+        .expect(400);
+    });
+
+    it('rejects a missing version', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/health/app-version')
+        .query({ platform: 'ios' })
+        .expect(400);
     });
   });
 

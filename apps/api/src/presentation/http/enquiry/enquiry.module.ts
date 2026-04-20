@@ -24,11 +24,15 @@ import { STUDENT_REPOSITORY } from '@domain/student/ports/student.repository';
 import type { TransactionPort } from '@application/common/transaction.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import { MongoTransactionService } from '@infrastructure/database/mongo-transaction.service';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
 @Module({
   imports: [
     AuthModule,
     AcademyOnboardingModule,
+    AuditLogsModule,
     MongooseModule.forFeature([
       { name: EnquiryModel.name, schema: EnquirySchema },
       { name: StudentModel.name, schema: StudentSchema },
@@ -41,9 +45,9 @@ import { MongoTransactionService } from '@infrastructure/database/mongo-transact
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
       provide: 'CREATE_ENQUIRY_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository) =>
-        new CreateEnquiryUseCase(userRepo, enquiryRepo),
-      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY],
+      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
+        new CreateEnquiryUseCase(userRepo, enquiryRepo, audit),
+      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'LIST_ENQUIRIES_USE_CASE',
@@ -59,21 +63,21 @@ import { MongoTransactionService } from '@infrastructure/database/mongo-transact
     },
     {
       provide: 'UPDATE_ENQUIRY_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository) =>
-        new UpdateEnquiryUseCase(userRepo, enquiryRepo),
-      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY],
+      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
+        new UpdateEnquiryUseCase(userRepo, enquiryRepo, audit),
+      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'ADD_FOLLOWUP_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository) =>
-        new AddFollowUpUseCase(userRepo, enquiryRepo),
-      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY],
+      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
+        new AddFollowUpUseCase(userRepo, enquiryRepo, audit),
+      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'CLOSE_ENQUIRY_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository) =>
-        new CloseEnquiryUseCase(userRepo, enquiryRepo),
-      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY],
+      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
+        new CloseEnquiryUseCase(userRepo, enquiryRepo, audit),
+      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'GET_ENQUIRY_SUMMARY_USE_CASE',
@@ -83,9 +87,14 @@ import { MongoTransactionService } from '@infrastructure/database/mongo-transact
     },
     {
       provide: 'CONVERT_TO_STUDENT_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, studentRepo: StudentRepository, transaction: TransactionPort) =>
-        new ConvertToStudentUseCase(userRepo, enquiryRepo, studentRepo, transaction),
-      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, STUDENT_REPOSITORY, TRANSACTION_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        enquiryRepo: EnquiryRepository,
+        studentRepo: StudentRepository,
+        transaction: TransactionPort,
+        audit: AuditRecorderPort,
+      ) => new ConvertToStudentUseCase(userRepo, enquiryRepo, studentRepo, transaction, audit),
+      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, STUDENT_REPOSITORY, TRANSACTION_PORT, AUDIT_RECORDER_PORT],
     },
   ],
 })

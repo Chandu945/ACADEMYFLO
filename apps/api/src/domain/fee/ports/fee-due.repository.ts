@@ -1,5 +1,5 @@
 import type { FeeDue } from '../entities/fee-due.entity';
-import type { FeeDueStatus } from '@playconnect/contracts';
+import type { FeeDueStatus } from '@academyflo/contracts';
 
 export const FEE_DUE_REPOSITORY = Symbol('FEE_DUE_REPOSITORY');
 

@@ -28,6 +28,7 @@ import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ListExpensesQueryDto } from './dto/list-expenses.query';
 import { ExpenseSummaryQueryDto } from './dto/expense-summary.query';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { mapResultToResponse } from '../common/result-mapper';
 import type { Request } from 'express';
 
@@ -72,7 +73,7 @@ export class ExpensesController {
   @Put(':id')
   @ApiOperation({ summary: 'Update an expense' })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: UpdateExpenseDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -92,7 +93,7 @@ export class ExpensesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an expense (soft delete)' })
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {

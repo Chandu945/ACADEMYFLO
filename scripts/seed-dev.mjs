@@ -80,7 +80,7 @@ function log(icon, msg) {
 
 const OWNER = {
   fullName: 'Rajesh Kumar',
-  email: 'owner@playconnect.dev',
+  email: 'owner@academyflo.dev',
   phoneNumber: '+919876500001',
   password: 'Owner@123',
   deviceId: 'seed-device-owner',
@@ -101,11 +101,11 @@ const ACADEMY = {
 // ── Staff Data ───────────────────────────────────────────────────────────────
 
 const STAFF = [
-  { fullName: 'Amit Sharma',    email: 'amit@playconnect.dev',   phoneNumber: '+919876500010', password: 'Staff@123' },
-  { fullName: 'Priya Patel',    email: 'priya@playconnect.dev',  phoneNumber: '+919876500011', password: 'Staff@123' },
-  { fullName: 'Vikram Singh',   email: 'vikram@playconnect.dev', phoneNumber: '+919876500012', password: 'Staff@123' },
-  { fullName: 'Sneha Reddy',    email: 'sneha@playconnect.dev',  phoneNumber: '+919876500013', password: 'Staff@123' },
-  { fullName: 'Rahul Verma',    email: 'rahul@playconnect.dev',  phoneNumber: '+919876500014', password: 'Staff@123' },
+  { fullName: 'Amit Sharma',    email: 'amit@academyflo.dev',   phoneNumber: '+919876500010', password: 'Staff@123' },
+  { fullName: 'Priya Patel',    email: 'priya@academyflo.dev',  phoneNumber: '+919876500011', password: 'Staff@123' },
+  { fullName: 'Vikram Singh',   email: 'vikram@academyflo.dev', phoneNumber: '+919876500012', password: 'Staff@123' },
+  { fullName: 'Sneha Reddy',    email: 'sneha@academyflo.dev',  phoneNumber: '+919876500013', password: 'Staff@123' },
+  { fullName: 'Rahul Verma',    email: 'rahul@academyflo.dev',  phoneNumber: '+919876500014', password: 'Staff@123' },
 ];
 
 // ── Batch Data ───────────────────────────────────────────────────────────────

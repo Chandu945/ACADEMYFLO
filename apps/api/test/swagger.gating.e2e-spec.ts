@@ -63,7 +63,7 @@ describe('Swagger Gating (e2e)', () => {
       const res = await request(app.getHttpServer()).get('/api/v1/docs-json').expect(200);
 
       expect(res.body.openapi).toBeDefined();
-      expect(res.body.info.title).toBe('PlayConnect API');
+      expect(res.body.info.title).toBe('Academyflo API');
     });
 
     it('docs returns 200 or redirect', async () => {

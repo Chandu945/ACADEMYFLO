@@ -18,7 +18,7 @@ import {
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
-import type { Gender, UserRole } from '@playconnect/contracts';
+import type { Gender, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { randomUUID } from 'crypto';
 

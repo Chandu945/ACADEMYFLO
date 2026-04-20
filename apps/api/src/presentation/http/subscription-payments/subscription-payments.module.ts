@@ -70,7 +70,9 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
   ],
   controllers: [
     SubscriptionPaymentsController,
-    ...(process.env['APP_ENV'] === 'development' ? [SubscriptionPaymentsTestController] : []),
+    ...(process.env['NODE_ENV'] !== 'production' && process.env['APP_ENV'] === 'development'
+      ? [SubscriptionPaymentsTestController]
+      : []),
   ],
   providers: [
     { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },

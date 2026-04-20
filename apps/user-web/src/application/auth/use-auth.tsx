@@ -10,7 +10,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 type AuthUser = {
   id: string;
@@ -65,45 +65,6 @@ export function resetInitAuth(): void {
   _initPromise = null;
 }
 
-function decodeUserFromToken(token: string): AuthUser | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    // Convert base64url to standard base64
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-    const decoded = JSON.parse(atob(padded));
-    if (!decoded.sub && !decoded.userId) return null;
-    return {
-      id: decoded.sub ?? decoded.userId,
-      fullName: decoded.fullName ?? '',
-      email: decoded.email ?? '',
-      phoneNumber: decoded.phoneNumber ?? '',
-      role: decoded.role ?? 'OWNER',
-      profilePhotoUrl: decoded.profilePhotoUrl ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Try to hydrate auth state from sessionStorage (set during login on the login page).
- * This avoids an extra /api/auth/refresh call immediately after login.
- */
-function consumeFreshLoginData(): AuthResponse | null {
-  try {
-    const raw = sessionStorage.getItem('pc_fresh_login');
-    if (!raw) return null;
-    sessionStorage.removeItem('pc_fresh_login');
-    const parsed = JSON.parse(raw);
-    if (parsed?.accessToken) return parsed as AuthResponse;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -124,9 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       const data: AuthResponse = await res.json();
-      const user = data.user ?? decodeUserFromToken(data.accessToken);
+      if (!data.user) {
+        setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
+        return;
+      }
       setState({
-        user,
+        user: data.user,
         accessToken: data.accessToken,
         isLoading: false,
         isAuthenticated: true,
@@ -136,33 +100,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Initial auth: hydrate from fresh login data or refresh from server
+  // Initial auth: refresh from server (session cookie → fresh access token + user)
   useEffect(() => {
     let cancelled = false;
-
-    // Check if we just came from the login page
-    const freshData = consumeFreshLoginData();
-    if (freshData?.accessToken) {
-      const user = freshData.user ?? decodeUserFromToken(freshData.accessToken);
-      if (user && !cancelled) {
-        setState({
-          user,
-          accessToken: freshData.accessToken,
-          isLoading: false,
-          isAuthenticated: true,
-        });
-        setInitialAuthDone(true);
-        return;
-      }
-    }
-
-    // Normal flow: refresh from server
     initAuth().then((data) => {
       if (cancelled) return;
-      if (data?.accessToken) {
-        const user = data.user ?? decodeUserFromToken(data.accessToken);
+      if (data?.accessToken && data.user) {
         setState({
-          user,
+          user: data.user,
           accessToken: data.accessToken,
           isLoading: false,
           isAuthenticated: true,
@@ -186,16 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) {
         return { ok: false, error: data.message || 'Login failed' };
       }
-      if (!data.accessToken) {
-        return { ok: false, error: 'Login response missing token. Please try again.' };
-      }
-      const user = data.user ?? decodeUserFromToken(data.accessToken);
-      if (!user) {
+      if (!data.accessToken || !data.user) {
         return { ok: false, error: 'Invalid login response. Please try again.' };
       }
       _initPromise = null; // Reset so post-login navigation gets a fresh refresh
       setState({
-        user,
+        user: data.user,
         accessToken: data.accessToken,
         isLoading: false,
         isAuthenticated: true,

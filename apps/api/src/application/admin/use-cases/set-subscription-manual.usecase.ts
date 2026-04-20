@@ -5,7 +5,7 @@ import type { SubscriptionRepository } from '@domain/subscription/ports/subscrip
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { AdminErrors } from '../../common/errors';
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 
 interface SetSubscriptionManualInput {
   actorRole: string;

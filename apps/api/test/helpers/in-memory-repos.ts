@@ -30,7 +30,7 @@ import type {
   DeviceToken,
   DeviceTokenRepository,
 } from '../../src/domain/notification/ports/device-token.repository';
-import type { UserRole, FeeDueStatus, PaymentRequestStatus } from '@playconnect/contracts';
+import type { UserRole, FeeDueStatus, PaymentRequestStatus } from '@academyflo/contracts';
 
 export class InMemoryUserRepository implements UserRepository {
   private users: Map<string, User> = new Map();
@@ -678,13 +678,13 @@ export class InMemoryStudentAttendanceRepository implements StudentAttendanceRep
     return this.records.get(this.key(academyId, studentId, date)) ?? null;
   }
 
-  async findAbsentByAcademyAndDate(academyId: string, date: string): Promise<StudentAttendance[]> {
+  async findPresentByAcademyAndDate(academyId: string, date: string): Promise<StudentAttendance[]> {
     return Array.from(this.records.values()).filter(
       (r) => r.academyId === academyId && r.date === date,
     );
   }
 
-  async findAbsentByAcademyStudentAndMonth(
+  async findPresentByAcademyStudentAndMonth(
     academyId: string,
     studentId: string,
     monthPrefix: string,
@@ -695,7 +695,7 @@ export class InMemoryStudentAttendanceRepository implements StudentAttendanceRep
     );
   }
 
-  async findAbsentByAcademyAndMonth(
+  async findPresentByAcademyAndMonth(
     academyId: string,
     monthPrefix: string,
   ): Promise<StudentAttendance[]> {
@@ -712,10 +712,21 @@ export class InMemoryStudentAttendanceRepository implements StudentAttendanceRep
     }
   }
 
-  async countAbsentByAcademyAndDate(academyId: string, date: string): Promise<number> {
+  async countPresentByAcademyAndDate(academyId: string, date: string): Promise<number> {
     return Array.from(this.records.values()).filter(
       (r) => r.academyId === academyId && r.date === date,
     ).length;
+  }
+
+  async deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
+    let count = 0;
+    for (const [key, record] of this.records) {
+      if (record.academyId === academyId && record.studentId === studentId) {
+        this.records.delete(key);
+        count++;
+      }
+    }
+    return count;
   }
 
   clear(): void {
@@ -970,6 +981,17 @@ export class InMemoryPaymentRequestRepository implements PaymentRequestRepositor
       .sort((a, b) => b.audit.createdAt.getTime() - a.audit.createdAt.getTime());
   }
 
+  async deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
+    let count = 0;
+    for (const [id, req] of this.requests) {
+      if (req.academyId === academyId && req.studentId === studentId) {
+        this.requests.delete(id);
+        count++;
+      }
+    }
+    return count;
+  }
+
   async countPendingByAcademy(academyId: string): Promise<number> {
     return Array.from(this.requests.values()).filter(
       (r) => r.academyId === academyId && r.status === 'PENDING',
@@ -1108,13 +1130,13 @@ export class InMemoryStaffAttendanceRepository implements StaffAttendanceReposit
     this.records.delete(this.key(academyId, staffUserId, date));
   }
 
-  async findAbsentByAcademyAndDate(academyId: string, date: string): Promise<StaffAttendance[]> {
+  async findPresentByAcademyAndDate(academyId: string, date: string): Promise<StaffAttendance[]> {
     return Array.from(this.records.values()).filter(
       (r) => r.academyId === academyId && r.date === date,
     );
   }
 
-  async findAbsentByAcademyDateAndStaffIds(
+  async findPresentByAcademyDateAndStaffIds(
     academyId: string,
     date: string,
     staffUserIds: string[],
@@ -1125,7 +1147,7 @@ export class InMemoryStaffAttendanceRepository implements StaffAttendanceReposit
     );
   }
 
-  async findAbsentByAcademyAndMonth(
+  async findPresentByAcademyAndMonth(
     academyId: string,
     monthPrefix: string,
   ): Promise<StaffAttendance[]> {
@@ -1134,7 +1156,7 @@ export class InMemoryStaffAttendanceRepository implements StaffAttendanceReposit
     );
   }
 
-  async countAbsentByAcademyStaffAndMonth(
+  async countPresentByAcademyStaffAndMonth(
     academyId: string,
     staffUserId: string,
     monthPrefix: string,
@@ -1166,6 +1188,13 @@ export class InMemoryEnquiryRepository implements EnquiryRepository {
 
   async save(enquiry: Enquiry): Promise<void> {
     this.enquiries.set(enquiry.id.toString(), enquiry);
+  }
+
+  async saveWithVersionPrecondition(enquiry: Enquiry, expectedVersion: number): Promise<boolean> {
+    const stored = this.enquiries.get(enquiry.id.toString());
+    if (stored && stored.audit.version !== expectedVersion) return false;
+    this.enquiries.set(enquiry.id.toString(), enquiry);
+    return true;
   }
 
   async findById(id: string): Promise<Enquiry | null> {
@@ -1345,7 +1374,7 @@ import type {
   AuditLogFilter,
 } from '../../src/domain/audit/ports/audit-log.repository';
 import type { AuditLog } from '../../src/domain/audit/entities/audit-log.entity';
-import type { Paginated } from '@playconnect/contracts';
+import type { Paginated } from '@academyflo/contracts';
 
 export class InMemoryAuditLogRepository implements AuditLogRepository {
   private logs: AuditLog[] = [];
@@ -1407,6 +1436,14 @@ export class InMemoryExpenseRepository implements ExpenseRepository {
     } else {
       this.expenses.push(expense);
     }
+  }
+
+  async saveWithVersionPrecondition(expense: Expense, expectedVersion: number): Promise<boolean> {
+    const idx = this.expenses.findIndex((e) => e.id.toString() === expense.id.toString());
+    if (idx < 0) return false;
+    if (this.expenses[idx]!.audit.version !== expectedVersion) return false;
+    this.expenses[idx] = expense;
+    return true;
   }
 
   async findById(id: string): Promise<Expense | null> {

@@ -10,8 +10,15 @@ import { pollFeePaymentStatusUseCase } from './use-cases/poll-fee-payment-status
 import type { PollFeePaymentStatusApiPort } from './use-cases/poll-fee-payment-status.usecase';
 import type { CheckoutPort } from '../payments/ports';
 
-const POLL_INTERVAL_MS = 3000;
+// Exponential backoff (in ms) per attempt; last value repeats for remaining
+// attempts. Prior linear 3s retry meant every parent polling concurrently
+// would hammer the verify endpoint on a transient 429 / 5xx.
+const POLL_BACKOFF_MS = [2000, 3000, 5000, 8000, 13000, 21000, 30000];
 const MAX_POLL_ATTEMPTS = 20;
+
+function getPollDelay(attempt: number): number {
+  return POLL_BACKOFF_MS[Math.min(attempt, POLL_BACKOFF_MS.length - 1)]!;
+}
 
 export type UseFeePaymentFlowReturn = {
   status: FeePaymentFlowStatus;
@@ -81,7 +88,7 @@ export function useFeePaymentFlow(
           setError(result.error.message);
           return;
         }
-        pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+        pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), getPollDelay(attempt));
         return;
       }
 
@@ -99,7 +106,7 @@ export function useFeePaymentFlow(
         return;
       }
 
-      pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), POLL_INTERVAL_MS);
+      pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), getPollDelay(attempt));
     },
     [deps, onSuccess],
   );

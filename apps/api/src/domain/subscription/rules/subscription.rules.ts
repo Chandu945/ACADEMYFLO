@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from '@playconnect/contracts';
+import type { SubscriptionStatus } from '@academyflo/contracts';
 import type { Subscription } from '../entities/subscription.entity';
 
 const GRACE_PERIOD_MS = 3 * 24 * 60 * 60 * 1000; // 3-day grace after paid expiry

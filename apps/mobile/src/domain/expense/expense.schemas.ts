@@ -39,6 +39,21 @@ export const expenseSummarySchema = z.object({
   totalAmount: z.number(),
 });
 
+export const expenseMutationResponseSchema = z.object({
+  id: z.string(),
+});
+
+export const expenseCategoryCreateResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+});
+
+export const expenseCategoryDeleteResponseSchema = z.object({
+  deleted: z.boolean(),
+});
+
 export type ExpenseCategoryListApiResponse = z.infer<typeof expenseCategoryListSchema>;
 export type ExpenseListApiResponse = z.infer<typeof expenseListResponseSchema>;
 export type ExpenseSummaryApiResponse = z.infer<typeof expenseSummarySchema>;
+export type ExpenseMutationApiResponse = z.infer<typeof expenseMutationResponseSchema>;

@@ -15,7 +15,7 @@ import { MongoClient } from '../../../node_modules/mongoose/node_modules/mongodb
 
 config({ path: resolve(process.cwd(), '.env') });
 
-const TARGET_OWNER_EMAIL = 'deletetest@playconnect.dev';
+const TARGET_OWNER_EMAIL = 'deletetest@academyflo.dev';
 const TARGET_ACADEMY_ID = 'e8efdbb4-fd98-4d6d-be9b-23dd7a41beb8';
 const URI = process.env.MONGODB_URI;
 if (!URI) throw new Error('MONGODB_URI not set');
@@ -68,7 +68,7 @@ async function snapshot(db) {
 
 const client = new MongoClient(URI);
 await client.connect();
-const db = client.db('playconnect');
+const db = client.db('academyflo');
 console.log('--- BEFORE ---');
 console.log(await snapshot(db));
 
@@ -96,7 +96,7 @@ await app.close();
 console.log('--- AFTER ---');
 const client2 = new MongoClient(URI);
 await client2.connect();
-const db2 = client2.db('playconnect');
+const db2 = client2.db('academyflo');
 console.log(await snapshot(db2));
 
 console.log('Owner user state (anonymized?):');

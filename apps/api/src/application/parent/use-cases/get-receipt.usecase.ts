@@ -9,7 +9,7 @@ import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-st
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { ParentErrors } from '../../common/errors';
 import type { ReceiptOutput } from '../dtos/parent.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetReceiptInput {
   parentUserId: string;

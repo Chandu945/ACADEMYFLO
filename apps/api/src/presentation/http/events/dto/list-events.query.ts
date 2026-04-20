@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsIn, IsInt, Min, Max, Matches, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EVENT_STATUSES, EVENT_TYPES } from '@playconnect/contracts';
+import { EVENT_STATUSES, EVENT_TYPES } from '@academyflo/contracts';
 
 export class ListEventsQuery {
   @IsOptional()

@@ -1,5 +1,5 @@
 {
-  "extends": "@playconnect/tsconfig/tsconfig.base.json",
+  "extends": "@academyflo/tsconfig/tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",

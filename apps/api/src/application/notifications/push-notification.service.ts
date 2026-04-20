@@ -25,11 +25,19 @@ export class PushNotificationService {
     const tokens = deviceTokens.map((dt) => dt.fcmToken);
     const failedTokens = await this.pushSender.sendToTokens(tokens, message);
 
-    // Clean up invalid tokens
+    // Clean up invalid tokens — scope the delete to the owning userId so a
+    // stale/forged token string from FCM can only remove a row we already
+    // fetched for this tenant, not an arbitrary device.
     if (failedTokens.length > 0) {
       this.logger.info(`Push: cleaning ${failedTokens.length} stale tokens`);
+      const tokenToUserId = new Map(deviceTokens.map((dt) => [dt.fcmToken, dt.userId]));
       await Promise.allSettled(
-        failedTokens.map((token) => this.deviceTokenRepo.removeByToken(token)),
+        failedTokens
+          .map((token) => {
+            const userId = tokenToUserId.get(token);
+            return userId ? this.deviceTokenRepo.removeByUserIdAndToken(userId, token) : null;
+          })
+          .filter((p): p is Promise<void> => p !== null),
       );
     }
   }

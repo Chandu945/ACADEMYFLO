@@ -5,7 +5,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import { canViewSettings } from '@domain/academy/rules/academy.rules';
 import { FeeErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import {
   DEFAULT_DUE_DATE_DAY,
   DEFAULT_RECEIPT_PREFIX,
@@ -13,7 +13,7 @@ import {
   DEFAULT_GRACE_PERIOD_DAYS,
   DEFAULT_LATE_FEE_AMOUNT_INR,
   DEFAULT_LATE_FEE_REPEAT_INTERVAL_DAYS,
-} from '@playconnect/contracts';
+} from '@academyflo/contracts';
 
 export interface GetAcademySettingsInput {
   actorUserId: string;

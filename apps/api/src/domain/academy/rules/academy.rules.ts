@@ -1,5 +1,5 @@
-import type { UserRole } from '@playconnect/contracts';
-import { ALLOWED_REPEAT_INTERVALS } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import { ALLOWED_REPEAT_INTERVALS } from '@academyflo/contracts';
 
 /**
  * Domain rules for academy setup and settings.

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@playconnect/contracts';
+import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@academyflo/contracts';
 
 export const auditLogItemSchema = z.object({
   id: z.string(),

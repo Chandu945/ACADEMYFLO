@@ -9,8 +9,10 @@ import type { DeviceTokenRepository } from '@domain/notification/ports/device-to
 import type { OtpHasher } from '../ports/otp-hasher.port';
 import type { PasswordHasher } from '../ports/password-hasher.port';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import type { OtpAttemptTrackerPort } from '../services/otp-attempt-tracker';
 import { renderPasswordChangedEmail } from '../../notifications/templates/password-changed-template';
 import { PasswordResetErrors } from '../../common/errors';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 interface ConfirmPasswordResetInput {
   email: string;
@@ -30,16 +32,26 @@ export class ConfirmPasswordResetUseCase {
     private readonly otpHasher: OtpHasher,
     private readonly passwordHasher: PasswordHasher,
     private readonly deviceTokenRepo: DeviceTokenRepository,
+    private readonly otpAttemptTracker: OtpAttemptTrackerPort,
     private readonly emailSender?: EmailSenderPort,
+    private readonly audit?: AuditRecorderPort,
   ) {}
 
   async execute(
     input: ConfirmPasswordResetInput,
   ): Promise<Result<ConfirmPasswordResetOutput, AppError>> {
     const email = input.email.toLowerCase().trim();
+
+    // Per-email lockout: prevents an attacker from cycling through new
+    // challenges to bypass the per-challenge attempt cap.
+    if (await this.otpAttemptTracker.isLocked(email)) {
+      return err(PasswordResetErrors.tooManyAttempts());
+    }
+
     const user = await this.userRepo.findByEmail(email);
 
     if (!user) {
+      await this.otpAttemptTracker.recordFailure(email);
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
@@ -47,11 +59,13 @@ export class ConfirmPasswordResetUseCase {
     const challenge = await this.challengeRepo.findLatestActiveByUserId(userId);
 
     if (!challenge) {
+      await this.otpAttemptTracker.recordFailure(email);
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
     // Check expiry and used status (but NOT attempts yet — that's done atomically below)
     if (challenge.isExpired() || challenge.isUsed()) {
+      await this.otpAttemptTracker.recordFailure(email);
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
@@ -63,12 +77,14 @@ export class ConfirmPasswordResetUseCase {
     // Re-fetch the challenge to get the authoritative post-increment attempt count
     const refreshedChallenge = await this.challengeRepo.findLatestActiveByUserId(userId);
     if (!refreshedChallenge || refreshedChallenge.hasExceededAttempts()) {
+      await this.otpAttemptTracker.recordFailure(email);
       return err(PasswordResetErrors.tooManyAttempts());
     }
 
     const otpValid = await this.otpHasher.compare(input.otp, refreshedChallenge.otpHash);
 
     if (!otpValid) {
+      await this.otpAttemptTracker.recordFailure(email);
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
@@ -88,6 +104,7 @@ export class ConfirmPasswordResetUseCase {
     // device compromise, and stale tokens would keep delivering PII to it.
     await this.deviceTokenRepo.removeByUserIds([userId]);
     await this.challengeRepo.markUsed(challenge.id.toString());
+    await this.otpAttemptTracker.recordSuccess(email);
 
     // Fire-and-forget: notify user about password change
     this.emailSender?.send({
@@ -98,6 +115,17 @@ export class ConfirmPasswordResetUseCase {
         userEmail: user.emailNormalized,
       }),
     }).catch(() => {});
+
+    if (user.academyId && this.audit) {
+      await this.audit.record({
+        academyId: user.academyId.toString(),
+        actorUserId: userId,
+        action: 'PASSWORD_RESET_COMPLETED',
+        entityType: 'USER',
+        entityId: userId,
+        context: { role: user.role },
+      }).catch(() => {});
+    }
 
     return ok({ message: 'Password reset successful.' });
   }

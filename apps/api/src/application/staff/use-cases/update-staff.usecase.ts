@@ -8,8 +8,9 @@ import { canManageStaff, staffBelongsToAcademy } from '@domain/identity/rules/st
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import { Email } from '@domain/identity/value-objects/email.vo';
 import { Phone } from '@domain/identity/value-objects/phone.vo';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface UpdateStaffInput {
   ownerUserId: string;
@@ -53,6 +54,7 @@ export class UpdateStaffUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly passwordHasher: PasswordHasher,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: UpdateStaffInput): Promise<Result<UpdateStaffOutput, AppError>> {
@@ -80,25 +82,26 @@ export class UpdateStaffUseCase {
       return err(StaffErrors.notInAcademy());
     }
 
+    // Normalize at the use-case boundary so we don't depend on the DTO layer
+    // (a non-DTO caller — e.g., a future internal worker — would otherwise
+    // bypass normalization and let " PRIYA@EXAMPLE.COM " slip past the dedup
+    // check while still hitting the unique index at save time).
+    const normalizedEmail = input.email ? input.email.trim().toLowerCase() : undefined;
+    const trimmedPhone = input.phoneNumber ? input.phoneNumber.trim() : undefined;
+
     // Check uniqueness for changed email
-    if (input.email) {
-      const normalizedEmail = input.email.trim().toLowerCase();
-      if (normalizedEmail !== staff.emailNormalized) {
-        const existing = await this.userRepo.findByEmail(normalizedEmail);
-        if (existing) {
-          return err(AuthErrors.duplicateEmail());
-        }
+    if (normalizedEmail && normalizedEmail !== staff.emailNormalized) {
+      const existing = await this.userRepo.findByEmail(normalizedEmail);
+      if (existing) {
+        return err(AuthErrors.duplicateEmail());
       }
     }
 
     // Check uniqueness for changed phone
-    if (input.phoneNumber) {
-      const trimmedPhone = input.phoneNumber.trim();
-      if (trimmedPhone !== staff.phoneE164) {
-        const existing = await this.userRepo.findByPhone(trimmedPhone);
-        if (existing) {
-          return err(AuthErrors.duplicatePhone());
-        }
+    if (trimmedPhone && trimmedPhone !== staff.phoneE164) {
+      const existing = await this.userRepo.findByPhone(trimmedPhone);
+      if (existing) {
+        return err(AuthErrors.duplicatePhone());
       }
     }
 
@@ -108,8 +111,8 @@ export class UpdateStaffUseCase {
 
     const updated = User.reconstitute(input.staffId, {
       fullName: input.fullName ?? staff.fullName,
-      email: input.email ? Email.create(input.email) : staff.email,
-      phone: input.phoneNumber ? Phone.create(input.phoneNumber) : staff.phone,
+      email: normalizedEmail ? Email.create(normalizedEmail) : staff.email,
+      phone: trimmedPhone ? Phone.create(trimmedPhone) : staff.phone,
       role: staff.role,
       status: staff.status,
       passwordHash: newPasswordHash,
@@ -141,6 +144,20 @@ export class UpdateStaffUseCase {
       }
       throw error;
     }
+
+    await this.auditRecorder.record({
+      academyId: owner.academyId,
+      actorUserId: input.ownerUserId,
+      action: 'STAFF_UPDATED',
+      entityType: 'USER',
+      entityId: input.staffId,
+      context: {
+        staffName: updated.fullName,
+        ...(input.email ? { emailChanged: 'true' } : {}),
+        ...(input.phoneNumber ? { phoneChanged: 'true' } : {}),
+        ...(input.password ? { passwordReset: 'true' } : {}),
+      },
+    });
 
     return ok({
       id: updated.id.toString(),

@@ -7,7 +7,7 @@ import type { GalleryPhotoRepository } from '@domain/event/ports/gallery-photo.r
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { GalleryErrors, EventErrors } from '../../common/errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface DeleteGalleryPhotoInput {
   actorUserId: string;

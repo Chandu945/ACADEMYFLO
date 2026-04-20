@@ -4,6 +4,13 @@ export const EXPENSE_REPOSITORY = Symbol('EXPENSE_REPOSITORY');
 
 export interface ExpenseRepository {
   save(expense: Expense): Promise<void>;
+  /**
+   * Optimistic-concurrency save: persist only if the stored version equals
+   * `expectedVersion`. Returns true on success, false on version mismatch.
+   * Use for any mutation that loaded the expense before saving (update,
+   * soft-delete) so two parallel edits don't silently overwrite.
+   */
+  saveWithVersionPrecondition(expense: Expense, expectedVersion: number): Promise<boolean>;
   findById(id: string): Promise<Expense | null>;
   listByAcademy(
     academyId: string,

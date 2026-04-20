@@ -1,6 +1,6 @@
 # Super Admin Actions SOP
 
-Procedures for super admin operations in PlayConnect. All actions require `SUPER_ADMIN` role authentication.
+Procedures for super admin operations in Academyflo. All actions require `SUPER_ADMIN` role authentication.
 
 ## Authentication
 
@@ -8,9 +8,9 @@ Super admins authenticate via the admin-web panel (`/admin/auth`) or directly vi
 
 ```bash
 # Login as super admin
-ADMIN_TOKEN=$(curl -s -X POST https://playconnect.app/api/v1/admin/auth/login \
+ADMIN_TOKEN=$(curl -s -X POST https://academyflo.com/api/v1/admin/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@playconnect.app", "password": "..."}' | jq -r '.accessToken')
+  -d '{"email": "admin@academyflo.com", "password": "..."}' | jq -r '.accessToken')
 ```
 
 All subsequent commands use this token in the `Authorization: Bearer` header.
@@ -23,13 +23,13 @@ All subsequent commands use this token in the `Authorization: Bearer` header.
 
 ```bash
 # Disable login
-curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/login-disabled \
+curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/login-disabled \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"disabled": true}'
 
 # Re-enable login
-curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/login-disabled \
+curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/login-disabled \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"disabled": false}'
@@ -50,7 +50,7 @@ curl -X POST .../force-logout ...
 **Effect:** Increments `tokenVersion` for all users in the academy. All existing JWTs (access + refresh) become invalid immediately. Users must re-login.
 
 ```bash
-curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/force-logout \
+curl -X POST https://academyflo.com/api/v1/admin/academies/{academyId}/force-logout \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -64,7 +64,7 @@ curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/force-lo
 **Effect:** Generates a new temporary password for the academy owner. The old password is immediately invalidated.
 
 ```bash
-curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/reset-password \
+curl -X POST https://academyflo.com/api/v1/admin/academies/{academyId}/reset-password \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -82,7 +82,7 @@ curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/reset-pa
 **When to use:** Payment confirmed outside the system, support override, trial extension.
 
 ```bash
-curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/subscription \
+curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/subscription \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -106,7 +106,7 @@ See [Subscription Enforcement SOP](SUBSCRIPTION_ENFORCEMENT_SOP.md) for detailed
 **When to use:** Refund processing, policy violation, owner request.
 
 ```bash
-curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/deactivate \
+curl -X POST https://academyflo.com/api/v1/admin/academies/{academyId}/deactivate \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -120,11 +120,11 @@ Before taking any action, review the academy's current state:
 
 ```bash
 # Academy details (subscription, metrics, owner info)
-curl https://playconnect.app/api/v1/admin/academies/{academyId} \
+curl https://academyflo.com/api/v1/admin/academies/{academyId} \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 
 # Audit logs for the academy
-curl "https://playconnect.app/api/v1/admin/academies/{academyId}/audit-logs?page=1&pageSize=20" \
+curl "https://academyflo.com/api/v1/admin/academies/{academyId}/audit-logs?page=1&pageSize=20" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 ```
 
@@ -132,15 +132,15 @@ curl "https://playconnect.app/api/v1/admin/academies/{academyId}/audit-logs?page
 
 ```bash
 # List all academies (paginated)
-curl "https://playconnect.app/api/v1/admin/academies?page=1&pageSize=20" \
+curl "https://academyflo.com/api/v1/admin/academies?page=1&pageSize=20" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 
 # Search by name
-curl "https://playconnect.app/api/v1/admin/academies?search=academy+name&page=1&pageSize=20" \
+curl "https://academyflo.com/api/v1/admin/academies?search=academy+name&page=1&pageSize=20" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 
 # Filter by status
-curl "https://playconnect.app/api/v1/admin/academies?status=BLOCKED&page=1&pageSize=20" \
+curl "https://academyflo.com/api/v1/admin/academies?status=BLOCKED&page=1&pageSize=20" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 ```
 
@@ -157,7 +157,7 @@ All super admin actions are recorded in the audit log with:
 Review audit logs regularly to ensure accountability:
 
 ```bash
-curl "https://playconnect.app/api/v1/admin/academies/{academyId}/audit-logs?action=FORCE_LOGOUT&page=1&pageSize=10" \
+curl "https://academyflo.com/api/v1/admin/academies/{academyId}/audit-logs?action=FORCE_LOGOUT&page=1&pageSize=10" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 ```
 

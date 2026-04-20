@@ -1,4 +1,4 @@
-const COOKIE_NAME = 'pc_admin_csrf';
+const COOKIE_NAME = 'af_admin_csrf';
 
 export function readCsrfCookie(): string | null {
   if (typeof document === 'undefined') return null;

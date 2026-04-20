@@ -61,7 +61,7 @@ export class FirebasePushSender implements PushSenderPort, OnModuleInit {
       android: {
         priority: 'high',
         notification: {
-          channelId: 'playconnect_default',
+          channelId: 'academyflo_default',
           sound: 'default',
         },
       },

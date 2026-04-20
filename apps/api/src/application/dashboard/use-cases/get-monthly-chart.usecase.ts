@@ -6,7 +6,7 @@ import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
 import { canViewDashboard } from '@domain/fee/rules/fee.rules';
 import { FeeErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetMonthlyChartInput {
   actorUserId: string;

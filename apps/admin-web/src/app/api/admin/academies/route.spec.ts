@@ -23,7 +23,7 @@ jest.mock('next/server', () => ({
   },
 }));
 
-jest.mock('@playconnect/contracts', () => ({
+jest.mock('@academyflo/contracts', () => ({
   ADMIN_ACADEMY_STATUSES: ['TRIAL', 'ACTIVE_PAID', 'EXPIRED_GRACE', 'BLOCKED', 'DISABLED'],
   TIER_KEYS: ['TIER_0_50', 'TIER_51_100', 'TIER_101_PLUS'],
 }));

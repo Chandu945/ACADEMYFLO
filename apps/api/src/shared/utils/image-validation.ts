@@ -1,3 +1,5 @@
+import sharp from 'sharp';
+
 /** Allowed image MIME types across all upload endpoints. */
 export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
@@ -30,14 +32,23 @@ const SIGNATURES: { mime: string; bytes: number[] }[] = [
   { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46] },
 ];
 
+const SHARP_FORMAT_TO_MIME: Record<string, string> = {
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
 /**
- * Validate that the buffer's magic bytes match the claimed MIME type.
- * Returns `{ valid: true, detectedMime }` or `{ valid: false, reason }`.
+ * Validate that the buffer is a genuine image of the claimed MIME type.
+ * Two layers:
+ *   1. Magic-byte signature match (fast reject on obvious non-images / MIME spoofing)
+ *   2. sharp metadata parse (catches polyglots that pass magic bytes but are otherwise
+ *      malformed, or whose declared format mismatches the real content after decoding)
  */
-export function validateImageBuffer(
+export async function validateImageBuffer(
   buffer: Buffer,
   claimedMime: string,
-): { valid: true; detectedMime: string } | { valid: false; reason: string } {
+): Promise<{ valid: true; detectedMime: string } | { valid: false; reason: string }> {
   if (buffer.length < 12) {
     return { valid: false, reason: 'File too small to be a valid image' };
   }
@@ -74,6 +85,24 @@ export function validateImageBuffer(
       valid: false,
       reason: `MIME type mismatch: claimed ${claimedMime} but content is ${detectedMime}`,
     };
+  }
+
+  // Deep parseability check: sharp will throw if the buffer can't be decoded as
+  // a real image (truncated, polyglot, malformed body after a valid header).
+  try {
+    const meta = await sharp(buffer, { failOn: 'error' }).metadata();
+    const sharpMime = meta.format ? SHARP_FORMAT_TO_MIME[meta.format] : undefined;
+    if (!sharpMime) {
+      return { valid: false, reason: 'Image format not supported' };
+    }
+    if (sharpMime !== detectedMime) {
+      return {
+        valid: false,
+        reason: `Content mismatch: header says ${detectedMime} but decoded as ${sharpMime}`,
+      };
+    }
+  } catch {
+    return { valid: false, reason: 'Image content is corrupt or unreadable' };
   }
 
   return { valid: true, detectedMime };

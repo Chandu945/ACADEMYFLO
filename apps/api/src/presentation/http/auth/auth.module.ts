@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { AuthController } from './auth.controller';
 import { UserModel, UserSchema } from '@infrastructure/database/schemas/user.schema';
 import { SessionModel, SessionSchema } from '@infrastructure/database/schemas/session.schema';
@@ -31,10 +32,14 @@ import { TOKEN_SERVICE } from '@application/identity/ports/token-service.port';
 import { OTP_GENERATOR } from '@application/identity/ports/otp-generator.port';
 import { OTP_HASHER } from '@application/identity/ports/otp-hasher.port';
 import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { OwnerSignupUseCase } from '@application/identity/use-cases/owner-signup.usecase';
 import { LoginUseCase } from '@application/identity/use-cases/login.usecase';
 import { LoginAttemptTracker, LOGIN_ATTEMPT_TRACKER } from '@application/identity/services/login-attempt-tracker';
 import type { LoginAttemptTrackerPort } from '@application/identity/services/login-attempt-tracker';
+import { OtpAttemptTracker, OTP_ATTEMPT_TRACKER } from '@application/identity/services/otp-attempt-tracker';
+import type { OtpAttemptTrackerPort } from '@application/identity/services/otp-attempt-tracker';
 import { RefreshUseCase } from '@application/identity/use-cases/refresh.usecase';
 import { LogoutUseCase } from '@application/identity/use-cases/logout.usecase';
 import { LogoutAllUseCase } from '@application/identity/use-cases/logout-all.usecase';
@@ -65,6 +70,7 @@ import { AppConfigService } from '@shared/config/config.service';
       { name: DeviceTokenModel.name, schema: DeviceTokenSchema },
     ]),
     JwtModule.register({}),
+    AuditLogsModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -80,6 +86,7 @@ import { AppConfigService } from '@shared/config/config.service';
     { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     { provide: GOOGLE_TOKEN_VERIFIER, useClass: GoogleTokenVerifier },
     { provide: LOGIN_ATTEMPT_TRACKER, useClass: LoginAttemptTracker },
+    { provide: OTP_ATTEMPT_TRACKER, useClass: OtpAttemptTracker },
 
     // Use-case factories
     {
@@ -137,6 +144,8 @@ import { AppConfigService } from '@shared/config/config.service';
         otpHasher: OtpHasher,
         emailSender: EmailSenderPort,
         config: AppConfigService,
+        audit: AuditRecorderPort,
+        otpTracker: OtpAttemptTrackerPort,
       ) =>
         new RequestPasswordResetUseCase(
           userRepo,
@@ -147,6 +156,8 @@ import { AppConfigService } from '@shared/config/config.service';
           config.otpExpiryMinutes,
           config.otpMaxAttempts,
           config.otpCooldownSeconds,
+          audit,
+          otpTracker,
         ),
       inject: [
         USER_REPOSITORY,
@@ -155,6 +166,8 @@ import { AppConfigService } from '@shared/config/config.service';
         OTP_HASHER,
         EMAIL_SENDER_PORT,
         AppConfigService,
+        AUDIT_RECORDER_PORT,
+        OTP_ATTEMPT_TRACKER,
       ],
     },
     {
@@ -166,7 +179,9 @@ import { AppConfigService } from '@shared/config/config.service';
         otpHasher: OtpHasher,
         passwordHasher: PasswordHasher,
         deviceTokenRepo: DeviceTokenRepository,
+        otpTracker: OtpAttemptTrackerPort,
         emailSender: EmailSenderPort,
+        audit: AuditRecorderPort,
       ) =>
         new ConfirmPasswordResetUseCase(
           userRepo,
@@ -175,7 +190,9 @@ import { AppConfigService } from '@shared/config/config.service';
           otpHasher,
           passwordHasher,
           deviceTokenRepo,
+          otpTracker,
           emailSender,
+          audit,
         ),
       inject: [
         USER_REPOSITORY,
@@ -184,7 +201,9 @@ import { AppConfigService } from '@shared/config/config.service';
         OTP_HASHER,
         PASSWORD_HASHER,
         DEVICE_TOKEN_REPOSITORY,
+        OTP_ATTEMPT_TRACKER,
         EMAIL_SENDER_PORT,
+        AUDIT_RECORDER_PORT,
       ],
     },
     {

@@ -1,9 +1,5 @@
 import { z } from 'zod';
 
-const UNSAFE_DEFAULTS = {
-  SUPER_ADMIN_PASSWORD: 'change-me-in-production',
-} as const;
-
 export const envSchema = z
   .object({
     APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
@@ -31,7 +27,7 @@ export const envSchema = z
       .transform((v) => v === 'true'),
     SMTP_USER: z.string().default(''),
     SMTP_PASS: z.string().default(''),
-    SMTP_FROM: z.string().default('noreply@playconnect.app'),
+    SMTP_FROM: z.string().default('noreply@academyflo.com'),
     EMAIL_DRY_RUN: z
       .enum(['true', 'false'])
       .default('true')
@@ -73,9 +69,11 @@ export const envSchema = z
     OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
     OTP_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(60),
 
-    // Super Admin
-    SUPER_ADMIN_EMAIL: z.string().default('admin@playconnect.app'),
-    SUPER_ADMIN_PASSWORD: z.string().default(UNSAFE_DEFAULTS.SUPER_ADMIN_PASSWORD),
+    // Super Admin — password MUST be set explicitly in every environment.
+    // No default: we don't want dev machines silently running with a known
+    // password. `.env.example` documents the dev placeholder.
+    SUPER_ADMIN_EMAIL: z.string().default('admin@academyflo.com'),
+    SUPER_ADMIN_PASSWORD: z.string().min(8, 'SUPER_ADMIN_PASSWORD must be at least 8 characters'),
 
     // Reliability
     EXTERNAL_CALL_TIMEOUT_MS: z.coerce.number().int().min(1000).default(10_000),
@@ -117,7 +115,12 @@ export const envSchema = z
     CASHFREE_CLIENT_SECRET: z.string().default(''),
     CASHFREE_WEBHOOK_SECRET: z.string().default(''),
     CASHFREE_API_VERSION: z.string().default('2025-01-01'),
-    CASHFREE_BASE_URL: z.string().default('https://sandbox.cashfree.com/pg'),
+    // Validated at parse time. Empty string (e.g. CASHFREE_BASE_URL= in a .env)
+    // fails here rather than failing lazily at the first payment attempt.
+    CASHFREE_BASE_URL: z
+      .string()
+      .url('CASHFREE_BASE_URL must be a valid https:// URL')
+      .default('https://sandbox.cashfree.com/pg'),
 
     // Parent online fee payments — authoritative kill-switch for Cashfree parent flow.
     // Default is OFF so accidental deploys don't expose the flow.
@@ -129,13 +132,6 @@ export const envSchema = z
   .superRefine((val, ctx) => {
     if (val.APP_ENV !== 'production' && val.APP_ENV !== 'staging') return;
 
-    if (val.SUPER_ADMIN_PASSWORD === UNSAFE_DEFAULTS.SUPER_ADMIN_PASSWORD) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['SUPER_ADMIN_PASSWORD'],
-        message: 'SUPER_ADMIN_PASSWORD must be changed from its default value in production/staging',
-      });
-    }
     if (!val.MONGODB_URI) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -155,6 +151,29 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['CASHFREE_WEBHOOK_SECRET'],
         message: 'CASHFREE_WEBHOOK_SECRET is required in production/staging',
+      });
+    }
+    if (!val.CASHFREE_CLIENT_ID) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CASHFREE_CLIENT_ID'],
+        message: 'CASHFREE_CLIENT_ID is required in production/staging',
+      });
+    }
+    if (!val.CASHFREE_CLIENT_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CASHFREE_CLIENT_SECRET'],
+        message: 'CASHFREE_CLIENT_SECRET is required in production/staging',
+      });
+    }
+    // Don't ship a prod build pointing at Cashfree sandbox — fast-fail the
+    // boot rather than discover it when real customer money flows through.
+    if (val.APP_ENV === 'production' && val.CASHFREE_BASE_URL.includes('sandbox')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CASHFREE_BASE_URL'],
+        message: 'CASHFREE_BASE_URL must not point to sandbox in production',
       });
     }
   });

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { serverEnv } from '@/infra/env';
+import { isValidObjectId } from '@/infra/validation/ids';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -15,6 +16,10 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
+  if (!isValidObjectId(id)) {
+    return NextResponse.json({ message: 'Invalid student id' }, { status: 400 });
+  }
+
   const { searchParams } = request.nextUrl;
   const docType = searchParams.get('type');
 
@@ -52,7 +57,12 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const buffer = await res.arrayBuffer();
-  const filename = res.headers.get('content-disposition')?.match(/filename="?(.+?)"?$/)?.[1] ?? `${docType}.pdf`;
+
+  // Generate the filename locally instead of trusting the upstream Content-Disposition.
+  // Upstream could return a malicious filename (CRLF / path-traversal / quote-escape);
+  // since we know docType and id at this layer, we can emit a safe deterministic name.
+  const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '');
+  const filename = `${docType}-${safeId}.pdf`;
 
   return new NextResponse(buffer, {
     status: 200,

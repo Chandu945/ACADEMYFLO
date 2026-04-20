@@ -53,6 +53,7 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
   const loadMonth = useCallback(async () => {
@@ -63,10 +64,12 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
     if (!isCurrent && monthCache.has(monthKey)) {
       setDays(monthCache.get(monthKey)!);
       setLoading(false);
+      setError(null);
       return;
     }
 
     setLoading(true);
+    setError(null);
 
     // Single API call instead of 30 individual calls
     const result = await getMonthDailyCounts(monthKey);
@@ -99,16 +102,17 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
 
       setDays(dayData);
     } else {
-      // On error, show empty chart
-      const totalDaysInMonth = getDaysInMonth(year, month);
-      setDays(
-        Array.from({ length: totalDaysInMonth }, (_, i) => ({
-          day: i + 1,
-          present: 0,
-          absent: 0,
-          isHoliday: false,
-        })),
-      );
+      // Surface load failure with a code-aware message and clear the chart so
+      // the user doesn't think empty bars mean "no attendance was marked".
+      const code = result.error.code;
+      const msg =
+        code === 'NETWORK' || code === 'UNKNOWN'
+          ? 'Could not load attendance. Check your connection.'
+          : code === 'FORBIDDEN'
+            ? 'You do not have permission to view this summary.'
+            : result.error.message;
+      setError(msg);
+      setDays([]);
     }
 
     setLoading(false);
@@ -177,6 +181,15 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
       {loading ? (
         <View style={styles.chartPlaceholder}>
           <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      ) : error ? (
+        <View style={styles.chartPlaceholder}>
+          <Text style={{ color: colors.danger, fontSize: fontSizes.sm, textAlign: 'center' }}>
+            {error}
+          </Text>
+          <TouchableOpacity onPress={loadMonth} style={{ marginTop: spacing.sm }}>
+            <Text style={{ color: colors.primary, fontWeight: fontWeights.semibold }}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartScroll}>

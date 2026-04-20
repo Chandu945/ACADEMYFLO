@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
@@ -76,7 +77,7 @@ export default function DeleteAccountContent() {
       try {
         const res = await fetch('/api/account/deletion', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: csrfHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             password,
             confirmationPhrase: phrase.trim().toUpperCase(),
@@ -110,7 +111,10 @@ export default function DeleteAccountContent() {
     setCanceling(true);
     setServerError(null);
     try {
-      const res = await fetch('/api/account/deletion', { method: 'DELETE' });
+      const res = await fetch('/api/account/deletion', {
+        method: 'DELETE',
+        headers: csrfHeaders(),
+      });
       if (res.ok) {
         setPending(null);
         setSuccess('Deletion canceled — your academy is safe.');

@@ -7,8 +7,8 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { ParentErrors } from '../../common/errors';
 import type { ChildFeeDueDto } from '../dtos/parent.dto';
-import type { UserRole, LateFeeConfig, LateFeeRepeatInterval } from '@playconnect/contracts';
-import { computeLateFee } from '@playconnect/contracts';
+import type { UserRole, LateFeeConfig, LateFeeRepeatInterval } from '@academyflo/contracts';
+import { computeLateFee } from '@academyflo/contracts';
 import type { ClockPort } from '../../common/clock.port';
 import { formatLocalDate } from '../../../shared/date-utils';
 

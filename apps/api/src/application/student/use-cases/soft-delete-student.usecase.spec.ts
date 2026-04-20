@@ -1,6 +1,12 @@
 import { SoftDeleteStudentUseCase } from './soft-delete-student.usecase';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
+import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
+import type { TransactionPort } from '../../common/transaction.port';
 import { User } from '@domain/identity/entities/user.entity';
 import { Student } from '@domain/student/entities/student.entity';
 import { markDeleted, updateAuditFields } from '@shared/kernel';
@@ -89,16 +95,65 @@ function buildDeps() {
 
   const auditRecorder = { record: jest.fn() };
 
-  return { userRepo, studentRepo, auditRecorder };
+  const feeDueRepo: jest.Mocked<Pick<FeeDueRepository, 'deleteUpcomingByStudent'>> = {
+    deleteUpcomingByStudent: jest.fn().mockResolvedValue(undefined),
+  };
+  const studentBatchRepo: jest.Mocked<Pick<StudentBatchRepository, 'replaceForStudent'>> = {
+    replaceForStudent: jest.fn().mockResolvedValue(undefined),
+  };
+  const parentLinkRepo: jest.Mocked<Pick<ParentStudentLinkRepository, 'deleteAllByStudentId'>> = {
+    deleteAllByStudentId: jest.fn().mockResolvedValue(0),
+  };
+  const attendanceRepo: jest.Mocked<
+    Pick<StudentAttendanceRepository, 'deleteAllByAcademyAndStudent'>
+  > = {
+    deleteAllByAcademyAndStudent: jest.fn().mockResolvedValue(0),
+  };
+  const paymentRequestRepo: jest.Mocked<
+    Pick<PaymentRequestRepository, 'deleteAllByAcademyAndStudent'>
+  > = {
+    deleteAllByAcademyAndStudent: jest.fn().mockResolvedValue(0),
+  };
+  // Passthrough transaction — runs the body inline.
+  const transaction: TransactionPort = {
+    run: async <T>(fn: () => Promise<T>): Promise<T> => fn(),
+  };
+
+  return {
+    userRepo,
+    studentRepo,
+    auditRecorder,
+    feeDueRepo: feeDueRepo as unknown as FeeDueRepository,
+    studentBatchRepo: studentBatchRepo as unknown as StudentBatchRepository,
+    parentLinkRepo: parentLinkRepo as unknown as ParentStudentLinkRepository,
+    attendanceRepo: attendanceRepo as unknown as StudentAttendanceRepository,
+    paymentRequestRepo: paymentRequestRepo as unknown as PaymentRequestRepository,
+    transaction,
+  };
+}
+
+function makeUseCase(deps: ReturnType<typeof buildDeps>): SoftDeleteStudentUseCase {
+  return new SoftDeleteStudentUseCase(
+    deps.userRepo,
+    deps.studentRepo,
+    deps.auditRecorder,
+    deps.feeDueRepo,
+    deps.studentBatchRepo,
+    deps.parentLinkRepo,
+    deps.attendanceRepo,
+    deps.paymentRequestRepo,
+    deps.transaction,
+  );
 }
 
 describe('SoftDeleteStudentUseCase', () => {
   it('should soft delete a student', async () => {
-    const { userRepo, studentRepo, auditRecorder } = buildDeps();
+    const deps = buildDeps();
+    const { userRepo, studentRepo, auditRecorder } = deps;
     userRepo.findById.mockResolvedValue(createOwner());
     studentRepo.findById.mockResolvedValue(createStudent());
 
-    const uc = new SoftDeleteStudentUseCase(userRepo, studentRepo, auditRecorder);
+    const uc = makeUseCase(deps);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
@@ -115,8 +170,9 @@ describe('SoftDeleteStudentUseCase', () => {
   });
 
   it('should reject STAFF from deleting', async () => {
-    const { userRepo, studentRepo, auditRecorder } = buildDeps();
-    const uc = new SoftDeleteStudentUseCase(userRepo, studentRepo, auditRecorder);
+    const deps = buildDeps();
+    const { userRepo, studentRepo, auditRecorder } = deps;
+    const uc = makeUseCase(deps);
     const result = await uc.execute({
       actorUserId: 'staff-1',
       actorRole: 'STAFF',
@@ -130,11 +186,12 @@ describe('SoftDeleteStudentUseCase', () => {
   });
 
   it('should reject deleting already-deleted student', async () => {
-    const { userRepo, studentRepo, auditRecorder } = buildDeps();
+    const deps = buildDeps();
+    const { userRepo, studentRepo, auditRecorder } = deps;
     userRepo.findById.mockResolvedValue(createOwner());
     studentRepo.findById.mockResolvedValue(createStudent('academy-1', true));
 
-    const uc = new SoftDeleteStudentUseCase(userRepo, studentRepo, auditRecorder);
+    const uc = makeUseCase(deps);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
@@ -148,11 +205,12 @@ describe('SoftDeleteStudentUseCase', () => {
   });
 
   it('should reject cross-academy delete', async () => {
-    const { userRepo, studentRepo, auditRecorder } = buildDeps();
+    const deps = buildDeps();
+    const { userRepo, studentRepo, auditRecorder } = deps;
     userRepo.findById.mockResolvedValue(createOwner('academy-2'));
     studentRepo.findById.mockResolvedValue(createStudent('academy-1'));
 
-    const uc = new SoftDeleteStudentUseCase(userRepo, studentRepo, auditRecorder);
+    const uc = makeUseCase(deps);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',
@@ -166,11 +224,12 @@ describe('SoftDeleteStudentUseCase', () => {
   });
 
   it('should reject when student not found', async () => {
-    const { userRepo, studentRepo, auditRecorder } = buildDeps();
+    const deps = buildDeps();
+    const { userRepo, studentRepo, auditRecorder } = deps;
     userRepo.findById.mockResolvedValue(createOwner());
     studentRepo.findById.mockResolvedValue(null);
 
-    const uc = new SoftDeleteStudentUseCase(userRepo, studentRepo, auditRecorder);
+    const uc = makeUseCase(deps);
     const result = await uc.execute({
       actorUserId: 'owner-1',
       actorRole: 'OWNER',

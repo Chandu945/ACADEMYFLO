@@ -5,7 +5,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EventRepository } from '@domain/event/ports/event.repository';
 import { deriveEventStatus } from '@domain/event/entities/event.entity';
 import { EventErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetEventDetailInput {
   actorUserId: string;

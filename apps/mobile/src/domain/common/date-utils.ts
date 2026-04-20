@@ -41,13 +41,15 @@ export function toDateOnly(raw: string | null | undefined): string {
     const part = trimmed.split('T')[0];
     if (part && /^\d{4}-\d{2}-\d{2}$/.test(part)) return part;
   }
-  // Fallback: try Date constructor
+  // Fallback: try Date constructor and extract YYYY-MM-DD in IST (not device TZ)
   const d = new Date(trimmed);
   if (!isNaN(d.getTime())) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
   }
   return '';
 }

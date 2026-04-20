@@ -1,6 +1,4 @@
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+import { escapeHtml, renderEmailLayout, type EmailInfoRow } from './_email-layout';
 
 export interface StudentStatusChangedTemplateData {
   parentName: string;
@@ -11,19 +9,24 @@ export interface StudentStatusChangedTemplateData {
 }
 
 export function renderStudentStatusChangedEmail(data: StudentStatusChangedTemplateData): string {
-  const parentName = escapeHtml(data.parentName);
-  const studentName = escapeHtml(data.studentName);
-  const academyName = escapeHtml(data.academyName);
-  const newStatus = escapeHtml(data.newStatus);
+  const rows: EmailInfoRow[] = [
+    { label: 'Student', value: escapeHtml(data.studentName) },
+    { label: 'New status', value: escapeHtml(data.newStatus) },
+  ];
+  if (data.reason) rows.push({ label: 'Reason', value: escapeHtml(data.reason) });
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-  <h2>Student Status Updated</h2>
-  <p>Dear ${parentName},</p>
-  <p>The enrollment status of <strong>${studentName}</strong> at <strong>${academyName}</strong> has been changed to <strong>${newStatus}</strong>.</p>
-  ${data.reason ? `<p><strong>Reason:</strong> ${escapeHtml(data.reason)}</p>` : ''}
-  <p>If you have any questions regarding this change, please contact the academy.</p>
-  <p>Thank you,<br>${academyName}</p>
-</body></html>`;
+  return renderEmailLayout({
+    preheader: `${data.studentName}'s enrollment status has changed to ${data.newStatus}.`,
+    title: 'Enrollment status updated',
+    greeting: `Dear ${data.parentName},`,
+    tone: 'info',
+    body: `
+      <p style="margin:0;font-size:16px;line-height:24px;color:#0F172A;">
+        The enrollment status of <strong>${escapeHtml(data.studentName)}</strong> at
+        <strong>${escapeHtml(data.academyName)}</strong> has been updated.
+      </p>
+    `,
+    infoRows: rows,
+    footerNote: `If you have questions about this change, please contact ${escapeHtml(data.academyName)} directly.`,
+  });
 }

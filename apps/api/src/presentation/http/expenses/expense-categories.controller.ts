@@ -22,6 +22,7 @@ import type { ListCategoriesUseCase } from '@application/expense/use-cases/list-
 import type { DeleteCategoryUseCase } from '@application/expense/use-cases/delete-category.usecase';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import type { Request } from 'express';
 
 @ApiTags('Expense Categories')
@@ -68,7 +69,7 @@ export class ExpenseCategoriesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an expense category' })
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {

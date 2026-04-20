@@ -27,7 +27,10 @@ type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 const PHONE_RE = /^\d{10,15}$/;
-const RATE_LIMIT_COOLDOWN_S = 30;
+// Default cooldown if the server omits Retry-After. When present, we honor
+// the server's value so UX matches the real rate-limit window.
+const DEFAULT_RATE_LIMIT_COOLDOWN_S = 30;
+const MAX_COOLDOWN_S = 600;
 
 export function LoginScreen() {
   const { colors, isDark } = useTheme();
@@ -104,8 +107,12 @@ export function LoginScreen() {
     return Object.keys(errors).length === 0;
   }, [identifier, password]);
 
-  const startCooldown = useCallback(() => {
-    setCooldown(RATE_LIMIT_COOLDOWN_S);
+  const startCooldown = useCallback((seconds?: number) => {
+    const initial = Math.min(
+      Math.max(seconds ?? DEFAULT_RATE_LIMIT_COOLDOWN_S, 1),
+      MAX_COOLDOWN_S,
+    );
+    setCooldown(initial);
     cooldownRef.current = setInterval(() => {
       setCooldown((prev) => {
         if (prev <= 1) {
@@ -131,7 +138,7 @@ export function LoginScreen() {
       if (result) {
         if (result.code === 'RATE_LIMITED') {
           setError(result.message);
-          startCooldown();
+          startCooldown(result.retryAfterSeconds);
         } else {
           if (result.fieldErrors) {
             setFieldErrors(result.fieldErrors);

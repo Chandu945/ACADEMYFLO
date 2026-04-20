@@ -6,7 +6,7 @@ import { SubscriptionPayment } from '@domain/subscription-payments/entities/subs
 import type { SubscriptionPaymentStatus } from '@domain/subscription-payments/entities/subscription-payment.entity';
 import { SubscriptionPaymentModel } from '../database/schemas/subscription-payment.schema';
 import type { SubscriptionPaymentDocument } from '../database/schemas/subscription-payment.schema';
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 
 @Injectable()

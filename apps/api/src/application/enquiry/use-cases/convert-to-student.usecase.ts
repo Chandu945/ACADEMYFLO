@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import type { Result } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
+import { AppError as AppErrorClass } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EnquiryRepository } from '@domain/enquiry/ports/enquiry.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
@@ -10,7 +11,8 @@ import type { TransactionPort } from '../../common/transaction.port';
 import { EnquiryErrors } from '../../common/errors';
 import { toEnquiryDetail } from './get-enquiry-detail.usecase';
 import type { EnquiryDetailOutput } from './get-enquiry-detail.usecase';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
 export interface ConvertToStudentInput {
   actorUserId: string;
@@ -37,6 +39,7 @@ export class ConvertToStudentUseCase {
     private readonly enquiryRepo: EnquiryRepository,
     private readonly studentRepo: StudentRepository,
     private readonly transaction: TransactionPort,
+    private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
   async execute(input: ConvertToStudentInput): Promise<Result<ConvertToStudentOutput, AppError>> {
@@ -72,6 +75,29 @@ export class ConvertToStudentUseCase {
       return err(EnquiryErrors.alreadyClosed());
     }
 
+    // Date sanity: dateOfBirth must be strictly before joiningDate, and
+    // joiningDate must not be unreasonably in the future. Without this, a
+    // typo can create a student "born after they joined" which breaks
+    // attendance/fee schedules silently.
+    const dob = new Date(input.dateOfBirth);
+    const joining = new Date(input.joiningDate);
+    if (Number.isNaN(dob.getTime()) || Number.isNaN(joining.getTime())) {
+      return err(AppErrorClass.validation('dateOfBirth and joiningDate must be valid YYYY-MM-DD dates'));
+    }
+    if (dob.getTime() >= joining.getTime()) {
+      return err(AppErrorClass.validation('dateOfBirth must be before joiningDate'));
+    }
+    // Allow a small slop so a same-day timezone wobble doesn't reject a
+    // legitimate "joining today" — but reject "joining 1 year from now".
+    const oneYearAhead = new Date();
+    oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
+    if (joining.getTime() > oneYearAhead.getTime()) {
+      return err(AppErrorClass.validation('joiningDate cannot be more than one year in the future'));
+    }
+    if (!Number.isFinite(input.monthlyFee) || input.monthlyFee <= 0) {
+      return err(AppErrorClass.validation('monthlyFee must be a positive number'));
+    }
+
     const studentId = randomUUID();
     const student = Student.create({
       id: studentId,
@@ -98,11 +124,34 @@ export class ConvertToStudentUseCase {
       addressText: enquiry.address,
     });
 
+    const loadedVersion = enquiry.audit.version;
     const closed = enquiry.close('CONVERTED', input.actorUserId, new Date(), studentId);
 
+    let conflicted = false;
     await this.transaction.run(async () => {
       await this.studentRepo.save(student);
-      await this.enquiryRepo.save(closed);
+      const saved = await this.enquiryRepo.saveWithVersionPrecondition(closed, loadedVersion);
+      if (!saved) {
+        conflicted = true;
+        throw new Error('CONCURRENCY_CONFLICT');
+      }
+    }).catch((e: unknown) => {
+      if (e instanceof Error && e.message === 'CONCURRENCY_CONFLICT') return;
+      throw e;
+    });
+
+    if (conflicted) return err(EnquiryErrors.concurrencyConflict());
+
+    await this.auditRecorder.record({
+      academyId: actor.academyId,
+      actorUserId: input.actorUserId,
+      action: 'ENQUIRY_CONVERTED',
+      entityType: 'ENQUIRY',
+      entityId: input.enquiryId,
+      context: {
+        studentId,
+        prospectName: enquiry.prospectName,
+      },
     });
 
     return ok({

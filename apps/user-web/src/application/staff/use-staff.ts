@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type StaffListItem = {
   id: string;
@@ -30,11 +31,23 @@ async function safeJson(res: Response): Promise<Record<string, unknown> | null> 
 }
 
 export function useStaff() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [data, setData] = useState<StaffListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Cross-account safety: clear cache when the authenticated user changes
+  // (logout/login as a different owner). Mirrors the mobile use-students fix.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setData([]);
+      setError(null);
+    }
+  }, [userId]);
 
   const fetch_ = useCallback(async () => {
     if (!accessToken) return;
@@ -73,7 +86,7 @@ export function useStaff() {
     return () => { abortRef.current?.abort(); };
   }, [fetch_]);
 
-  return { data, loading, error, refetch: fetch_ };
+  return { data, setData, loading, error, refetch: fetch_ };
 }
 
 export function useStaffDetail(id: string | null) {
@@ -129,10 +142,10 @@ export async function createStaff(body: Record<string, unknown>, accessToken?: s
   try {
     const res = await fetch('/api/staff', {
       method: 'POST',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -154,10 +167,10 @@ export async function updateStaff(id: string, body: Record<string, unknown>, acc
   try {
     const res = await fetch(`/api/staff/${id}`, {
       method: 'PATCH',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
     });
@@ -179,10 +192,10 @@ export async function toggleStaffStatus(id: string, status: string, accessToken?
   try {
     const res = await fetch(`/api/staff/${id}`, {
       method: 'PATCH',
-      headers: {
+      headers: csrfHeaders({
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
+      }),
       body: JSON.stringify({ statusChange: true, status }),
       signal: AbortSignal.timeout(15000),
     });

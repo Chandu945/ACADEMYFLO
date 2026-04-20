@@ -28,11 +28,46 @@ import { GalleryThumbnail, AddPhotoTile } from '../../components/event/GalleryTh
 import { spacing, fontSizes, fontWeights, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { env } from '../../../infra/env';
+import type { AppError } from '../../../domain/common/errors';
 
 type GalleryRoute = RouteProp<MoreStackParamList, 'EventGallery'>;
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EventGallery'>;
 
 const NUM_COLUMNS = 3;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB — matches API MAX_IMAGE_FILE_SIZE
+const ALLOWED_UPLOAD_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+// Pre-flight: reject before sending so the user gets immediate feedback
+// instead of waiting for the API to fail. fileSize may be undefined in some
+// react-native-image-picker versions; if so, skip size check and let the
+// server enforce.
+function validatePickedAsset(asset: { fileSize?: number; type?: string }): { ok: true } | { ok: false; reason: string } {
+  if (asset.fileSize !== undefined && asset.fileSize > MAX_UPLOAD_BYTES) {
+    return { ok: false, reason: 'File size must not exceed 5 MB.' };
+  }
+  if (asset.type && !ALLOWED_UPLOAD_MIMES.has(asset.type)) {
+    return { ok: false, reason: 'Only JPEG, PNG, and WebP images are allowed.' };
+  }
+  return { ok: true };
+}
+
+function friendlyEventError(error: AppError, action: 'upload' | 'delete' | 'load'): { title: string; message: string } {
+  switch (error.code) {
+    case 'FORBIDDEN':
+      return { title: 'Not allowed', message: `You do not have permission to ${action} photos for this event.` };
+    case 'NOT_FOUND':
+      return { title: 'Not found', message: 'This event or photo no longer exists. Please refresh.' };
+    case 'CONFLICT':
+      return { title: 'Conflict', message: error.message || 'Photo limit reached or this photo was modified.' };
+    case 'VALIDATION':
+      return { title: 'Invalid input', message: error.message };
+    case 'NETWORK':
+    case 'UNKNOWN':
+      return { title: 'Network error', message: 'Could not reach the server. Check your connection and try again.' };
+    default:
+      return { title: 'Error', message: error.message };
+  }
+}
 const GRID_GAP = 6;
 
 function resolveUrl(url: string): string {
@@ -64,6 +99,17 @@ export function EventGalleryScreen() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
+  // Cross-account safety: clear photos when authenticated user flips.
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setPhotos([]);
+      setError(null);
+    }
+  }, [userId]);
+
   const load = useCallback(
     async (isRefresh = false) => {
       if (!isRefresh) setLoading(true);
@@ -76,7 +122,7 @@ export function EventGalleryScreen() {
         if (result.ok) {
           setPhotos(result.value);
         } else {
-          setError(result.error.message);
+          setError(friendlyEventError(result.error, 'load').message);
         }
       } catch (err) {
         if (__DEV__) console.error('[EventGalleryScreen] load failed:', err);
@@ -118,8 +164,14 @@ export function EventGalleryScreen() {
     uri?: string;
     fileName?: string;
     type?: string;
+    fileSize?: number;
   }) => {
     if (!asset.uri) return;
+    const v = validatePickedAsset(asset);
+    if (!v.ok) {
+      crossAlert('Invalid file', v.reason);
+      return;
+    }
     setUploading(true);
 
     try {
@@ -136,7 +188,8 @@ export function EventGalleryScreen() {
         showToast('Photo uploaded');
         load();
       } else {
-        crossAlert('Upload Failed', result.error.message);
+        const m = friendlyEventError(result.error, 'upload');
+        crossAlert(m.title, m.message);
       }
     } catch (err) {
       if (__DEV__) console.error('[EventGalleryScreen] handleUpload failed:', err);
@@ -147,36 +200,52 @@ export function EventGalleryScreen() {
   }, [eventId, load, showToast]);
 
   const handleBatchUpload = useCallback(async (
-    assets: { uri?: string; fileName?: string; type?: string }[],
+    assets: { uri?: string; fileName?: string; type?: string; fileSize?: number }[],
   ) => {
+    // Pre-flight validate each asset and split valid vs invalid before upload.
+    // We surface a single rolled-up alert so the user sees both how many we
+    // skipped and the reason — instead of N alert boxes.
+    const valid = assets.filter((a) => a.uri);
+    const skipped: string[] = [];
+    const okAssets: typeof valid = [];
+    for (const asset of valid) {
+      const v = validatePickedAsset(asset);
+      if (v.ok) okAssets.push(asset);
+      else skipped.push(`${asset.fileName ?? 'photo'}: ${v.reason}`);
+    }
+    if (okAssets.length === 0) {
+      if (skipped.length > 0) crossAlert('Skipped', skipped.join('\n'));
+      return;
+    }
     setUploading(true);
 
     try {
-      const uploadPromises = assets
-        .filter((asset) => !!asset.uri)
-        .map((asset) =>
-          galleryApi.uploadGalleryPhoto(
-            eventId,
-            asset.uri!,
-            asset.fileName || 'photo.jpg',
-            asset.type || 'image/jpeg',
-          ),
-        );
+      const uploadPromises = okAssets.map((asset) =>
+        galleryApi.uploadGalleryPhoto(
+          eventId,
+          asset.uri!,
+          asset.fileName || 'photo.jpg',
+          asset.type || 'image/jpeg',
+        ),
+      );
 
       const results = await Promise.allSettled(uploadPromises);
 
       if (!mountedRef.current) return;
 
       let successCount = 0;
-      let lastError = '';
+      let lastErrorMessage = '';
+      let lastErrorTitle = 'Some Uploads Failed';
 
       for (const result of results) {
         if (result.status === 'fulfilled' && result.value.ok) {
           successCount++;
         } else if (result.status === 'fulfilled' && !result.value.ok) {
-          lastError = result.value.error.message;
+          const m = friendlyEventError(result.value.error, 'upload');
+          lastErrorTitle = m.title;
+          lastErrorMessage = m.message;
         } else if (result.status === 'rejected') {
-          lastError = 'Something went wrong. Please try again.';
+          lastErrorMessage = 'Something went wrong. Please try again.';
         }
       }
 
@@ -188,8 +257,11 @@ export function EventGalleryScreen() {
         );
         load();
       }
-      if (lastError) {
-        crossAlert('Some Uploads Failed', lastError);
+      if (lastErrorMessage || skipped.length > 0) {
+        const parts: string[] = [];
+        if (lastErrorMessage) parts.push(lastErrorMessage);
+        if (skipped.length > 0) parts.push(`Skipped: ${skipped.join('; ')}`);
+        crossAlert(lastErrorTitle, parts.join('\n'));
       }
     } catch (err) {
       if (__DEV__) console.error('[EventGalleryScreen] handleBatchUpload failed:', err);
@@ -260,7 +332,8 @@ export function EventGalleryScreen() {
         showToast('Photo deleted');
         load();
       } else {
-        setDeleteError(result.error.message);
+        const m = friendlyEventError(result.error, 'delete');
+        setDeleteError(m.message);
       }
     } catch (err) {
       if (__DEV__) console.error('[EventGalleryScreen] handleDelete failed:', err);

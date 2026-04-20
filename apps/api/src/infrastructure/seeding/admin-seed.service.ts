@@ -65,6 +65,6 @@ export class AdminSeedService implements OnModuleInit {
       passwordHash: hash,
     });
     await this.userRepo.save(user);
-    this.logger.info('Super admin user created', { email });
+    this.logger.info('Super admin user created');
   }
 }

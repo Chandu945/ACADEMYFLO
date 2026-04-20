@@ -5,7 +5,7 @@
 services:
   mongo:
     image: mongo:7
-    container_name: playconnect-ci-mongo
+    container_name: academyflo-ci-mongo
     ports:
       - '27017:27017'
     tmpfs:

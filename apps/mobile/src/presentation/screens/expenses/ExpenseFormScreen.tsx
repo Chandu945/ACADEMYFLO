@@ -23,6 +23,25 @@ import type { ExpenseCategory } from '../../../domain/expense/expense.types';
 import { expenseCategoryListSchema } from '../../../domain/expense/expense.schemas';
 import { saveExpenseUseCase } from '../../../application/expense/use-cases/save-expense.usecase';
 import { deleteExpenseUseCase } from '../../../application/expense/use-cases/delete-expense.usecase';
+import type { AppError } from '../../../domain/common/errors';
+
+function friendlyExpenseError(error: AppError, action: 'save' | 'delete' | 'add category'): { title: string; message: string } {
+  switch (error.code) {
+    case 'FORBIDDEN':
+      return { title: 'Not allowed', message: `You do not have permission to ${action} this expense.` };
+    case 'NOT_FOUND':
+      return { title: 'Not found', message: 'This expense no longer exists. Please refresh.' };
+    case 'CONFLICT':
+      return { title: 'Conflict', message: error.message || 'Conflict with current state.' };
+    case 'VALIDATION':
+      return { title: 'Invalid input', message: error.message };
+    case 'NETWORK':
+    case 'UNKNOWN':
+      return { title: 'Network error', message: 'Could not reach the server. Check your connection and try again.' };
+    default:
+      return { title: 'Error', message: error.message };
+  }
+}
 import * as expenseApi from '../../../infra/expense/expense-api';
 import { TextArea } from '../../components/ui/TextArea';
 import { isValidDate, getTodayIST } from '../../../domain/common/date-utils';
@@ -108,12 +127,17 @@ export function ExpenseFormScreen() {
     return () => { mountedRef.current = false; };
   }, [loadCategories]);
 
+  // Defense-in-depth dedup: setAddingCategory is async; rapid double-tap can
+  // race in multiple POSTs.
+  const addCategoryInflightRef = useRef(false);
   const handleAddCategory = async () => {
     const trimmed = newCategoryName.trim();
     if (!trimmed) {
       crossAlert('Validation', 'Category name is required');
       return;
     }
+    if (addCategoryInflightRef.current) return;
+    addCategoryInflightRef.current = true;
     setAddingCategory(true);
     try {
       const result = await expenseApi.createCategory(trimmed);
@@ -123,12 +147,14 @@ export function ExpenseFormScreen() {
         setShowAddCategory(false);
         loadCategories();
       } else {
-        crossAlert('Error', result.error.message);
+        const m = friendlyExpenseError(result.error, 'add category');
+        crossAlert(m.title, m.message);
       }
     } catch (e) {
       if (__DEV__) console.error('[ExpenseFormScreen] Add category failed:', e);
       crossAlert('Error', 'Something went wrong. Please try again.');
     } finally {
+      addCategoryInflightRef.current = false;
       setAddingCategory(false);
     }
   };
@@ -174,7 +200,8 @@ export function ExpenseFormScreen() {
         (navigation as any).navigate('ExpensesHome');
         return;
       } else {
-        crossAlert('Error', result.error.message);
+        const m = friendlyExpenseError(result.error, 'save');
+        crossAlert(m.title, m.message);
       }
     } catch (e) {
       if (__DEV__) console.error('[ExpenseFormScreen] Save failed:', e);
@@ -200,7 +227,8 @@ export function ExpenseFormScreen() {
               (navigation as any).navigate('ExpensesHome');
               return;
             } else {
-              crossAlert('Error', result.error.message);
+              const m = friendlyExpenseError(result.error, 'delete');
+              crossAlert(m.title, m.message);
             }
           } catch (e) {
             if (__DEV__) console.error('[ExpenseFormScreen] Delete failed:', e);

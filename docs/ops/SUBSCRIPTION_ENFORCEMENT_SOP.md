@@ -1,6 +1,6 @@
 # Subscription Enforcement SOP
 
-How PlayConnect subscription states work and how to handle support scenarios.
+How Academyflo subscription states work and how to handle support scenarios.
 
 ## Subscription States
 
@@ -64,7 +64,7 @@ When an academy's active student count crosses a tier boundary:
 When a user contacts support about a blocked subscription and payment is confirmed:
 
 ```bash
-curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/subscription \
+curl -X PUT https://academyflo.com/api/v1/admin/academies/{academyId}/subscription \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -93,7 +93,7 @@ curl -X PUT https://playconnect.app/api/v1/admin/academies/{academyId}/subscript
 To manually block an academy (e.g., abuse, refund):
 
 ```bash
-curl -X POST https://playconnect.app/api/v1/admin/academies/{academyId}/deactivate \
+curl -X POST https://academyflo.com/api/v1/admin/academies/{academyId}/deactivate \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -132,7 +132,7 @@ User reports "can't access app"
 
 **Trial Expired:**
 
-> Your 30-day free trial has ended. To continue using PlayConnect, please subscribe to a plan. Our plans start at INR 299/month for up to 50 students.
+> Your 30-day free trial has ended. To continue using Academyflo, please subscribe to a plan. Our plans start at INR 299/month for up to 50 students.
 
 **Payment Confirmed, Activating:**
 
@@ -148,7 +148,7 @@ All subscription changes are recorded in the audit log:
 
 ```bash
 # View subscription audit logs for an academy
-curl https://playconnect.app/api/v1/admin/academies/{academyId}/audit-logs?entityType=subscription \
+curl https://academyflo.com/api/v1/admin/academies/{academyId}/audit-logs?entityType=subscription \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 

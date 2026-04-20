@@ -12,12 +12,12 @@
  * Usage:
  *   npx ts-node scripts/cashfree-test-flow.ts
  *   npx ts-node scripts/cashfree-test-flow.ts --auto
- *   npx ts-node scripts/cashfree-test-flow.ts --api-url http://localhost:3001 --email owner@playconnect.dev --password Owner@123
+ *   npx ts-node scripts/cashfree-test-flow.ts --api-url http://localhost:3001 --email owner@academyflo.dev --password Owner@123
  *
  * Options:
  *   --api-url    API base URL (default: http://localhost:3001)
  *   --auto       Simulate webhook callback automatically after initiation
- *   --email      Owner email (default: owner@playconnect.dev)
+ *   --email      Owner email (default: owner@academyflo.dev)
  *   --password   Owner password (default: Owner@123)
  */
 import { createHmac } from 'node:crypto';
@@ -87,7 +87,7 @@ function parseArgs(): CliArgs {
   return {
     apiUrl: map['api-url'] || 'http://localhost:3001',
     auto,
-    email: map['email'] || 'owner@playconnect.dev',
+    email: map['email'] || 'owner@academyflo.dev',
     password: map['password'] || 'Owner@123',
   };
 }

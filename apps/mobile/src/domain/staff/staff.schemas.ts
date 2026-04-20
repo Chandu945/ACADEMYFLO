@@ -40,4 +40,15 @@ export const staffListResponseSchema = z.object({
   }),
 });
 
+export const staffMutationResponseSchema = z.object({
+  id: z.string(),
+});
+
+export const staffStatusResponseSchema = z.object({
+  id: z.string(),
+  status: z.enum(['ACTIVE', 'INACTIVE']),
+});
+
 export type StaffListApiResponse = z.infer<typeof staffListResponseSchema>;
+export type StaffMutationApiResponse = z.infer<typeof staffMutationResponseSchema>;
+export type StaffStatusApiResponse = z.infer<typeof staffStatusResponseSchema>;

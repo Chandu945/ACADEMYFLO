@@ -76,11 +76,12 @@ function buildDeps() {
     save: jest.fn(),
     deleteByAcademyStudentDate: jest.fn(),
     findByAcademyStudentDate: jest.fn(),
-    findAbsentByAcademyAndDate: jest.fn(),
-    findAbsentByAcademyStudentAndMonth: jest.fn(),
-    findAbsentByAcademyAndMonth: jest.fn(),
+    findPresentByAcademyAndDate: jest.fn(),
+    findPresentByAcademyStudentAndMonth: jest.fn(),
+    findPresentByAcademyAndMonth: jest.fn(),
     deleteByAcademyAndDate: jest.fn(),
-    countAbsentByAcademyAndDate: jest.fn(),
+    countPresentByAcademyAndDate: jest.fn(),
+    deleteAllByAcademyAndStudent: jest.fn(),
   };
   const holidayRepo: jest.Mocked<HolidayRepository> = {
     save: jest.fn(),
@@ -93,7 +94,8 @@ function buildDeps() {
 }
 
 describe('MarkStudentAttendanceUseCase', () => {
-  it('should create absent record when marking ABSENT', async () => {
+  // Absence-only model: attendance records now mean PRESENT. Absence = no record.
+  it('should create a present record when marking PRESENT', async () => {
     const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
@@ -113,17 +115,17 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorRole: 'OWNER',
       studentId: 'student-1',
       date: today,
-      status: 'ABSENT',
+      status: 'PRESENT',
     });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.status).toBe('ABSENT');
+      expect(result.value.status).toBe('PRESENT');
     }
     expect(attendanceRepo.save).toHaveBeenCalled();
   });
 
-  it('should delete absent record when marking PRESENT', async () => {
+  it('should delete the present record when marking ABSENT', async () => {
     const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
@@ -142,7 +144,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorRole: 'OWNER',
       studentId: 'student-1',
       date: today,
-      status: 'PRESENT',
+      status: 'ABSENT',
     });
 
     expect(result.ok).toBe(true);
@@ -153,7 +155,7 @@ describe('MarkStudentAttendanceUseCase', () => {
     );
   });
 
-  it('should be idempotent when marking absent twice', async () => {
+  it('should be idempotent when marking PRESENT twice (existing record)', async () => {
     const today = todayLocalDate();
     const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
     userRepo.findById.mockResolvedValue(createOwner());
@@ -181,7 +183,7 @@ describe('MarkStudentAttendanceUseCase', () => {
       actorRole: 'OWNER',
       studentId: 'student-1',
       date: today,
-      status: 'ABSENT',
+      status: 'PRESENT',
     });
 
     expect(result.ok).toBe(true);
@@ -249,6 +251,40 @@ describe('MarkStudentAttendanceUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('FORBIDDEN');
     }
+  });
+
+  it('should reject marking an inactive student', async () => {
+    const today = todayLocalDate();
+    const { userRepo, studentRepo, attendanceRepo, holidayRepo, auditRecorder } = buildDeps();
+    userRepo.findById.mockResolvedValue(createOwner());
+    const activeStudent = createStudent();
+    const inactive = Student.reconstitute('student-1', {
+      ...activeStudent['props'],
+      status: 'INACTIVE',
+    });
+    studentRepo.findById.mockResolvedValue(inactive);
+    holidayRepo.findByAcademyAndDate.mockResolvedValue(null);
+
+    const uc = new MarkStudentAttendanceUseCase(
+      userRepo,
+      studentRepo,
+      attendanceRepo,
+      holidayRepo,
+      auditRecorder,
+    );
+    const result = await uc.execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      studentId: 'student-1',
+      date: today,
+      status: 'ABSENT',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('VALIDATION');
+    }
+    expect(attendanceRepo.save).not.toHaveBeenCalled();
   });
 
   it('should reject invalid date format', async () => {

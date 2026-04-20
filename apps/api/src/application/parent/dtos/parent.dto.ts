@@ -1,4 +1,4 @@
-import type { FeeDueStatus, PaidSource, PaymentLabel } from '@playconnect/contracts';
+import type { FeeDueStatus, PaidSource, PaymentLabel } from '@academyflo/contracts';
 
 export interface ChildSummaryDto {
   studentId: string;

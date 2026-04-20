@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { apiPost } from '@/infra/http/api-client';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
+import { toErrorResponse } from '@/infra/http/error-mapper';
 
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   const result = await apiPost('/api/v1/academy/setup', body, { accessToken });
 
   if (!result.ok) {
-    return NextResponse.json({ message: result.error.message }, { status: 400 });
+    return toErrorResponse(result.error);
   }
 
   return NextResponse.json(result.data);

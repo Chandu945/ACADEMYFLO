@@ -46,19 +46,21 @@ async function apiFetch<T>(
     return { ok: false, error: AppError.network() };
   }
 
+  const retryAfter = res.headers.get('retry-after');
+
   let json: Record<string, unknown>;
   try {
     json = (await res.json()) as Record<string, unknown>;
   } catch {
     if (!res.ok) {
-      return { ok: false, error: mapApiError(res.status) };
+      return { ok: false, error: mapApiError(res.status, undefined, retryAfter) };
     }
     // 204 No Content or empty body — return empty object
     return { ok: true, data: {} as T };
   }
 
   if (!res.ok) {
-    return { ok: false, error: mapApiError(res.status, json) };
+    return { ok: false, error: mapApiError(res.status, json, retryAfter) };
   }
 
   const data = (json['data'] ?? json) as T;

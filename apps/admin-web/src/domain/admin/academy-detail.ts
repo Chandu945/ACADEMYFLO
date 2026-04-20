@@ -1,4 +1,4 @@
-import type { AdminAcademyStatus, TierKey } from '@playconnect/contracts';
+import type { AdminAcademyStatus, TierKey } from '@academyflo/contracts';
 
 export type AcademyOwner = {
   fullName: string;

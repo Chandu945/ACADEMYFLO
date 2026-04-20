@@ -5,7 +5,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EnquiryRepository } from '@domain/enquiry/ports/enquiry.repository';
 import type { Enquiry } from '@domain/enquiry/entities/enquiry.entity';
 import { EnquiryErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetEnquiryDetailInput {
   actorUserId: string;

@@ -42,12 +42,12 @@ export class MongoStaffAttendanceRepository implements StaffAttendanceRepository
     await this.model.deleteOne({ academyId, staffUserId, date }, { session: getTransactionSession() });
   }
 
-  async findAbsentByAcademyAndDate(academyId: string, date: string): Promise<StaffAttendance[]> {
+  async findPresentByAcademyAndDate(academyId: string, date: string): Promise<StaffAttendance[]> {
     const docs = await this.model.find({ academyId, date }).lean().exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
-  async findAbsentByAcademyDateAndStaffIds(
+  async findPresentByAcademyDateAndStaffIds(
     academyId: string,
     date: string,
     staffUserIds: string[],
@@ -60,7 +60,7 @@ export class MongoStaffAttendanceRepository implements StaffAttendanceRepository
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
-  async findAbsentByAcademyAndMonth(
+  async findPresentByAcademyAndMonth(
     academyId: string,
     monthPrefix: string,
   ): Promise<StaffAttendance[]> {
@@ -71,7 +71,7 @@ export class MongoStaffAttendanceRepository implements StaffAttendanceRepository
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
-  async countAbsentByAcademyStaffAndMonth(
+  async countPresentByAcademyStaffAndMonth(
     academyId: string,
     staffUserId: string,
     monthPrefix: string,

@@ -5,7 +5,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { BankDetails } from '@domain/academy/entities/academy.entity';
 import { InstituteInfoErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetInstituteInfoInput {
   actorUserId: string;

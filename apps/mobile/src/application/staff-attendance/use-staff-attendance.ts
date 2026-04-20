@@ -43,8 +43,7 @@ export function useStaffAttendance(
   const [isHoliday, setIsHoliday] = useState(false);
   const mountedRef = useRef(true);
   const fetchingMoreRef = useRef(false);
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
+  const pendingTogglesRef = useRef(new Set<string>());
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -104,30 +103,45 @@ export function useStaffAttendance(
 
   const toggleStatus = useCallback(
     (staffUserId: string) => {
-      if (isHoliday) return;
+      // Staff attendance is allowed on holidays (API + web policy). We do NOT
+      // block on isHoliday here — the UI should show a banner but not disable
+      // the toggle.
+      if (pendingTogglesRef.current.has(staffUserId)) return;
 
-      setItems((prev) =>
-        prev.map((item) => {
-          if (item.staffUserId !== staffUserId) return item;
-          const newStatus: StaffAttendanceStatus = item.status === 'ABSENT' ? 'PRESENT' : 'ABSENT';
-          return { ...item, status: newStatus };
-        }),
-      );
+      pendingTogglesRef.current.add(staffUserId);
 
-      const currentItem = itemsRef.current.find((i) => i.staffUserId === staffUserId);
-      if (!currentItem) return;
+      let previousStatus: StaffAttendanceStatus | null = null;
+      let newStatus: StaffAttendanceStatus | null = null;
 
-      const newStatus: StaffAttendanceStatus =
-        currentItem.status === 'ABSENT' ? 'PRESENT' : 'ABSENT';
+      setItems((prev) => {
+        const current = prev.find((i) => i.staffUserId === staffUserId);
+        if (!current) {
+          pendingTogglesRef.current.delete(staffUserId);
+          return prev;
+        }
+        previousStatus = current.status as StaffAttendanceStatus;
+        newStatus = previousStatus === 'ABSENT' ? 'PRESENT' : 'ABSENT';
+        return prev.map((item) =>
+          item.staffUserId === staffUserId ? { ...item, status: newStatus! } : item,
+        );
+      });
 
-      markStaffAttendanceUseCase({ staffAttendanceApi }, staffUserId, date, newStatus).then(
-        (result) => {
+      if (!newStatus || !previousStatus) {
+        pendingTogglesRef.current.delete(staffUserId);
+        return;
+      }
+
+      const capturedPrevious = previousStatus;
+      const capturedNew = newStatus;
+
+      markStaffAttendanceUseCase({ staffAttendanceApi }, staffUserId, date, capturedNew)
+        .then((result) => {
           if (!mountedRef.current) return;
           if (!result.ok) {
             setItems((prev) =>
               prev.map((item) =>
                 item.staffUserId === staffUserId
-                  ? { ...item, status: currentItem.status }
+                  ? { ...item, status: capturedPrevious }
                   : item,
               ),
             );
@@ -138,17 +152,29 @@ export function useStaffAttendance(
           // student-attendance pattern. Optimistic prediction could disagree
           // with the server (race with another edit); reality wins.
           const serverStatus = result.value.status as StaffAttendanceStatus;
-          if (serverStatus !== newStatus) {
+          if (serverStatus !== capturedNew) {
             setItems((prev) =>
               prev.map((item) =>
                 item.staffUserId === staffUserId ? { ...item, status: serverStatus } : item,
               ),
             );
           }
-        },
-      );
+        })
+        .catch((e) => {
+          if (__DEV__) console.error('[useStaffAttendance] Toggle failed:', e);
+          if (!mountedRef.current) return;
+          setItems((prev) =>
+            prev.map((item) =>
+              item.staffUserId === staffUserId ? { ...item, status: capturedPrevious } : item,
+            ),
+          );
+          setError({ code: 'NETWORK', message: 'Failed to save attendance change.' });
+        })
+        .finally(() => {
+          pendingTogglesRef.current.delete(staffUserId);
+        });
     },
-    [staffAttendanceApi, date, isHoliday],
+    [staffAttendanceApi, date],
   );
 
   useEffect(() => {

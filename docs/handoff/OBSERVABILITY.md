@@ -1,6 +1,6 @@
 # Observability
 
-Summary of request tracing, structured logging, metrics, and health monitoring in the PlayConnect system.
+Summary of request tracing, structured logging, metrics, and health monitoring in the Academyflo system.
 
 ---
 
@@ -124,7 +124,7 @@ GET /api/v1/health/liveness
 ```
 
 - Always returns 200 if the process is running
-- Response: `{ status: 'ok', service: 'playconnect-api', time, requestId }`
+- Response: `{ status: 'ok', service: 'academyflo-api', time, requestId }`
 - No authentication required
 - Used by Kubernetes/Docker liveness probes
 

@@ -25,6 +25,7 @@ function makeSub(overrides: Partial<SubscriptionInfo> = {}): SubscriptionInfo {
     requiredTierKey: 'TIER_0_50',
     pendingTierChange: null,
     tiers: TIERS,
+    pendingPaymentOrderId: null,
     ...overrides,
   };
 }

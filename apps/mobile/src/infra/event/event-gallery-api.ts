@@ -1,5 +1,10 @@
 import { Platform } from 'react-native';
 import type { GalleryPhoto } from '../../domain/event/event-gallery.types';
+import {
+  galleryPhotoSchema,
+  galleryPhotoListSchema,
+  galleryDeleteResponseSchema,
+} from '../../domain/event/event-gallery.schemas';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
 import { ok, err } from '../../domain/common/result';
@@ -7,11 +12,33 @@ import { apiGet, apiDelete, getAccessToken, tryRefresh } from '../http/api-clien
 import { mapHttpError } from '../http/error-mapper';
 import { generateRequestId } from '../http/request-id';
 import { env } from '../env';
+import type { ZodSchema } from 'zod';
 
-export function listGalleryPhotos(
+function validateResponse<T>(
+  schema: ZodSchema<T>,
+  result: Result<unknown, AppError>,
+  label: string,
+): Result<T, AppError> {
+  if (!result.ok) return result;
+  const parsed = schema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error(`[galleryApi] ${label} schema mismatch:`, parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data);
+}
+
+export async function listGalleryPhotos(
   eventId: string,
 ): Promise<Result<GalleryPhoto[], AppError>> {
-  return apiGet<GalleryPhoto[]>(`/api/v1/events/${eventId}/gallery`);
+  const result = await apiGet<unknown>(`/api/v1/events/${encodeURIComponent(eventId)}/gallery`);
+  return validateResponse(
+    galleryPhotoListSchema as unknown as ZodSchema<GalleryPhoto[]>,
+    result,
+    'listGalleryPhotos',
+  );
 }
 
 async function doGalleryUpload(
@@ -20,7 +47,7 @@ async function doGalleryUpload(
   token: string | null,
 ): Promise<Response> {
   return fetch(
-    `${env.API_BASE_URL}/api/v1/events/${eventId}/gallery`,
+    `${env.API_BASE_URL}/api/v1/events/${encodeURIComponent(eventId)}/gallery`,
     {
       method: 'POST',
       headers: {
@@ -72,8 +99,18 @@ export async function uploadGalleryPhoto(
       return err(mapHttpError(res.status, json));
     }
 
-    const json = (await res.json()) as { data: GalleryPhoto };
-    return ok(json.data);
+    const json = (await res.json()) as { data?: unknown } | null;
+    // Server returns either { data: GalleryPhoto } or the photo at root.
+    // Validate either shape so we don't silently accept malformed responses.
+    const candidate = json && typeof json === 'object' && 'data' in json ? json.data : json;
+    const parsed = galleryPhotoSchema.safeParse(candidate);
+    if (!parsed.success) {
+      if (__DEV__) {
+        console.error('[galleryApi] uploadGalleryPhoto schema mismatch:', parsed.error.issues);
+      }
+      return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    }
+    return ok(parsed.data);
   } catch {
     return err({
       code: 'NETWORK',
@@ -82,11 +119,12 @@ export async function uploadGalleryPhoto(
   }
 }
 
-export function deleteGalleryPhoto(
+export async function deleteGalleryPhoto(
   eventId: string,
   photoId: string,
 ): Promise<Result<{ deleted: boolean }, AppError>> {
-  return apiDelete<{ deleted: boolean }>(
-    `/api/v1/events/${eventId}/gallery/${photoId}`,
+  const result = await apiDelete<unknown>(
+    `/api/v1/events/${encodeURIComponent(eventId)}/gallery/${encodeURIComponent(photoId)}`,
   );
+  return validateResponse(galleryDeleteResponseSchema, result, 'deleteGalleryPhoto');
 }

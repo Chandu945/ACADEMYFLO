@@ -13,6 +13,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RbacGuard } from '../common/guards/rbac.guard';
@@ -34,6 +35,7 @@ import { CloseEnquiryDto } from './dto/close-enquiry.dto';
 import { ConvertToStudentDto } from './dto/convert-to-student.dto';
 import { ListEnquiriesQuery } from './dto/list-enquiries.query';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import type { Request } from 'express';
 import type { EnquirySource } from '@domain/enquiry/entities/enquiry.entity';
 import type { ClosureReason } from '@domain/enquiry/entities/enquiry.entity';
@@ -67,6 +69,7 @@ export class EnquiryController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ short: { limit: 20, ttl: 10_000 }, medium: { limit: 100, ttl: 60_000 }, long: { limit: 500, ttl: 3_600_000 } })
   @ApiOperation({ summary: 'Create a new enquiry' })
   async create(
     @Body() dto: CreateEnquiryDto,
@@ -97,7 +100,7 @@ export class EnquiryController {
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
-    this.logger.log(`[LIST] userId=${user.userId} role=${user.role} status=${query.status} search=${query.search} page=${query.page} limit=${query.limit}`);
+    this.logger.log(`[LIST] userId=${user.userId} role=${user.role} status=${query.status} searchLen=${query.search?.length ?? 0} page=${query.page} limit=${query.limit}`);
     try {
       const result = await this.listEnquiries.execute({
         actorUserId: user.userId,
@@ -136,7 +139,7 @@ export class EnquiryController {
   @Get(':id')
   @ApiOperation({ summary: 'Get enquiry detail' })
   async detail(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -151,7 +154,7 @@ export class EnquiryController {
   @Put(':id')
   @ApiOperation({ summary: 'Update enquiry' })
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: UpdateEnquiryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -178,7 +181,7 @@ export class EnquiryController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Close an enquiry (owner only)' })
   async close(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: CloseEnquiryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -197,7 +200,7 @@ export class EnquiryController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Convert enquiry to student (owner only)' })
   async convert(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: ConvertToStudentDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -221,7 +224,7 @@ export class EnquiryController {
   @Post(':id/follow-ups')
   @ApiOperation({ summary: 'Add a follow-up to an enquiry' })
   async addFollowUpAction(
-    @Param('id') id: string,
+    @Param('id', ParseObjectIdPipe) id: string,
     @Body() dto: AddFollowUpDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,

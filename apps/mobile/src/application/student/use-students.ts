@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppError } from '../../domain/common/errors';
 import type { StudentListItem, StudentListFilters } from '../../domain/student/student.types';
 import { listStudentsUseCase, type StudentApiPort } from './use-cases/list-students.usecase';
+import { useAuth } from '../../presentation/context/AuthContext';
 
 type UseStudentsResult = {
   items: StudentListItem[];
@@ -79,6 +80,13 @@ export function useStudents(
   );
 
   const refetch = useCallback(() => {
+    // Reset pagination + items so the post-mutation list reflects the current
+    // filter set without leaking previously-loaded pages (e.g. after a status
+    // toggle moves a student out of the active filter, page 2 should not stay
+    // mounted with stale data).
+    setItems([]);
+    setPage(1);
+    setHasMore(true);
     load(1, false);
   }, [load]);
 
@@ -95,6 +103,23 @@ export function useStudents(
       mountedRef.current = false;
     };
   }, [load]);
+
+  // Cross-account safety: if the authenticated user changes (logout + login
+  // as a different owner without unmounting the screen), reset state so we
+  // never render the previous user's academy's students.
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setItems([]);
+      setTotalItems(0);
+      setPage(1);
+      setHasMore(true);
+      setError(null);
+    }
+  }, [userId]);
 
   return { items, totalItems, loading, loadingMore, error, hasMore, refetch, fetchMore };
 }

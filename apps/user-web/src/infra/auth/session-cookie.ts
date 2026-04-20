@@ -4,10 +4,10 @@ import { cookies } from 'next/headers';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 import { z } from 'zod';
 
-import { USER_ROLES } from '@playconnect/contracts';
+import { USER_ROLES } from '@academyflo/contracts';
 import { publicEnv, serverEnv } from '@/infra/env';
 
-const COOKIE_NAME = 'pc_user_session';
+const COOKIE_NAME = 'af_user_session';
 const ALGORITHM = 'aes-256-gcm';
 
 const sessionPayloadSchema = z.object({

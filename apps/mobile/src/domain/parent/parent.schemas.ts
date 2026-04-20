@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type { FeeDueStatus, PaidSource, PaymentLabel } from '@playconnect/contracts';
+export type { FeeDueStatus, PaidSource, PaymentLabel } from '@academyflo/contracts';
 
 export const childSummarySchema = z.object({
   studentId: z.string(),

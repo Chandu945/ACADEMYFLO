@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server';
 
 import { publicEnv } from '@/infra/env';
 
-const COOKIE_NAME = 'pc_admin_csrf';
+const COOKIE_NAME = 'af_admin_csrf';
 const HEADER_NAME = 'x-csrf-token';
 const TOKEN_BYTES = 32;
 
@@ -39,7 +39,7 @@ export async function clearCsrfCookie(): Promise<void> {
 
 /**
  * Double-submit CSRF check. Returns true iff the X-CSRF-Token header
- * matches the pc_admin_csrf cookie. Both must be present and equal
+ * matches the af_admin_csrf cookie. Both must be present and equal
  * (constant-time compare to avoid timing oracles).
  */
 export async function validateCsrfToken(request: NextRequest): Promise<boolean> {

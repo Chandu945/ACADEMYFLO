@@ -1,14 +1,30 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { SubscriptionStatus, TierKey } from '@playconnect/contracts';
+import type { SubscriptionStatus, TierKey } from '@academyflo/contracts';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { Alert } from '@/components/ui/Alert';
 import styles from './page.module.css';
+
+/** Key under which a pending Cashfree orderId is cached so we can resume polling
+ * after the user returns from the hosted checkout. orderId is not sensitive, so
+ * sessionStorage is acceptable. Cleared on terminal status or manual cancel. */
+const PENDING_ORDER_KEY = 'academyflo_pending_sub_order';
+
+/** Exponential backoff schedule (ms). Capped at ~2 minutes total. */
+const POLL_SCHEDULE_MS = [2000, 3000, 5000, 8000, 13000, 21000, 30000, 30000];
+
+type PendingPoll =
+  | { state: 'idle' }
+  | { state: 'polling'; orderId: string; attempt: number }
+  | { state: 'success'; orderId: string }
+  | { state: 'failed'; orderId: string; reason: string }
+  | { state: 'timeout'; orderId: string };
 
 type TierPricing = {
   tierKey: TierKey;
@@ -84,6 +100,10 @@ export default function SubscriptionPage() {
   const [error, setError] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [pendingPoll, setPendingPoll] = useState<PendingPoll>({ state: 'idle' });
+  // Ref-based guard so a second click during the network round-trip is rejected
+  // even before React has re-rendered with paymentLoading=true.
+  const paymentInFlightRef = useRef(false);
 
   const fetchSubscription = useCallback(async () => {
     setLoading(true);
@@ -115,25 +135,123 @@ export default function SubscriptionPage() {
     }
   }, [subscription, router]);
 
+  // --- Pending payment polling ---------------------------------------------
+  // On mount / return-from-checkout, check sessionStorage for a pending orderId
+  // (stashed just before the Cashfree redirect) and poll the payment-status
+  // endpoint with exponential backoff. Terminal statuses clear the key and
+  // refetch the subscription. Handles the three user paths:
+  //   (a) User completed checkout and Cashfree redirected back → poll sees SUCCESS
+  //   (b) User cancelled / failed → poll sees FAILED, we show error + clean up
+  //   (c) User closed the tab mid-flow → next page visit resumes polling
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!accessToken) return;
+    const stored = sessionStorage.getItem(PENDING_ORDER_KEY);
+    if (!stored) return;
+    try {
+      const { orderId } = JSON.parse(stored) as { orderId: string };
+      if (typeof orderId === 'string' && orderId.length > 0) {
+        setPendingPoll({ state: 'polling', orderId, attempt: 0 });
+      }
+    } catch {
+      sessionStorage.removeItem(PENDING_ORDER_KEY);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (pendingPoll.state !== 'polling') return;
+    const { orderId, attempt } = pendingPoll;
+
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(`/api/subscription/payments/${encodeURIComponent(orderId)}`, {
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          const data: { status?: string } = await res.json().catch(() => ({}));
+          if (data.status === 'SUCCESS') {
+            sessionStorage.removeItem(PENDING_ORDER_KEY);
+            setPendingPoll({ state: 'success', orderId });
+            fetchSubscription();
+            return;
+          }
+          if (data.status === 'FAILED') {
+            sessionStorage.removeItem(PENDING_ORDER_KEY);
+            setPendingPoll({ state: 'failed', orderId, reason: 'Payment was not completed.' });
+            fetchSubscription();
+            return;
+          }
+          // PENDING — keep polling
+        }
+        // Non-ok or still PENDING: advance unless we're out of attempts
+        if (attempt + 1 >= POLL_SCHEDULE_MS.length) {
+          setPendingPoll({ state: 'timeout', orderId });
+          return;
+        }
+        setPendingPoll({ state: 'polling', orderId, attempt: attempt + 1 });
+      } catch {
+        if (cancelled) return;
+        if (attempt + 1 >= POLL_SCHEDULE_MS.length) {
+          setPendingPoll({ state: 'timeout', orderId });
+          return;
+        }
+        setPendingPoll({ state: 'polling', orderId, attempt: attempt + 1 });
+      }
+    }, POLL_SCHEDULE_MS[attempt] ?? 30000);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [pendingPoll, accessToken, fetchSubscription]);
+
+  const dismissPendingResult = useCallback(() => {
+    setPendingPoll({ state: 'idle' });
+  }, []);
+
+  const cancelPendingAndRetry = useCallback(() => {
+    // User-initiated abandonment of a stuck PENDING. We do NOT call the backend
+    // to cancel the Cashfree order — doing so requires another server round-trip
+    // and the order will auto-expire anyway. Simply clearing the local pointer
+    // lets them click Pay again; a new initiate will create a new orderId.
+    sessionStorage.removeItem(PENDING_ORDER_KEY);
+    setPendingPoll({ state: 'idle' });
+  }, []);
+
   const handlePayment = useCallback(async () => {
+    if (paymentInFlightRef.current) return; // fast guard against rapid double-click
+    paymentInFlightRef.current = true;
     setPaymentLoading(true);
     setPaymentError(null);
     try {
       const res = await fetch('/api/subscription', {
         method: 'POST',
-        headers: {
+        headers: csrfHeaders({
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
+        }),
         body: JSON.stringify({}),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        setPaymentError(body?.error || 'Failed to initiate payment');
+        setPaymentError(body?.error || body?.message || 'Failed to initiate payment');
         return;
       }
-      const data = await res.json();
-      if (data.checkoutUrl) {
+      const data: { orderId?: string; checkoutUrl?: string } = await res.json();
+      if (data.checkoutUrl && data.orderId) {
+        // Stash orderId BEFORE redirect so the next page load (return from
+        // Cashfree) can resume polling. Kept in sessionStorage only — cleared
+        // automatically on tab close or by our terminal-state handlers above.
+        sessionStorage.setItem(
+          PENDING_ORDER_KEY,
+          JSON.stringify({ orderId: data.orderId, startedAt: Date.now() }),
+        );
         window.location.href = data.checkoutUrl;
       } else {
         setPaymentError('Payment gateway unavailable. Please try again later.');
@@ -141,6 +259,7 @@ export default function SubscriptionPage() {
     } catch {
       setPaymentError('Network error. Please try again.');
     } finally {
+      paymentInFlightRef.current = false;
       setPaymentLoading(false);
     }
   }, [accessToken]);
@@ -157,6 +276,40 @@ export default function SubscriptionPage() {
 
       {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: fetchSubscription }} />}
       {paymentError && <Alert variant="error" message={paymentError} />}
+
+      {/* Pending payment polling banner */}
+      {pendingPoll.state === 'polling' && (
+        <Alert
+          variant="info"
+          title="Verifying your payment…"
+          message="Please don't close this tab. We're confirming with the payment gateway."
+          action={{ label: 'Cancel and try again', onClick: cancelPendingAndRetry }}
+        />
+      )}
+      {pendingPoll.state === 'success' && (
+        <Alert
+          variant="success"
+          title="Payment received"
+          message="Your subscription is now active. Thanks!"
+          onDismiss={dismissPendingResult}
+        />
+      )}
+      {pendingPoll.state === 'failed' && (
+        <Alert
+          variant="error"
+          title="Payment was not completed"
+          message={pendingPoll.reason}
+          onDismiss={dismissPendingResult}
+        />
+      )}
+      {pendingPoll.state === 'timeout' && (
+        <Alert
+          variant="warning"
+          title="Still verifying…"
+          message="Verification is taking longer than usual. If you completed the payment, refresh this page in a minute — or cancel to try again."
+          action={{ label: 'Cancel and try again', onClick: cancelPendingAndRetry }}
+        />
+      )}
 
       {/* Trial Banner */}
       {subscription?.status === 'TRIAL' && subscription.daysRemaining <= 7 && (

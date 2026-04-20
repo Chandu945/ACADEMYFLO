@@ -11,7 +11,7 @@
 services:
   redis:
     image: redis:7-alpine
-    container_name: playconnect-prod-redis
+    container_name: academyflo-prod-redis
     restart: unless-stopped
     volumes:
       - prod_redis_data:/data
@@ -28,8 +28,8 @@ services:
           cpus: '1.0'
 
   api:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/api:${IMAGE_TAG}
-    container_name: playconnect-prod-api
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/api:${IMAGE_TAG}
+    container_name: academyflo-prod-api
     restart: unless-stopped
     ports:
       - '3001:3001'
@@ -60,8 +60,8 @@ services:
           cpus: '4.0'
 
   admin-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/admin-web:${IMAGE_TAG}
-    container_name: playconnect-prod-admin
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/admin-web:${IMAGE_TAG}
+    container_name: academyflo-prod-admin
     restart: unless-stopped
     ports:
       - '3002:3002'
@@ -80,8 +80,8 @@ services:
       - api
 
   user-web:
-    image: ${DOCKER_REGISTRY:-ghcr.io/playconnect}/user-web:${IMAGE_TAG}
-    container_name: playconnect-prod-user-web
+    image: ${DOCKER_REGISTRY:-ghcr.io/academyflo}/user-web:${IMAGE_TAG}
+    container_name: academyflo-prod-user-web
     restart: unless-stopped
     ports:
       - '3003:3003'

@@ -86,6 +86,8 @@ export default function NewPaymentRequestPage() {
     if (!monthKey) return 'Please select a month';
     const numAmount = Number(amount);
     if (!amount || Number.isNaN(numAmount) || numAmount <= 0) return 'Please enter a valid amount';
+    if (!Number.isInteger(numAmount)) return 'Amount must be a whole rupee value (no paise)';
+    if (numAmount < 1 || numAmount > 1_000_000) return 'Amount must be between ₹1 and ₹10,00,000';
     return null;
   }, [studentId, monthKey, amount]);
 

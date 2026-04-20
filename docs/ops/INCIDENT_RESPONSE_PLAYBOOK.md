@@ -1,6 +1,6 @@
 # Incident Response Playbook
 
-Structured process for handling production incidents in PlayConnect.
+Structured process for handling production incidents in Academyflo.
 
 ## Severity Levels
 
@@ -17,10 +17,10 @@ Structured process for handling production incidents in PlayConnect.
 
 ```bash
 # Liveness — is the service running?
-curl -s https://playconnect.app/api/v1/health/liveness | jq .
+curl -s https://academyflo.com/api/v1/health/liveness | jq .
 
 # Readiness — is the service healthy (including DB)?
-curl -s https://playconnect.app/api/v1/health/readiness | jq .
+curl -s https://academyflo.com/api/v1/health/readiness | jq .
 ```
 
 | Result                      | Interpretation                                      |
@@ -72,7 +72,7 @@ docker compose -f deploy/docker-compose.prod.yml logs api --since 1h | \
 
 ```bash
 curl -H "X-Metrics-Token: $METRICS_TOKEN" \
-  https://playconnect.app/api/v1/metrics
+  https://academyflo.com/api/v1/metrics
 ```
 
 Look for:
@@ -101,7 +101,7 @@ If a specific source is causing excessive load:
 2. For IP-level blocking, update nginx config:
 
    ```nginx
-   # In deploy/nginx/sites-enabled/playconnect.conf
+   # In deploy/nginx/sites-enabled/academyflo.conf
    deny 1.2.3.4;
    ```
 

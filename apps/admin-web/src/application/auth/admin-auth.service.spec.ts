@@ -51,6 +51,28 @@ describe('login', () => {
 
     await expect(login('bad', 'p')).rejects.toMatchObject({ code: 'VALIDATION' });
   });
+
+  it('throws on malformed success response (contract drift)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ accessToken: 'tok' /* missing user + deviceId */ }),
+    } as Response);
+
+    await expect(login('a@b.com', 'pass')).rejects.toMatchObject({ code: 'UNKNOWN' });
+  });
+
+  it('throws on response with wrong role', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        accessToken: 'tok',
+        deviceId: 'd1',
+        user: { id: '1', email: 'a@b.com', fullName: 'X', role: 'OWNER' },
+      }),
+    } as Response);
+
+    await expect(login('a@b.com', 'pass')).rejects.toMatchObject({ code: 'UNKNOWN' });
+  });
 });
 
 describe('refreshAccessToken', () => {

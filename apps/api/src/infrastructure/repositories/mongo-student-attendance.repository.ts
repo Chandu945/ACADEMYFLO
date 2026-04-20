@@ -51,12 +51,12 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;
   }
 
-  async findAbsentByAcademyAndDate(academyId: string, date: string): Promise<StudentAttendance[]> {
+  async findPresentByAcademyAndDate(academyId: string, date: string): Promise<StudentAttendance[]> {
     const docs = await this.model.find({ academyId, date }).lean().exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
-  async findAbsentByAcademyStudentAndMonth(
+  async findPresentByAcademyStudentAndMonth(
     academyId: string,
     studentId: string,
     monthPrefix: string,
@@ -72,7 +72,7 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
-  async findAbsentByAcademyAndMonth(
+  async findPresentByAcademyAndMonth(
     academyId: string,
     monthPrefix: string,
   ): Promise<StudentAttendance[]> {
@@ -90,8 +90,16 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     await this.model.deleteMany({ academyId, date }, { session: getTransactionSession() });
   }
 
-  async countAbsentByAcademyAndDate(academyId: string, date: string): Promise<number> {
+  async countPresentByAcademyAndDate(academyId: string, date: string): Promise<number> {
     return this.model.countDocuments({ academyId, date });
+  }
+
+  async deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
+    const res = await this.model.deleteMany(
+      { academyId, studentId },
+      { session: getTransactionSession() },
+    );
+    return res.deletedCount ?? 0;
   }
 
   private toDomain(doc: unknown): StudentAttendance {

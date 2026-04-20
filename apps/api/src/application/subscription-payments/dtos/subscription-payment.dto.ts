@@ -1,6 +1,6 @@
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 import type { SubscriptionPaymentStatus } from '@domain/subscription-payments/entities/subscription-payment.entity';
-import type { SubscriptionStatus } from '@playconnect/contracts';
+import type { SubscriptionStatus } from '@academyflo/contracts';
 
 export interface InitiatePaymentOutput {
   orderId: string;

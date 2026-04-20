@@ -67,6 +67,11 @@ docker-compose.override.yml
 # MongoDB
 data/db/
 
+# Redis
+*.rdb
+*.aof
+dump.rdb
+
 # React Native
 apps/mobile/android/.gradle/
 apps/mobile/android/app/build/

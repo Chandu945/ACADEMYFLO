@@ -9,7 +9,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
-import { ENQUIRY_SOURCES } from '@playconnect/contracts';
+import { ENQUIRY_SOURCES } from '@academyflo/contracts';
 
 export class CreateEnquiryDto {
   @IsNotEmpty()

@@ -1,5 +1,5 @@
 # =============================================================================
-# PlayConnect Admin Web — Multi-stage Dockerfile
+# Academyflo Admin Web — Multi-stage Dockerfile
 # Base image: Node 20 LTS (pinned major)
 # Build context: repository root (monorepo)
 # Requires output: 'standalone' in next.config.ts
@@ -30,7 +30,7 @@ COPY packages/ ./packages/
 COPY apps/admin-web/ ./apps/admin-web/
 
 # Build the Next.js application (standalone output)
-RUN npm run build --workspace=@playconnect/admin-web
+RUN npm run build --workspace=@academyflo/admin-web
 
 # ---------------------------------------------------------------------------
 # Stage 2: Production runner (minimal, secure)

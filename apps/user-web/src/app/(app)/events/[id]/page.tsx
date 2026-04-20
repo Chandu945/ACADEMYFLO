@@ -68,11 +68,19 @@ export default function EventDetailPage() {
 
   const canManageGallery = user?.role === 'OWNER' || user?.role === 'STAFF';
 
+  const deleteInflightRef = useRef(false);
   const handleDelete = useCallback(async () => {
+    if (deleteInflightRef.current) return;
+    deleteInflightRef.current = true;
     setDeleting(true);
     setDeleteError(null);
-    const result = await deleteEvent(params.id, accessToken);
-    setDeleting(false);
+    let result;
+    try {
+      result = await deleteEvent(params.id, accessToken);
+    } finally {
+      deleteInflightRef.current = false;
+      setDeleting(false);
+    }
     if (!result.ok) {
       setDeleteError(result.error || 'Failed to delete event');
       return;
@@ -101,12 +109,20 @@ export default function EventDetailPage() {
     setSelectedFile(file);
   }, []);
 
+  const uploadInflightRef = useRef(false);
   const handleUpload = useCallback(async () => {
     if (!selectedFile) return;
+    if (uploadInflightRef.current) return;
+    uploadInflightRef.current = true;
     setUploading(true);
     setUploadError(null);
-    const result = await uploadGalleryPhoto(params.id, selectedFile, caption || undefined, accessToken);
-    setUploading(false);
+    let result;
+    try {
+      result = await uploadGalleryPhoto(params.id, selectedFile, caption || undefined, accessToken);
+    } finally {
+      uploadInflightRef.current = false;
+      setUploading(false);
+    }
     if (!result.ok) {
       setUploadError(result.error);
       return;
@@ -124,12 +140,20 @@ export default function EventDetailPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
+  const photoDeleteInflightRef = useRef(false);
   const handlePhotoDelete = useCallback(async () => {
     if (!photoDeleteId) return;
+    if (photoDeleteInflightRef.current) return;
+    photoDeleteInflightRef.current = true;
     setPhotoDeleting(true);
     setPhotoDeleteError(null);
-    const result = await deleteGalleryPhoto(params.id, photoDeleteId, accessToken);
-    setPhotoDeleting(false);
+    let result;
+    try {
+      result = await deleteGalleryPhoto(params.id, photoDeleteId, accessToken);
+    } finally {
+      photoDeleteInflightRef.current = false;
+      setPhotoDeleting(false);
+    }
     if (!result.ok) {
       setPhotoDeleteError(result.error);
       return;

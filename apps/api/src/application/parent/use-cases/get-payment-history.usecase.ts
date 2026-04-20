@@ -7,7 +7,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { ParentErrors } from '../../common/errors';
 import type { PaymentHistoryItemDto } from '../dtos/parent.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetPaymentHistoryInput {
   parentUserId: string;

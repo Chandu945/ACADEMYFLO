@@ -1,38 +1,67 @@
-import type { MonthlyRevenueSummaryApiResponse } from '../../domain/reports/reports.schemas';
-import type { StudentWiseDuesPaginatedApiResponse } from '../../domain/reports/reports.schemas';
-import type { MonthWiseDuesSummaryApiResponse } from '../../domain/reports/reports.schemas';
+import {
+  monthlyRevenueSummarySchema,
+  studentWiseDuesPaginatedSchema,
+  monthWiseDuesSummarySchema,
+  type MonthlyRevenueSummaryApiResponse,
+  type StudentWiseDuesPaginatedApiResponse,
+  type MonthWiseDuesSummaryApiResponse,
+} from '../../domain/reports/reports.schemas';
 import type { AppError } from '../../domain/common/errors';
-import type { Result } from '../../domain/common/result';
+import { err, ok, type Result } from '../../domain/common/result';
 import { apiGet } from '../http/api-client';
+import type { ZodSchema } from 'zod';
 
-export function getMonthlyRevenue(
-  month: string,
-): Promise<Result<MonthlyRevenueSummaryApiResponse, AppError>> {
-  return apiGet<MonthlyRevenueSummaryApiResponse>(`/api/v1/reports/monthly-revenue?month=${month}`);
+function validateResponse<T>(
+  schema: ZodSchema<T>,
+  result: Result<unknown, AppError>,
+  label: string,
+): Result<T, AppError> {
+  if (!result.ok) return result;
+  const parsed = schema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error(`[reportsApi] ${label} schema mismatch:`, parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data);
 }
 
-export function getStudentWiseDues(
+export async function getMonthlyRevenue(
+  month: string,
+): Promise<Result<MonthlyRevenueSummaryApiResponse, AppError>> {
+  const result = await apiGet<unknown>(
+    `/api/v1/reports/monthly-revenue?month=${encodeURIComponent(month)}`,
+  );
+  return validateResponse(monthlyRevenueSummarySchema, result, 'getMonthlyRevenue');
+}
+
+export async function getStudentWiseDues(
   month: string,
   page: number,
   pageSize: number,
 ): Promise<Result<StudentWiseDuesPaginatedApiResponse, AppError>> {
-  return apiGet<StudentWiseDuesPaginatedApiResponse>(
-    `/api/v1/reports/student-wise-dues?month=${month}&page=${page}&pageSize=${pageSize}`,
+  const result = await apiGet<unknown>(
+    `/api/v1/reports/student-wise-dues?month=${encodeURIComponent(month)}&page=${page}&pageSize=${pageSize}`,
   );
+  return validateResponse(studentWiseDuesPaginatedSchema, result, 'getStudentWiseDues');
 }
 
-export function getMonthWiseDues(
+export async function getMonthWiseDues(
   month: string,
 ): Promise<Result<MonthWiseDuesSummaryApiResponse, AppError>> {
-  return apiGet<MonthWiseDuesSummaryApiResponse>(`/api/v1/reports/month-wise-dues?month=${month}`);
+  const result = await apiGet<unknown>(
+    `/api/v1/reports/month-wise-dues?month=${encodeURIComponent(month)}`,
+  );
+  return validateResponse(monthWiseDuesSummarySchema, result, 'getMonthWiseDues');
 }
 
 export function getRevenueExportUrl(month: string): string {
-  return `/api/v1/reports/revenue/export.pdf?month=${month}`;
+  return `/api/v1/reports/revenue/export.pdf?month=${encodeURIComponent(month)}`;
 }
 
 export function getPendingDuesExportUrl(month: string): string {
-  return `/api/v1/reports/dues/pending/export.pdf?month=${month}`;
+  return `/api/v1/reports/dues/pending/export.pdf?month=${encodeURIComponent(month)}`;
 }
 
 export const reportsApi = {

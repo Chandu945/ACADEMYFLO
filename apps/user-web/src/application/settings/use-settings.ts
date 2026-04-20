@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
+import { csrfHeaders } from '@/infra/auth/csrf-client';
 
 type AcademySettings = { defaultDueDateDay: number; receiptPrefix: string; lateFeeEnabled: boolean; gracePeriodDays: number; lateFeeAmountInr: number; lateFeeRepeatIntervalDays: number };
 type InstituteInfo = { signatureStampUrl: string | null; bankDetails: { accountHolderName: string; accountNumber: string; ifscCode: string; bankName: string; branchName: string } | null; upiId: string | null; qrCodeImageUrl: string | null };
@@ -50,7 +51,7 @@ export function useAcademySettings() {
 
 export async function updateAcademySettings(body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch('/api/settings/academy', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const res = await fetch('/api/settings/academy', { method: 'PUT', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
     const json = await safeJson(res);
     if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to save settings' };
     return { ok: true as const, data: json };
@@ -97,7 +98,7 @@ export function useInstituteInfo() {
 
 export async function updateInstituteInfo(body: Record<string, unknown>, accessToken?: string | null) {
   try {
-    const res = await fetch('/api/settings/institute-info', { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const res = await fetch('/api/settings/institute-info', { method: 'PUT', headers: csrfHeaders({ 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }), body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
     const json = await safeJson(res);
     if (!res.ok || !json) return { ok: false as const, error: (json?.['message'] as string) || 'Failed to save institute info' };
     return { ok: true as const, data: json };

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEnquiryDetail, addFollowUp, closeEnquiry, convertEnquiry } from '@/application/enquiries/use-enquiries';
 import { useAuth } from '@/application/auth/use-auth';
+import { isValidObjectId } from '@/infra/validation/ids';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -17,7 +18,7 @@ import styles from './page.module.css';
 
 const CLOSE_REASONS = ['CONVERTED', 'NOT_INTERESTED', 'OTHER'] as const;
 type CloseReasonType = (typeof CLOSE_REASONS)[number];
-import { GENDERS } from '@playconnect/contracts';
+import { GENDERS } from '@academyflo/contracts';
 const GENDER_OPTIONS = GENDERS.map((g) => g.charAt(0) + g.slice(1).toLowerCase());
 
 function statusBadgeVariant(status: string) {
@@ -33,7 +34,8 @@ export default function EnquiryDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken } = useAuth();
-  const { data: enquiry, loading, refetch } = useEnquiryDetail(params.id);
+  const idIsValid = isValidObjectId(params.id);
+  const { data: enquiry, loading, refetch } = useEnquiryDetail(idIsValid ? params.id : null);
 
   const [followUpNotes, setFollowUpNotes] = useState('');
   const [nextFollowUpDate, setNextFollowUpDate] = useState('');
@@ -57,31 +59,47 @@ export default function EnquiryDetailPage() {
   const [convertState, setConvertState] = useState('');
   const [convertPincode, setConvertPincode] = useState('');
 
+  const followUpInflightRef = useRef(false);
   const handleAddFollowUp = useCallback(async () => {
     if (!followUpNotes.trim()) { setFollowUpError('Notes are required'); return; }
+    if (followUpInflightRef.current) return;
+    followUpInflightRef.current = true;
     setAddingFollowUp(true);
     setFollowUpError(null);
-    const result = await addFollowUp(params.id, {
-      date: new Date().toISOString(),
-      notes: followUpNotes.trim(),
-      nextFollowUpDate: nextFollowUpDate || undefined,
-    }, accessToken);
-    setAddingFollowUp(false);
+    let result;
+    try {
+      result = await addFollowUp(params.id, {
+        date: new Date().toISOString(),
+        notes: followUpNotes.trim(),
+        nextFollowUpDate: nextFollowUpDate || undefined,
+      }, accessToken);
+    } finally {
+      followUpInflightRef.current = false;
+      setAddingFollowUp(false);
+    }
     if (!result.ok) { setFollowUpError(result.error); return; }
     setFollowUpNotes('');
     setNextFollowUpDate('');
     refetch();
   }, [followUpNotes, nextFollowUpDate, params.id, accessToken, refetch]);
 
+  const closeInflightRef = useRef(false);
   const handleClose = useCallback(async () => {
     if (!closeReasonType) {
       setCloseError('Please select a reason');
       return;
     }
+    if (closeInflightRef.current) return;
+    closeInflightRef.current = true;
     setClosing(true);
     setCloseError(null);
-    const result = await closeEnquiry(params.id, closeReasonType, accessToken);
-    setClosing(false);
+    let result;
+    try {
+      result = await closeEnquiry(params.id, closeReasonType, accessToken);
+    } finally {
+      closeInflightRef.current = false;
+      setClosing(false);
+    }
     if (!result.ok) {
       setCloseError(result.error || 'Failed to close enquiry');
       return;
@@ -90,13 +108,23 @@ export default function EnquiryDetailPage() {
     refetch();
   }, [params.id, closeReasonType, accessToken, refetch]);
 
+  // Defense-in-depth dedup: setConverting is async, so a fast double-tap on
+  // Convert can fire two POSTs and create two students before the disabled
+  // state propagates.
+  const convertInflightRef = useRef(false);
   const handleConvert = useCallback(async () => {
-    if (!convertMonthlyFee || Number(convertMonthlyFee) <= 0) {
-      setConvertError('Monthly fee is required');
+    const fee = Number(convertMonthlyFee);
+    if (!convertMonthlyFee.trim() || !Number.isFinite(fee) || fee <= 0) {
+      setConvertError('Monthly fee must be a positive number');
       return;
     }
     if (!convertDateOfBirth) {
       setConvertError('Date of birth is required');
+      return;
+    }
+    // dateOfBirth must be strictly before joiningDate (parallels API check).
+    if (convertJoiningDate && convertDateOfBirth && convertDateOfBirth >= convertJoiningDate) {
+      setConvertError('Date of birth must be before joining date');
       return;
     }
     if (!convertGender) {
@@ -111,19 +139,26 @@ export default function EnquiryDetailPage() {
       setConvertError('Pincode must be 6 digits');
       return;
     }
+    if (convertInflightRef.current) return;
+    convertInflightRef.current = true;
     setConverting(true);
     setConvertError(null);
-    const result = await convertEnquiry(params.id, {
-      joiningDate: convertJoiningDate,
-      monthlyFee: Number(convertMonthlyFee),
-      dateOfBirth: convertDateOfBirth,
-      gender: convertGender.toUpperCase(),
-      addressLine1: convertAddressLine1.trim(),
-      city: convertCity.trim(),
-      state: convertState.trim(),
-      pincode: convertPincode,
-    }, accessToken);
-    setConverting(false);
+    let result;
+    try {
+      result = await convertEnquiry(params.id, {
+        joiningDate: convertJoiningDate,
+        monthlyFee: fee,
+        dateOfBirth: convertDateOfBirth,
+        gender: convertGender.toUpperCase(),
+        addressLine1: convertAddressLine1.trim(),
+        city: convertCity.trim(),
+        state: convertState.trim(),
+        pincode: convertPincode,
+      }, accessToken);
+    } finally {
+      convertInflightRef.current = false;
+      setConverting(false);
+    }
     if (!result.ok) {
       setConvertError(result.error || 'Failed to convert enquiry');
       return;
@@ -144,6 +179,7 @@ export default function EnquiryDetailPage() {
     convertPincode,
   ]);
 
+  if (!idIsValid) return <Alert variant="error" message="Invalid enquiry id" />;
   if (loading) return <Spinner centered size="lg" />;
   if (!enquiry) return <Alert variant="error" message="Enquiry not found" />;
 

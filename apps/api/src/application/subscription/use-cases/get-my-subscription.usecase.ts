@@ -3,8 +3,9 @@ import { ok, err, AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { SubscriptionRepository } from '@domain/subscription/ports/subscription.repository';
+import type { SubscriptionPaymentRepository } from '@domain/subscription-payments/ports/subscription-payment.repository';
 import type { ClockPort } from '../../common/clock.port';
-import type { SubscriptionStatus, TierKey } from '@playconnect/contracts';
+import type { SubscriptionStatus, TierKey } from '@academyflo/contracts';
 import { evaluateStatus } from './evaluate-subscription-status';
 import type { CreateTrialSubscriptionUseCase } from './create-trial-subscription.usecase';
 import type { ActiveStudentCounterPort } from '../ports/active-student-counter.port';
@@ -39,6 +40,10 @@ export interface SubscriptionSummary {
   requiredTierKey: TierKey;
   pendingTierChange: PendingTierChangeDto | null;
   tiers: TierPricingDto[];
+  /** Order id of the most recent PENDING payment for this academy, or null.
+   *  Mobile / user-web use this to resume polling after an app-kill or tab
+   *  close during a Cashfree checkout. Server-authoritative. */
+  pendingPaymentOrderId: string | null;
 }
 
 export class GetMySubscriptionUseCase {
@@ -49,6 +54,7 @@ export class GetMySubscriptionUseCase {
     private readonly createTrial: CreateTrialSubscriptionUseCase,
     private readonly clock: ClockPort,
     private readonly studentCounter?: ActiveStudentCounterPort,
+    private readonly paymentRepo?: SubscriptionPaymentRepository,
   ) {}
 
   async execute(userId: string): Promise<Result<SubscriptionSummary, AppError>> {
@@ -102,6 +108,19 @@ export class GetMySubscriptionUseCase {
       subscription.paidEndAt,
     );
 
+    // Latest PENDING payment (if any) so mobile / web can resume polling
+    // after a kill/close mid-checkout. Fail-open: if the lookup errors, we
+    // simply don't offer resume — fresh payment still works.
+    let pendingPaymentOrderId: string | null = null;
+    if (this.paymentRepo) {
+      try {
+        const pending = await this.paymentRepo.findPendingByAcademyId(academyId);
+        pendingPaymentOrderId = pending?.orderId ?? null;
+      } catch {
+        pendingPaymentOrderId = null;
+      }
+    }
+
     return ok({
       status: evaluation.status,
       trialEndAt: subscription.trialEndAt.toISOString(),
@@ -117,6 +136,7 @@ export class GetMySubscriptionUseCase {
         ? { tierKey: pendingChange.tierKey, effectiveAt: pendingChange.effectiveAt.toISOString() }
         : null,
       tiers: TIER_TABLE,
+      pendingPaymentOrderId,
     });
   }
 }

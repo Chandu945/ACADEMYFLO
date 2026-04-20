@@ -1,5 +1,5 @@
 import type { TransactionLog } from '@domain/fee/entities/transaction-log.entity';
-import type { PaidSource } from '@playconnect/contracts';
+import type { PaidSource } from '@academyflo/contracts';
 
 export interface TransactionLogDto {
   id: string;

@@ -2,7 +2,7 @@ import type { Result } from '@shared/kernel';
 import { ok, err, AppError } from '@shared/kernel';
 import type { AuditLogRepository, AuditLogFilter } from '@domain/audit/ports/audit-log.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
-import type { AuditActionType, AuditEntityType, Paginated } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType, Paginated } from '@academyflo/contracts';
 import { AdminErrors } from '../../common/errors';
 import { isValidLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import type { AuditLogDto } from '../../audit/dto/audit-log.dto';

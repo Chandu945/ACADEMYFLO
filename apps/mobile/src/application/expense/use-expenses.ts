@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AppError } from '../../domain/common/errors';
 import type { ExpenseItem } from '../../domain/expense/expense.types';
 import { listExpensesUseCase, type ExpenseApiPort } from './use-cases/list-expenses.usecase';
+import { useAuth } from '../../presentation/context/AuthContext';
 
 type UseExpensesResult = {
   items: ExpenseItem[];
@@ -79,6 +80,11 @@ export function useExpenses(
   );
 
   const refetch = useCallback(() => {
+    // Reset items + page so a post-mutation refetch reflects the current
+    // filter cleanly (mirror of useStudents F3-H4).
+    setItems([]);
+    setPage(1);
+    setHasMore(true);
     load(1, false);
   }, [load]);
 
@@ -95,6 +101,21 @@ export function useExpenses(
       mountedRef.current = false;
     };
   }, [load]);
+
+  // Cross-account safety: clear cached expenses when authenticated user
+  // flips (mirror useStudents/useStaff/useEnquiries/useEvents).
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setItems([]);
+      setPage(1);
+      setHasMore(true);
+      setError(null);
+    }
+  }, [userId]);
 
   return { items, loading, loadingMore, error, hasMore, refetch, fetchMore };
 }

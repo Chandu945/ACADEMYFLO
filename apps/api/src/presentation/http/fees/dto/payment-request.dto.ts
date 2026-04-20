@@ -1,6 +1,6 @@
 import { IsString, MinLength, MaxLength, IsOptional, IsIn, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { PAYMENT_REQUEST_STATUSES } from '@playconnect/contracts';
+import { PAYMENT_REQUEST_STATUSES } from '@academyflo/contracts';
 import { PaginationQueryDto } from '../../common/dto/pagination.query';
 import { sanitizeNotes } from '../../common/sanitizers/notes-sanitizer';
 

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { TenantThrottlerGuard } from './http/common/guards/tenant-throttler.guard';
 import { JwtAuthGuard } from './http/common/guards/jwt-auth.guard';
 import { HealthModule } from './http/health/health.module';
 import { AuthModule } from './http/auth/auth.module';
@@ -75,7 +76,7 @@ import { HttpLoggingInterceptor } from './http/common/interceptors/http-logging.
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: TenantThrottlerGuard,
     },
     {
       provide: APP_GUARD,

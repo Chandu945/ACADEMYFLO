@@ -1,5 +1,5 @@
 # ============================================================
-# PlayConnect — Render Blueprint
+# Academyflo — Render Blueprint
 # ============================================================
 # Deploy: Connect this repo to Render, it auto-detects this file.
 # Or go to https://dashboard.render.com → Blueprints → New Blueprint
@@ -10,7 +10,7 @@ services:
   # NestJS API Backend
   # ─────────────────────────────────────────────
   - type: web
-    name: playconnect-api
+    name: academyflo-api
     runtime: docker
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
@@ -38,7 +38,7 @@ services:
       # Redis — Reference the Render Redis instance
       - key: REDIS_URL
         fromService:
-          name: playconnect-redis
+          name: academyflo-redis
           type: redis
           property: connectionString
 
@@ -116,7 +116,7 @@ services:
   # Admin Web (Super Admin Panel)
   # ─────────────────────────────────────────────
   - type: web
-    name: playconnect-admin
+    name: academyflo-admin
     runtime: docker
     dockerfilePath: ./apps/admin-web/Dockerfile
     dockerContext: .
@@ -132,7 +132,7 @@ services:
         value: Asia/Kolkata
       # API_BASE_URL: Set manually in Render dashboard.
       # Use internal URL if same region: http://<internal-hostname>:3001
-      # Or public: https://playconnect-api.onrender.com
+      # Or public: https://academyflo-api.onrender.com
       - key: API_BASE_URL
         sync: false
       - key: COOKIE_SECRET
@@ -144,7 +144,7 @@ services:
   # User Web (Owner / Staff / Parent Portal)
   # ─────────────────────────────────────────────
   - type: web
-    name: playconnect-app
+    name: academyflo-app
     runtime: docker
     dockerfilePath: ./apps/user-web/Dockerfile
     dockerContext: .
@@ -168,7 +168,7 @@ services:
   # Redis (Cache + Job Queues)
   # ─────────────────────────────────────────────
   - type: redis
-    name: playconnect-redis
+    name: academyflo-redis
     region: singapore
     plan: starter     # $7/mo — 25MB. Upgrade to standard ($20, 100MB) if queue depth grows.
     maxmemoryPolicy: allkeys-lru

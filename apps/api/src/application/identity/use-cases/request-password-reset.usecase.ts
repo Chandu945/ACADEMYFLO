@@ -7,7 +7,10 @@ import type { PasswordResetChallengeRepository } from '@domain/identity/ports/pa
 import type { OtpGenerator } from '../ports/otp-generator.port';
 import type { OtpHasher } from '../ports/otp-hasher.port';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import { renderPasswordResetOtpEmail } from '../../notifications/templates/password-reset-otp-template';
 import { PasswordResetChallenge } from '@domain/identity/entities/password-reset-challenge.entity';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { OtpAttemptTrackerPort } from '../services/otp-attempt-tracker';
 
 interface RequestPasswordResetInput {
   email: string;
@@ -29,12 +32,23 @@ export class RequestPasswordResetUseCase {
     private readonly otpExpiryMinutes: number = 10,
     private readonly otpMaxAttempts: number = 5,
     private readonly otpCooldownSeconds: number = 60,
+    private readonly audit?: AuditRecorderPort,
+    private readonly otpAttemptTracker?: OtpAttemptTrackerPort,
   ) {}
 
   async execute(
     input: RequestPasswordResetInput,
   ): Promise<Result<RequestPasswordResetOutput, AppError>> {
     const email = input.email.toLowerCase().trim();
+
+    // If the email is currently locked out from prior OTP-guessing attempts,
+    // don't issue a fresh challenge — otherwise the attacker rotates the
+    // OTP budget by cycling new challenges every 60s. Keep the response
+    // generic so we don't reveal that the email exists OR is locked.
+    if (this.otpAttemptTracker && (await this.otpAttemptTracker.isLocked(email))) {
+      return ok({ message: GENERIC_MESSAGE });
+    }
+
     const user = await this.userRepo.findByEmail(email);
 
     if (!user) {
@@ -71,11 +85,26 @@ export class RequestPasswordResetUseCase {
     try {
       await this.emailSender.send({
         to: email,
-        subject: 'PlayConnect Password Reset',
-        html: `<p>Your PlayConnect password reset code is: <strong>${otp}</strong>. Valid for ${this.otpExpiryMinutes} minutes.</p>`,
+        subject: 'Your Academyflo password reset code',
+        html: renderPasswordResetOtpEmail({ otp, expiryMinutes: this.otpExpiryMinutes }),
       });
     } catch {
       // OTP is saved — user can retry. Don't crash and don't leak account existence.
+    }
+
+    // Audit only when the user actually exists and belongs to an academy.
+    // Parents may have academyId=null for some legacy records — skip those
+    // rather than invent a fake tenant and keep the generic-response branch
+    // (no user) silent so we don't create an enumeration oracle.
+    if (user.academyId && this.audit) {
+      await this.audit.record({
+        academyId: user.academyId.toString(),
+        actorUserId: userId,
+        action: 'PASSWORD_RESET_REQUESTED',
+        entityType: 'USER',
+        entityId: userId,
+        context: { role: user.role },
+      }).catch(() => {});
     }
 
     return ok({ message: GENERIC_MESSAGE });

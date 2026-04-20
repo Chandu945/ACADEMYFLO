@@ -35,6 +35,7 @@ import {
   SetLoginDisabledDto,
 } from './dto/admin.actions.dto';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import type { Request } from 'express';
 
 @ApiTags('Admin')
@@ -93,7 +94,7 @@ export class AdminController {
   @Get('academies/:academyId')
   @ApiOperation({ summary: 'Get academy detail' })
   async academyDetail(
-    @Param('academyId') academyId: string,
+    @Param('academyId', ParseObjectIdPipe) academyId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -108,7 +109,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Set subscription manually' })
   async setSubscription(
-    @Param('academyId') academyId: string,
+    @Param('academyId', ParseObjectIdPipe) academyId: string,
     @Body() dto: SetSubscriptionManualDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -130,7 +131,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Deactivate subscription' })
   async deactivate(
-    @Param('academyId') academyId: string,
+    @Param('academyId', ParseObjectIdPipe) academyId: string,
     @Body() dto: DeactivateSubscriptionDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -148,7 +149,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Enable/disable academy login' })
   async loginDisabled(
-    @Param('academyId') academyId: string,
+    @Param('academyId', ParseObjectIdPipe) academyId: string,
     @Body() dto: SetLoginDisabledDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -166,7 +167,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Force logout all users of an academy' })
   async forceLogoutHandler(
-    @Param('academyId') academyId: string,
+    @Param('academyId', ParseObjectIdPipe) academyId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -182,7 +183,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset owner password for an academy' })
   async resetPasswordHandler(
-    @Param('academyId') academyId: string,
+    @Param('academyId', ParseObjectIdPipe) academyId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -197,7 +198,7 @@ export class AdminController {
   @Get('academies/:academyId/audit-logs')
   @ApiOperation({ summary: 'List audit logs for an academy' })
   async auditLogs(
-    @Param('academyId') academyId: string,
+    @Param('academyId', ParseObjectIdPipe) academyId: string,
     @Query() query: AdminAuditLogsQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,

@@ -1,4 +1,4 @@
-import baseConfig from '@playconnect/eslint-config';
+import baseConfig from '@academyflo/eslint-config';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(

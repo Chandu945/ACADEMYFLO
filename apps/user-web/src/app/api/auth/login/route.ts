@@ -3,10 +3,11 @@ import type { NextRequest } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { apiPost } from '@/infra/http/api-client';
 import { setSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { setCsrfCookie } from '@/infra/auth/csrf-token';
 import { toErrorResponse } from '@/infra/http/error-mapper';
 
 const loginBodySchema = z.object({
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
     phoneNumber: user.phoneNumber,
     profilePhotoUrl: user.profilePhotoUrl ?? null,
   });
+  await setCsrfCookie();
 
   return NextResponse.json({
     accessToken,

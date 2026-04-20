@@ -4,7 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canManageStaff } from '@domain/identity/rules/staff.rules';
 import { AuthErrors, StaffErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
 
 export interface ListStaffInput {
@@ -12,6 +12,8 @@ export interface ListStaffInput {
   ownerRole: UserRole;
   page: number;
   pageSize: number;
+  /** Optional filter — when set, exclude users not matching this status. */
+  status?: 'ACTIVE' | 'INACTIVE';
 }
 
 export interface StaffListItem {
@@ -65,7 +67,14 @@ export class ListStaffUseCase {
       input.pageSize,
     );
 
-    const data: StaffListItem[] = users.map((u) => ({
+    // In-memory status filter: the repository's listByAcademyAndRole returns
+    // both ACTIVE and INACTIVE staff, and we don't want to add a new repo
+    // method just for this. Page-local filter is acceptable since `total`
+    // still reflects the full set; UI can decide whether to keep paginating.
+    const filteredUsers =
+      input.status === undefined ? users : users.filter((u) => u.status === input.status);
+
+    const data: StaffListItem[] = filteredUsers.map((u) => ({
       id: u.id.toString(),
       fullName: u.fullName,
       email: u.emailNormalized,

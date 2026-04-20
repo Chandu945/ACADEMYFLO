@@ -1,4 +1,4 @@
-import type { FeeDueStatus } from '@playconnect/contracts';
+import type { FeeDueStatus } from '@academyflo/contracts';
 
 export interface StudentWiseDueItemDto {
   studentId: string;

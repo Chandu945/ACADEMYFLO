@@ -1,7 +1,7 @@
 import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@playconnect/contracts';
-import type { AuditActionType, AuditEntityType } from '@playconnect/contracts';
+import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@academyflo/contracts';
+import type { AuditActionType, AuditEntityType } from '@academyflo/contracts';
 import { PaginationQueryDto } from '../../common/dto/pagination.query';
 
 export class ListAuditLogsQueryDto extends PaginationQueryDto {

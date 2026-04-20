@@ -42,4 +42,23 @@ export const studentListResponseSchema = z.object({
   }),
 });
 
+export const studentCredentialsSchema = z.object({
+  parentEmail: z.string().nullable(),
+  parentTempPassword: z.string().nullable(),
+  parentInviteSentAt: z.string().nullable(),
+});
+
+export const inviteParentResponseSchema = z.object({
+  parentUserId: z.string(),
+  email: z.string(),
+  tempPassword: z.string().optional(),
+});
+
+// createStudent / updateStudent return shapes vary across legacy controllers,
+// but every consumer only needs id back. Validate exactly that.
+export const studentMutationResponseSchema = z.object({
+  id: z.string(),
+});
+
 export type StudentListApiResponse = z.infer<typeof studentListResponseSchema>;
+export type StudentMutationApiResponse = z.infer<typeof studentMutationResponseSchema>;

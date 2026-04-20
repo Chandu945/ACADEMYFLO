@@ -24,6 +24,7 @@ import { APP_VERSION, APP_PLATFORM } from '../../infra/app-version';
 import { env } from '../../infra/env';
 import { clearAttendanceSummaryCache } from '../components/dashboard/AttendanceSummaryWidget';
 import { clearMonthlyChartCache } from '../components/dashboard/MonthlyChartWidget';
+import { invalidateBatchCache } from '../../infra/batch/batch-cache';
 
 export type AuthPhase =
   | 'initializing'
@@ -136,9 +137,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       if (__DEV__) console.warn('[AuthContext] Logout use case failed (proceeding anyway):', e);
     }
-    // Clear cached dashboard data to prevent cross-user data leak
+    // Clear cached dashboard data to prevent cross-user data leak. Batch
+    // list was previously missed — next tenant's BatchMultiSelect would
+    // briefly render the prior tenant's batch names.
     clearAttendanceSummaryCache();
     clearMonthlyChartCache();
+    invalidateBatchCache();
     // Always transition to unauthenticated regardless of errors above
     if (mountedRef.current) {
       setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
@@ -193,14 +197,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [resolvePhase]);
 
-  // When app returns from background, silently re-refresh the access token
-  // so the user is never forced to re-login after backgrounding
+  // When the app returns from background: (a) silently refresh the access
+  // token so the user isn't forced to re-login, and (b) re-evaluate
+  // subscription so a mid-session flip (owner paid, admin deactivated, trial
+  // expired) flows the user into the right navigation stack both directions.
   useEffect(() => {
     const handleAppState = (nextState: AppStateStatus) => {
+      if (nextState !== 'active') return;
+      if (!mountedRef.current) return;
+
       const token = getAccessToken();
-      const needsRefresh = !token || isTokenExpiredOrExpiring(token);
-      if (nextState === 'active' && state.phase === 'ready' && needsRefresh) {
-        // Access token was lost or expired/expiring — silently restore
+      const needsTokenRefresh = !token || isTokenExpiredOrExpiring(token);
+      const isSubscriptionSensitivePhase =
+        state.phase === 'ready' || state.phase === 'blocked';
+
+      if (state.phase === 'ready' && needsTokenRefresh) {
+        // Access token was lost or expired/expiring — silently restore then
+        // resolve phase (which does the full subscription recheck).
         restoreSessionUseCase(deps)
           .then(async (result) => {
             if (!mountedRef.current) return;
@@ -208,17 +221,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
               return;
             }
-            // Token is now refreshed in-memory via restoreSessionUseCase
-
-            // After token refresh succeeds, also recheck subscription
-            try {
-              const subResult = await getMySubscriptionUseCase({ subscriptionApi });
-              if (!mountedRef.current) return;
-              if (subResult.ok && !subResult.value.canAccessApp) {
-                setState(prev => ({ ...prev, phase: 'blocked' }));
-              }
-            } catch {
-              // Best effort — don't block on subscription check failure
+            if (state.user) {
+              // Canonical phase resolution — correctly handles both
+              // ready→blocked (sub expired) and blocked→ready (admin reactivated).
+              await resolvePhase(state.user);
             }
           })
           .catch(async (err) => {
@@ -236,12 +242,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               accessTokenStore.set(null);
             }
           });
+      } else if (isSubscriptionSensitivePhase && state.user) {
+        // Token still fresh but we may have missed a subscription flip
+        // while the app was backgrounded. Re-resolve cheaply.
+        resolvePhase(state.user).catch(() => { /* best-effort */ });
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppState);
     return () => subscription.remove();
-  }, [state.phase]);
+  }, [state.phase, state.user, resolvePhase]);
 
   const login = useCallback(
     async (identifier: string, password: string): Promise<AppError | null> => {

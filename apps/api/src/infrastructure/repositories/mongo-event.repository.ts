@@ -30,9 +30,42 @@ export class MongoEventRepository implements EventRepository {
         batchIds: event.batchIds,
         status: event.status,
         createdBy: event.createdBy,
+        version: event.audit.version,
       },
       { upsert: true, session: getTransactionSession() },
     );
+  }
+
+  async saveWithVersionPrecondition(
+    event: CalendarEvent,
+    expectedVersion: number,
+  ): Promise<boolean> {
+    // Match-on-version, then bump-on-write. If the doc was edited in between
+    // load and save, the version filter misses and we return false.
+    const result = await this.model.findOneAndUpdate(
+      { _id: event.id.toString(), version: expectedVersion },
+      {
+        $set: {
+          academyId: event.academyId,
+          title: event.title,
+          description: event.description,
+          eventType: event.eventType,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          isAllDay: event.isAllDay,
+          location: event.location,
+          targetAudience: event.targetAudience,
+          batchIds: event.batchIds,
+          status: event.status,
+          createdBy: event.createdBy,
+          version: event.audit.version,
+        },
+      },
+      { session: getTransactionSession() },
+    ).exec();
+    return result !== null;
   }
 
   async findById(id: string): Promise<CalendarEvent | null> {
@@ -109,8 +142,8 @@ export class MongoEventRepository implements EventRepository {
     };
   }
 
-  async delete(id: string): Promise<void> {
-    await this.model.deleteOne({ _id: id }, { session: getTransactionSession() }).exec();
+  async delete(id: string, academyId: string): Promise<void> {
+    await this.model.deleteOne({ _id: id, academyId }, { session: getTransactionSession() }).exec();
   }
 
   async countByAcademyAndMonth(
@@ -157,6 +190,7 @@ export class MongoEventRepository implements EventRepository {
       createdBy: string;
       createdAt: Date;
       updatedAt: Date;
+      version?: number;
     };
 
     return CalendarEvent.reconstitute(String(d._id), {
@@ -177,7 +211,7 @@ export class MongoEventRepository implements EventRepository {
       audit: {
         createdAt: d.createdAt ?? new Date(),
         updatedAt: d.updatedAt ?? new Date(),
-        version: 1,
+        version: d.version ?? 1,
       },
     });
   }

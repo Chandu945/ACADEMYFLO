@@ -107,33 +107,50 @@ export default function EditEventPage() {
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       errors['endDate'] = 'End date must be after start date';
     }
+    if (!form.isAllDay) {
+      if (!form.startTime) errors['startTime'] = 'Start time is required';
+      if (form.startTime && form.endTime) {
+        const sameDay = !form.endDate || form.endDate === form.startDate;
+        if (sameDay && form.endTime <= form.startTime) {
+          errors['endTime'] = 'End time must be after start time';
+        }
+      }
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }, [form]);
 
+  const submitInflightRef = useRef(false);
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitInflightRef.current) return;
     setError(null);
     setFieldErrors({});
     if (!validate()) return;
 
+    submitInflightRef.current = true;
     setLoading(true);
-    const result = await updateEvent(
-      params.id,
-      {
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        eventType: form.eventType || undefined,
-        startDate: form.startDate,
-        endDate: form.endDate || undefined,
-        startTime: form.isAllDay ? undefined : form.startTime || undefined,
-        endTime: form.isAllDay ? undefined : form.endTime || undefined,
-        isAllDay: form.isAllDay,
-        location: form.location.trim() || undefined,
-      },
-      accessToken,
-    );
-    setLoading(false);
+    let result;
+    try {
+      result = await updateEvent(
+        params.id,
+        {
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          eventType: form.eventType || undefined,
+          startDate: form.startDate,
+          endDate: form.endDate || undefined,
+          startTime: form.isAllDay ? undefined : form.startTime || undefined,
+          endTime: form.isAllDay ? undefined : form.endTime || undefined,
+          isAllDay: form.isAllDay,
+          location: form.location.trim() || undefined,
+        },
+        accessToken,
+      );
+    } finally {
+      submitInflightRef.current = false;
+      setLoading(false);
+    }
 
     if (!result.ok) {
       setError(result.error);

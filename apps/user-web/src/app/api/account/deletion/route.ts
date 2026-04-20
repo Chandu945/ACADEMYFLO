@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { apiPost, apiDelete } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { validateCsrfToken } from '@/infra/auth/csrf-token';
 import { toErrorResponse } from '@/infra/http/error-mapper';
 
 const requestBodySchema = z.object({
@@ -16,6 +17,9 @@ const requestBodySchema = z.object({
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) {
     return NextResponse.json({ message: 'Invalid origin' }, { status: 403 });
+  }
+  if (!(await validateCsrfToken(request))) {
+    return NextResponse.json({ message: 'CSRF token invalid or missing' }, { status: 403 });
   }
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -44,6 +48,9 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   if (!isOriginValid(request)) {
     return NextResponse.json({ message: 'Invalid origin' }, { status: 403 });
+  }
+  if (!(await validateCsrfToken(request))) {
+    return NextResponse.json({ message: 'CSRF token invalid or missing' }, { status: 403 });
   }
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

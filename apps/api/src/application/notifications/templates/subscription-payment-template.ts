@@ -1,10 +1,4 @@
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-function formatInr(amount: number): string {
-  return `\u20B9${amount.toLocaleString('en-IN')}`;
-}
+import { escapeHtml, formatInr, renderEmailLayout } from './_email-layout';
 
 export interface SubscriptionPaymentSuccessData {
   ownerName: string;
@@ -15,25 +9,25 @@ export interface SubscriptionPaymentSuccessData {
 }
 
 export function renderSubscriptionPaymentSuccessEmail(data: SubscriptionPaymentSuccessData): string {
-  const ownerName = escapeHtml(data.ownerName);
-  const academyName = escapeHtml(data.academyName);
-  const tierKey = escapeHtml(data.tierKey);
-  const orderId = escapeHtml(data.orderId);
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-  <h2>Subscription Payment Successful</h2>
-  <p>Dear ${ownerName},</p>
-  <p>Your subscription payment for <strong>${academyName}</strong> has been processed successfully.</p>
-  <table style="border-collapse:collapse;margin:16px 0;">
-    <tr><td style="padding:4px 12px;font-weight:bold;">Plan</td><td style="padding:4px 12px;">${tierKey}</td></tr>
-    <tr><td style="padding:4px 12px;font-weight:bold;">Amount</td><td style="padding:4px 12px;">${formatInr(data.amountInr)}</td></tr>
-    <tr><td style="padding:4px 12px;font-weight:bold;">Order ID</td><td style="padding:4px 12px;">${orderId}</td></tr>
-  </table>
-  <p>Your academy subscription is now active. Thank you for your payment!</p>
-  <p>Thank you,<br>Academyflo Team</p>
-</body></html>`;
+  return renderEmailLayout({
+    preheader: `${formatInr(data.amountInr)} received — ${data.academyName} subscription is active.`,
+    title: 'Payment received, subscription active',
+    greeting: `Dear ${data.ownerName},`,
+    tone: 'success',
+    body: `
+      <p style="margin:0 0 8px;font-size:16px;line-height:24px;color:#0F172A;">
+        Thank you — we've successfully processed your subscription payment for
+        <strong>${escapeHtml(data.academyName)}</strong>. Your plan is active and all features are unlocked.
+      </p>
+    `,
+    infoRows: [
+      { label: 'Plan', value: escapeHtml(data.tierKey) },
+      { label: 'Amount paid', value: formatInr(data.amountInr) },
+      { label: 'Order ID', value: escapeHtml(data.orderId), mono: true },
+    ],
+    cta: { label: 'View subscription', url: 'https://academyflo.com/subscription' },
+    footerNote: 'A tax invoice will be available on the Subscription page within 24 hours.',
+  });
 }
 
 export interface SubscriptionPaymentFailedData {
@@ -46,24 +40,25 @@ export interface SubscriptionPaymentFailedData {
 }
 
 export function renderSubscriptionPaymentFailedEmail(data: SubscriptionPaymentFailedData): string {
-  const ownerName = escapeHtml(data.ownerName);
-  const academyName = escapeHtml(data.academyName);
-  const reason = escapeHtml(data.reason);
-  const orderId = escapeHtml(data.orderId);
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;">
-  <h2>Subscription Payment Failed</h2>
-  <p>Dear ${ownerName},</p>
-  <p>Your subscription payment for <strong>${academyName}</strong> could not be processed.</p>
-  <table style="border-collapse:collapse;margin:16px 0;">
-    <tr><td style="padding:4px 12px;font-weight:bold;">Plan</td><td style="padding:4px 12px;">${escapeHtml(data.tierKey)}</td></tr>
-    <tr><td style="padding:4px 12px;font-weight:bold;">Amount</td><td style="padding:4px 12px;">${formatInr(data.amountInr)}</td></tr>
-    <tr><td style="padding:4px 12px;font-weight:bold;">Order ID</td><td style="padding:4px 12px;">${orderId}</td></tr>
-    <tr><td style="padding:4px 12px;font-weight:bold;">Reason</td><td style="padding:4px 12px;">${reason}</td></tr>
-  </table>
-  <p>Please try again or use a different payment method. If the issue persists, contact support.</p>
-  <p>Thank you,<br>Academyflo Team</p>
-</body></html>`;
+  return renderEmailLayout({
+    preheader: `Your subscription payment of ${formatInr(data.amountInr)} could not be processed.`,
+    title: 'Subscription payment failed',
+    greeting: `Dear ${data.ownerName},`,
+    tone: 'danger',
+    body: `
+      <p style="margin:0 0 8px;font-size:16px;line-height:24px;color:#0F172A;">
+        Your subscription payment for <strong>${escapeHtml(data.academyName)}</strong> could not be processed.
+        No amount has been debited from your account. If anything was deducted, it will be auto-refunded within
+        5–7 working days.
+      </p>
+    `,
+    infoRows: [
+      { label: 'Plan', value: escapeHtml(data.tierKey) },
+      { label: 'Amount', value: formatInr(data.amountInr) },
+      { label: 'Order ID', value: escapeHtml(data.orderId), mono: true },
+      { label: 'Reason', value: escapeHtml(data.reason) },
+    ],
+    cta: { label: 'Try payment again', url: 'https://academyflo.com/subscription' },
+    footerNote: 'If the issue keeps happening, reply to this email and our support team will help you out.',
+  });
 }

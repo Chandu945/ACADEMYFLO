@@ -1,4 +1,4 @@
-import type { FeeFilter, Gender, StudentStatus } from '@playconnect/contracts';
+import type { FeeFilter, Gender, StudentStatus } from '@academyflo/contracts';
 
 export const STUDENT_QUERY_REPOSITORY = Symbol('STUDENT_QUERY_REPOSITORY');
 

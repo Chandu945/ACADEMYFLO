@@ -5,6 +5,7 @@ import { apiPost } from '@/infra/http/api-client';
 import { resolveAccessToken } from '@/infra/auth/bff-auth';
 import { getSessionCookie, clearSessionCookie } from '@/infra/auth/session-cookie';
 import { isOriginValid } from '@/infra/auth/csrf';
+import { clearCsrfCookie } from '@/infra/auth/csrf-token';
 
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) {
@@ -23,5 +24,6 @@ export async function POST(request: NextRequest) {
   }
 
   await clearSessionCookie();
+  await clearCsrfCookie();
   return NextResponse.json({ ok: true });
 }

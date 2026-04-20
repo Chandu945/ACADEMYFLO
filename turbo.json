@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["package-lock.json", "tsconfig.json", ".nvmrc"],
   "tasks": {
     "lint": {
       "dependsOn": ["^build"],

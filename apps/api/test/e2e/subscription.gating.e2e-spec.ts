@@ -41,6 +41,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '../../src/presentation/http/common/guards/jwt-auth.guard';
 import { SubscriptionEnforcementGuard } from '../../src/presentation/http/common/guards/subscription-enforcement.guard';
 import { createTestTokenService, createInMemoryAuditRecorder } from '../helpers/test-services';
+import {
+  noopParentLinkRepo,
+  noopAttendanceRepo,
+  noopPaymentRequestRepo,
+  passthroughTransaction,
+} from '../helpers/soft-delete-deps';
 import { User } from '../../src/domain/identity/entities/user.entity';
 import { Academy } from '../../src/domain/academy/entities/academy.entity';
 import { Subscription } from '../../src/domain/subscription/entities/subscription.entity';
@@ -175,13 +181,23 @@ describe('Subscription Gating (e2e)', () => {
         {
           provide: 'CHANGE_STUDENT_STATUS_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository, audit: AuditRecorderPort) =>
-            new ChangeStudentStatusUseCase(ur, sr, audit),
+            new ChangeStudentStatusUseCase(ur, sr, audit, undefined, passthroughTransaction),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT],
         },
         {
           provide: 'SOFT_DELETE_STUDENT_USE_CASE',
           useFactory: (ur: UserRepository, sr: StudentRepository, audit: AuditRecorderPort) =>
-            new SoftDeleteStudentUseCase(ur, sr, audit),
+            new SoftDeleteStudentUseCase(
+              ur,
+              sr,
+              audit,
+              feeDueRepo,
+              studentBatchRepo,
+              noopParentLinkRepo,
+              noopAttendanceRepo,
+              noopPaymentRequestRepo,
+              passthroughTransaction,
+            ),
           inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT],
         },
         {

@@ -14,4 +14,7 @@ export const ExpenseErrors = {
     AppError.conflict('Cannot delete category that has expenses. Delete or reassign expenses first.'),
   categoryNotFound: (id?: string) => AppError.notFound('Expense category', id),
   invalidCategoryName: () => AppError.validation('Category name is required (1-50 characters)'),
+  invalidCategoryId: () => AppError.validation('categoryId must be a valid 24-character hex id'),
+  concurrencyConflict: () =>
+    AppError.conflict('This expense was modified by someone else. Please reload and try again.'),
 } as const;

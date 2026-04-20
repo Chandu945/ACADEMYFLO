@@ -58,11 +58,42 @@ export class InitiateSubscriptionPaymentUseCase {
       return err(AppError.forbidden('Cannot initiate payment for a disabled academy'));
     }
 
-    // Check for existing PENDING payment — expire it to allow retry
+    // Check for existing PENDING payment
     const existingPending = await this.paymentRepo.findPendingByAcademyId(academyId);
     if (existingPending) {
-      // Always expire stale PENDING payments on retry — the user explicitly
-      // clicked "Try Again", so the old checkout session is abandoned.
+      // If the PENDING payment is young enough that its Cashfree session is
+      // still alive (sessions typically live 15+ minutes), hand the same
+      // orderId + paymentSessionId back to the client. This avoids creating
+      // orphaned orders in Cashfree when users double-tap / refresh /
+      // reopen the tab shortly after initiating.
+      const nowMs = this.clock.now().getTime();
+      const ageMs = nowMs - existingPending.audit.createdAt.getTime();
+      const RESUME_WINDOW_MS = 5 * 60 * 1000;
+      if (
+        ageMs < RESUME_WINDOW_MS &&
+        existingPending.paymentSessionId &&
+        existingPending.cfOrderId
+      ) {
+        this.logger.info('Resuming existing PENDING payment', {
+          academyId,
+          orderId: existingPending.orderId,
+          ageMs,
+        });
+        return ok({
+          orderId: existingPending.orderId,
+          paymentSessionId: existingPending.paymentSessionId,
+          amountInr: existingPending.amountInr,
+          currency: existingPending.currency,
+          tierKey: existingPending.tierKey,
+          // We didn't persist the original expiry — surface an ISO string that
+          // reflects the known window so the client can time its polling.
+          expiresAt: new Date(existingPending.audit.createdAt.getTime() + RESUME_WINDOW_MS).toISOString(),
+        });
+      }
+
+      // Older than the resume window (or missing session details from a prior
+      // failed init) — expire and create fresh. User explicitly clicked "Try
+      // Again" so the stale Cashfree session is abandoned.
       const expired = existingPending.markFailed('SUPERSEDED_BY_RETRY');
       const transitioned = await this.paymentRepo.saveWithStatusPrecondition(expired, 'PENDING');
       if (!transitioned) {

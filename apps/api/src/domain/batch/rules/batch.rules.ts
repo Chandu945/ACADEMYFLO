@@ -1,6 +1,6 @@
-import type { Weekday } from '@playconnect/contracts';
-import { WEEKDAYS } from '@playconnect/contracts';
-import type { UserRole } from '@playconnect/contracts';
+import type { Weekday } from '@academyflo/contracts';
+import { WEEKDAYS } from '@academyflo/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export function validateBatchName(name: string): { valid: boolean; reason?: string } {
   const trimmed = name.trim();

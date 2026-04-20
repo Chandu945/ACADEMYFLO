@@ -1,5 +1,5 @@
-import type { StaffAttendanceStatus } from '@playconnect/contracts';
-export type { StaffAttendanceStatus } from '@playconnect/contracts';
+import type { StaffAttendanceStatus } from '@academyflo/contracts';
+export type { StaffAttendanceStatus } from '@academyflo/contracts';
 
 export type DailyStaffAttendanceItem = {
   staffUserId: string;

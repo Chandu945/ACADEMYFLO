@@ -1,4 +1,4 @@
-import type { SubscriptionStatus, TierKey } from '@playconnect/contracts';
+import type { SubscriptionStatus, TierKey } from '@academyflo/contracts';
 
 export type { SubscriptionStatus, TierKey };
 
@@ -27,4 +27,7 @@ export type SubscriptionInfo = {
   requiredTierKey: TierKey;
   pendingTierChange: PendingTierChange | null;
   tiers: TierPricing[];
+  /** Populated when a PENDING Cashfree payment exists — lets the screen resume
+   *  polling after an app kill / network drop during checkout. Server-authoritative. */
+  pendingPaymentOrderId: string | null;
 };

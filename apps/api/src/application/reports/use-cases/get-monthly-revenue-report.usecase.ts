@@ -7,7 +7,7 @@ import { canViewReports } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey, getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
 import type { MonthlyRevenueSummaryDto, MonthlyRevenueItemDto } from '../dtos/monthly-revenue.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetMonthlyRevenueReportInput {
   actorUserId: string;

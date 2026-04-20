@@ -1,6 +1,6 @@
 # Backup & Restore Runbook
 
-Procedures for backing up and restoring PlayConnect data.
+Procedures for backing up and restoring Academyflo data.
 
 **Critical rule:** Never delete academy data. Deactivate only (per SRS).
 
@@ -50,7 +50,7 @@ The backup script at `scripts/backup/mongodump-backup.sh` handles:
 **Run manually:**
 
 ```bash
-MONGODB_URI="mongodb://user:pass@host:27017/playconnect" \
+MONGODB_URI="mongodb://user:pass@host:27017/academyflo" \
 BACKUP_DIR="/backups" \
 BACKUP_RETENTION_DAYS=7 \
   bash scripts/backup/mongodump-backup.sh
@@ -60,7 +60,7 @@ BACKUP_RETENTION_DAYS=7 \
 
 ```cron
 # Daily at 2 AM IST
-0 2 * * * /opt/playconnect/scripts/backup/mongodump-backup.sh >> /var/log/playconnect-backup.log 2>&1
+0 2 * * * /opt/academyflo/scripts/backup/mongodump-backup.sh >> /var/log/academyflo-backup.log 2>&1
 ```
 
 **With S3 upload:**
@@ -69,14 +69,14 @@ BACKUP_RETENTION_DAYS=7 \
 MONGODB_URI="mongodb://..." \
 BACKUP_DIR="/backups" \
 BACKUP_RETENTION_DAYS=7 \
-S3_BUCKET="s3://playconnect-backups" \
+S3_BUCKET="s3://academyflo-backups" \
   bash scripts/backup/mongodump-backup.sh
 ```
 
 ### Manual Backup
 
 ```bash
-mongodump --uri="mongodb://user:pass@host:27017/playconnect" \
+mongodump --uri="mongodb://user:pass@host:27017/academyflo" \
   --out="/backups/$(date +%Y-%m-%d_%H-%M)"
 ```
 
@@ -85,7 +85,7 @@ mongodump --uri="mongodb://user:pass@host:27017/playconnect" \
 **Safety:** The restore script requires `--confirm` to prevent accidental data loss.
 
 ```bash
-MONGODB_URI="mongodb://user:pass@host:27017/playconnect" \
+MONGODB_URI="mongodb://user:pass@host:27017/academyflo" \
 BACKUP_FILE="/backups/2024-03-10_02-00.tar.gz" \
   bash scripts/backup/restore-mongodump.sh --confirm
 ```

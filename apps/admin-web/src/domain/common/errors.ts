@@ -1,5 +1,5 @@
-import type { AppErrorCode } from '@playconnect/contracts';
-export type { AppErrorCode } from '@playconnect/contracts';
+import type { AppErrorCode } from '@academyflo/contracts';
+export type { AppErrorCode } from '@academyflo/contracts';
 
 export class AppError extends Error {
   readonly code: AppErrorCode;

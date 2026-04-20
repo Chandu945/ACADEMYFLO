@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-import { AUDIT_ACTION_TYPES } from '@playconnect/contracts';
+import { AUDIT_ACTION_TYPES } from '@academyflo/contracts';
 import { apiGet } from '@/infra/http/api-client';
 import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 
@@ -27,12 +27,17 @@ type BackendResponse = {
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ academyId: string }> },
 ) {
   const { academyId } = await context.params;
+
+  if (!OBJECT_ID_RE.test(academyId)) {
+    return NextResponse.json({ error: 'Invalid academy id' }, { status: 400 });
+  }
 
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) {

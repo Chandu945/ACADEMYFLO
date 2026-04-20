@@ -7,7 +7,7 @@ import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.r
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { BatchErrors, StudentBatchErrors } from '../../common/errors';
 import { requireBatchInAcademy } from '../common/require-batch';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface RemoveStudentFromBatchInput {
   actorUserId: string;
@@ -44,6 +44,13 @@ export class RemoveStudentFromBatchUseCase {
     const student = await this.studentRepo.findById(input.studentId);
     if (!student || student.isDeleted()) {
       return err(StudentBatchErrors.studentNotFound(input.studentId));
+    }
+    // Without this tenant guard, any OWNER could pass a studentId from
+    // another academy and mutate that academy's batch assignments.
+    // `add-student-to-batch` and `set-student-batches` already check this;
+    // the delete path was the only gap.
+    if (student.academyId !== actor.academyId) {
+      return err(StudentBatchErrors.studentNotInAcademy());
     }
 
     const currentAssignments = await this.studentBatchRepo.findByStudentId(input.studentId);

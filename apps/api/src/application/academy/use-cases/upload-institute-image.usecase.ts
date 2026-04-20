@@ -7,7 +7,7 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { validateImageFile } from '@domain/academy/rules/institute-info.rules';
 import { InstituteInfoErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { extensionForMime, validateImageBuffer } from '@shared/utils/image-validation';
 
 export type ImageType = 'signature' | 'qrcode';
@@ -46,7 +46,7 @@ export class UploadInstituteImageUseCase {
     const fileCheck = validateImageFile(input.mimeType, input.buffer.length);
     if (!fileCheck.valid) return err(InstituteInfoErrors.invalidFile());
 
-    const bufferCheck = validateImageBuffer(input.buffer, input.mimeType);
+    const bufferCheck = await validateImageBuffer(input.buffer, input.mimeType);
     if (!bufferCheck.valid) return err(InstituteInfoErrors.invalidFile());
 
     const ext = extensionForMime(input.mimeType);

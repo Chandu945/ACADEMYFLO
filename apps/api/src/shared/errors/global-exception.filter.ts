@@ -78,6 +78,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       details = [];
     }
 
+    // Don't enumerate the DTO schema to unauthenticated attackers in production.
+    // The class-validator `details` array reveals property names and constraint
+    // types ("property foo should not exist", "password must be longer than 8").
+    // Keep them in dev/staging; strip in prod.
+    if (this.isProductionEnv && statusCode === HttpStatus.BAD_REQUEST) {
+      details = [];
+    }
+
     // Ensure requestId exists even for errors that bypass the interceptor
     let requestId = getRequestId(request);
     if (requestId === 'unknown') {

@@ -7,6 +7,8 @@ import { isOriginValid } from '@/infra/auth/csrf';
 import { validateCsrfToken } from '@/infra/auth/csrf-token';
 import { resetPasswordSchema } from '@/application/academy-detail/academy-actions.schemas';
 
+const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
+
 type BackendResetResult = {
   temporaryPassword: string;
 };
@@ -20,6 +22,9 @@ export async function POST(
   }
 
   const { academyId } = await context.params;
+  if (!OBJECT_ID_RE.test(academyId)) {
+    return NextResponse.json({ error: 'Invalid academy id' }, { status: 400 });
+  }
 
   const accessToken = await resolveAccessToken(request);
   if (!accessToken) {

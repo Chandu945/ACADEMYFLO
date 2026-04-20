@@ -10,7 +10,7 @@ import type { TransactionPort } from '../../common/transaction.port';
 import { BatchErrors, StudentBatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { randomUUID } from 'crypto';
 
 export interface SetStudentBatchesInput {

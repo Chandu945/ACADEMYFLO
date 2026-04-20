@@ -40,6 +40,7 @@ import {
   ChangePasswordDto,
 } from './dto/parent-query.dto';
 import { mapResultToResponse } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import type { Request } from 'express';
 
 @ApiTags('Parent Portal')
@@ -86,7 +87,7 @@ export class ParentController {
   @Get('children/:studentId/attendance')
   @ApiOperation({ summary: 'Get child attendance summary for a month' })
   async childAttendance(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Query() query: ChildAttendanceQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -103,7 +104,7 @@ export class ParentController {
   @Get('children/:studentId/fees')
   @ApiOperation({ summary: 'Get child fee dues for a date range' })
   async childFees(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Query() query: ChildFeesQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -148,7 +149,7 @@ export class ParentController {
   @Get('receipts/:feeDueId')
   @ApiOperation({ summary: 'Get receipt for a paid fee' })
   async receipt(
-    @Param('feeDueId') feeDueId: string,
+    @Param('feeDueId', ParseObjectIdPipe) feeDueId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {

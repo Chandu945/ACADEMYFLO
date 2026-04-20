@@ -4,6 +4,8 @@ import type { Result } from '@shared/kernel';
 import { AppError, err, ok } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import { SESSION_REPOSITORY } from '@domain/identity/ports/session.repository';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
 import type { AccountDeletionRequestRepository } from '@domain/account-deletion/ports/account-deletion-request.repository';
@@ -14,6 +16,7 @@ import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.por
 import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
 import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
 import { renderAccountDeletionRequestedEmail } from '../../notifications/templates/account-deletion-template';
+import { formatIstDate } from '@shared/utils/date-format';
 import type { RequestAccountDeletionInput, AccountDeletionStatusDto } from '../dto/account-deletion.dto';
 
 export const DEFAULT_COOLING_OFF_DAYS = 30;
@@ -25,6 +28,7 @@ export class RequestAccountDeletionUseCase {
 
   constructor(
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
+    @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
     @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
     @Inject(ACCOUNT_DELETION_REQUEST_REPOSITORY)
     private readonly requests: AccountDeletionRequestRepository,
@@ -75,6 +79,12 @@ export class RequestAccountDeletionUseCase {
     });
 
     await this.requests.save(request);
+
+    // Revoke all sessions for this user. The caller proved fresh possession of
+    // the password, so they'll need to log in again to cancel or check status.
+    // This also kills any attacker-hijacked session before the 30-day execution.
+    await this.sessions.revokeAllByUserIds([input.userId]);
+
     if (user.academyId) {
       await this.audit.record({
         actorUserId: input.userId,
@@ -102,7 +112,7 @@ export class RequestAccountDeletionUseCase {
         html: renderAccountDeletionRequestedEmail({
           ownerName: user.fullName,
           academyName: 'Academyflo',
-          scheduledDate: request.scheduledExecutionAt.toISOString().split('T')[0] ?? '',
+          scheduledDate: formatIstDate(request.scheduledExecutionAt),
         }),
       }).catch(() => {});
     }

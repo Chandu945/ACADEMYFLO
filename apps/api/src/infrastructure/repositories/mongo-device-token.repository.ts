@@ -30,10 +30,6 @@ export class MongoDeviceTokenRepository implements DeviceTokenRepository {
     );
   }
 
-  async removeByToken(fcmToken: string): Promise<void> {
-    await this.model.deleteMany({ fcmToken });
-  }
-
   async removeByUserIdAndToken(userId: string, fcmToken: string): Promise<void> {
     await this.model.deleteOne({ userId, fcmToken });
   }

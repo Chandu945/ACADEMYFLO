@@ -6,7 +6,7 @@ import type { EventRepository, EventListFilter } from '@domain/event/ports/event
 import { deriveEventStatus } from '@domain/event/entities/event.entity';
 import type { EventStatus, EventType } from '@domain/event/entities/event.entity';
 import { EventErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetEventsInput {
   actorUserId: string;

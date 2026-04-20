@@ -50,7 +50,7 @@ export class UploadProfilePhotoUseCase {
       return err(AppErrorClass.validation('File size must not exceed 5MB'));
     }
 
-    const bufferCheck = validateImageBuffer(input.buffer, input.mimeType);
+    const bufferCheck = await validateImageBuffer(input.buffer, input.mimeType);
     if (!bufferCheck.valid) {
       return err(AppErrorClass.validation(bufferCheck.reason));
     }

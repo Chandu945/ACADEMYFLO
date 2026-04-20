@@ -1,4 +1,4 @@
-# @playconnect/admin-web
+# @academyflo/admin-web
 
 Next.js (App Router) web application for **Super Admin** only.
 

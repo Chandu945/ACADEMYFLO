@@ -1,5 +1,5 @@
-import type { TierKey } from '@playconnect/contracts';
-import { TIER_KEYS, TIER_PRICING_INR, TIER_RANGES } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
+import { TIER_KEYS, TIER_PRICING_INR, TIER_RANGES } from '@academyflo/contracts';
 
 /**
  * Determine the required tier based on active student count.

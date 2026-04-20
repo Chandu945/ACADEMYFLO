@@ -33,14 +33,14 @@ function createMockRequest(): NextRequest {
   } as unknown as NextRequest;
 }
 
-const mockParams = Promise.resolve({ academyId: 'a1' });
+const mockParams = Promise.resolve({ academyId: '507f1f77bcf86cd799439011' });
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
 const validDetail = {
-  academyId: 'a1',
+  academyId: '507f1f77bcf86cd799439011',
   academyName: 'Test Academy',
   loginDisabled: false,
   owner: { fullName: 'John', email: 'j@t.com', phoneNumber: '+91123' },
@@ -71,7 +71,7 @@ describe('GET /api/admin/academies/[academyId]', () => {
 
     await GET(createMockRequest(), { params: mockParams });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/admin/academies/a1', { accessToken: 'tok' });
+    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/admin/academies/507f1f77bcf86cd799439011', { accessToken: 'tok' });
     expect(NextResponse.json).toHaveBeenCalledWith({
       success: true,
       data: validDetail,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useExpenses, useExpenseSummary, useExpenseCategories, createExpense, updateExpense, deleteExpense, createCategory } from '@/application/expenses/use-expenses';
 import { useAuth } from '@/application/auth/use-auth';
 import { Button } from '@/components/ui/Button';
@@ -89,18 +89,42 @@ export default function ExpensesPage() {
     setModalOpen(true);
   };
 
+  const saveInflightRef = useRef(false);
   const handleSave = useCallback(async () => {
-    if (!form.categoryId || !form.amount || Number(form.amount) <= 0) {
-      setError('Category and amount are required');
+    // Stricter validation: amount must be a finite positive number; date
+    // must be a parseable YYYY-MM-DD and not in the future.
+    const amount = Number(form.amount);
+    if (!form.categoryId) {
+      setError('Category is required');
       return;
     }
+    if (!form.amount || !Number.isFinite(amount) || amount <= 0) {
+      setError('Amount must be a positive number');
+      return;
+    }
+    if (!form.date || !/^\d{4}-\d{2}-\d{2}$/.test(form.date) || Number.isNaN(Date.parse(form.date))) {
+      setError('Date must be a valid YYYY-MM-DD');
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (form.date > today) {
+      setError('Date cannot be in the future');
+      return;
+    }
+    if (saveInflightRef.current) return;
+    saveInflightRef.current = true;
     setSaving(true);
     setError(null);
-    const body = { date: form.date, categoryId: form.categoryId, amount: Number(form.amount), notes: form.notes.trim() || undefined };
-    const result = editId
-      ? await updateExpense(editId, body, accessToken)
-      : await createExpense(body, accessToken);
-    setSaving(false);
+    const body = { date: form.date, categoryId: form.categoryId, amount, notes: form.notes.trim() || undefined };
+    let result;
+    try {
+      result = editId
+        ? await updateExpense(editId, body, accessToken)
+        : await createExpense(body, accessToken);
+    } finally {
+      saveInflightRef.current = false;
+      setSaving(false);
+    }
     if (!result.ok) { setError(result.error); return; }
     setModalOpen(false);
     resetForm();
@@ -109,12 +133,20 @@ export default function ExpensesPage() {
     refetch();
   }, [form, editId, accessToken, refetch]);
 
+  const deleteInflightRef = useRef(false);
   const handleDelete = useCallback(async () => {
     if (!deleteId) return;
+    if (deleteInflightRef.current) return;
+    deleteInflightRef.current = true;
     setDeleting(true);
     setDeleteError(null);
-    const result = await deleteExpense(deleteId, accessToken);
-    setDeleting(false);
+    let result;
+    try {
+      result = await deleteExpense(deleteId, accessToken);
+    } finally {
+      deleteInflightRef.current = false;
+      setDeleting(false);
+    }
     if (!result.ok) {
       setDeleteError(result.error || 'Failed to delete expense');
       return;
@@ -128,14 +160,22 @@ export default function ExpensesPage() {
     ...categories.map((c) => ({ value: c.id, label: c.name })),
   ];
 
+  const addCategoryInflightRef = useRef(false);
   const handleAddCategory = useCallback(async () => {
     const name = newCategoryName.trim();
     if (!name) { setCategoryError('Category name is required'); return; }
     if (name.length > 50) { setCategoryError('Max 50 characters'); return; }
+    if (addCategoryInflightRef.current) return;
+    addCategoryInflightRef.current = true;
     setAddingCategory(true);
     setCategoryError(null);
-    const result = await createCategory({ name }, accessToken);
-    setAddingCategory(false);
+    let result;
+    try {
+      result = await createCategory({ name }, accessToken);
+    } finally {
+      addCategoryInflightRef.current = false;
+      setAddingCategory(false);
+    }
     if (!result.ok) { setCategoryError(result.error); return; }
     setNewCategoryName('');
     refetchCategories();
@@ -244,7 +284,7 @@ export default function ExpensesPage() {
             <Button variant="outline" size="sm" loading={addingCategory} onClick={handleAddCategory} disabled={!newCategoryName.trim()}>Add</Button>
           </div>
           {categoryError && <Alert variant="error" message={categoryError} />}
-          <Input label="Amount" required type="number" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} placeholder="Expense amount" />
+          <Input label="Amount" required type="number" min="1" step="1" max="99999999" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} placeholder="Expense amount" />
           <Input label="Notes" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Optional notes" />
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
             <Button variant="outline" onClick={() => { setModalOpen(false); resetForm(); }}>Cancel</Button>

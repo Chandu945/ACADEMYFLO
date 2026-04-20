@@ -14,20 +14,20 @@ Check the deploy history for the previous image tags:
 
 ```bash
 # On the production server
-cd /opt/playconnect
+cd /opt/academyflo
 
 # Check current running images
 docker compose -f deploy/docker-compose.prod.yml ps
 docker compose -f deploy/docker-compose.prod.yml config | grep image:
 
 # Check available image tags
-docker image ls | grep playconnect
+docker image ls | grep academyflo
 ```
 
 If tags aren't recorded locally, check GitHub Container Registry:
 
 ```bash
-gh api /orgs/playconnect/packages?package_type=container | jq '.[].name'
+gh api /orgs/academyflo/packages?package_type=container | jq '.[].name'
 ```
 
 ## Step 2: Roll Back via Docker Compose
@@ -36,10 +36,10 @@ Update the `.env.prod` file with the previous image tag:
 
 ```bash
 # Edit the image tag
-sed -i 's/IMAGE_TAG=.*/IMAGE_TAG=v1.x.x-previous/' /opt/playconnect/.env.prod
+sed -i 's/IMAGE_TAG=.*/IMAGE_TAG=v1.x.x-previous/' /opt/academyflo/.env.prod
 
 # Pull and restart with previous images
-cd /opt/playconnect
+cd /opt/academyflo
 docker compose -f deploy/docker-compose.prod.yml pull
 docker compose -f deploy/docker-compose.prod.yml up -d
 ```
@@ -55,15 +55,15 @@ docker compose -f deploy/docker-compose.prod.yml ps
 Run the smoke-check script against production:
 
 ```bash
-API_URL=https://playconnect.app ADMIN_URL=https://admin.playconnect.app \
+API_URL=https://academyflo.com ADMIN_URL=https://admin.academyflo.com \
   node scripts/smoke-check.mjs
 ```
 
 Manually verify:
 
 ```bash
-curl -s https://playconnect.app/api/v1/health/liveness | jq .
-curl -s https://playconnect.app/api/v1/health/readiness | jq .
+curl -s https://academyflo.com/api/v1/health/liveness | jq .
+curl -s https://academyflo.com/api/v1/health/readiness | jq .
 ```
 
 Expected: both return `200` with `status: "ok"`.
@@ -87,7 +87,7 @@ If metrics are enabled:
 
 ```bash
 curl -H "X-Metrics-Token: $METRICS_TOKEN" \
-  https://playconnect.app/api/v1/metrics
+  https://academyflo.com/api/v1/metrics
 ```
 
 ## Step 5: Communicate
@@ -103,7 +103,7 @@ Post an incident note with:
 Template:
 
 ```
-[ROLLBACK] PlayConnect Production — {date}
+[ROLLBACK] Academyflo Production — {date}
 
 Issue: {brief description}
 Rolled back to: v{previous version}

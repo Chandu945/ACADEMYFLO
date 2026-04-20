@@ -9,8 +9,8 @@ import { canViewFees } from '@domain/fee/rules/fee.rules';
 import { FeeErrors } from '../../common/errors';
 import { formatLocalDate, daysBetweenLocalDates } from '@shared/date-utils';
 import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
-import { computeLateFee } from '@playconnect/contracts';
-import type { UserRole } from '@playconnect/contracts';
+import { computeLateFee } from '@academyflo/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ListOverdueStudentsInput {
   actorUserId: string;

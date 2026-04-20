@@ -1,8 +1,8 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
-import type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
+import type { EventStatus, EventType, TargetAudience } from '@academyflo/contracts';
 
-export type { EventStatus, EventType, TargetAudience } from '@playconnect/contracts';
+export type { EventStatus, EventType, TargetAudience } from '@academyflo/contracts';
 
 export interface EventProps {
   academyId: string;

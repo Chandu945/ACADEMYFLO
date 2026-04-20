@@ -14,7 +14,7 @@ import {
   validateDateRange,
 } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
-import type { StudentAttendanceStatus, UserRole } from '@playconnect/contracts';
+import type { StudentAttendanceStatus, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { randomUUID } from 'crypto';
 
@@ -76,6 +76,10 @@ export class MarkStudentAttendanceUseCase {
 
     if (student.academyId !== actor.academyId) {
       return err(AttendanceErrors.studentNotInAcademy());
+    }
+
+    if (student.status !== 'ACTIVE') {
+      return err(AttendanceErrors.studentNotActive(input.studentId));
     }
 
     // Check holiday

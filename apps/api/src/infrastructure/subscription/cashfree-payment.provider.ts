@@ -8,7 +8,7 @@ import {
   priceForTier,
   generateOrderId,
 } from '@domain/subscription-payments/rules/subscription-payment.rules';
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 import { LOGGER_PORT, type LoggerPort } from '@shared/logging/logger.port';
 import { AppConfigService } from '@shared/config/config.service';
 import { randomUUID } from 'node:crypto';

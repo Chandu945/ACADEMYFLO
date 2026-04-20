@@ -1,4 +1,4 @@
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export function canManageExpenses(role: UserRole): { allowed: boolean; reason?: string } {
   if (role !== 'OWNER') {

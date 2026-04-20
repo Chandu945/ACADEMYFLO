@@ -9,7 +9,7 @@ import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.r
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { StudentErrors } from '../../common/errors';
 import { PdfGeneratorService } from '@infrastructure/pdf/pdf-generator.service';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GenerateIdCardInput {
   actorUserId: string;

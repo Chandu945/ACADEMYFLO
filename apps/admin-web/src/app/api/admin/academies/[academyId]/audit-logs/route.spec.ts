@@ -23,7 +23,7 @@ jest.mock('next/server', () => ({
   },
 }));
 
-jest.mock('@playconnect/contracts', () => ({
+jest.mock('@academyflo/contracts', () => ({
   AUDIT_ACTION_TYPES: [
     'STUDENT_CREATED',
     'STUDENT_UPDATED',
@@ -42,14 +42,14 @@ jest.mock('@playconnect/contracts', () => ({
 import { GET } from './route';
 
 function createMockRequest(queryString = ''): NextRequest {
-  const url = new URL(`http://localhost:3002/api/admin/academies/a1/audit-logs?${queryString}`);
+  const url = new URL(`http://localhost:3002/api/admin/academies/507f1f77bcf86cd799439011/audit-logs?${queryString}`);
   return {
     headers: { get: () => null },
     nextUrl: url,
   } as unknown as NextRequest;
 }
 
-const mockParams = Promise.resolve({ academyId: 'a1' });
+const mockParams = Promise.resolve({ academyId: '507f1f77bcf86cd799439011' });
 
 beforeEach(() => {
   jest.clearAllMocks();

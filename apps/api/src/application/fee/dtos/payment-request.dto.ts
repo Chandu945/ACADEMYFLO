@@ -1,5 +1,5 @@
 import type { PaymentRequest } from '@domain/fee/entities/payment-request.entity';
-import type { PaymentRequestStatus } from '@playconnect/contracts';
+import type { PaymentRequestStatus } from '@academyflo/contracts';
 
 export interface PaymentRequestDto {
   id: string;

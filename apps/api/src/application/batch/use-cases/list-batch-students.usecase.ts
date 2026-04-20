@@ -10,7 +10,7 @@ import { BatchErrors } from '../../common/errors';
 import { requireBatchInAcademy } from '../common/require-batch';
 import type { StudentDto } from '../../student/dtos/student.dto';
 import { toStudentDto } from '../../student/dtos/student.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface ListBatchStudentsInput {
   actorUserId: string;

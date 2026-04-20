@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStaff, toggleStaffStatus } from '@/application/staff/use-staff';
 import { useAuth } from '@/application/auth/use-auth';
@@ -18,7 +18,7 @@ export default function StaffPage() {
   const router = useRouter();
   const { accessToken, user } = useAuth();
   const isOwner = user?.role === 'OWNER';
-  const { data: staff, loading, error, refetch } = useStaff();
+  const { data: staff, setData: setStaff, loading, error, refetch } = useStaff();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; currentStatus: string; name: string } | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -29,21 +29,41 @@ export default function StaffPage() {
     setConfirmOpen(true);
   }, []);
 
+  const toggleInflightRef = useRef(false);
   const handleConfirmToggle = useCallback(async () => {
     if (!confirmTarget) return;
+    if (toggleInflightRef.current) return;
+    toggleInflightRef.current = true;
     setToggling(true);
     setToggleError(null);
     const newStatus = confirmTarget.currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    const result = await toggleStaffStatus(confirmTarget.id, newStatus, accessToken);
-    setToggling(false);
-    if (!result.ok) {
-      setToggleError(result.error || 'Failed to update staff status');
-      return;
+    // Optimistic update — flip the row's status in the cached list before the
+    // network round-trip so the UI reflects the user's intent immediately.
+    const targetId = confirmTarget.id;
+    const previousStatus = confirmTarget.currentStatus;
+    setStaff((prev) =>
+      prev.map((s) => (s.id === targetId ? { ...s, status: newStatus } : s)),
+    );
+    try {
+      const result = await toggleStaffStatus(targetId, newStatus, accessToken);
+      if (!result.ok) {
+        // Roll back the optimistic flip and surface the error.
+        setStaff((prev) =>
+          prev.map((s) => (s.id === targetId ? { ...s, status: previousStatus } : s)),
+        );
+        setToggleError(result.error || 'Failed to update staff status');
+        return;
+      }
+      setConfirmOpen(false);
+      setConfirmTarget(null);
+      // refetch() reconciles with server (e.g., updatedAt drifts) but the row
+      // already shows the right status optimistically.
+      refetch();
+    } finally {
+      toggleInflightRef.current = false;
+      setToggling(false);
     }
-    setConfirmOpen(false);
-    setConfirmTarget(null);
-    refetch();
-  }, [confirmTarget, accessToken, refetch]);
+  }, [confirmTarget, accessToken, refetch, setStaff]);
 
   if (!isOwner) {
     return (
@@ -68,7 +88,10 @@ export default function StaffPage() {
       {error && <Alert variant="error" message={error} action={{ label: 'Retry', onClick: refetch }} />}
 
       {loading ? (
-        <Spinner centered size="lg" />
+        <div style={{ textAlign: 'center', padding: 24 }}>
+          <Spinner size="lg" />
+          <p style={{ marginTop: 12, color: 'var(--text-muted, #64748b)' }}>Loading staff…</p>
+        </div>
       ) : staff.length === 0 ? (
         <EmptyState
           message="No staff members"

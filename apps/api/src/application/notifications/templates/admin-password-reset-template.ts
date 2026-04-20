@@ -1,11 +1,4 @@
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+import { escapeHtml, renderEmailLayout } from './_email-layout';
 
 export interface AdminPasswordResetTemplateData {
   ownerName: string;
@@ -14,24 +7,22 @@ export interface AdminPasswordResetTemplateData {
 }
 
 export function renderAdminPasswordResetEmail(data: AdminPasswordResetTemplateData): string {
-  const ownerName = escapeHtml(data.ownerName);
-  const academyName = escapeHtml(data.academyName);
-  const tempPassword = escapeHtml(data.tempPassword);
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <h2>Password Reset - ${academyName}</h2>
-  <p>Dear ${ownerName},</p>
-  <p>Your password for <strong>${academyName}</strong> on Academyflo has been reset by the administrator.</p>
-  <p>Your temporary password is:</p>
-  <p style="margin: 16px 0; padding: 12px; background: #f4f4f4; border-radius: 6px; font-size: 18px; letter-spacing: 1px; text-align: center;">
-    <code>${tempPassword}</code>
-  </p>
-  <p><strong>Please log in and change your password immediately.</strong></p>
-  <p>If you did not expect this reset, please contact your administrator.</p>
-  <p>Thank you,<br>Academyflo Team</p>
-</body>
-</html>`;
+  return renderEmailLayout({
+    preheader: 'Your Academyflo password has been reset by an administrator.',
+    title: 'Your password was reset',
+    greeting: `Dear ${data.ownerName},`,
+    tone: 'warning',
+    body: `
+      <p style="margin:0 0 8px;font-size:16px;line-height:24px;color:#0F172A;">
+        The password for your <strong>${escapeHtml(data.academyName)}</strong> account has been reset by
+        an Academyflo administrator. Use the temporary password below to sign in, and change it to something you'll
+        remember as soon as you're in.
+      </p>
+    `,
+    infoRows: [
+      { label: 'Temporary password', value: escapeHtml(data.tempPassword), mono: true },
+    ],
+    cta: { label: 'Sign in and change password', url: 'https://academyflo.com/login' },
+    footerNote: 'If you didn\'t expect this reset, please write to support@academyflo.com right away.',
+  });
 }

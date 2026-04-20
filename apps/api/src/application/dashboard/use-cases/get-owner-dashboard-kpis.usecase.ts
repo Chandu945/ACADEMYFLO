@@ -13,7 +13,7 @@ import { canViewDashboard } from '@domain/fee/rules/fee.rules';
 import { FeeErrors } from '../../common/errors';
 import { formatLocalDate, toMonthKeyFromDate } from '@shared/date-utils';
 import type { OwnerDashboardKpisDto } from '../dtos/owner-dashboard.dto';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 
 export interface GetOwnerDashboardKpisInput {
   actorUserId: string;
@@ -69,7 +69,7 @@ export class GetOwnerDashboardKpisUseCase {
       this.feeDueRepo.countDistinctUnpaidStudentsByAcademyAndMonth(academyId, currentMonthKey),
       this.feeDueRepo.sumUnpaidAmountByAcademy(academyId),
       // Records now represent PRESENT students (presence-only model)
-      this.attendanceRepo.countAbsentByAcademyAndDate(academyId, today),
+      this.attendanceRepo.countPresentByAcademyAndDate(academyId, today),
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
       this.feeDueRepo.sumLateFeeCollectedByAcademyAndMonth(academyId, currentMonthKey),
       this.feeDueRepo.countOverdueByAcademy(academyId, today),

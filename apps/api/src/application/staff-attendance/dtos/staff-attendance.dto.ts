@@ -1,4 +1,4 @@
-import type { StaffAttendanceViewStatus } from '@playconnect/contracts';
+import type { StaffAttendanceViewStatus } from '@academyflo/contracts';
 
 export interface DailyStaffAttendanceViewItem {
   staffUserId: string;

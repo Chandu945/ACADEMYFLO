@@ -5,7 +5,7 @@ import type { AuditLogRepository, AuditLogFilter } from '@domain/audit/ports/aud
 import { AuditLog } from '@domain/audit/entities/audit-log.entity';
 import { AuditLogModel } from '../database/schemas/audit-log.schema';
 import type { AuditLogDocument } from '../database/schemas/audit-log.schema';
-import type { AuditActionType, AuditEntityType, Paginated } from '@playconnect/contracts';
+import type { AuditActionType, AuditEntityType, Paginated } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 
 @Injectable()

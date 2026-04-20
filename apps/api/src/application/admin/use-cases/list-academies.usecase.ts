@@ -7,7 +7,7 @@ import type {
   AcademyListRow,
 } from '@domain/admin/ports/admin-query.repository';
 import { AdminErrors } from '../../common/errors';
-import type { AdminAcademyStatus, TierKey } from '@playconnect/contracts';
+import type { AdminAcademyStatus, TierKey } from '@academyflo/contracts';
 
 interface ListAcademiesInput {
   actorRole: string;

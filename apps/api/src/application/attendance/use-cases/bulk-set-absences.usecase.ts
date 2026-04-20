@@ -9,7 +9,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canMarkAttendance, validateLocalDate, validateDateRange } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { TransactionPort } from '../../common/transaction.port';
 import { randomUUID } from 'crypto';
@@ -93,7 +93,7 @@ export class BulkSetAbsencesUseCase {
       .filter((id) => !absentSet.has(id));
 
     // Get current present records for the day (records now mean PRESENT)
-    const currentPresent = await this.attendanceRepo.findAbsentByAcademyAndDate(
+    const currentPresent = await this.attendanceRepo.findPresentByAcademyAndDate(
       academyId,
       input.date,
     );

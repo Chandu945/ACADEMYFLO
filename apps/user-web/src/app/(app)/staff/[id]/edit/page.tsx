@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useStaffDetail, updateStaff } from '@/application/staff/use-staff';
 import { useAuth } from '@/application/auth/use-auth';
+import { isValidObjectId } from '@/infra/validation/ids';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -23,7 +24,7 @@ function toDateInputValue(raw: unknown): string {
   return !isNaN(d.getTime()) ? d.toISOString().split('T')[0]! : '';
 }
 
-import { GENDERS } from '@playconnect/contracts';
+import { GENDERS } from '@academyflo/contracts';
 const GENDER_OPTIONS = GENDERS.map((g) => ({ value: g, label: g.charAt(0) + g.slice(1).toLowerCase() }));
 
 const SALARY_FREQUENCIES = [
@@ -49,7 +50,10 @@ export default function EditStaffPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken } = useAuth();
-  const { data: staffMember, loading: fetching, error: fetchError } = useStaffDetail(params.id);
+  const idIsValid = isValidObjectId(params.id);
+  const { data: staffMember, loading: fetching, error: fetchError } = useStaffDetail(
+    idIsValid ? params.id : '',
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,6 +197,17 @@ export default function EditStaffPage() {
     setSuccess(true);
     redirectTimer.current = setTimeout(() => router.push('/staff'), 1200);
   }, [form, accessToken, router, params.id, validate]);
+
+  if (!idIsValid) {
+    return (
+      <div className={styles.page}>
+        <Alert variant="error" message="Invalid staff id" />
+        <Button variant="secondary" onClick={() => router.push('/staff')} style={{ marginTop: 16 }}>
+          Back to Staff
+        </Button>
+      </div>
+    );
+  }
 
   if (fetching) return <Spinner centered size="lg" />;
 

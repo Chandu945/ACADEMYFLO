@@ -1,7 +1,7 @@
 import type { Result } from '@shared/kernel';
 import { ok, err, isDeleted } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
 import type { ExpenseCategoryRepository } from '@domain/expense/ports/expense-category.repository';
@@ -40,7 +40,15 @@ export class UpdateExpenseUseCase {
     const check = canManageExpenses(input.actorRole);
     if (!check.allowed) return err(ExpenseErrors.notAllowed());
 
-    if (input.amount !== undefined && input.amount <= 0) return err(ExpenseErrors.invalidAmount());
+    // Reject NaN/Infinity in addition to <= 0. class-validator's `@IsNumber()`
+    // accepts both, and `Infinity > 1` would otherwise pass `@Min(1)` too.
+    if (input.amount !== undefined && (!Number.isFinite(input.amount) || input.amount <= 0)) {
+      return err(ExpenseErrors.invalidAmount());
+    }
+
+    if (input.categoryId !== undefined && !/^[0-9a-fA-F]{24}$/.test(input.categoryId)) {
+      return err(ExpenseErrors.invalidCategoryId());
+    }
 
     // Reject future-dated expenses (compare in IST)
     if (input.date !== undefined) {
@@ -74,6 +82,7 @@ export class UpdateExpenseUseCase {
       categoryName = category.name;
     }
 
+    const loadedVersion = expense.audit.version;
     const updated = expense.update({
       date: input.date,
       categoryId,
@@ -82,7 +91,8 @@ export class UpdateExpenseUseCase {
       notes: input.notes,
     });
 
-    await this.expenseRepo.save(updated);
+    const saved = await this.expenseRepo.saveWithVersionPrecondition(updated, loadedVersion);
+    if (!saved) return err(ExpenseErrors.concurrencyConflict());
 
     await this.auditRecorder.record({
       academyId: updated.academyId,

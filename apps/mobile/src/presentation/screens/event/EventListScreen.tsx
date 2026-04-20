@@ -24,6 +24,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { getCurrentMonthIST } from '../../../domain/common/date-utils';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EventList'>;
@@ -56,6 +57,22 @@ export function EventListScreen() {
   const [month, setMonth] = useState(getCurrentMonth);
   const currentMonth = getCurrentMonth();
   const mountedRef = useRef(true);
+
+  // Cross-account safety: clear state when authenticated user flips
+  // (mirrors useStudents/useStaff). Without this, logging out + back in as
+  // a different owner can briefly render the previous academy's events.
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const lastUserRef = useRef<string | null>(userId);
+  useEffect(() => {
+    if (lastUserRef.current !== userId) {
+      lastUserRef.current = userId;
+      setItems([]);
+      setPage(1);
+      setTotal(0);
+      setError(null);
+    }
+  }, [userId]);
 
   const navigateMonth = useCallback((delta: number) => {
     setMonth((prev) => {

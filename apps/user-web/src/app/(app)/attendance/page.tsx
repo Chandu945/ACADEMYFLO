@@ -35,7 +35,8 @@ function formatShortDate(dateStr: string) {
 }
 
 function toISODate(d: Date) {
-  return d.toLocaleDateString('en-CA');
+  // Always IST so today / navigated dates are stable regardless of device TZ.
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
 
 export default function AttendancePage() {

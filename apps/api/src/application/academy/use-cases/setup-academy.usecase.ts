@@ -6,7 +6,7 @@ import type { Address } from '@domain/academy/entities/academy.entity';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canSetupAcademy } from '@domain/academy/rules/academy.rules';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import type { CreateTrialSubscriptionUseCase } from '../../subscription/use-cases/create-trial-subscription.usecase';
 import type { TransactionPort } from '../../common/transaction.port';
 import { AuthErrors } from '../../common/errors';

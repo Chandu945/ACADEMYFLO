@@ -104,7 +104,7 @@ describe('Admin Auth (e2e)', () => {
     userRepo.clear();
   });
 
-  async function seedAdmin(email = 'admin@playconnect.app', password = 'admin-pass') {
+  async function seedAdmin(email = 'admin@academyflo.com', password = 'admin-pass') {
     const hash = await hasher.hash(password);
     const user = User.create({
       id: 'admin-1',
@@ -136,7 +136,7 @@ describe('Admin Auth (e2e)', () => {
     await seedAdmin();
     const res = await request(app.getHttpServer())
       .post('/api/v1/admin/auth/login')
-      .send({ email: 'admin@playconnect.app', password: 'admin-pass' })
+      .send({ email: 'admin@academyflo.com', password: 'admin-pass' })
       .expect(200);
 
     expect(res.body.success).toBe(true);
@@ -159,7 +159,7 @@ describe('Admin Auth (e2e)', () => {
     await seedAdmin();
     await request(app.getHttpServer())
       .post('/api/v1/admin/auth/login')
-      .send({ email: 'admin@playconnect.app', password: 'wrong' })
+      .send({ email: 'admin@academyflo.com', password: 'wrong' })
       .expect(401);
   });
 
@@ -174,7 +174,7 @@ describe('Admin Auth (e2e)', () => {
     await seedAdmin();
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/admin/auth/login')
-      .send({ email: 'admin@playconnect.app', password: 'admin-pass' })
+      .send({ email: 'admin@academyflo.com', password: 'admin-pass' })
       .expect(200);
 
     const { refreshToken, deviceId } = loginRes.body.data;
@@ -193,7 +193,7 @@ describe('Admin Auth (e2e)', () => {
     await seedAdmin();
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/admin/auth/login')
-      .send({ email: 'admin@playconnect.app', password: 'admin-pass' })
+      .send({ email: 'admin@academyflo.com', password: 'admin-pass' })
       .expect(200);
 
     const { accessToken, deviceId, refreshToken } = loginRes.body.data;

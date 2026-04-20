@@ -1,5 +1,5 @@
-import type { StaffStatus } from '@playconnect/contracts';
-export type { StaffStatus } from '@playconnect/contracts';
+import type { StaffStatus } from '@academyflo/contracts';
+export type { StaffStatus } from '@academyflo/contracts';
 
 export type SalaryFrequency = 'MONTHLY' | 'WEEKLY' | 'DAILY';
 

@@ -1,6 +1,6 @@
 # Operational Handover
 
-Deployment procedures, secrets management, backup/restore, rollback, on-call references, and operational commands for the PlayConnect system.
+Deployment procedures, secrets management, backup/restore, rollback, on-call references, and operational commands for the Academyflo system.
 
 ---
 
@@ -29,8 +29,8 @@ Both use multi-stage builds with non-root user (`appuser`, uid 1001) and product
 
 ```bash
 # Build images
-docker build -f apps/api/Dockerfile -t playconnect-api .
-docker build -f apps/admin-web/Dockerfile -t playconnect-admin-web .
+docker build -f apps/api/Dockerfile -t academyflo-api .
+docker build -f apps/admin-web/Dockerfile -t academyflo-admin-web .
 
 # Production deploy
 docker compose -f docker-compose.prod.yml up -d
@@ -107,7 +107,7 @@ scripts/backup/
 MONGODB_URI=<uri> ./scripts/backup/mongodump-backup.sh
 
 # Scheduled backup (cron)
-0 2 * * * /opt/playconnect/scripts/backup/mongodump-backup.sh >> /var/log/playconnect-backup.log 2>&1
+0 2 * * * /opt/academyflo/scripts/backup/mongodump-backup.sh >> /var/log/academyflo-backup.log 2>&1
 
 # Restore (requires --confirm flag)
 MONGODB_URI=<uri> ./scripts/backup/restore-mongodump.sh /backups/2025-01-01_02-00.tar.gz --confirm

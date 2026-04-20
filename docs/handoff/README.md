@@ -1,4 +1,4 @@
-# PlayConnect — Enterprise Handoff Package
+# Academyflo — Enterprise Handoff Package
 
 Final delivery artifacts for enterprise acceptance and operational handover.
 

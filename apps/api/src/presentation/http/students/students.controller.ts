@@ -46,6 +46,7 @@ import { ListStudentsQueryDto } from './dto/list-students.query';
 import { SetStudentBatchesDto } from './dto/set-student-batches.dto';
 import { StudentReportQueryDto } from './dto/student-report.query';
 import { mapResultToResponse, throwMappedError } from '../common/result-mapper';
+import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import type { Request, Response } from 'express';
@@ -134,7 +135,7 @@ export class StudentsController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMAGE_FILE_SIZE } }))
   async uploadPhoto(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -165,7 +166,7 @@ export class StudentsController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Update a student' })
   async update(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Body() dto: UpdateStudentDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -227,7 +228,7 @@ export class StudentsController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Get a student by ID' })
   async get(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -244,7 +245,7 @@ export class StudentsController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Change student status (owner only)' })
   async changeStatus(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Body() dto: ChangeStudentStatusDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -272,7 +273,7 @@ export class StudentsController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Soft delete a student (owner only)' })
   async delete(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -296,7 +297,7 @@ export class StudentsController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Set batch assignments for a student' })
   async setBatches(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Body() dto: SetStudentBatchesDto,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
@@ -323,7 +324,7 @@ export class StudentsController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Get batch assignments for a student' })
   async getBatches(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -338,9 +339,10 @@ export class StudentsController {
 
   @Post(':studentId/invite-parent')
   @Roles('OWNER')
+  @Throttle({ short: { limit: 5, ttl: 60_000 }, medium: { limit: 20, ttl: 3_600_000 }, long: { limit: 50, ttl: 86_400_000 } })
   @ApiOperation({ summary: 'Invite a parent for a student (owner only)' })
   async inviteParentForStudent(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -365,7 +367,7 @@ export class StudentsController {
   @Roles('OWNER', 'STAFF')
   @ApiOperation({ summary: 'Get student login credentials for sharing' })
   async credentials(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Req() req: Request,
   ) {
@@ -382,7 +384,7 @@ export class StudentsController {
   @Throttle({ short: { limit: 15, ttl: 10_000 }, medium: { limit: 40, ttl: 60_000 }, long: { limit: 200, ttl: 900_000 } })
   @ApiOperation({ summary: 'Generate student report PDF (owner only)' })
   async report(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @Query() query: StudentReportQueryDto,
     @CurrentUser() user: CurrentUserType,
     @Res() res: Response,
@@ -407,7 +409,7 @@ export class StudentsController {
   @Throttle({ short: { limit: 15, ttl: 10_000 }, medium: { limit: 40, ttl: 60_000 }, long: { limit: 200, ttl: 900_000 } })
   @ApiOperation({ summary: 'Generate registration form PDF (owner only)' })
   async registrationForm(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Res() res: Response,
   ) {
@@ -429,7 +431,7 @@ export class StudentsController {
   @Throttle({ short: { limit: 15, ttl: 10_000 }, medium: { limit: 40, ttl: 60_000 }, long: { limit: 200, ttl: 900_000 } })
   @ApiOperation({ summary: 'Generate student ID card PDF (owner only)' })
   async idCard(
-    @Param('studentId') studentId: string,
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,
     @Res() res: Response,
   ) {

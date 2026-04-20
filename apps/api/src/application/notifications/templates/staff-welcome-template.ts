@@ -1,11 +1,4 @@
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+import { escapeHtml, renderEmailLayout } from './_email-layout';
 
 export interface StaffWelcomeTemplateData {
   staffName: string;
@@ -15,25 +8,25 @@ export interface StaffWelcomeTemplateData {
 }
 
 export function renderStaffWelcomeEmail(data: StaffWelcomeTemplateData): string {
-  const staffName = escapeHtml(data.staffName);
-  const academyName = escapeHtml(data.academyName);
-  const loginEmail = escapeHtml(data.loginEmail);
-  const loginPhone = escapeHtml(data.loginPhone);
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <h2>Welcome to ${academyName}</h2>
-  <p>Dear ${staffName},</p>
-  <p>You have been added as a staff member on <strong>${academyName}</strong>'s Academyflo platform.</p>
-  <p>Your login details are:</p>
-  <table style="border-collapse: collapse; margin: 16px 0;">
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Email</td><td style="padding: 4px 12px;">${loginEmail}</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Phone</td><td style="padding: 4px 12px;">${loginPhone}</td></tr>
-  </table>
-  <p>You can log in using either your email or phone number along with the password provided by your academy owner.</p>
-  <p>Thank you,<br>${academyName}</p>
-</body>
-</html>`;
+  return renderEmailLayout({
+    preheader: `${data.academyName} has added you as staff on Academyflo.`,
+    title: `Welcome to ${data.academyName}`,
+    greeting: `Dear ${data.staffName},`,
+    tone: 'success',
+    body: `
+      <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#0F172A;">
+        You've been added as a staff member on
+        <strong>${escapeHtml(data.academyName)}</strong>'s Academyflo account.
+      </p>
+      <p style="margin:0 0 8px;font-size:16px;line-height:24px;color:#0F172A;">
+        You can sign in using either your email or phone number, along with the password shared by your academy owner.
+      </p>
+    `,
+    infoRows: [
+      { label: 'Login email', value: escapeHtml(data.loginEmail), mono: true },
+      { label: 'Login phone', value: escapeHtml(data.loginPhone), mono: true },
+    ],
+    cta: { label: 'Sign in to Academyflo', url: 'https://academyflo.com/login' },
+    footerNote: 'If you didn\'t expect to be added, please contact your academy owner or write to support@academyflo.com.',
+  });
 }

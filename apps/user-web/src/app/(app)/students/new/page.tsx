@@ -14,7 +14,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Chip } from '@/components/ui/Chip';
 import styles from './page.module.css';
 
-import { GENDERS } from '@playconnect/contracts';
+import { GENDERS } from '@academyflo/contracts';
 const GENDER_OPTIONS = GENDERS.map((g) => ({ value: g, label: g.charAt(0) + g.slice(1).toLowerCase() }));
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

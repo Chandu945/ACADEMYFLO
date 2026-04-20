@@ -19,7 +19,7 @@
  *   2. API server must be running on localhost:3001
  *
  * Usage:
- *   SEED_MONGODB_URI=mongodb://localhost:27017/playconnect_dev node scripts/seed-expand.mjs
+ *   SEED_MONGODB_URI=mongodb://localhost:27017/academyflo_dev node scripts/seed-expand.mjs
  */
 
 import mongoose from 'mongoose';
@@ -27,12 +27,12 @@ import { randomUUID } from 'crypto';
 
 const API = 'http://localhost:3001/api/v1';
 const MONGODB_URI =
-  process.env.SEED_MONGODB_URI || 'mongodb://localhost:27017/playconnect_dev';
+  process.env.SEED_MONGODB_URI || 'mongodb://localhost:27017/academyflo_dev';
 
 // ── Owner credentials (must match seed-dev.mjs) ─────────────────────────────
 
 const OWNER = {
-  email: 'owner@playconnect.dev',
+  email: 'owner@academyflo.dev',
   password: 'Owner@123',
 };
 
@@ -1567,7 +1567,7 @@ async function main() {
 
   Login credentials:
     Owner:  ${OWNER.email} / ${OWNER.password}
-    Staff:  amit@playconnect.dev / Staff@123
+    Staff:  amit@academyflo.dev / Staff@123
   `);
 }
 

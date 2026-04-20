@@ -1,4 +1,4 @@
-import type { TierKey } from '@playconnect/contracts';
+import type { TierKey } from '@academyflo/contracts';
 
 export type PaymentFlowStatus = 'idle' | 'initiating' | 'checkout' | 'polling' | 'success' | 'failed';
 

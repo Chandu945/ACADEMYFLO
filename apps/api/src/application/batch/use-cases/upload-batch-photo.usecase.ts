@@ -9,7 +9,7 @@ import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { canManageBatch } from '@domain/batch/rules/batch.rules';
 import { BatchErrors } from '../../common/errors';
 import { requireBatchInAcademy } from '../common/require-batch';
-import type { UserRole } from '@playconnect/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import {
   ALLOWED_IMAGE_MIME_TYPES,
@@ -61,7 +61,7 @@ export class UploadBatchPhotoUseCase {
       return err(AppErrorClass.validation('File size must not exceed 5MB'));
     }
 
-    const bufferCheck = validateImageBuffer(input.buffer, input.mimeType);
+    const bufferCheck = await validateImageBuffer(input.buffer, input.mimeType);
     if (!bufferCheck.valid) {
       return err(AppErrorClass.validation(bufferCheck.reason));
     }

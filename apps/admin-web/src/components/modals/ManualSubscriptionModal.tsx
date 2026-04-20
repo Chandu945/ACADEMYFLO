@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type { ManualSubscriptionInput } from '@/domain/admin/academy-detail';
-import { TIER_KEYS } from '@playconnect/contracts';
+import { TIER_KEYS } from '@academyflo/contracts';
 import { manualSubscriptionSchema } from '@/application/academy-detail/academy-actions.schemas';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AcademyStatusFilter, TierFilter } from '@/domain/admin/academies';
-import { ADMIN_ACADEMY_STATUSES, TIER_KEYS } from '@playconnect/contracts';
+import { ADMIN_ACADEMY_STATUSES, TIER_KEYS } from '@academyflo/contracts';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import styles from './AcademiesFilters.module.css';

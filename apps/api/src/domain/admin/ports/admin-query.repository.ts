@@ -1,4 +1,4 @@
-import type { AdminAcademyStatus, TierKey } from '@playconnect/contracts';
+import type { AdminAcademyStatus, TierKey } from '@academyflo/contracts';
 
 export const ADMIN_QUERY_REPOSITORY = Symbol('ADMIN_QUERY_REPOSITORY');
 
