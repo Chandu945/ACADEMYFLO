@@ -176,6 +176,16 @@ export const envSchema = z
         message: 'CASHFREE_BASE_URL must not point to sandbox in production',
       });
     }
+    // CORS_ALLOWED_ORIGINS has a dev-localhost default that must never ship
+    // to prod/staging — a missed env var would otherwise silently accept
+    // any request forging a localhost Origin header.
+    if (val.CORS_ALLOWED_ORIGINS.split(',').some((o) => o.trim().toLowerCase().includes('localhost'))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CORS_ALLOWED_ORIGINS'],
+        message: 'CORS_ALLOWED_ORIGINS must not include localhost in production/staging',
+      });
+    }
   });
 
 export type EnvConfig = z.infer<typeof envSchema>;

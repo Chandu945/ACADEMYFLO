@@ -107,6 +107,7 @@ export function mapHttpError(
   status: number,
   body: unknown,
   retryAfterHeader?: string | null,
+  requestId?: string | null,
 ): AppError {
   const code: AppErrorCode = STATUS_MAP[status] ?? 'UNKNOWN';
 
@@ -147,7 +148,15 @@ export function mapHttpError(
   const retryAfterSeconds =
     code === 'RATE_LIMITED' ? parseRetryAfter(retryAfterHeader) : undefined;
 
-  return { code, message, fieldErrors, retryAfterSeconds };
+  // Prefer the server's X-Request-Id response header; fall back to the
+  // `requestId` field the NestJS error envelope emits.
+  const rid =
+    requestId ??
+    (body && typeof body === 'object' && typeof (body as Record<string, unknown>)['requestId'] === 'string'
+      ? ((body as Record<string, unknown>)['requestId'] as string)
+      : undefined);
+
+  return { code, message, fieldErrors, retryAfterSeconds, requestId: rid };
 }
 
 // Retry-After is either delta-seconds or an HTTP-date per RFC 7231.

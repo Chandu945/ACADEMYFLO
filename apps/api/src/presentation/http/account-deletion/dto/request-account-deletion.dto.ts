@@ -9,6 +9,7 @@ export class RequestAccountDeletionDto {
 
   @IsNotEmpty()
   @IsString()
+  @MaxLength(64)
   confirmationPhrase!: string;
 
   @IsOptional()

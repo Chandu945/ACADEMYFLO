@@ -8,6 +8,7 @@ import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import { EventErrors } from '../../common/errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { TransactionPort } from '../../common/transaction.port';
 import type { UserRole } from '@academyflo/contracts';
 
 export interface DeleteEventInput {
@@ -24,6 +25,7 @@ export class DeleteEventUseCase {
     private readonly fileStorage: FileStoragePort,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly logger: LoggerPort,
+    private readonly transaction: TransactionPort,
   ) {}
 
   async execute(input: DeleteEventInput): Promise<Result<{ deleted: true }, AppError>> {
@@ -33,15 +35,18 @@ export class DeleteEventUseCase {
 
     const actor = await this.userRepo.findById(input.actorUserId);
     if (!actor || !actor.academyId) return err(EventErrors.academyRequired());
+    const academyId = actor.academyId;
 
     const event = await this.eventRepo.findById(input.eventId);
     if (!event) return err(EventErrors.notFound(input.eventId));
-    if (event.academyId !== actor.academyId) return err(EventErrors.notInAcademy());
+    if (event.academyId !== academyId) return err(EventErrors.notInAcademy());
 
-    // Cascade: delete gallery photos (R2 blobs + DB rows) before the event.
-    // R2 deletes are best-effort — a transient storage failure should not
-    // block the user's delete. Orphaned blobs are a known acceptable failure
-    // mode; the DB rows are gone and R2 404s on retry are no-ops.
+    // R2 blob deletes are best-effort and stay OUTSIDE the transaction —
+    // a transient storage failure must not abort the user's delete. Orphaned
+    // blobs are acceptable (404 on retry = no-op). The DB writes below are
+    // wrapped in a transaction so photo rows and event row always commit or
+    // roll back together; prior code could leave an event with its photos
+    // already deleted, or orphaned photo rows pointing to a deleted event.
     const photos = await this.galleryPhotoRepo.listByEventId(input.eventId);
     let storageDeleteFailures = 0;
     for (const photo of photos) {
@@ -56,14 +61,16 @@ export class DeleteEventUseCase {
         });
       }
     }
-    if (photos.length > 0) {
-      await this.galleryPhotoRepo.deleteAllByEventId(input.eventId);
-    }
 
-    await this.eventRepo.delete(input.eventId, actor.academyId);
+    await this.transaction.run(async () => {
+      if (photos.length > 0) {
+        await this.galleryPhotoRepo.deleteAllByEventId(input.eventId, academyId);
+      }
+      await this.eventRepo.delete(input.eventId, academyId);
+    });
 
     await this.auditRecorder.record({
-      academyId: actor.academyId,
+      academyId,
       actorUserId: input.actorUserId,
       action: 'EVENT_DELETED',
       entityType: 'EVENT',

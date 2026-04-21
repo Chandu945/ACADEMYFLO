@@ -105,6 +105,8 @@ describe('envSchema', () => {
       CASHFREE_CLIENT_SECRET: 'cf-client-secret',
       // Use the prod Cashfree host in prod to pass the no-sandbox rule
       CASHFREE_BASE_URL: 'https://api.cashfree.com/pg',
+      // superRefine forbids localhost origins in prod/staging
+      CORS_ALLOWED_ORIGINS: 'https://app.example.com,https://admin.example.com',
     };
     for (const env of ['development', 'staging', 'production']) {
       const fields = env === 'development' ? { ...REQUIRED_FIELDS } : { ...prodFields };

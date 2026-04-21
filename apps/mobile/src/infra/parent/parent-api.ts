@@ -11,68 +11,132 @@ import type {
   AcademyInfo,
   PaymentHistoryItem,
 } from '../../domain/parent/parent.types';
+import {
+  childrenListSchema,
+  childAttendanceSummarySchema,
+  childFeesListSchema,
+  initiateFeePaymentResponseSchema,
+  feePaymentStatusResponseSchema,
+  receiptSchema,
+  parentProfileSchema,
+  academyInfoSchema,
+  paymentHistoryListSchema,
+} from '../../domain/parent/parent.schemas';
 import type { AppError } from '../../domain/common/errors';
-import type { Result } from '../../domain/common/result';
+import { err, ok, type Result } from '../../domain/common/result';
 import { apiGet, apiPost, apiPut } from '../http/api-client';
+import type { ZodSchema } from 'zod';
 
-export function getMyChildren(): Promise<Result<ChildSummary[], AppError>> {
-  return apiGet<ChildSummary[]>('/api/v1/parent/children');
+// Same validateResponse pattern as student/staff/enquiry/expense/event APIs.
+// Backend drift surfaces as a clear VALIDATION error instead of
+// `undefined.foo` crashes deep in parent screens.
+function validateResponse<T>(
+  schema: ZodSchema<T>,
+  result: Result<unknown, AppError>,
+  label: string,
+): Result<T, AppError> {
+  if (!result.ok) return result;
+  const parsed = schema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error(`[parentApi] ${label} schema mismatch:`, parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data);
 }
 
-export function getChildAttendance(
-  studentId: string,
-  month: string,
-): Promise<Result<ChildAttendanceSummary, AppError>> {
-  const parts: string[] = [];
-  parts.push(`month=${encodeURIComponent(month)}`);
-  return apiGet<ChildAttendanceSummary>(
-    `/api/v1/parent/children/${encodeURIComponent(studentId)}/attendance?${parts.join('&')}`,
+export async function getMyChildren(): Promise<Result<ChildSummary[], AppError>> {
+  const result = await apiGet<unknown>('/api/v1/parent/children');
+  return validateResponse(
+    childrenListSchema as unknown as ZodSchema<ChildSummary[]>,
+    result,
+    'getMyChildren',
   );
 }
 
-export function getChildFees(
+export async function getChildAttendance(
+  studentId: string,
+  month: string,
+): Promise<Result<ChildAttendanceSummary, AppError>> {
+  const result = await apiGet<unknown>(
+    `/api/v1/parent/children/${encodeURIComponent(studentId)}/attendance?month=${encodeURIComponent(month)}`,
+  );
+  return validateResponse(
+    childAttendanceSummarySchema as unknown as ZodSchema<ChildAttendanceSummary>,
+    result,
+    'getChildAttendance',
+  );
+}
+
+export async function getChildFees(
   studentId: string,
   from: string,
   to: string,
 ): Promise<Result<ChildFeeDue[], AppError>> {
-  const parts: string[] = [];
-  parts.push(`from=${encodeURIComponent(from)}`);
-  parts.push(`to=${encodeURIComponent(to)}`);
-  return apiGet<ChildFeeDue[]>(
-    `/api/v1/parent/children/${encodeURIComponent(studentId)}/fees?${parts.join('&')}`,
+  const result = await apiGet<unknown>(
+    `/api/v1/parent/children/${encodeURIComponent(studentId)}/fees?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+  );
+  return validateResponse(
+    childFeesListSchema as unknown as ZodSchema<ChildFeeDue[]>,
+    result,
+    'getChildFees',
   );
 }
 
-export function initiateFeePayment(
+export async function initiateFeePayment(
   feeDueId: string,
 ): Promise<Result<InitiateFeePaymentResponse, AppError>> {
-  return apiPost<InitiateFeePaymentResponse>('/api/v1/parent/fee-payments/initiate', { feeDueId });
+  const result = await apiPost<unknown>('/api/v1/parent/fee-payments/initiate', { feeDueId });
+  return validateResponse(
+    initiateFeePaymentResponseSchema as unknown as ZodSchema<InitiateFeePaymentResponse>,
+    result,
+    'initiateFeePayment',
+  );
 }
 
-export function getFeePaymentStatus(
+export async function getFeePaymentStatus(
   orderId: string,
 ): Promise<Result<FeePaymentStatusResponse, AppError>> {
-  return apiGet<FeePaymentStatusResponse>(
+  const result = await apiGet<unknown>(
     `/api/v1/parent/fee-payments/${encodeURIComponent(orderId)}/status`,
   );
-}
-
-export function getReceipt(
-  feeDueId: string,
-): Promise<Result<ReceiptInfo, AppError>> {
-  return apiGet<ReceiptInfo>(
-    `/api/v1/parent/receipts/${encodeURIComponent(feeDueId)}`,
+  return validateResponse(
+    feePaymentStatusResponseSchema as unknown as ZodSchema<FeePaymentStatusResponse>,
+    result,
+    'getFeePaymentStatus',
   );
 }
 
-export function getParentProfile(): Promise<Result<ParentProfile, AppError>> {
-  return apiGet<ParentProfile>('/api/v1/parent/profile');
+export async function getReceipt(
+  feeDueId: string,
+): Promise<Result<ReceiptInfo, AppError>> {
+  const result = await apiGet<unknown>(`/api/v1/parent/receipts/${encodeURIComponent(feeDueId)}`);
+  return validateResponse(
+    receiptSchema as unknown as ZodSchema<ReceiptInfo>,
+    result,
+    'getReceipt',
+  );
 }
 
-export function updateParentProfile(
+export async function getParentProfile(): Promise<Result<ParentProfile, AppError>> {
+  const result = await apiGet<unknown>('/api/v1/parent/profile');
+  return validateResponse(
+    parentProfileSchema as unknown as ZodSchema<ParentProfile>,
+    result,
+    'getParentProfile',
+  );
+}
+
+export async function updateParentProfile(
   req: UpdateProfileRequest,
 ): Promise<Result<ParentProfile, AppError>> {
-  return apiPut<ParentProfile>('/api/v1/parent/profile', req);
+  const result = await apiPut<unknown>('/api/v1/parent/profile', req);
+  return validateResponse(
+    parentProfileSchema as unknown as ZodSchema<ParentProfile>,
+    result,
+    'updateParentProfile',
+  );
 }
 
 export function changePassword(
@@ -81,12 +145,22 @@ export function changePassword(
   return apiPut<void>('/api/v1/parent/change-password', req);
 }
 
-export function getAcademyInfo(): Promise<Result<AcademyInfo, AppError>> {
-  return apiGet<AcademyInfo>('/api/v1/parent/academy');
+export async function getAcademyInfo(): Promise<Result<AcademyInfo, AppError>> {
+  const result = await apiGet<unknown>('/api/v1/parent/academy');
+  return validateResponse(
+    academyInfoSchema as unknown as ZodSchema<AcademyInfo>,
+    result,
+    'getAcademyInfo',
+  );
 }
 
-export function getPaymentHistory(): Promise<Result<PaymentHistoryItem[], AppError>> {
-  return apiGet<PaymentHistoryItem[]>('/api/v1/parent/payment-history');
+export async function getPaymentHistory(): Promise<Result<PaymentHistoryItem[], AppError>> {
+  const result = await apiGet<unknown>('/api/v1/parent/payment-history');
+  return validateResponse(
+    paymentHistoryListSchema as unknown as ZodSchema<PaymentHistoryItem[]>,
+    result,
+    'getPaymentHistory',
+  );
 }
 
 export const parentApi = {

@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return NextResponse.json({ message: 'Request body must be an object' }, { status: 400 });
+  }
   const result = await apiPost('/api/v1/attendance/holidays', body, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data, { status: 201 });

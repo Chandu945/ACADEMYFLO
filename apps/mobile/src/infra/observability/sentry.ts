@@ -91,19 +91,19 @@ export function initSentry(): void {
     // default; turn up if diagnosing a specific latency issue.
     tracesSampleRate: 0.1,
 
-    beforeSend(event) {
+    beforeSend(event: Sentry.ErrorEvent): Sentry.ErrorEvent | null {
       // Strip PII from event fields before transmission.
       if (event.message) event.message = redactPII(event.message);
       if (event.extra) event.extra = scrubValue(event.extra) as typeof event.extra;
       if (event.tags) event.tags = scrubValue(event.tags) as typeof event.tags;
       if (event.exception?.values) {
-        event.exception.values = event.exception.values.map((v) => ({
+        event.exception.values = event.exception.values.map((v: Sentry.Exception) => ({
           ...v,
           value: v.value ? redactPII(v.value) : v.value,
         }));
       }
       if (event.breadcrumbs) {
-        event.breadcrumbs = event.breadcrumbs.map((b) => ({
+        event.breadcrumbs = event.breadcrumbs.map((b: Sentry.Breadcrumb) => ({
           ...b,
           message: b.message ? redactPII(b.message) : b.message,
           data: b.data ? (scrubValue(b.data) as typeof b.data) : b.data,

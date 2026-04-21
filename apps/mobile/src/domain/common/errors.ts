@@ -6,6 +6,12 @@ export type AppError = {
   message: string;
   fieldErrors?: Record<string, string>;
   retryAfterSeconds?: number;
+  /**
+   * Server-assigned request ID. Populated from the upstream api's
+   * X-Request-Id response header so support can correlate a user's
+   * failure to a single trace in api logs.
+   */
+  requestId?: string;
 };
 
 export function validation(message: string, fieldErrors?: Record<string, string>): AppError {

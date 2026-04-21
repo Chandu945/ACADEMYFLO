@@ -113,14 +113,18 @@ export class HandleFeePaymentWebhookUseCase {
       // to prevent race conditions where concurrent webhooks both see fee as unpaid.
       let receiptNumber: string | undefined;
       let wasAlreadyPaid = false;
+      let didTransition = false;
 
       await this.transaction.run(async () => {
         const transitioned = await this.feePaymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
         if (!transitioned) {
-          // Another concurrent webhook already processed this payment — idempotent success
+          // Another concurrent webhook already processed this payment — idempotent success.
+          // didTransition stays false so the post-transaction audit is skipped; otherwise
+          // at-least-once delivery would write two FEE_PAYMENT_COMPLETED rows for one payment.
           this.logger.info('Fee payment already transitioned from PENDING — skipping', { orderId });
           return;
         }
+        didTransition = true;
 
         // Load fee due INSIDE the transaction so the read is consistent with the write
         const feeDue = await this.loadFeeDueById(payment.feeDueId, payment.academyId, payment.studentId);
@@ -182,6 +186,13 @@ export class HandleFeePaymentWebhookUseCase {
             note: 'Fee was already marked PAID when online payment webhook arrived. Money was collected — needs manual refund or reconciliation.',
           },
         });
+        return ok(undefined);
+      }
+
+      // Only audit + log the SUCCESS path when THIS webhook owned the transition.
+      // If a concurrent delivery already flipped PENDING→SUCCESS, that call
+      // already recorded the audit; doing it again duplicates the log row.
+      if (!didTransition) {
         return ok(undefined);
       }
 

@@ -15,10 +15,11 @@ export class AccountDeletionSweeperCronService {
   @Cron('15 * * * *', { timeZone: 'Asia/Kolkata' })
   async sweep(): Promise<void> {
     const result = await this.executor.sweep(new Date(), 50);
-    if (result.processed > 0 || result.failed > 0) {
+    if (result.processed > 0 || result.failed > 0 || result.timedOut > 0) {
       this.logger.info('Account deletion sweeper completed', {
         processed: result.processed,
         failed: result.failed,
+        timedOut: result.timedOut,
       });
     }
   }

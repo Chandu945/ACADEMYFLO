@@ -9,9 +9,17 @@ export function toErrorResponse(error: AppError): NextResponse {
   if (error.fieldErrors) {
     body['fieldErrors'] = error.fieldErrors;
   }
+  // Include the upstream request ID so the browser client can show it and
+  // support can correlate the error with api logs.
+  if (error.requestId) {
+    body['requestId'] = error.requestId;
+  }
   const headers: Record<string, string> = {};
   if (error.code === 'RATE_LIMITED' && error.retryAfterSeconds != null) {
     headers['Retry-After'] = String(error.retryAfterSeconds);
+  }
+  if (error.requestId) {
+    headers['X-Request-Id'] = error.requestId;
   }
   return NextResponse.json(body, { status: errorCodeToStatus(error.code), headers });
 }
@@ -33,30 +41,34 @@ export function mapApiError(
   status: number,
   body?: Record<string, unknown>,
   retryAfterHeader?: string | null,
+  requestId?: string | null,
 ): AppError {
   const message = typeof body?.['message'] === 'string' ? body['message'] : undefined;
   const fieldErrors =
     body?.['fieldErrors'] && typeof body['fieldErrors'] === 'object'
       ? (body['fieldErrors'] as Record<string, string>)
       : undefined;
+  // Prefer the X-Request-Id header; fall back to the envelope body field
+  // emitted by the NestJS GlobalExceptionFilter.
+  const rid = requestId ?? (typeof body?.['requestId'] === 'string' ? body['requestId'] : undefined);
 
   switch (status) {
     case 400:
-      return AppError.validation(message ?? 'Validation failed', fieldErrors);
+      return AppError.validation(message ?? 'Validation failed', fieldErrors, rid);
     case 401:
-      return AppError.unauthorized(message ?? 'Unauthorized');
+      return AppError.unauthorized(message ?? 'Unauthorized', rid);
     case 403:
-      return AppError.forbidden(message ?? 'Forbidden');
+      return AppError.forbidden(message ?? 'Forbidden', rid);
     case 404:
-      return AppError.notFound(message ?? 'Not found');
+      return AppError.notFound(message ?? 'Not found', rid);
     case 409:
-      return AppError.conflict(message ?? 'Conflict');
+      return AppError.conflict(message ?? 'Conflict', rid);
     case 429:
-      return AppError.rateLimited(message ?? 'Too many requests', parseRetryAfter(retryAfterHeader));
+      return AppError.rateLimited(message ?? 'Too many requests', parseRetryAfter(retryAfterHeader), rid);
     case 503:
-      return AppError.unknown(message ?? 'Service temporarily unavailable');
+      return AppError.unknown(message ?? 'Service temporarily unavailable', rid);
     default:
-      return AppError.unknown(message ?? 'Something went wrong');
+      return AppError.unknown(message ?? 'Something went wrong', rid);
   }
 }
 

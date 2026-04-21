@@ -11,6 +11,7 @@ export function useDailyStaffAttendance(date: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<StaffAttendanceItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(async () => {
@@ -19,21 +20,34 @@ export function useDailyStaffAttendance(date: string) {
     const ac = new AbortController();
     abortRef.current = ac;
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ date });
       const res = await fetch(`/api/staff-attendance?${params}`, { headers: { Authorization: `Bearer ${accessToken}` }, signal: ac.signal });
-      if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
-    } catch (e) { if (e instanceof DOMException && e.name === 'AbortError') return; } finally { setLoading(false); }
+      if (res.ok) {
+        const json = await res.json();
+        setData(json.data ?? json.items ?? []);
+      } else {
+        const json = await res.json().catch(() => null);
+        setError((json?.message as string) || 'Failed to load staff attendance');
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      setError(e instanceof Error ? e.message : 'Failed to load staff attendance');
+    } finally {
+      setLoading(false);
+    }
   }, [accessToken, date]);
 
   useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
-  return { data, loading, refetch: fetch_ };
+  return { data, loading, error, refetch: fetch_ };
 }
 
 export function useMonthlyStaffSummary(month: string) {
   const { accessToken } = useAuth();
   const [data, setData] = useState<MonthlyStaffSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const fetch_ = useCallback(async () => {
@@ -42,15 +56,27 @@ export function useMonthlyStaffSummary(month: string) {
     const ac = new AbortController();
     abortRef.current = ac;
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ type: 'monthly', month });
       const res = await fetch(`/api/staff-attendance?${params}`, { headers: { Authorization: `Bearer ${accessToken}` }, signal: ac.signal });
-      if (res.ok) { const json = await res.json(); setData(json.data ?? json.items ?? []); }
-    } catch (e) { if (e instanceof DOMException && e.name === 'AbortError') return; } finally { setLoading(false); }
+      if (res.ok) {
+        const json = await res.json();
+        setData(json.data ?? json.items ?? []);
+      } else {
+        const json = await res.json().catch(() => null);
+        setError((json?.message as string) || 'Failed to load staff attendance');
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      setError(e instanceof Error ? e.message : 'Failed to load staff attendance');
+    } finally {
+      setLoading(false);
+    }
   }, [accessToken, month]);
 
   useEffect(() => { fetch_(); return () => { abortRef.current?.abort(); }; }, [fetch_]);
-  return { data, loading, refetch: fetch_ };
+  return { data, loading, error, refetch: fetch_ };
 }
 
 export async function markStaffAttendance(staffUserId: string, date: string, status: string, accessToken?: string | null) {

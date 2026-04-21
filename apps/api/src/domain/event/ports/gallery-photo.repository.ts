@@ -7,6 +7,11 @@ export interface GalleryPhotoRepository {
   findById(id: string): Promise<GalleryPhoto | null>;
   listByEventId(eventId: string): Promise<GalleryPhoto[]>;
   delete(id: string): Promise<void>;
-  deleteAllByEventId(eventId: string): Promise<void>;
+  /**
+   * Cascade-delete all photos for an event. Scoped by academyId so a caller
+   * bug that passes an eventId from another tenant cannot wipe that tenant's
+   * gallery. Same defense-in-depth as EventRepository.delete.
+   */
+  deleteAllByEventId(eventId: string, academyId: string): Promise<void>;
   countByEventId(eventId: string): Promise<number>;
 }

@@ -107,6 +107,12 @@ services:
         value: "true"
       - key: SWAGGER_ENABLED
         value: "false"
+      # Parent online fee payments kill-switch. Default off so a misconfigured
+      # Cashfree integration never exposes the flow accidentally; flip to
+      # "true" in the Render dashboard only after CASHFREE_* secrets are set
+      # and an end-to-end sandbox payment has been verified.
+      - key: PARENT_ONLINE_PAYMENTS_ENABLED
+        value: "false"
 
       # Cache
       - key: CACHE_TTL_SECONDS
@@ -123,6 +129,10 @@ services:
     region: singapore
     plan: free  # $0/mo — only super admin uses this, free tier is sufficient.
                 # Note: Free tier spins down after 15 min inactivity (cold start ~30s).
+    # Explicit health path so Render probes a known-200 route instead of
+    # falling back to `/` (which Next.js renders as the login page and may
+    # return 307 to /login — some probe configs treat that as unhealthy).
+    healthCheckPath: /login
     envVars:
       - key: NODE_ENV
         value: production
@@ -150,6 +160,7 @@ services:
     dockerContext: .
     region: singapore
     plan: starter  # $7/mo
+    healthCheckPath: /login
     envVars:
       - key: NODE_ENV
         value: production

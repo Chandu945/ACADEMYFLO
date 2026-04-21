@@ -33,16 +33,38 @@ export class ExecuteAccountDeletionUseCase {
     return this.executeOne(request);
   }
 
-  async sweep(now: Date = new Date(), limit = 50): Promise<{ processed: number; failed: number }> {
+  /**
+   * Deadline per request inside the sweep loop. Without this, a single
+   * hanging deletion strategy (slow DB call, stuck HTTP call) blocks the
+   * entire hourly tick — other due requests pile up and the next sweep
+   * is delayed. 30s is generous for a per-user teardown; a genuine batch
+   * that exceeds this likely indicates an upstream stall that on-call
+   * needs to see rather than absorb silently.
+   */
+  private static readonly PER_REQUEST_TIMEOUT_MS = 30_000;
+
+  async sweep(now: Date = new Date(), limit = 50): Promise<{ processed: number; failed: number; timedOut: number }> {
     const due = await this.requests.listDue(now, limit);
     let processed = 0;
     let failed = 0;
+    let timedOut = 0;
     for (const req of due) {
-      const res = await this.executeOne(req);
-      if (res.ok) processed += 1;
-      else failed += 1;
+      const timeout = new Promise<'__timeout'>((resolve) =>
+        setTimeout(() => resolve('__timeout'), ExecuteAccountDeletionUseCase.PER_REQUEST_TIMEOUT_MS),
+      );
+      const race = await Promise.race([this.executeOne(req), timeout]);
+      if (race === '__timeout') {
+        timedOut += 1;
+        this.logger.error(
+          `Account deletion timed out after ${ExecuteAccountDeletionUseCase.PER_REQUEST_TIMEOUT_MS}ms id=${req.id.toString()} role=${req.role}`,
+        );
+      } else if (race.ok) {
+        processed += 1;
+      } else {
+        failed += 1;
+      }
     }
-    return { processed, failed };
+    return { processed, failed, timedOut };
   }
 
   private async executeOne(request: ReturnType<AccountDeletionRequestRepository['findById']> extends Promise<infer X> ? NonNullable<X> : never): Promise<Result<void>> {

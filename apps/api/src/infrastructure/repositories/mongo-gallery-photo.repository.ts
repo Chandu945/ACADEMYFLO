@@ -41,8 +41,10 @@ export class MongoGalleryPhotoRepository implements GalleryPhotoRepository {
     await this.model.deleteOne({ _id: id }, { session: getTransactionSession() }).exec();
   }
 
-  async deleteAllByEventId(eventId: string): Promise<void> {
-    await this.model.deleteMany({ eventId }, { session: getTransactionSession() }).exec();
+  async deleteAllByEventId(eventId: string, academyId: string): Promise<void> {
+    await this.model
+      .deleteMany({ eventId, academyId }, { session: getTransactionSession() })
+      .exec();
   }
 
   async countByEventId(eventId: string): Promise<number> {

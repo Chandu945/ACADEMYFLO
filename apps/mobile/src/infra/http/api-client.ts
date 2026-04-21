@@ -147,7 +147,13 @@ async function request<T>(
 
     if (!res.ok) {
       const json = await res.json().catch(() => null);
-      return err(mapHttpError(res.status, json, res.headers.get('retry-after')));
+      const serverRequestId = res.headers.get('x-request-id') ?? requestId;
+      if (__DEV__) {
+        console.warn(`[api-client] ${method} ${path} ${res.status} requestId=${serverRequestId}`);
+      }
+      return err(
+        mapHttpError(res.status, json, res.headers.get('retry-after'), serverRequestId),
+      );
     }
 
     if (res.status === 204) return ok(undefined as T);
@@ -155,7 +161,14 @@ async function request<T>(
     const json = (await res.json()) as { data: T };
     return ok(json.data);
   } catch {
-    return err({ code: 'NETWORK', message: 'Network error. Please check your connection.' });
+    if (__DEV__) {
+      console.warn(`[api-client] ${method} ${path} network error requestId=${requestId}`);
+    }
+    return err({
+      code: 'NETWORK',
+      message: 'Network error. Please check your connection.',
+      requestId,
+    });
   }
 }
 

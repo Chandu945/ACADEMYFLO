@@ -127,6 +127,23 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Readiness health check for Redis. Returns 'not_configured' when no
+   * REDIS_URL was set (in-memory fallback is fine for a single node);
+   * 'up' if a PING succeeds; 'down' on timeout or error. Multi-instance
+   * prod deploys rely on Redis for cross-pod rate limiting and attempt
+   * trackers — a down Redis there should drain the pod.
+   */
+  async isRedisHealthy(): Promise<'up' | 'down' | 'not_configured'> {
+    if (!this.redis) return 'not_configured';
+    try {
+      const res = await this.redis.ping();
+      return res === 'PONG' ? 'up' : 'down';
+    } catch {
+      return 'down';
+    }
+  }
+
   private cleanupExpired(): void {
     const now = Date.now();
     for (const [key, entry] of this.store) {

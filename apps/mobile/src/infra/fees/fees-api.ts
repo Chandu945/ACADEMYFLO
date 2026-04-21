@@ -1,11 +1,34 @@
-import type { FeeDueListApiResponse, FeeDuePaginatedApiResponse } from '../../domain/fees/fees.schemas';
+import {
+  feeDueItemSchema,
+  feeDueListResponseSchema,
+  feeDuePaginatedResponseSchema,
+  type FeeDueListApiResponse,
+  type FeeDuePaginatedApiResponse,
+} from '../../domain/fees/fees.schemas';
 import type { FeeDueItem } from '../../domain/fees/fees.types';
 import type { OverdueStudentsResult } from '../../domain/fees/overdue.types';
 import type { AppError } from '../../domain/common/errors';
-import type { Result } from '../../domain/common/result';
+import { err, ok, type Result } from '../../domain/common/result';
 import { apiGet, apiPut } from '../http/api-client';
+import type { ZodSchema } from 'zod';
 
-export function listUnpaidDues(
+function validateResponse<T>(
+  schema: ZodSchema<T>,
+  result: Result<unknown, AppError>,
+  label: string,
+): Result<T, AppError> {
+  if (!result.ok) return result;
+  const parsed = schema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error(`[feesApi] ${label} schema mismatch:`, parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data);
+}
+
+export async function listUnpaidDues(
   month: string,
   page: number = 1,
   pageSize: number = 20,
@@ -13,31 +36,60 @@ export function listUnpaidDues(
 ): Promise<Result<FeeDuePaginatedApiResponse, AppError>> {
   const parts = [`month=${encodeURIComponent(month)}`, `page=${page}`, `pageSize=${pageSize}`];
   if (batchId) parts.push(`batchId=${encodeURIComponent(batchId)}`);
-  return apiGet<FeeDuePaginatedApiResponse>(`/api/v1/fees/dues?${parts.join('&')}`);
+  const result = await apiGet<unknown>(`/api/v1/fees/dues?${parts.join('&')}`);
+  return validateResponse(
+    feeDuePaginatedResponseSchema as unknown as ZodSchema<FeeDuePaginatedApiResponse>,
+    result,
+    'listUnpaidDues',
+  );
 }
 
-export function listPaidDues(month: string, batchId?: string): Promise<Result<FeeDueListApiResponse, AppError>> {
+export async function listPaidDues(
+  month: string,
+  batchId?: string,
+): Promise<Result<FeeDueListApiResponse, AppError>> {
   const parts = [`month=${encodeURIComponent(month)}`];
   if (batchId) parts.push(`batchId=${encodeURIComponent(batchId)}`);
-  return apiGet<FeeDueListApiResponse>(`/api/v1/fees/paid?${parts.join('&')}`);
+  const result = await apiGet<unknown>(`/api/v1/fees/paid?${parts.join('&')}`);
+  return validateResponse(
+    feeDueListResponseSchema as unknown as ZodSchema<FeeDueListApiResponse>,
+    result,
+    'listPaidDues',
+  );
 }
 
-export function getStudentFees(
+export async function getStudentFees(
   studentId: string,
   from: string,
   to: string,
 ): Promise<Result<FeeDueListApiResponse, AppError>> {
-  return apiGet<FeeDueListApiResponse>(`/api/v1/fees/students/${studentId}?from=${from}&to=${to}`);
+  const result = await apiGet<unknown>(`/api/v1/fees/students/${studentId}?from=${from}&to=${to}`);
+  return validateResponse(
+    feeDueListResponseSchema as unknown as ZodSchema<FeeDueListApiResponse>,
+    result,
+    'getStudentFees',
+  );
 }
 
-export function markFeePaid(
+export async function markFeePaid(
   studentId: string,
   month: string,
   paymentLabel?: string,
 ): Promise<Result<FeeDueItem, AppError>> {
-  return apiPut<FeeDueItem>(`/api/v1/fees/students/${studentId}/${month}/pay`, paymentLabel ? { paymentLabel } : undefined);
+  const result = await apiPut<unknown>(
+    `/api/v1/fees/students/${studentId}/${month}/pay`,
+    paymentLabel ? { paymentLabel } : undefined,
+  );
+  return validateResponse(
+    feeDueItemSchema as unknown as ZodSchema<FeeDueItem>,
+    result,
+    'markFeePaid',
+  );
 }
 
+// getOverdueStudents returns OverdueStudentsResult which has no Zod schema in
+// the domain yet. Leaving it as a bare typed call until a schema lands; this
+// endpoint is admin-only and lower-traffic than the list endpoints above.
 export function getOverdueStudents(): Promise<Result<OverdueStudentsResult, AppError>> {
   return apiGet<OverdueStudentsResult>('/api/v1/fees/overdue');
 }

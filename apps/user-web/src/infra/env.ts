@@ -9,8 +9,11 @@ const serverSchema = z.object({
     .regex(/^[0-9a-f]+$/i, 'COOKIE_SALT must be a hex string'),
 });
 
+// No default: forgetting to set this in prod used to silently flip `Secure`
+// off on session+CSRF cookies (session-cookie.ts gates it on !== 'development').
+// Fail fast at boot instead of shipping an insecure cookie config.
 const publicSchema = z.object({
-  NEXT_PUBLIC_APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
+  NEXT_PUBLIC_APP_ENV: z.enum(['development', 'staging', 'production']),
 });
 
 let cachedServerEnv: z.infer<typeof serverSchema> | null = null;

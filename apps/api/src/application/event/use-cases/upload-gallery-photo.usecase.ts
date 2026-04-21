@@ -11,6 +11,7 @@ import { GalleryPhoto } from '@domain/event/entities/gallery-photo.entity';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import { GalleryErrors, EventErrors } from '../../common/errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { LoggerPort } from '@shared/logging/logger.port';
 import type { UserRole } from '@academyflo/contracts';
 import {
   ALLOWED_IMAGE_MIME_TYPES,
@@ -46,6 +47,7 @@ export class UploadGalleryPhotoUseCase {
     private readonly galleryPhotoRepo: GalleryPhotoRepository,
     private readonly fileStorage: FileStoragePort,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly logger: LoggerPort,
   ) {}
 
   async execute(input: UploadGalleryPhotoInput): Promise<Result<UploadGalleryPhotoOutput, AppError>> {
@@ -117,9 +119,9 @@ export class UploadGalleryPhotoUseCase {
           'Storage service rejected the upload (permissions). Contact support.',
         ));
       }
-      // Surface root cause to logs so ops can diagnose without leaking
-      // provider internals to the API consumer.
-      console.error('[upload-gallery-photo] storage upload failed', { code, message });
+      // Surface root cause to structured logs (not raw console) so ops can
+      // diagnose without leaking provider internals to the API consumer.
+      this.logger.error('Gallery storage upload failed', { code, message });
       return err(GalleryErrors.uploadFailed());
     }
 

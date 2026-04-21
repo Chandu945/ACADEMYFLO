@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { MongoDbHealthIndicator } from '../../../infrastructure/database/mongodb.health';
+import { CacheService } from '../../../infrastructure/cache/cache.service';
 import { AppConfigService } from '../../../shared/config/config.service';
 import { getRequestId } from '../../../shared/logging/request-id.interceptor';
 import { Public } from '../common/decorators/public.decorator';
@@ -25,6 +26,7 @@ function compareVersions(current: string, minimum: string): boolean {
 export class HealthController {
   constructor(
     private readonly mongoHealth: MongoDbHealthIndicator,
+    private readonly cache: CacheService,
     private readonly config: AppConfigService,
   ) {}
 
@@ -75,9 +77,16 @@ export class HealthController {
   })
   @ApiResponse({ status: 503, description: 'Service unavailable — dependency down' })
   async readiness(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const mongoStatus = await this.mongoHealth.check();
+    const [mongoStatus, redisStatus] = await Promise.all([
+      this.mongoHealth.check(),
+      this.cache.isRedisHealthy(),
+    ]);
 
-    const isDown = mongoStatus === 'down';
+    // A 'down' Redis on a prod multi-instance deploy means rate-limit /
+    // attempt-tracker state is no longer shared across pods — attackers
+    // can bypass lockouts by hitting different instances. Drain the pod.
+    // 'not_configured' (single-node dev) stays healthy.
+    const isDown = mongoStatus === 'down' || redisStatus === 'down';
 
     if (isDown) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE);
@@ -89,6 +98,7 @@ export class HealthController {
       time: new Date().toISOString(),
       dependencies: {
         mongodb: mongoStatus,
+        redis: redisStatus,
       },
       requestId: getRequestId(req),
     };

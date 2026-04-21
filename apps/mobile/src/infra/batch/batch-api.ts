@@ -3,13 +3,37 @@ import type {
   UpdateBatchRequest,
   BatchListItem,
 } from '../../domain/batch/batch.types';
-import type { BatchListApiResponse } from '../../domain/batch/batch.schemas';
-import type { StudentListApiResponse } from '../../domain/student/student.schemas';
+import {
+  batchListResponseSchema,
+  batchArraySchema,
+  type BatchListApiResponse,
+} from '../../domain/batch/batch.schemas';
+import {
+  studentListResponseSchema,
+  type StudentListApiResponse,
+} from '../../domain/student/student.schemas';
 import type { AppError } from '../../domain/common/errors';
-import type { Result } from '../../domain/common/result';
+import { err, ok, type Result } from '../../domain/common/result';
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from '../http/api-client';
+import type { ZodSchema } from 'zod';
 
-export function listBatches(
+function validateResponse<T>(
+  schema: ZodSchema<T>,
+  result: Result<unknown, AppError>,
+  label: string,
+): Result<T, AppError> {
+  if (!result.ok) return result;
+  const parsed = schema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error(`[batchApi] ${label} schema mismatch:`, parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data);
+}
+
+export async function listBatches(
   page: number,
   pageSize: number,
   search?: string,
@@ -18,7 +42,12 @@ export function listBatches(
   parts.push(`page=${encodeURIComponent(String(page))}`);
   parts.push(`pageSize=${encodeURIComponent(String(pageSize))}`);
   if (search) parts.push(`search=${encodeURIComponent(search)}`);
-  return apiGet<BatchListApiResponse>(`/api/v1/batches?${parts.join('&')}`);
+  const result = await apiGet<unknown>(`/api/v1/batches?${parts.join('&')}`);
+  return validateResponse(
+    batchListResponseSchema as unknown as ZodSchema<BatchListApiResponse>,
+    result,
+    'listBatches',
+  );
 }
 
 export function createBatch(req: CreateBatchRequest): Promise<Result<unknown, AppError>> {
@@ -32,20 +61,30 @@ export function updateBatch(
   return apiPatch(`/api/v1/batches/${id}`, req);
 }
 
-export function getStudentBatches(
+export async function getStudentBatches(
   studentId: string,
 ): Promise<Result<BatchListItem[], AppError>> {
-  return apiGet<BatchListItem[]>(`/api/v1/students/${studentId}/batches`);
+  const result = await apiGet<unknown>(`/api/v1/students/${studentId}/batches`);
+  return validateResponse(
+    batchArraySchema as unknown as ZodSchema<BatchListItem[]>,
+    result,
+    'getStudentBatches',
+  );
 }
 
-export function setStudentBatches(
+export async function setStudentBatches(
   studentId: string,
   batchIds: string[],
 ): Promise<Result<BatchListItem[], AppError>> {
-  return apiPut<BatchListItem[]>(`/api/v1/students/${studentId}/batches`, { batchIds });
+  const result = await apiPut<unknown>(`/api/v1/students/${studentId}/batches`, { batchIds });
+  return validateResponse(
+    batchArraySchema as unknown as ZodSchema<BatchListItem[]>,
+    result,
+    'setStudentBatches',
+  );
 }
 
-export function listBatchStudents(
+export async function listBatchStudents(
   batchId: string,
   page: number,
   pageSize: number,
@@ -55,8 +94,11 @@ export function listBatchStudents(
   parts.push(`page=${encodeURIComponent(String(page))}`);
   parts.push(`pageSize=${encodeURIComponent(String(pageSize))}`);
   if (search) parts.push(`search=${encodeURIComponent(search)}`);
-  return apiGet<StudentListApiResponse>(
-    `/api/v1/batches/${batchId}/students?${parts.join('&')}`,
+  const result = await apiGet<unknown>(`/api/v1/batches/${batchId}/students?${parts.join('&')}`);
+  return validateResponse(
+    studentListResponseSchema as unknown as ZodSchema<StudentListApiResponse>,
+    result,
+    'listBatchStudents',
   );
 }
 

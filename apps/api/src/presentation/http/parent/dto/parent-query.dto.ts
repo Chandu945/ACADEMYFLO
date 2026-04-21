@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, MinLength, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MinLength, MaxLength, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ChildAttendanceQueryDto {
@@ -34,11 +34,13 @@ export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   fullName?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Matches(/^\+[1-9]\d{6,14}$/, { message: 'phoneNumber must be in E.164 format (e.g. +919876543210)' })
   phoneNumber?: string;
 }
 

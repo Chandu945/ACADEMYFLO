@@ -29,6 +29,8 @@ import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
+import { TRANSACTION_PORT } from '@application/common/transaction.port';
+import type { TransactionPort } from '@application/common/transaction.port';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 
@@ -67,6 +69,7 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
         fileStorage: FileStoragePort,
         auditRecorder: AuditRecorderPort,
         logger: LoggerPort,
+        transaction: TransactionPort,
       ) =>
         new DeleteEventUseCase(
           userRepo,
@@ -75,6 +78,7 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
           fileStorage,
           auditRecorder,
           logger,
+          transaction,
         ),
       inject: [
         USER_REPOSITORY,
@@ -83,6 +87,7 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
         FILE_STORAGE_PORT,
         AUDIT_RECORDER_PORT,
         LOGGER_PORT,
+        TRANSACTION_PORT,
       ],
     },
     {
@@ -117,9 +122,9 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
     },
     {
       provide: 'UPLOAD_GALLERY_PHOTO_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository, fileStorage: FileStoragePort, auditRecorder: AuditRecorderPort) =>
-        new UploadGalleryPhotoUseCase(userRepo, eventRepo, galleryRepo, fileStorage, auditRecorder),
-      inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT],
+      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository, fileStorage: FileStoragePort, auditRecorder: AuditRecorderPort, logger: LoggerPort) =>
+        new UploadGalleryPhotoUseCase(userRepo, eventRepo, galleryRepo, fileStorage, auditRecorder, logger),
+      inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT, LOGGER_PORT],
     },
     {
       provide: 'DELETE_GALLERY_PHOTO_USE_CASE',
