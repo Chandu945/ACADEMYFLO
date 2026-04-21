@@ -23,6 +23,12 @@ export type SubscriptionInfo = {
   canAccessApp: boolean;
   blockReason: string | null;
   activeStudentCount: number;
+  /** Billing peak: max eligible count (students active ≥24h) across this cycle. */
+  peakStudentCount?: number;
+  /** Students created <24h ago — they're in the grace review window. */
+  studentsInGraceWindow?: number;
+  /** Tier that would apply if every current active student matures past grace. */
+  projectedTierKey?: TierKey;
   currentTierKey: TierKey | null;
   requiredTierKey: TierKey;
   pendingTierChange: PendingTierChange | null;

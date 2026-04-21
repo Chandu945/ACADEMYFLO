@@ -268,6 +268,25 @@ export function SubscriptionScreen() {
           ) : null}
         </View>
 
+        {/* ── Grace-window heads-up ───────────────────────────────────── */}
+        {subscription.studentsInGraceWindow &&
+        subscription.studentsInGraceWindow > 0 &&
+        subscription.projectedTierKey &&
+        subscription.projectedTierKey !== subscription.requiredTierKey ? (
+          <View style={styles.graceBannerBox}>
+            <Text style={styles.graceBannerTitle}>Tier may change soon</Text>
+            <Text style={styles.graceBannerText}>
+              {subscription.studentsInGraceWindow}{' '}
+              {subscription.studentsInGraceWindow === 1 ? 'student is' : 'students are'} in the
+              24-hour review window. If they stay, your tier will move to{' '}
+              <Text style={styles.graceBannerBold}>
+                {tierLabel(subscription.projectedTierKey)}
+              </Text>{' '}
+              at renewal.
+            </Text>
+          </View>
+        ) : null}
+
         {/* ── Upgrade banner ──────────────────────────────────────────── */}
         <UpgradeBanner
           pendingChange={subscription.pendingTierChange}
@@ -400,6 +419,32 @@ const makeStyles = (colors: Colors) =>
       color: colors.warningText,
       textAlign: 'center',
       lineHeight: 18,
+    },
+
+    /* ── Grace-window banner ──────────────────────────────────────── */
+    graceBannerBox: {
+      backgroundColor: colors.infoBg,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.info,
+      borderLeftWidth: 4,
+      padding: spacing.base,
+      marginBottom: spacing.md,
+    },
+    graceBannerTitle: {
+      fontSize: fontSizes.base,
+      fontWeight: fontWeights.bold,
+      color: colors.infoText,
+      marginBottom: spacing.xs,
+    },
+    graceBannerText: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    },
+    graceBannerBold: {
+      fontWeight: fontWeights.bold,
+      color: colors.text,
     },
 
     /* ── Upgrade banner ───────────────────────────────────────────── */

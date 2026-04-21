@@ -31,6 +31,7 @@ import { LOGGER_PORT } from '@shared/logging/logger.port';
 import type { LoggerPort } from '@shared/logging/logger.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import type { TransactionPort } from '@application/common/transaction.port';
+import { MongoTransactionService } from '@infrastructure/database/mongo-transaction.service';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 
@@ -48,6 +49,7 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
     { provide: EVENT_REPOSITORY, useClass: MongoEventRepository },
     { provide: GALLERY_PHOTO_REPOSITORY, useClass: MongoGalleryPhotoRepository },
     { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
+    { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
       provide: 'CREATE_EVENT_USE_CASE',
       useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>

@@ -261,6 +261,15 @@ export class HandleCashfreeWebhookUseCase {
       });
     }
 
+    // Fresh cycle → reset the peak tracker. Seed it with the current eligible
+    // count so Day-1 mutations immediately compare against today's baseline.
+    const PEAK_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
+    const eligibleCount = await this.studentCounter.countEligibleStudents(
+      academyId,
+      now,
+      PEAK_GRACE_PERIOD_MS,
+    );
+
     const activated = Subscription.reconstitute(subscription.id.toString(), {
       academyId: subscription.academyId,
       trialStartAt: subscription.trialStartAt,
@@ -271,6 +280,7 @@ export class HandleCashfreeWebhookUseCase {
       pendingTierKey,
       pendingTierEffectiveAt: pendingTierKey ? paidEndAt : null,
       activeStudentCountSnapshot: currentStudentCount,
+      peakStudentCountThisCycle: eligibleCount,
       manualNotes: subscription.manualNotes,
       paymentReference: paymentRef,
       audit: {

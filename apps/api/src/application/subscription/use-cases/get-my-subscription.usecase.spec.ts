@@ -59,6 +59,7 @@ function createSubscription(academyId = 'academy-1'): Subscription {
     pendingTierKey: null,
     pendingTierEffectiveAt: null,
     activeStudentCountSnapshot: null,
+    peakStudentCountThisCycle: null,
     manualNotes: null,
     paymentReference: null,
     audit: createAuditFields(),

@@ -97,16 +97,35 @@ export class GetMySubscriptionUseCase {
     const now = this.clock.now();
     const evaluation = evaluateStatus(now, academy.loginDisabled, subscription);
 
-    // Compute tier info
+    // Compute tier info. Billing uses the peak (max eligible count across the
+    // cycle, with a 24h grace for newly-added records) so owners can't avoid a
+    // tier upgrade by flexing their student count down right before renewal.
+    // `activeStudentCount` is the real-time count returned for display.
+    const PEAK_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
     const activeStudentCount = this.studentCounter
       ? await this.studentCounter.countActiveStudents(academyId, now)
       : (subscription.activeStudentCountSnapshot ?? 0);
-    const requiredTier = requiredTierForCount(activeStudentCount);
+    const eligibleCount = this.studentCounter
+      ? await this.studentCounter.countEligibleStudents(academyId, now, PEAK_GRACE_PERIOD_MS)
+      : activeStudentCount;
+    const peakStudentCount = Math.max(
+      subscription.peakStudentCountThisCycle ?? eligibleCount,
+      eligibleCount,
+    );
+    const requiredTier = requiredTierForCount(peakStudentCount);
     const pendingChange = computePendingTierChange(
       subscription.tierKey,
       requiredTier,
       subscription.paidEndAt,
     );
+
+    // Projected tier assuming every current active student ends up eligible.
+    // Differs from `requiredTier` only when there are students within the 24h
+    // grace that would raise the tier once they mature. Lets the UI warn the
+    // owner proactively: "6 students are in a 24h review. If they stay, your
+    // tier will move to X at renewal."
+    const projectedTier = requiredTierForCount(activeStudentCount);
+    const studentsInGraceWindow = Math.max(0, activeStudentCount - eligibleCount);
 
     // Latest PENDING payment (if any) so mobile / web can resume polling
     // after a kill/close mid-checkout. Fail-open: if the lookup errors, we
@@ -130,6 +149,9 @@ export class GetMySubscriptionUseCase {
       canAccessApp: evaluation.canAccessApp,
       blockReason: evaluation.blockReason,
       activeStudentCount,
+      peakStudentCount,
+      studentsInGraceWindow,
+      projectedTierKey: projectedTier,
       currentTierKey: subscription.tierKey,
       requiredTierKey: requiredTier,
       pendingTierChange: pendingChange

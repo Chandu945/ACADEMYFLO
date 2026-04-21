@@ -66,7 +66,7 @@ export function StudentFormScreen() {
   const navigation = useNavigation();
   const route = useRoute<FormRoute>();
   const { mode, student } = route.params;
-  const { user, subscription } = useAuth();
+  const { user, subscription, refreshSubscription } = useAuth();
   const isStaff = user?.role === 'STAFF';
 
   // --- Form state ---
@@ -228,7 +228,13 @@ export function StudentFormScreen() {
     setGuardianMobile(digits.slice(0, 10));
     clearFieldError('guardianMobile');
   }, [clearFieldError]);
-  const handleMonthlyFeeChange = useCallback(makeChangeHandler(setMonthlyFee, 'monthlyFee'), [makeChangeHandler]);
+  const handleMonthlyFeeChange = useCallback((text: string) => {
+    // Digits only. `keyboardType="numeric"` is advisory on web and lets pasted
+    // letters through on native too — strip here so the API never gets "efer".
+    const digits = text.replace(/\D/g, '').slice(0, 8);
+    setMonthlyFee(digits);
+    clearFieldError('monthlyFee');
+  }, [clearFieldError]);
 
   const handleGenderChange = useCallback((value: Gender) => {
     setGender(value);
@@ -346,16 +352,52 @@ export function StudentFormScreen() {
 
         showToast(mode === 'create' ? 'Student created' : 'Student updated');
 
+        // Tier-change heads-up. Fires only when THIS add moved the required
+        // tier into a higher band — i.e. the 51st / 101st student. We pull a
+        // fresh subscription from the server (not the cached `subscription`
+        // prop, which can lag behind rapid creates and falsely re-fire the
+        // alert on every subsequent add) and compare against the previous
+        // requiredTierKey.
         if (mode === 'create' && subscription) {
-          const currentTier = subscription.tiers.find(
-            (t) => t.tierKey === subscription.currentTierKey,
-          );
-          if (currentTier?.max && subscription.activeStudentCount + 1 > currentTier.max) {
-            crossAlert(
-              'Tier Upgrade Required',
-              `Your active student count now exceeds the limit for your current tier (${currentTier.max} students). Please upgrade your subscription to continue adding students.`,
-              [{ text: 'OK' }],
-            );
+          const previousRequiredTierKey = subscription.requiredTierKey;
+          try {
+            const fresh = await refreshSubscription();
+            if (fresh && fresh.requiredTierKey !== previousRequiredTierKey) {
+              const orderedTiers = [...fresh.tiers].sort((a, b) => a.min - b.min);
+              const currentIdx = orderedTiers.findIndex(
+                (t) => t.tierKey === previousRequiredTierKey,
+              );
+              const nextIdx = orderedTiers.findIndex(
+                (t) => t.tierKey === fresh.requiredTierKey,
+              );
+              // Only upgrade (not downgrade) triggers the prompt.
+              if (currentIdx !== -1 && nextIdx > currentIdx) {
+                const nextTier = orderedTiers[nextIdx]!;
+                const rangeLabel =
+                  nextTier.max === null
+                    ? `${nextTier.min}+ students`
+                    : `${nextTier.min}–${nextTier.max} students`;
+                const effectiveDate =
+                  fresh.pendingTierChange?.effectiveAt ?? fresh.paidEndAt ?? null;
+                const effectiveLabel = effectiveDate
+                  ? new Date(effectiveDate).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : null;
+
+                crossAlert(
+                  'Tier will change at renewal',
+                  `Your plan will move to the ${rangeLabel} tier (₹${nextTier.priceInr}/month)${
+                    effectiveLabel ? ` on ${effectiveLabel}` : ''
+                  }.`,
+                  [{ text: 'Got it' }],
+                );
+              }
+            }
+          } catch {
+            // Refresh failure shouldn't block the success flow.
           }
         }
 

@@ -3,6 +3,18 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MonthlyDuesCronService } from './monthly-dues.cron';
 import { SessionPurgeCronService } from './session-purge.cron';
+import { TierPeakEvaluationCronService } from './tier-peak-evaluation.cron';
+import { SubscriptionModel, SubscriptionSchema } from '@infrastructure/database/schemas/subscription.schema';
+import { MongoSubscriptionRepository } from '@infrastructure/repositories/mongo-subscription.repository';
+import { MongoActiveStudentCounter } from '@infrastructure/subscription/mongo-active-student-counter';
+import { SUBSCRIPTION_REPOSITORY } from '@domain/subscription/ports/subscription.repository';
+import type { SubscriptionRepository } from '@domain/subscription/ports/subscription.repository';
+import { ACTIVE_STUDENT_COUNTER } from '@application/subscription/ports/active-student-counter.port';
+import type { ActiveStudentCounterPort } from '@application/subscription/ports/active-student-counter.port';
+import { CLOCK_PORT } from '@application/common/clock.port';
+import type { ClockPort } from '@application/common/clock.port';
+import { SystemClock } from '@application/common/system-clock';
+import { EvaluateTierUseCase } from '@application/subscription/use-cases/evaluate-tier.usecase';
 import { SessionModel, SessionSchema } from '@infrastructure/database/schemas/session.schema';
 import { MongoSessionRepository } from '@infrastructure/repositories/mongo-session.repository';
 import { SESSION_REPOSITORY } from '@domain/identity/ports/session.repository';
@@ -37,6 +49,7 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
       { name: StudentModel.name, schema: StudentSchema },
       { name: AuditLogModel.name, schema: AuditLogSchema },
       { name: SessionModel.name, schema: SessionSchema },
+      { name: SubscriptionModel.name, schema: SubscriptionSchema },
     ]),
   ],
   providers: [
@@ -60,8 +73,21 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
       inject: [ACADEMY_REPOSITORY, STUDENT_REPOSITORY, FEE_DUE_REPOSITORY],
     },
     { provide: SESSION_REPOSITORY, useClass: MongoSessionRepository },
+    { provide: SUBSCRIPTION_REPOSITORY, useClass: MongoSubscriptionRepository },
+    { provide: ACTIVE_STUDENT_COUNTER, useClass: MongoActiveStudentCounter },
+    { provide: CLOCK_PORT, useClass: SystemClock },
+    {
+      provide: 'EVALUATE_TIER_USE_CASE',
+      useFactory: (
+        subRepo: SubscriptionRepository,
+        counter: ActiveStudentCounterPort,
+        clock: ClockPort,
+      ) => new EvaluateTierUseCase(subRepo, counter, clock),
+      inject: [SUBSCRIPTION_REPOSITORY, ACTIVE_STUDENT_COUNTER, CLOCK_PORT],
+    },
     MonthlyDuesCronService,
     SessionPurgeCronService,
+    TierPeakEvaluationCronService,
   ],
 })
 export class CronModule {}

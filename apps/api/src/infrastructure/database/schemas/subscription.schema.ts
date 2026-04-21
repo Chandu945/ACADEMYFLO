@@ -47,6 +47,9 @@ export class SubscriptionModel {
   @Prop({ type: Number, default: null })
   activeStudentCountSnapshot!: number | null;
 
+  @Prop({ type: Number, default: null })
+  peakStudentCountThisCycle!: number | null;
+
   @Prop({ type: String, default: null })
   manualNotes!: string | null;
 

@@ -229,6 +229,14 @@ export class GetSubscriptionPaymentStatusUseCase {
       });
     }
 
+    // Reset peak tracker on new paid cycle — seed with current eligible count.
+    const PEAK_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
+    const eligibleCount = await this.studentCounter.countEligibleStudents(
+      academyId,
+      now,
+      PEAK_GRACE_PERIOD_MS,
+    );
+
     const activated = Subscription.reconstitute(subscription.id.toString(), {
       academyId: subscription.academyId,
       trialStartAt: subscription.trialStartAt,
@@ -239,6 +247,7 @@ export class GetSubscriptionPaymentStatusUseCase {
       pendingTierKey,
       pendingTierEffectiveAt: pendingTierKey ? paidEndAt : null,
       activeStudentCountSnapshot: currentStudentCount,
+      peakStudentCountThisCycle: eligibleCount,
       manualNotes: subscription.manualNotes,
       paymentReference: subscription.paymentReference,
       audit: {

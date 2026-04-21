@@ -19,6 +19,7 @@ import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
+import type { AppError } from '../../../domain/common/errors';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -41,7 +42,7 @@ export function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [cooldown, setCooldown] = useState(0);
 
@@ -137,18 +138,18 @@ export function LoginScreen() {
       const result = await login(normaliseIdentifier(identifier), password);
       if (result) {
         if (result.code === 'RATE_LIMITED') {
-          setError(result.message);
+          setError(result);
           startCooldown(result.retryAfterSeconds);
         } else {
           if (result.fieldErrors) {
             setFieldErrors(result.fieldErrors);
           }
-          setError(result.message);
+          setError(result);
         }
       }
     } catch {
       if (__DEV__) console.error('[LoginScreen] Unexpected login error');
-      setError('Something went wrong. Please try again.');
+      setError({ code: 'UNKNOWN', message: 'Something went wrong. Please try again.' });
     } finally {
       setLoading(false);
       submittingRef.current = false;
@@ -185,7 +186,16 @@ export function LoginScreen() {
           <Text style={styles.cardTitle}>Welcome back</Text>
           <Text style={styles.cardSubtitle}>Sign in to continue</Text>
 
-          {error ? <InlineError message={error} /> : null}
+          {error ? (
+            <InlineError
+              severity={error.code === 'RATE_LIMITED' ? 'warning' : 'error'}
+              message={error.message}
+              compact
+              {...(error.code === 'NETWORK' || error.code === 'UNKNOWN'
+                ? { title: "Couldn't sign in", onRetry: loading ? undefined : handleLogin }
+                : {})}
+            />
+          ) : null}
 
           <Input
             label="Email or Phone"

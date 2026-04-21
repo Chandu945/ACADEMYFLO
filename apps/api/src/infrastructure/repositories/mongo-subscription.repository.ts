@@ -35,6 +35,7 @@ export class MongoSubscriptionRepository implements SubscriptionRepository {
         pendingTierKey: subscription.pendingTierKey,
         pendingTierEffectiveAt: subscription.pendingTierEffectiveAt,
         activeStudentCountSnapshot: subscription.activeStudentCountSnapshot,
+        peakStudentCountThisCycle: subscription.peakStudentCountThisCycle,
         manualNotes: subscription.manualNotes,
         paymentReference: subscription.paymentReference,
         version: subscription.audit.version,
@@ -67,6 +68,7 @@ export class MongoSubscriptionRepository implements SubscriptionRepository {
       pendingTierKey: string | null;
       pendingTierEffectiveAt: Date | null;
       activeStudentCountSnapshot: number | null;
+      peakStudentCountThisCycle: number | null;
       manualNotes: string | null;
       paymentReference: string | null;
       createdAt: Date;
@@ -84,6 +86,7 @@ export class MongoSubscriptionRepository implements SubscriptionRepository {
       pendingTierKey: (d.pendingTierKey as TierKey | null) ?? null,
       pendingTierEffectiveAt: d.pendingTierEffectiveAt ?? null,
       activeStudentCountSnapshot: d.activeStudentCountSnapshot ?? null,
+      peakStudentCountThisCycle: d.peakStudentCountThisCycle ?? null,
       manualNotes: d.manualNotes,
       paymentReference: d.paymentReference ?? null,
       audit: {

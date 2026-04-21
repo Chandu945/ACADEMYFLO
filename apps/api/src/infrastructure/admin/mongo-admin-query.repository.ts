@@ -221,6 +221,10 @@ export class MongoAdminQueryRepository implements AdminQueryRepository {
           ((sub as unknown as Record<string, unknown>)['activeStudentCountSnapshot'] as
             | number
             | null) ?? null,
+        peakStudentCountThisCycle:
+          ((sub as unknown as Record<string, unknown>)['peakStudentCountThisCycle'] as
+            | number
+            | null) ?? null,
         manualNotes: sub.manualNotes ?? null,
         paymentReference:
           (sub as unknown as { paymentReference: string | null }).paymentReference ?? null,
@@ -301,6 +305,7 @@ export class MongoAdminQueryRepository implements AdminQueryRepository {
       pendingTierKey: null,
       pendingTierEffectiveAt: null,
       activeStudentCountSnapshot: null,
+      peakStudentCountThisCycle: null,
       manualNotes: sub.manualNotes ?? null,
       paymentReference: null,
       audit: { createdAt: new Date(), updatedAt: new Date(), version: 1 },

@@ -635,6 +635,7 @@ describe('Subscription Payments — Full Flow (e2e)', () => {
       pendingTierKey: null,
       pendingTierEffectiveAt: null,
       activeStudentCountSnapshot: 30,
+      peakStudentCountThisCycle: 30,
       manualNotes: null,
       paymentReference: 'old_order/old_cf',
       audit: { createdAt: new Date(), updatedAt: new Date(), version: 1 },

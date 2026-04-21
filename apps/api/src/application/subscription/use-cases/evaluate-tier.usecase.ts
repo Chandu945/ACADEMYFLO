@@ -15,8 +15,17 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderPendingTierChangeEmail } from '../../notifications/templates/pending-tier-change-template';
 
+/**
+ * 24h grace window: a student counts toward the billing peak only after its
+ * record has been active for at least this long. Protects against typos /
+ * mis-added records that an owner corrects within minutes.
+ */
+const PEAK_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
+
 export interface EvaluateTierOutput {
   activeStudentCount: number;
+  eligibleStudentCount: number;
+  peakStudentCount: number;
   requiredTierKey: TierKey;
   currentTierKey: TierKey | null;
   pendingTierKey: TierKey | null;
@@ -40,8 +49,26 @@ export class EvaluateTierUseCase {
     }
 
     const now = this.clock.now();
+
+    // Current count — used only for the display snapshot.
     const activeStudentCount = await this.studentCounter.countActiveStudents(academyId, now);
-    const requiredTierKey = requiredTierForCount(activeStudentCount);
+
+    // Eligible count = active students whose record has existed for ≥24h. This
+    // is what we bill on, to close the "add-then-remove right before renewal"
+    // loophole while still tolerating typo corrections inside 24h.
+    const eligibleStudentCount = await this.studentCounter.countEligibleStudents(
+      academyId,
+      now,
+      PEAK_GRACE_PERIOD_MS,
+    );
+
+    // Peak never decreases within a cycle. Initialised on first evaluate of a
+    // new cycle (via webhook handler) — fall back to current eligible here so
+    // legacy rows without a peak set one on first read.
+    const previousPeak = subscription.peakStudentCountThisCycle ?? eligibleStudentCount;
+    const peakStudentCount = Math.max(previousPeak, eligibleStudentCount);
+
+    const requiredTierKey = requiredTierForCount(peakStudentCount);
     const currentTierKey = subscription.tierKey;
 
     const pendingChange = computePendingTierChange(
@@ -50,12 +77,12 @@ export class EvaluateTierUseCase {
       subscription.paidEndAt,
     );
 
-    // Persist snapshot + pending tier info
     const updated = Subscription.reconstitute(subscription.id.toString(), {
       ...subscription['props'],
       pendingTierKey: pendingChange?.tierKey ?? null,
       pendingTierEffectiveAt: pendingChange?.effectiveAt ?? null,
       activeStudentCountSnapshot: activeStudentCount,
+      peakStudentCountThisCycle: peakStudentCount,
     });
     await this.subscriptionRepo.save(updated);
 
@@ -74,7 +101,7 @@ export class EvaluateTierUseCase {
               academyName: academy.academyName,
               currentTier: currentTierKey ?? 'None',
               requiredTier: requiredTierKey,
-              activeStudentCount,
+              activeStudentCount: peakStudentCount,
               requiredTierPrice: TIER_PRICING_INR[requiredTierKey] ?? 0,
             }),
           }).catch(() => {});
@@ -84,6 +111,8 @@ export class EvaluateTierUseCase {
 
     return ok({
       activeStudentCount,
+      eligibleStudentCount,
+      peakStudentCount,
       requiredTierKey,
       currentTierKey,
       pendingTierKey: pendingChange?.tierKey ?? null,

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Academyflo · Mobile UI</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Inter', -apple-system, system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="auth.jsx"></script>
+<script type="text/babel" src="owner.jsx"></script>
+<script type="text/babel" src="staff.jsx"></script>
+<script type="text/babel" src="parent.jsx"></script>
+<script type="text/babel" src="components-sheet.jsx"></script>
+<script type="text/babel" src="extras.jsx"></script>
+
+<script type="text/babel">
+// ─────────────────────────────────────────────
+// Interactive Owner portal — bottom-tab navigation
+// ─────────────────────────────────────────────
+function OwnerPortalApp() {
+  const [tab, setTab] = React.useState('dashboard');
+  const [detail, setDetail] = React.useState(false);
+  if (detail) return <OwnerStudentDetail onBack={() => setDetail(false)} />;
+  if (tab === 'dashboard') return <OwnerDashboard onTab={setTab} />;
+  if (tab === 'students') return <OwnerStudents onTab={setTab} onOpen={() => setDetail(true)} />;
+  if (tab === 'attendance') return <OwnerAttendance onTab={setTab} />;
+  if (tab === 'fees') return <OwnerFees onTab={setTab} />;
+  return <OwnerMore onTab={setTab} />;
+}
+
+// Staff
+function StaffPortalApp() {
+  const [tab, setTab] = React.useState('dashboard');
+  return <StaffDashboard onTab={setTab} />;
+}
+
+// Parent with payment flow
+function ParentPortalApp() {
+  const [tab, setTab] = React.useState('children');
+  const [pay, setPay] = React.useState(null);
+  if (pay === 'polling') return <ParentPayFlow stage="polling" onBack={() => setPay(null)} onNext={() => setPay('success')} />;
+  if (pay === 'success') return <ParentPayFlow stage="success" onBack={() => { setPay(null); setTab('fees'); }} />;
+  if (tab === 'children') return <ParentChildren onTab={setTab} onOpen={() => {}} />;
+  if (tab === 'fees') return <ParentFees onTab={setTab} onPay={() => setPay('polling')} />;
+  if (tab === 'events') return <ParentEvents onTab={setTab} />;
+  return <ParentMore onTab={setTab} />;
+}
+
+// Auth flow walkthrough
+function AuthFlowApp() {
+  const [step, setStep] = React.useState('welcome');
+  if (step === 'welcome') return <AuthWelcome onLogin={() => setStep('login')} onSignup={() => setStep('signup1')} />;
+  if (step === 'login') return <AuthLogin onBack={() => setStep('welcome')} onSubmit={() => setStep('welcome')} onForgot={() => setStep('forgot')} />;
+  if (step === 'forgot') return <AuthOTP onBack={() => setStep('login')} onVerify={() => setStep('newpw')} />;
+  if (step === 'newpw') return <AuthNewPassword onBack={() => setStep('forgot')} onDone={() => setStep('welcome')} />;
+  if (step === 'signup1') return <AuthSignup step={1} onBack={() => setStep('welcome')} onNext={() => setStep('signup2')} />;
+  if (step === 'signup2') return <AuthSignup step={2} onBack={() => setStep('signup1')} onNext={() => setStep('success')} />;
+  return <AuthSignup step={3} onNext={() => setStep('welcome')} />;
+}
+
+// ─────────────────────────────────────────────
+// Design canvas — all three portals side-by-side
+// ─────────────────────────────────────────────
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="foundation" title="Foundation" subtitle="Colors, type, components">
+        <DCArtboard id="components" label="Component library" width={390} height={844}>
+          <ComponentSheet />
+        </DCArtboard>
+        <DCArtboard id="splash" label="Splash" width={390} height={844}>
+          <SplashScreen />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="auth" title="Authentication" subtitle="Shared pre-portal flow — interactive">
+        <DCArtboard id="flow" label="★ Interactive · Welcome → Login → OTP → Success" width={390} height={844}>
+          <AuthFlowApp />
+        </DCArtboard>
+        <DCArtboard id="welcome" label="Welcome" width={390} height={844}><AuthWelcome /></DCArtboard>
+        <DCArtboard id="login" label="Login · rate-limited" width={390} height={844}><AuthLogin /></DCArtboard>
+        <DCArtboard id="otp" label="OTP" width={390} height={844}><AuthOTP /></DCArtboard>
+        <DCArtboard id="newpw" label="New password" width={390} height={844}><AuthNewPassword /></DCArtboard>
+        <DCArtboard id="signup1" label="Signup · details" width={390} height={844}><AuthSignup step={1} /></DCArtboard>
+        <DCArtboard id="signup2" label="Signup · academy" width={390} height={844}><AuthSignup step={2} /></DCArtboard>
+        <DCArtboard id="success" label="Signup · success" width={390} height={844}><AuthSignup step={3} /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="owner" title="Owner portal" subtitle="Full academy management — interactive">
+        <DCArtboard id="app" label="★ Interactive · tab through everything" width={390} height={844}>
+          <OwnerPortalApp />
+        </DCArtboard>
+        <DCArtboard id="dashboard" label="Dashboard" width={390} height={844}><OwnerDashboard /></DCArtboard>
+        <DCArtboard id="students" label="Students list" width={390} height={844}><OwnerStudents /></DCArtboard>
+        <DCArtboard id="student-detail" label="Student detail" width={390} height={844}><OwnerStudentDetail /></DCArtboard>
+        <DCArtboard id="create-student" label="Create student" width={390} height={844}><CreateStudentScreen /></DCArtboard>
+        <DCArtboard id="invite-parent" label="Invite parent sheet" width={390} height={844}><InviteParentSheet /></DCArtboard>
+        <DCArtboard id="attendance" label="Attendance · daily" width={390} height={844}><OwnerAttendance /></DCArtboard>
+        <DCArtboard id="fees" label="Fees · dues" width={390} height={844}><OwnerFees /></DCArtboard>
+        <DCArtboard id="events" label="Events & Gallery" width={390} height={844}><OwnerEventsScreen /></DCArtboard>
+        <DCArtboard id="expenses" label="Expenses" width={390} height={844}><OwnerExpensesScreen /></DCArtboard>
+        <DCArtboard id="enquiries" label="Enquiries" width={390} height={844}><OwnerEnquiriesScreen /></DCArtboard>
+        <DCArtboard id="more" label="More menu" width={390} height={844}><OwnerMore /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="staff" title="Staff portal" subtitle="Scoped to assigned batches">
+        <DCArtboard id="app" label="★ Interactive" width={390} height={844}><StaffPortalApp /></DCArtboard>
+        <DCArtboard id="dashboard" label="Today's classes" width={390} height={844}><StaffDashboard /></DCArtboard>
+        <DCArtboard id="perm-gate" label="Permission gate · student detail" width={390} height={844}><PermissionGateScreen /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="parent" title="Parent portal" subtitle="Children, fees, payment flow — interactive">
+        <DCArtboard id="app" label="★ Interactive · tap Pay now" width={390} height={844}><ParentPortalApp /></DCArtboard>
+        <DCArtboard id="children" label="Children" width={390} height={844}><ParentChildren /></DCArtboard>
+        <DCArtboard id="fees" label="Fees · due" width={390} height={844}><ParentFees /></DCArtboard>
+        <DCArtboard id="pay-polling" label="Pay · polling" width={390} height={844}><ParentPayFlow stage="polling" /></DCArtboard>
+        <DCArtboard id="pay-success" label="Pay · receipt" width={390} height={844}><ParentPayFlow stage="success" /></DCArtboard>
+        <DCArtboard id="events" label="Events" width={390} height={844}><ParentEvents /></DCArtboard>
+        <DCArtboard id="more" label="More" width={390} height={844}><ParentMore /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="system" title="System states" subtitle="Global flows seen across all portals">
+        <DCArtboard id="force" label="Force update" width={390} height={844}><ForceUpdateScreen /></DCArtboard>
+        <DCArtboard id="sub-blocked" label="Subscription blocked" width={390} height={844}><SubscriptionBlockedScreen /></DCArtboard>
+        <DCArtboard id="session" label="Session expired" width={390} height={844}><SessionExpiredScreen /></DCArtboard>
+        <DCArtboard id="error" label="Error boundary" width={390} height={844}><ErrorBoundaryScreen /></DCArtboard>
+        <DCArtboard id="offline" label="Offline banner" width={390} height={844}><OfflineBannerScreen /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

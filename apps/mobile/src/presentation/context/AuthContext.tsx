@@ -51,7 +51,7 @@ type AuthActions = {
   signup: (input: SignupInput) => Promise<AppError | null>;
   setupAcademy: (input: AcademySetupRequest) => Promise<AppError | null>;
   logout: () => Promise<void>;
-  refreshSubscription: () => Promise<void>;
+  refreshSubscription: () => Promise<SubscriptionInfo | null>;
 };
 
 export type AuthContextValue = AuthState & AuthActions;
@@ -65,7 +65,7 @@ const defaultContext: AuthContextValue = {
   signup: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
   setupAcademy: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
   logout: async () => {},
-  refreshSubscription: async () => {},
+  refreshSubscription: async () => null,
 };
 
 export const AuthContext = createContext<AuthContextValue>(defaultContext);
@@ -96,20 +96,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const mountedRef = useRef(true);
 
   // Deps are empty: mountedRef/setState are stable; subscriptionApi is a module-scope singleton.
-  const resolvePhase = useCallback(async (user: AuthUser): Promise<void> => {
+  const resolvePhase = useCallback(async (user: AuthUser): Promise<SubscriptionInfo | null> => {
     // Parents skip subscription check — go directly to ready
     if (user.role === 'PARENT') {
       if (mountedRef.current) {
         setState({ phase: 'ready', user, subscription: null, forceUpdate: null });
       }
-      return;
+      return null;
     }
 
     const subResult = await getMySubscriptionUseCase({
       subscriptionApi,
     });
 
-    if (!mountedRef.current) return;
+    if (!mountedRef.current) return null;
 
     if (!subResult.ok) {
       if (subResult.error.code === 'CONFLICT') {
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Transient error — let user proceed, subscription will be rechecked later
         setState({ phase: 'ready', user, subscription: null, forceUpdate: null });
       }
-      return;
+      return null;
     }
 
     const sub = subResult.value;
@@ -129,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setState({ phase: 'ready', user, subscription: sub, forceUpdate: null });
     }
+    return sub;
   }, []);
 
   const doLogout = useCallback(async () => {
@@ -159,12 +160,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     (async () => {
-      // Check if app version meets minimum requirement
-      const versionCheck = await checkAppVersionUseCase({
-        apiBaseUrl: env.API_BASE_URL,
-        appVersion: APP_VERSION,
-        platform: APP_PLATFORM,
-      });
+      // Version gate is native-only — the web build auto-refreshes on deploy,
+      // so we skip the server check to avoid a 400 from the android/ios-only
+      // validator. Native apps still enforce the min version.
+      const versionCheck = APP_PLATFORM === 'web'
+        ? null
+        : await checkAppVersionUseCase({
+            apiBaseUrl: env.API_BASE_URL,
+            appVersion: APP_VERSION,
+            platform: APP_PLATFORM,
+          });
       if (!mountedRef.current) return;
       if (versionCheck?.updateRequired) {
         setState({
@@ -286,8 +291,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refreshSubscription = useCallback(async () => {
-    if (!state.user) return;
-    await resolvePhase(state.user);
+    if (!state.user) return null;
+    return resolvePhase(state.user);
   }, [state.user, resolvePhase]);
 
   const value = useMemo<AuthContextValue>(

@@ -46,6 +46,7 @@ describe('CreateTrialSubscriptionUseCase', () => {
       pendingTierKey: null,
       pendingTierEffectiveAt: null,
       activeStudentCountSnapshot: null,
+      peakStudentCountThisCycle: null,
       manualNotes: null,
       paymentReference: null,
       audit: createAuditFields(),

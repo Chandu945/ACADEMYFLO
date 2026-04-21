@@ -15,6 +15,7 @@ function buildDeps() {
   };
   const studentCounter: jest.Mocked<ActiveStudentCounterPort> = {
     countActiveStudents: jest.fn(),
+    countEligibleStudents: jest.fn(),
   };
   const clock: ClockPort = { now: () => NOW };
   return { subscriptionRepo, studentCounter, clock };
@@ -34,6 +35,7 @@ function createSubscription(
     pendingTierKey: null,
     pendingTierEffectiveAt: null,
     activeStudentCountSnapshot: null,
+    peakStudentCountThisCycle: null,
     manualNotes: null,
     paymentReference: null,
     audit: createAuditFields(),
@@ -58,6 +60,7 @@ describe('EvaluateTierUseCase', () => {
     const { subscriptionRepo, studentCounter, clock } = buildDeps();
     subscriptionRepo.findByAcademyId.mockResolvedValue(createSubscription('TIER_0_50'));
     studentCounter.countActiveStudents.mockResolvedValue(30);
+    studentCounter.countEligibleStudents.mockResolvedValue(30);
 
     const uc = new EvaluateTierUseCase(subscriptionRepo, studentCounter, clock);
     const result = await uc.execute('academy-1');
@@ -77,6 +80,7 @@ describe('EvaluateTierUseCase', () => {
     const paidEndAt = new Date(NOW.getTime() + 30 * DAY_MS);
     subscriptionRepo.findByAcademyId.mockResolvedValue(createSubscription('TIER_0_50', paidEndAt));
     studentCounter.countActiveStudents.mockResolvedValue(75);
+    studentCounter.countEligibleStudents.mockResolvedValue(75);
 
     const uc = new EvaluateTierUseCase(subscriptionRepo, studentCounter, clock);
     const result = await uc.execute('academy-1');
@@ -94,6 +98,7 @@ describe('EvaluateTierUseCase', () => {
     const { subscriptionRepo, studentCounter, clock } = buildDeps();
     subscriptionRepo.findByAcademyId.mockResolvedValue(createSubscription('TIER_0_50'));
     studentCounter.countActiveStudents.mockResolvedValue(120);
+    studentCounter.countEligibleStudents.mockResolvedValue(120);
 
     const uc = new EvaluateTierUseCase(subscriptionRepo, studentCounter, clock);
     await uc.execute('academy-1');
@@ -108,6 +113,7 @@ describe('EvaluateTierUseCase', () => {
     const { subscriptionRepo, studentCounter, clock } = buildDeps();
     subscriptionRepo.findByAcademyId.mockResolvedValue(createSubscription('TIER_0_50', null));
     studentCounter.countActiveStudents.mockResolvedValue(75);
+    studentCounter.countEligibleStudents.mockResolvedValue(75);
 
     const uc = new EvaluateTierUseCase(subscriptionRepo, studentCounter, clock);
     const result = await uc.execute('academy-1');

@@ -57,6 +57,7 @@ export class DeactivateSubscriptionUseCase {
       pendingTierKey: sub.pendingTierKey,
       pendingTierEffectiveAt: sub.pendingTierEffectiveAt,
       activeStudentCountSnapshot: sub.activeStudentCountSnapshot,
+      peakStudentCountThisCycle: sub.peakStudentCountThisCycle,
       manualNotes: input.manualNotes ?? sub.manualNotes,
       paymentReference: sub.paymentReference,
       audit: updateAuditFields(sub.audit),

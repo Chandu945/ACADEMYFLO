@@ -12,6 +12,14 @@ export interface SubscriptionProps {
   pendingTierKey: TierKey | null;
   pendingTierEffectiveAt: Date | null;
   activeStudentCountSnapshot: number | null;
+  /**
+   * Maximum eligible (active ≥24h) student count observed during the current
+   * cycle. Never decreases within a cycle — prevents owners from temporarily
+   * overshooting the tier then dropping back before renewal to pay the lower
+   * tier. Reset to the current eligible count each time a new paid cycle
+   * begins (Cashfree webhook).
+   */
+  peakStudentCountThisCycle: number | null;
   manualNotes: string | null;
   paymentReference: string | null;
   audit: AuditFields;
@@ -38,6 +46,7 @@ export class Subscription extends Entity<SubscriptionProps> {
       pendingTierKey: null,
       pendingTierEffectiveAt: null,
       activeStudentCountSnapshot: null,
+      peakStudentCountThisCycle: null,
       manualNotes: null,
       paymentReference: null,
       audit: createAuditFields(),
@@ -82,6 +91,10 @@ export class Subscription extends Entity<SubscriptionProps> {
 
   get activeStudentCountSnapshot(): number | null {
     return this.props.activeStudentCountSnapshot;
+  }
+
+  get peakStudentCountThisCycle(): number | null {
+    return this.props.peakStudentCountThisCycle;
   }
 
   get manualNotes(): string | null {
