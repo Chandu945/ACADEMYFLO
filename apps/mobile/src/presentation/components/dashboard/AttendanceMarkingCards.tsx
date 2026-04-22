@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import LinearGradient from 'react-native-linear-gradient';
 import { getStaffDailyReport } from '../../../infra/staff-attendance/staff-attendance-api';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -36,8 +37,13 @@ function MarkingCard({
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
       <View style={styles.cardIconCircle}>
-        
-        <AppIcon name={icon} size={20} color={colors.primary} />
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AppIcon name={icon} size={20} color="#FFFFFF" />
       </View>
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardSubtitle}>Marking Attendance</Text>
@@ -55,7 +61,14 @@ function MarkingCard({
             styles.progressFill,
             { width: `${pct}%` as any },
           ]}
-        />
+        >
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -126,7 +139,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
@@ -167,6 +180,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
   },
 });

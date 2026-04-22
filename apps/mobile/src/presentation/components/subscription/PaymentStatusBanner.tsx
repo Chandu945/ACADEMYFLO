@@ -1,199 +1,362 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Easing,
+  Platform,
+  Modal,
+  TouchableOpacity,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import type { PaymentFlowStatus } from '../../../domain/payments/cashfree.types';
 import { AppIcon } from '../ui/AppIcon';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   status: PaymentFlowStatus;
   error: string | null;
+  /** Called when the user dismisses the success/failed overlay. */
+  onDismiss?: () => void;
 };
 
-export function PaymentStatusBanner({ status, error }: Props) {
+/* ── Processing ring loader ──────────────────────────────────────────────── */
+
+function RingLoader({ colors }: { colors: Colors }) {
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const spin = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const spinLoop = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 1400,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    spinLoop.start();
+    pulseLoop.start();
+    return () => {
+      spinLoop.stop();
+      pulseLoop.stop();
+    };
+  }, [spin, pulse]);
+
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.04] });
+  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.7] });
+
+  return (
+    <View style={styles.loaderWrap}>
+      <View style={styles.ringOutermost} />
+      <View style={styles.ringOuter} />
+      <Animated.View style={[styles.arcRotator, { transform: [{ rotate }] }]}>
+        <View style={styles.arc} />
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.core,
+          { opacity: pulseOpacity, transform: [{ scale: pulseScale }] },
+        ]}
+      >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+    </View>
+  );
+}
+
+/* ── Result tile (success / failed) ──────────────────────────────────────── */
+
+function ResultTile({
+  variant,
+  icon,
+}: {
+  variant: 'success' | 'failed';
+  icon: string;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const scale = useRef(new Animated.Value(0.4)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 5,
+        tension: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [scale, opacity]);
+
+  return (
+    <Animated.View style={[styles.resultTile, { transform: [{ scale }], opacity }]}>
+      {variant === 'success' ? (
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.danger }]} />
+      )}
+      <AppIcon name={icon} size={54} color="#FFFFFF" />
+    </Animated.View>
+  );
+}
+
+/* ── Main overlay ────────────────────────────────────────────────────────── */
+
+export function PaymentStatusBanner({ status, error, onDismiss }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  if (status === 'idle') return null;
+  const visible = status !== 'idle';
+  const isTerminal = status === 'success' || status === 'failed';
 
-  // Processing states (initiating, checkout, polling)
+  let body: React.ReactNode = null;
+
   if (status === 'initiating' || status === 'checkout' || status === 'polling') {
-    const message =
-      status === 'initiating' ? 'Preparing your payment...' :
-      status === 'checkout' ? 'Complete payment in the browser...' :
-      'Verifying your payment...';
-    const step =
-      status === 'initiating' ? 1 :
-      status === 'checkout' ? 2 : 3;
+    const title =
+      status === 'initiating'
+        ? 'Preparing payment'
+        : status === 'checkout'
+          ? 'Complete in browser'
+          : 'Confirming payment';
+    const subtitle =
+      status === 'initiating'
+        ? 'Hold on — we\u2019re setting things up.'
+        : status === 'checkout'
+          ? 'Finish the payment in the Cashfree window. Keep the app open.'
+          : 'We\u2019re waiting for your bank to confirm. This usually takes a few seconds — don\u2019t close the app.';
 
-    return (
-      <View style={styles.processingCard} testID="payment-status-banner">
-        <View style={styles.stepsRow}>
-          {[1, 2, 3].map((s) => (
-            <View key={s} style={styles.stepContainer}>
-              <View style={[
-                styles.stepCircle,
-                s < step && styles.stepDone,
-                s === step && styles.stepActive,
-                s > step && styles.stepPending,
-              ]}>
-                {s < step ? (
-                  <AppIcon name="check" size={14} color={colors.white} />
-                ) : s === step ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.stepNum}>{s}</Text>
-                )}
-              </View>
-              <Text style={[styles.stepLabel, s === step && styles.stepLabelActive]}>
-                {s === 1 ? 'Prepare' : s === 2 ? 'Pay' : 'Verify'}
-              </Text>
-            </View>
-          ))}
-        </View>
-        <Text style={styles.processingText}>{message}</Text>
-      </View>
+    body = (
+      <>
+        <RingLoader colors={colors} />
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </>
     );
-  }
-
-  // Success state
-  if (status === 'success') {
-    return (
-      <View style={styles.successCard} testID="payment-status-banner">
-        <View style={styles.successIconCircle}>
-          <AppIcon name="check-circle" size={48} color={colors.success} />
-        </View>
-        <Text style={styles.successTitle}>Payment Successful!</Text>
-        <Text style={styles.successSubtitle}>Your subscription is now active.</Text>
-      </View>
+  } else if (status === 'success') {
+    body = (
+      <>
+        <ResultTile variant="success" icon="check-bold" />
+        <Text style={styles.title}>Payment successful</Text>
+        <Text style={styles.subtitle}>Your subscription is now active.</Text>
+      </>
     );
-  }
-
-  // Failed state
-  if (status === 'failed') {
-    return (
-      <View style={styles.failedCard} testID="payment-status-banner">
-        <View style={styles.failedIconCircle}>
-          <AppIcon name="close-circle" size={48} color={colors.danger} />
-        </View>
-        <Text style={styles.failedTitle}>Payment Failed</Text>
-        <Text style={styles.failedSubtitle}>
+  } else if (status === 'failed') {
+    body = (
+      <>
+        <ResultTile variant="failed" icon="close-thick" />
+        <Text style={styles.title}>Payment failed</Text>
+        <Text style={styles.subtitle}>
           {error || 'Something went wrong. Please try again.'}
         </Text>
-      </View>
+      </>
     );
   }
 
-  return null;
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={isTerminal ? onDismiss : undefined}
+    >
+      <View style={styles.fullScreen} testID="payment-status-banner">
+        <View style={styles.content}>{body}</View>
+        {isTerminal && onDismiss ? (
+          <TouchableOpacity
+            style={styles.dismissBtn}
+            onPress={onDismiss}
+            activeOpacity={0.85}
+            testID="payment-status-dismiss"
+          >
+            {status === 'success' ? (
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgSubtle, borderRadius: radius.xl }]} />
+            )}
+            <Text style={styles.dismissText}>{status === 'success' ? 'Done' : 'Try again'}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </Modal>
+  );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
-  processingCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primary + '30',
-    alignItems: 'center',
-    ...shadows.sm,
-  },
-  stepsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    gap: spacing.xl + spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  stepContainer: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  stepCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepDone: {
-    backgroundColor: colors.success,
-  },
-  stepActive: {
-    backgroundColor: colors.primary,
-  },
-  stepPending: {
-    backgroundColor: colors.bgSubtle,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  stepNum: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.textSecondary,
-  },
-  stepLabel: {
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-  },
-  stepLabelActive: {
-    color: colors.primary,
-    fontWeight: fontWeights.semibold,
-  },
-  processingText: {
-    fontSize: fontSizes.base,
-    color: colors.primary,
-    fontWeight: fontWeights.medium,
-    textAlign: 'center',
-  },
+/* ── Styles ──────────────────────────────────────────────────────────────── */
 
-  successCard: {
-    backgroundColor: colors.successBg,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    marginBottom: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.success + '30',
-  },
-  successIconCircle: {
-    marginBottom: spacing.md,
-  },
-  successTitle: {
-    fontSize: fontSizes['2xl'],
-    fontWeight: fontWeights.bold,
-    color: colors.success,
-    marginBottom: spacing.xs,
-  },
-  successSubtitle: {
-    fontSize: fontSizes.base,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
+const LOADER = 148;
+const RING_OUTERMOST = 148;
+const RING_OUTER = 116;
+const CORE = 56;
+const ARC = 132;
 
-  failedCard: {
-    backgroundColor: colors.dangerBg,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    marginBottom: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.danger + '30',
-  },
-  failedIconCircle: {
-    marginBottom: spacing.md,
-  },
-  failedTitle: {
-    fontSize: fontSizes['2xl'],
-    fontWeight: fontWeights.bold,
-    color: colors.danger,
-    marginBottom: spacing.xs,
-  },
-  failedSubtitle: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
+const makeStyles = (colors: Colors) =>
+  StyleSheet.create({
+    fullScreen: {
+      flex: 1,
+      backgroundColor: colors.bg,
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.xl,
+      justifyContent: 'space-between',
+    },
+    content: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    /* Loader */
+    loaderWrap: {
+      width: LOADER,
+      height: LOADER,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing['2xl'],
+    },
+    ringOutermost: {
+      position: 'absolute',
+      width: RING_OUTERMOST,
+      height: RING_OUTERMOST,
+      borderRadius: RING_OUTERMOST / 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    ringOuter: {
+      position: 'absolute',
+      width: RING_OUTER,
+      height: RING_OUTER,
+      borderRadius: RING_OUTER / 2,
+      borderWidth: 2,
+      borderColor: colors.borderStrong,
+    },
+    arcRotator: {
+      position: 'absolute',
+      width: ARC,
+      height: ARC,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    arc: {
+      width: ARC,
+      height: ARC,
+      borderRadius: ARC / 2,
+      borderWidth: 3,
+      borderTopColor: gradient.start,
+      borderRightColor: gradient.end,
+      borderBottomColor: 'transparent',
+      borderLeftColor: 'transparent',
+    },
+    core: {
+      width: CORE,
+      height: CORE,
+      borderRadius: CORE / 2,
+      overflow: 'hidden',
+      ...Platform.select({
+        ios: {
+          shadowColor: gradient.start,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.7,
+          shadowRadius: 24,
+        },
+        default: {},
+      }),
+    },
+
+    /* Title / subtitle */
+    title: {
+      fontSize: fontSizes['3xl'],
+      fontWeight: fontWeights.bold,
+      color: colors.text,
+      letterSpacing: -0.5,
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: fontSizes.md,
+      color: colors.textMedium,
+      textAlign: 'center',
+      lineHeight: 22,
+      maxWidth: 340,
+    },
+
+    /* Result tile */
+    resultTile: {
+      width: 120,
+      height: 120,
+      borderRadius: 28,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing['2xl'],
+      ...Platform.select({
+        ios: {
+          shadowColor: gradient.start,
+          shadowOffset: { width: 0, height: 16 },
+          shadowOpacity: 0.4,
+          shadowRadius: 28,
+        },
+        android: {
+          elevation: 14,
+        },
+        default: {},
+      }),
+    },
+
+    /* Dismiss button */
+    dismissBtn: {
+      borderRadius: radius.xl,
+      overflow: 'hidden',
+      paddingVertical: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dismissText: {
+      fontSize: fontSizes.lg,
+      fontWeight: fontWeights.semibold,
+      color: '#FFFFFF',
+      letterSpacing: -0.2,
+    },
+  });

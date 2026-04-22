@@ -28,7 +28,8 @@ import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -416,6 +417,12 @@ export function BatchDetailScreen() {
             style={styles.addStudentButton}
             testID="add-student-button"
           >
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={styles.addStudentText}>+ Add</Text>
           </Pressable>
         </View>
@@ -508,14 +515,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginRight: spacing.md,
   },
   batchAvatarPlaceholder: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   batchAvatarInitial: {
     fontSize: fontSizes.xl,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   heroInfo: {
     flex: 1,
@@ -585,7 +592,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   actionButtonText: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
   },
   actionButtonDanger: {
     borderColor: colors.danger,
@@ -609,7 +616,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textDark,
   },
   addStudentButton: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,

@@ -29,7 +29,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { BirthdayWidget } from '../../components/dashboard/BirthdayWidget';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { getTodayIST } from '../../../domain/common/date-utils';
@@ -208,17 +209,22 @@ export function StaffDashboardScreen() {
               activeOpacity={0.7}
               testID="stat-pending-requests"
             >
-              <View style={[styles.statIcon, { backgroundColor: colors.primarySoft }]}>
-                
-                <AppIcon name="file-document-outline" size={22} color={colors.primary} />
+              <View style={[styles.statIcon, { overflow: 'hidden' }]}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <AppIcon name="file-document-outline" size={22} color="#FFFFFF" />
               </View>
               <Text style={styles.statValue}>
                 {pendingRequests.length}
               </Text>
               <Text style={styles.statLabel}>Pending Requests</Text>
               {pendingRequests.length > 0 && (
-                <View style={[styles.statSub, { backgroundColor: colors.primarySoft }]}>
-                  <Text style={[styles.statSubText, { color: colors.primary }]}>
+                <View style={[styles.statSub, { backgroundColor: colors.bgSubtle }]}>
+                  <Text style={[styles.statSubText, { color: colors.text }]}>
                     Awaiting approval
                   </Text>
                 </View>
@@ -295,9 +301,14 @@ export function StaffDashboardScreen() {
                 onPress={() => navigation.navigate('Students' as never)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: colors.primarySoft }]}>
-                  
-                  <AppIcon name="account-plus-outline" size={20} color={colors.primary} />
+                <View style={[styles.quickActionIcon, { overflow: 'hidden' }]}>
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name="account-plus-outline" size={20} color="#FFFFFF" />
                 </View>
                 <Text style={styles.quickActionLabel}>Add{'\n'}Student</Text>
               </TouchableOpacity>
@@ -415,13 +426,24 @@ export function StaffDashboardScreen() {
             >
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
-                  <View style={[styles.cardHeaderIcon, { backgroundColor: colors.primarySoft }]}>
-                    
-                    <AppIcon name="file-document-outline" size={18} color={colors.primary} />
+                  <View style={[styles.cardHeaderIcon, { overflow: 'hidden' }]}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <AppIcon name="file-document-outline" size={18} color="#FFFFFF" />
                   </View>
                   <Text style={styles.cardTitle}>My Pending Requests</Text>
                 </View>
                 <View style={styles.requestsBadge}>
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
                   <Text style={styles.requestsBadgeText}>{pendingRequests.length}</Text>
                 </View>
               </View>
@@ -451,7 +473,7 @@ export function StaffDashboardScreen() {
                     View all {pendingRequests.length} requests
                   </Text>
                   
-                  <AppIcon name="chevron-right" size={16} color={colors.primary} />
+                  <AppIcon name="chevron-right" size={16} color={colors.textSecondary} />
                 </View>
               )}
             </TouchableOpacity>
@@ -485,7 +507,7 @@ export function StaffDashboardScreen() {
                 </View>
                 <View style={styles.attendanceDivider} />
                 <View style={styles.enquiryStat}>
-                  <Text style={[styles.enquiryStatValue, { color: colors.primary }]}>
+                  <Text style={[styles.enquiryStatValue, { color: colors.text }]}>
                     {enquirySummary.todayFollowUp}
                   </Text>
                   <Text style={styles.enquiryStatLabel}>Follow-up Today</Text>
@@ -673,7 +695,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   attPctValue: {
     fontSize: fontSizes.xl,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   attCountsCol: {
     flex: 1,
@@ -739,12 +761,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textMedium,
   },
   absentChipMore: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   absentChipMoreText: {
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   attendanceDivider: {
     width: 1,
@@ -761,7 +783,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     ...shadows.sm,
   },
   requestsBadge: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.full,
     minWidth: 24,
     height: 24,
@@ -785,7 +807,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -793,7 +815,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   requestInitial: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   requestInfo: {
     flex: 1,
@@ -861,6 +883,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   viewAllText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
   },
 });

@@ -45,6 +45,20 @@ export class PaymentRequestModel {
   @Prop({ type: String, default: null })
   rejectionReason!: string | null;
 
+  // Parent-submission extension (Phase 2 of the manual-payment feature).
+  // Defaults keep pre-existing records working as STAFF source with nulls.
+  @Prop({ type: String, default: 'STAFF', enum: ['STAFF', 'PARENT'] })
+  source!: string;
+
+  @Prop({ type: String, default: null })
+  paymentMethod!: string | null;
+
+  @Prop({ type: String, default: null })
+  proofImageUrl!: string | null;
+
+  @Prop({ type: String, default: null })
+  paymentRefNumber!: string | null;
+
   @Prop({ default: 1 })
   version!: number;
 }
@@ -56,3 +70,5 @@ PaymentRequestSchema.index({ academyId: 1, monthKey: 1 });
 PaymentRequestSchema.index({ feeDueId: 1, status: 1 });
 PaymentRequestSchema.index({ staffUserId: 1, academyId: 1 });
 PaymentRequestSchema.index({ academyId: 1, createdAt: -1 });
+// Parent-scoped queries: "my pending requests" by a specific parent.
+PaymentRequestSchema.index({ source: 1, staffUserId: 1, academyId: 1 });

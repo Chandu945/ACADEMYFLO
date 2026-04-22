@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
 import { AppIcon } from './AppIcon';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -200,6 +201,14 @@ export function DatePickerInput({
                         ]}
                         onPress={() => selectYear(y)}
                       >
+                        {isSelected ? (
+                          <LinearGradient
+                            colors={[gradient.start, gradient.end]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        ) : null}
                         <Text
                           style={[
                             styles.yearText,
@@ -242,6 +251,14 @@ export function DatePickerInput({
                         ]}
                         onPress={() => selectMonth(idx)}
                       >
+                        {isSelected ? (
+                          <LinearGradient
+                            colors={[gradient.start, gradient.end]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        ) : null}
                         <Text
                           style={[
                             styles.monthText,
@@ -309,6 +326,14 @@ export function DatePickerInput({
                         disabled={!!isDisabled}
                         testID={testID ? `${testID}-day-${day}` : undefined}
                       >
+                        {isSelected ? (
+                          <LinearGradient
+                            colors={[gradient.start, gradient.end]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        ) : null}
                         <Text
                           style={[
                             styles.dayText,
@@ -447,7 +472,7 @@ const makeStyles = (colors: Colors) =>
       borderRadius: CELL_SIZE / 2,
     },
     dayCellSelected: {
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
     },
     dayCellToday: {
       borderWidth: 1.5,
@@ -463,7 +488,7 @@ const makeStyles = (colors: Colors) =>
       fontWeight: fontWeights.bold,
     },
     dayTextToday: {
-      color: colors.primary,
+      color: colors.text,
       fontWeight: fontWeights.bold,
     },
     dayTextDisabled: {
@@ -480,7 +505,7 @@ const makeStyles = (colors: Colors) =>
     todayButtonText: {
       fontSize: fontSizes.base,
       fontWeight: fontWeights.semibold,
-      color: colors.primary,
+      color: colors.text,
     },
 
     // Year picker
@@ -502,7 +527,7 @@ const makeStyles = (colors: Colors) =>
       borderRadius: radius.lg,
     },
     yearCellSelected: {
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
     },
     yearCellCurrent: {
       borderWidth: 1.5,
@@ -518,7 +543,7 @@ const makeStyles = (colors: Colors) =>
       fontWeight: fontWeights.bold,
     },
     yearTextCurrent: {
-      color: colors.primary,
+      color: colors.text,
       fontWeight: fontWeights.bold,
     },
 
@@ -538,7 +563,7 @@ const makeStyles = (colors: Colors) =>
       borderRadius: radius.lg,
     },
     monthCellSelected: {
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
     },
     monthCellCurrent: {
       borderWidth: 1.5,
@@ -554,7 +579,7 @@ const makeStyles = (colors: Colors) =>
       fontWeight: fontWeights.bold,
     },
     monthTextCurrent: {
-      color: colors.primary,
+      color: colors.text,
       fontWeight: fontWeights.bold,
     },
   });

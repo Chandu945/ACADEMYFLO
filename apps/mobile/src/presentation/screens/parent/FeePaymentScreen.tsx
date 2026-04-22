@@ -14,12 +14,13 @@ import { AppIcon } from '../../components/ui/AppIcon';
 import { useFeePaymentFlow } from '../../../application/parent/use-fee-payment-flow';
 import { parentApi } from '../../../infra/parent/parent-api';
 import { openCashfreeCheckout } from '../../../infra/payments/cashfree-web-checkout';
+import LinearGradient from 'react-native-linear-gradient';
 
 const feePaymentDeps = {
   parentApi,
   checkout: { openCheckout: openCashfreeCheckout },
 };
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { formatMonthKey, formatCurrency } from '../../utils/format';
 import { CONVENIENCE_FEE_RATE } from '@academyflo/contracts';
@@ -47,16 +48,24 @@ function StepIndicator({
       <View
         style={[
           sStyles.dot,
-          isActive && { backgroundColor: colors.primary },
+          isActive && sStyles.dotActive,
           isCurrent && sStyles.dotCurrent,
         ]}
       >
+        {isActive ? (
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
         {isActive && (
-          
+
           <AppIcon name="check" size={12} color={colors.white} />
         )}
       </View>
-      <Text style={[sStyles.label, isActive && { color: colors.primary }]}>{label}</Text>
+      <Text style={[sStyles.label, isActive && { color: colors.text }]}>{label}</Text>
     </View>
   );
 }
@@ -70,6 +79,9 @@ const makeStepStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dotActive: {
+    overflow: 'hidden',
   },
   dotCurrent: {
     borderWidth: 2,
@@ -131,8 +143,13 @@ export function FeePaymentScreen() {
       {/* Summary Card */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryIcon}>
-          
-          <AppIcon name="receipt" size={24} color={colors.primary} />
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="receipt" size={24} color="#FFFFFF" />
         </View>
         <View style={styles.summaryDetails}>
           <Text style={styles.summaryLabel}>Fee Payment</Text>
@@ -236,7 +253,12 @@ export function FeePaymentScreen() {
             onPress={() => startPayment(feeDueId)}
             disabled={isProcessing}
           >
-            
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <AppIcon name="shield-check-outline" size={20} color={colors.white} />
             <Text style={styles.payButtonText}>
               {status === 'failed' ? 'Retry Payment' : 'Pay Securely'}
@@ -252,7 +274,7 @@ export function FeePaymentScreen() {
               onPress={() => navigation.navigate('Receipt', { feeDueId })}
             >
               
-              <AppIcon name="receipt" size={20} color={colors.primary} />
+              <AppIcon name="receipt" size={20} color={colors.textSecondary} />
               <Text style={styles.receiptButtonText}>View Receipt</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.doneButton} onPress={() => { reset(); navigation.goBack(); }}>
@@ -289,7 +311,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -369,7 +391,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   breakdownTotalValue: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   stepsContainer: {
     backgroundColor: colors.surface,
@@ -429,7 +451,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.base,
     ...shadows.md,
@@ -444,13 +466,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.xl,
     paddingVertical: spacing.base,
     marginBottom: spacing.sm,
   },
   receiptButtonText: {
-    color: colors.primary,
+    color: colors.text,
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
   },

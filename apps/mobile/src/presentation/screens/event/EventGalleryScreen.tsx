@@ -25,7 +25,8 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { GalleryThumbnail, AddPhotoTile } from '../../components/event/GalleryThumbnail';
-import { spacing, fontSizes, fontWeights, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { env } from '../../../infra/env';
 import type { AppError } from '../../../domain/common/errors';
@@ -413,6 +414,12 @@ export function EventGalleryScreen() {
     <View style={styles.container}>
       {uploading && (
         <View style={styles.uploadingBanner}>
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <ActivityIndicator size="small" color={colors.white} />
           <Text style={styles.uploadingText}>Uploading photos...</Text>
         </View>
@@ -486,7 +493,7 @@ const makeStyles = (colors: Colors) =>
     },
     uploadingBanner: {
       flexDirection: 'row',
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
       paddingVertical: spacing.md,
       paddingHorizontal: spacing.base,
       alignItems: 'center',

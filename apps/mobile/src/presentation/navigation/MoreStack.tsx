@@ -12,6 +12,7 @@ import { ChangePasswordScreen } from '../screens/parent/ChangePasswordScreen';
 import { AcademyInfoScreen } from '../screens/parent/AcademyInfoScreen';
 import { PaymentHistoryScreen } from '../screens/parent/PaymentHistoryScreen';
 import { InstituteInfoScreen } from '../screens/settings/InstituteInfoScreen';
+import { PaymentMethodsScreen } from '../screens/settings/PaymentMethodsScreen';
 import { EnquiryListScreen } from '../screens/enquiry/EnquiryListScreen';
 import { AddEnquiryScreen } from '../screens/enquiry/AddEnquiryScreen';
 import { EnquiryDetailScreen } from '../screens/enquiry/EnquiryDetailScreen';
@@ -48,6 +49,7 @@ export type MoreStackParamList = {
   ExpensesHome: undefined;
   ExpenseForm: { mode: 'create' } | { mode: 'edit'; expense: ExpenseItem };
   InstituteInfo: undefined;
+  PaymentMethods: undefined;
   EnquiryList: { filter?: string } | undefined;
   AddEnquiry: undefined;
   EnquiryDetail: { enquiryId: string };
@@ -86,7 +88,7 @@ export function MoreStack() {
     // @ts-expect-error @types/react version mismatch in monorepo
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
+        headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
         headerTitleStyle: { color: colors.text },
         headerShadowVisible: false,
@@ -129,6 +131,16 @@ export function MoreStack() {
         component={InstituteInfoScreen}
         options={({ navigation }) => ({
           title: 'Institute Information',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="PaymentMethods"
+        component={PaymentMethodsScreen}
+        options={({ navigation }) => ({
+          title: 'Payment Methods',
           headerLeft: () => (
             <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
           ),

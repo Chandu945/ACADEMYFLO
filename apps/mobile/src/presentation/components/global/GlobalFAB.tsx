@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Pressable, StyleSheet, Animated, View, Text } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { AppIcon } from '../ui/AppIcon';
 import { useNavigation } from '@react-navigation/native';
 import type { AddNewOption } from './AddNewModal';
 import { useFAB } from '../../context/FABContext';
 import { useAuth } from '../../context/AuthContext';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -206,7 +207,13 @@ export function GlobalFAB() {
               >
                 <Text style={styles.menuLabel}>{item.label}</Text>
                 <View style={styles.menuIcon}>
-                  <AppIcon name={item.icon} size={22} color={colors.primary} />
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name={item.icon} size={22} color="#FFFFFF" />
                 </View>
               </Pressable>
             </Animated.View>
@@ -221,6 +228,14 @@ export function GlobalFAB() {
         accessibilityLabel={isOpen ? 'Close menu' : 'Add new item'}
         accessibilityRole="button"
       >
+        {!isOpen ? (
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
         <Animated.View style={[styles.fabIconWrap, { transform: [{ rotate: rotateInterpolation }] }]}>
           <View style={styles.plusHorizontal} />
           <View style={styles.plusVertical} />
@@ -244,7 +259,7 @@ const makeStyles = (colors: Colors) =>
       width: 56,
       height: 56,
       borderRadius: radius.full,
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
       elevation: 6,
@@ -309,7 +324,7 @@ const makeStyles = (colors: Colors) =>
       width: 42,
       height: 42,
       borderRadius: radius.full,
-      backgroundColor: colors.primarySoft,
+      overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
     },

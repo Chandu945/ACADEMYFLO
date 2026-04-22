@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, FlatList, TextInput, Text, StyleSheet, RefreshControl, Alert } from 'react-native';
+import {
+  View,
+  FlatList,
+  TextInput,
+  Text,
+  StyleSheet,
+  RefreshControl,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import type { AppError } from '../../../domain/common/errors';
 import type { PaymentRequestItem } from '../../../domain/fees/payment-requests.types';
@@ -16,10 +26,12 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { RequestRow } from '../../components/fees/RequestRow';
-import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+
+type SourceFilter = 'ALL' | 'STAFF' | 'PARENT';
 
 type PendingApprovalsScreenProps = {
   onActionComplete: () => void;
@@ -32,6 +44,7 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { showToast } = useToast();
   const [items, setItems] = useState<PaymentRequestItem[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
   const [actionTarget, setActionTarget] = useState<{
@@ -174,13 +187,72 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
     );
   }
 
+  const counts = useMemo(
+    () => ({
+      ALL: items.length,
+      STAFF: items.filter((i) => i.source !== 'PARENT').length,
+      PARENT: items.filter((i) => i.source === 'PARENT').length,
+    }),
+    [items],
+  );
+
+  const filteredItems = useMemo(() => {
+    if (sourceFilter === 'ALL') return items;
+    if (sourceFilter === 'PARENT') return items.filter((i) => i.source === 'PARENT');
+    return items.filter((i) => i.source !== 'PARENT');
+  }, [items, sourceFilter]);
+
   return (
     <View style={styles.container}>
-      {items.length === 0 ? (
-        <EmptyState message="No pending approvals" />
+      {/* Source filter tabs — only render when there's at least one PARENT
+          request so existing staff-only academies don't see noisy tabs. */}
+      {counts.PARENT > 0 && (
+        <View style={styles.filterTabs} testID="source-filter-tabs">
+          {(['ALL', 'STAFF', 'PARENT'] as const).map((key) => {
+            const active = sourceFilter === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.filterTab, active && styles.filterTabActive]}
+                onPress={() => setSourceFilter(key)}
+                testID={`source-tab-${key.toLowerCase()}`}
+                activeOpacity={0.8}
+              >
+                {active ? (
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : null}
+                <Text style={[styles.filterTabText, active && styles.filterTabTextActive]}>
+                  {key === 'ALL' ? 'All' : key === 'STAFF' ? 'Staff' : 'Parent'}
+                </Text>
+                <Text
+                  style={[styles.filterTabCount, active && styles.filterTabCountActive]}
+                >
+                  {counts[key]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {filteredItems.length === 0 ? (
+        <EmptyState
+          message={
+            sourceFilter === 'PARENT'
+              ? 'No parent requests'
+              : sourceFilter === 'STAFF'
+                ? 'No staff requests'
+                : 'No pending approvals'
+          }
+        />
       ) : (
         <FlatList
-          data={items}
+          data={filteredItems}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
@@ -263,5 +335,53 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.base,
     color: colors.text,
     backgroundColor: colors.surface,
+  },
+
+  /* Source filter tabs */
+  filterTabs: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+  },
+  filterTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 9,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  filterTabActive: {
+    borderColor: 'transparent',
+  },
+  filterTabText: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+  filterTabTextActive: {
+    color: '#FFFFFF',
+  },
+  filterTabCount: {
+    fontSize: 11,
+    fontWeight: fontWeights.bold,
+    color: colors.textDisabled,
+    backgroundColor: colors.bgSubtle,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.full,
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  filterTabCountActive: {
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
 });

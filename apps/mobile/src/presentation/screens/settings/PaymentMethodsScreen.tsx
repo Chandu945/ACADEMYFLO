@@ -1,0 +1,534 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Switch,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { Input } from '../../components/ui/Input';
+import { InlineError } from '../../components/ui/InlineError';
+import { crossAlert } from '../../utils/crossPlatformAlert';
+import {
+  instituteInfoApi,
+  uploadInstituteImage,
+  deleteInstituteImage,
+} from '../../../infra/settings/institute-info-api';
+import { useInstituteInfo } from '../../../application/settings/use-institute-info';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
+import type { Colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
+
+const IFSC_PATTERN = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const UPI_PATTERN = /^[\w.+-]+@[\w]+$/;
+
+export function PaymentMethodsScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { showToast } = useToast();
+  const { info, loading, saving, error, update, refetch } = useInstituteInfo(instituteInfoApi);
+
+  const [initialized, setInitialized] = useState(false);
+  const [manualPaymentsEnabled, setManualPaymentsEnabled] = useState(false);
+  const [upiId, setUpiId] = useState('');
+  const [upiHolderName, setUpiHolderName] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [branchName, setBranchName] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (info && !initialized) {
+      setManualPaymentsEnabled(info.manualPaymentsEnabled);
+      setUpiId(info.upiId ?? '');
+      setUpiHolderName(info.upiHolderName ?? '');
+      if (info.bankDetails) {
+        setAccountHolderName(info.bankDetails.accountHolderName);
+        setAccountNumber(info.bankDetails.accountNumber);
+        setIfscCode(info.bankDetails.ifscCode);
+        setBankName(info.bankDetails.bankName);
+        setBranchName(info.bankDetails.branchName);
+      }
+      setInitialized(true);
+    }
+  }, [info, initialized]);
+
+  const isDirty =
+    initialized &&
+    (manualPaymentsEnabled !== (info?.manualPaymentsEnabled ?? false) ||
+      upiId !== (info?.upiId ?? '') ||
+      upiHolderName !== (info?.upiHolderName ?? '') ||
+      accountHolderName !== (info?.bankDetails?.accountHolderName ?? '') ||
+      accountNumber !== (info?.bankDetails?.accountNumber ?? '') ||
+      ifscCode !== (info?.bankDetails?.ifscCode ?? '') ||
+      bankName !== (info?.bankDetails?.bankName ?? '') ||
+      branchName !== (info?.bankDetails?.branchName ?? ''));
+
+  useUnsavedChangesWarning(isDirty && !saving);
+
+  const handleSave = useCallback(async () => {
+    // UPI validation (only if provided)
+    const upiTrimmed = upiId.trim();
+    if (upiTrimmed && !UPI_PATTERN.test(upiTrimmed)) {
+      crossAlert('Validation', 'UPI ID must be in format: name@provider (e.g. 9876543210@ybl).');
+      return;
+    }
+
+    // Bank validation — only if any bank field is filled, require all
+    const hasBankFields =
+      accountHolderName || accountNumber || ifscCode || bankName || branchName;
+    if (hasBankFields) {
+      const missing: string[] = [];
+      if (!accountHolderName.trim()) missing.push('Account Holder Name');
+      if (!accountNumber.trim()) missing.push('Account Number');
+      if (!ifscCode.trim()) missing.push('IFSC Code');
+      if (!bankName.trim()) missing.push('Bank Name');
+      if (!branchName.trim()) missing.push('Branch Name');
+      if (missing.length > 0) {
+        crossAlert('Validation', `Please fill in: ${missing.join(', ')}`);
+        return;
+      }
+      if (!IFSC_PATTERN.test(ifscCode.trim().toUpperCase())) {
+        crossAlert('Validation', 'IFSC Code must be 11 chars (e.g. SBIN0001234).');
+        return;
+      }
+      if (!/^\d{9,18}$/.test(accountNumber.trim())) {
+        crossAlert('Validation', 'Account number must be 9\u201318 digits.');
+        return;
+      }
+    }
+
+    // Warn if enabling but no method is configured
+    if (manualPaymentsEnabled && !upiTrimmed && !info?.qrCodeImageUrl && !hasBankFields) {
+      crossAlert(
+        'No payment method set',
+        'Add at least one method (UPI, QR code, or bank details) before enabling manual payments.',
+      );
+      return;
+    }
+
+    const bankDetails = hasBankFields
+      ? {
+          accountHolderName: accountHolderName.trim(),
+          accountNumber: accountNumber.trim(),
+          ifscCode: ifscCode.trim().toUpperCase(),
+          bankName: bankName.trim(),
+          branchName: branchName.trim(),
+        }
+      : null;
+
+    const errResult = await update({
+      manualPaymentsEnabled,
+      upiId: upiTrimmed || null,
+      upiHolderName: upiHolderName.trim() || null,
+      bankDetails,
+    });
+    if (errResult) {
+      crossAlert('Error', errResult.message);
+      return;
+    }
+    showToast('Payment methods saved');
+    setInitialized(false); // re-sync on next refetch
+  }, [
+    manualPaymentsEnabled,
+    upiId,
+    upiHolderName,
+    accountHolderName,
+    accountNumber,
+    ifscCode,
+    bankName,
+    branchName,
+    info?.qrCodeImageUrl,
+    update,
+    showToast,
+  ]);
+
+  const pickQr = useCallback(async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.9,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    });
+    if (result.didCancel || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    if (!asset.uri || !asset.fileName || !asset.type) return;
+    setUploading(true);
+    try {
+      const r = await uploadInstituteImage('qrcode', asset.uri, asset.fileName, asset.type);
+      if (r.ok) {
+        showToast('QR code uploaded');
+        refetch();
+      } else {
+        crossAlert('Upload error', r.error.message);
+      }
+    } finally {
+      setUploading(false);
+    }
+  }, [refetch, showToast]);
+
+  const removeQr = useCallback(() => {
+    crossAlert('Remove QR code?', 'Parents will stop seeing the QR payment option.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          const r = await deleteInstituteImage('qrcode');
+          if (r.ok) {
+            showToast('QR code removed');
+            refetch();
+          } else {
+            crossAlert('Error', r.error.message);
+          }
+        },
+      },
+    ]);
+  }, [refetch, showToast]);
+
+  if (loading) {
+    return (
+      <View style={styles.center} testID="payment-methods-loading">
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error && !info) {
+    return (
+      <View style={styles.center}>
+        <InlineError message={error.message} onRetry={refetch} />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
+      {/* ── Toggle ─────────────────────────────────── */}
+      <View style={styles.toggleCard}>
+        <View style={styles.toggleText}>
+          <Text style={styles.toggleTitle}>Accept manual payments</Text>
+          <Text style={styles.toggleSubtitle}>
+            Let parents pay via UPI, QR or bank transfer and submit a screenshot for you to approve.
+          </Text>
+        </View>
+        <Switch
+          value={manualPaymentsEnabled}
+          onValueChange={setManualPaymentsEnabled}
+          trackColor={{ false: colors.border, true: colors.primary }}
+          thumbColor="#FFFFFF"
+          ios_backgroundColor={colors.border}
+          testID="manual-payments-toggle"
+        />
+      </View>
+
+      {/* ── UPI ──────────────────────────────────── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <AppIcon name="qrcode" size={18} color={colors.text} />
+          <Text style={styles.sectionTitle}>UPI</Text>
+        </View>
+        <View style={styles.card}>
+          <Input
+            label="UPI ID"
+            value={upiId}
+            onChangeText={setUpiId}
+            placeholder="yourname@bank"
+            autoCapitalize="none"
+            testID="upi-id-input"
+          />
+          <Input
+            label="Beneficiary name (shown to parents)"
+            value={upiHolderName}
+            onChangeText={setUpiHolderName}
+            placeholder="e.g. Academy name or owner name"
+            testID="upi-holder-input"
+          />
+        </View>
+      </View>
+
+      {/* ── QR code ──────────────────────────────── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <AppIcon name="qrcode-scan" size={18} color={colors.text} />
+          <Text style={styles.sectionTitle}>QR code</Text>
+        </View>
+        <View style={styles.card}>
+          {uploading ? (
+            <View style={styles.qrUploading}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.qrUploadingText}>Uploading...</Text>
+            </View>
+          ) : info?.qrCodeImageUrl ? (
+            <View>
+              <View style={styles.qrPreviewWrap}>
+                <Image
+                  source={{ uri: info.qrCodeImageUrl }}
+                  style={styles.qrPreview}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.qrActions}>
+                <TouchableOpacity
+                  style={styles.qrActionBtn}
+                  onPress={pickQr}
+                  testID="qr-change"
+                >
+                  <AppIcon name="image-edit-outline" size={16} color={colors.textSecondary} />
+                  <Text style={styles.qrActionText}>Change</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.qrActionBtn, styles.qrRemoveBtn]}
+                  onPress={removeQr}
+                  testID="qr-remove"
+                >
+                  <AppIcon name="trash-can-outline" size={16} color={colors.danger} />
+                  <Text style={[styles.qrActionText, { color: colors.danger }]}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.qrUploadTile} onPress={pickQr} testID="qr-upload">
+              <View style={styles.qrUploadIcon}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <AppIcon name="upload" size={20} color="#FFFFFF" />
+              </View>
+              <Text style={styles.qrUploadTitle}>Upload QR code</Text>
+              <Text style={styles.qrUploadSubtitle}>
+                Square image with your UPI or merchant QR
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* ── Bank ─────────────────────────────────── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <AppIcon name="bank-outline" size={18} color={colors.text} />
+          <Text style={styles.sectionTitle}>Bank transfer</Text>
+        </View>
+        <View style={styles.card}>
+          <Input
+            label="Account holder name"
+            value={accountHolderName}
+            onChangeText={setAccountHolderName}
+            placeholder="As on passbook"
+            testID="bank-holder-input"
+          />
+          <Input
+            label="Account number"
+            value={accountNumber}
+            onChangeText={setAccountNumber}
+            placeholder="9\u201318 digits"
+            keyboardType="number-pad"
+            testID="bank-account-input"
+          />
+          <Input
+            label="IFSC code"
+            value={ifscCode}
+            onChangeText={(v) => setIfscCode(v.toUpperCase())}
+            placeholder="SBIN0001234"
+            autoCapitalize="characters"
+            testID="bank-ifsc-input"
+          />
+          <Input
+            label="Bank name"
+            value={bankName}
+            onChangeText={setBankName}
+            placeholder="e.g. HDFC Bank"
+            testID="bank-name-input"
+          />
+          <Input
+            label="Branch"
+            value={branchName}
+            onChangeText={setBranchName}
+            placeholder="e.g. Koramangala"
+            testID="bank-branch-input"
+          />
+        </View>
+      </View>
+
+      {/* ── Save ─────────────────────────────────── */}
+      <TouchableOpacity
+        style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+        onPress={handleSave}
+        disabled={saving}
+        testID="payment-methods-save"
+      >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {!saving && <AppIcon name="content-save-outline" size={18} color="#FFFFFF" />}
+        <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save'}</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+const makeStyles = (colors: Colors) =>
+  StyleSheet.create({
+    scroll: { flex: 1, backgroundColor: colors.bg },
+    content: { padding: spacing.base, paddingBottom: spacing['3xl'] },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
+
+    toggleCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.base,
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.base,
+      marginBottom: spacing.md,
+    },
+    toggleText: { flex: 1, minWidth: 0 },
+    toggleTitle: {
+      fontSize: fontSizes.md,
+      fontWeight: fontWeights.semibold,
+      color: colors.text,
+    },
+    toggleSubtitle: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      marginTop: 3,
+      lineHeight: 18,
+    },
+
+    section: { marginBottom: spacing.md },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
+      marginLeft: spacing.xs,
+    },
+    sectionTitle: {
+      fontSize: fontSizes.md,
+      fontWeight: fontWeights.bold,
+      color: colors.text,
+    },
+
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.base,
+      gap: spacing.sm,
+    },
+
+    qrUploadTile: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.xl,
+      backgroundColor: colors.bgSubtle,
+      borderRadius: radius.lg,
+      borderWidth: 2,
+      borderColor: colors.borderStrong,
+      borderStyle: 'dashed',
+    },
+    qrUploadIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.md,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+    },
+    qrUploadTitle: {
+      fontSize: fontSizes.md,
+      fontWeight: fontWeights.semibold,
+      color: colors.text,
+    },
+    qrUploadSubtitle: {
+      fontSize: fontSizes.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    qrUploading: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.xl,
+      gap: spacing.sm,
+    },
+    qrUploadingText: { fontSize: fontSizes.sm, color: colors.textSecondary },
+    qrPreviewWrap: {
+      backgroundColor: colors.bgSubtle,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      alignItems: 'center',
+    },
+    qrPreview: {
+      width: 180,
+      height: 180,
+    },
+    qrActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    qrActionBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: colors.bgSubtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    qrRemoveBtn: {
+      backgroundColor: colors.dangerBg,
+      borderColor: colors.dangerBorder,
+    },
+    qrActionText: {
+      fontSize: fontSizes.sm,
+      fontWeight: fontWeights.medium,
+      color: colors.text,
+    },
+
+    saveBtn: {
+      overflow: 'hidden',
+      borderRadius: radius.xl,
+      paddingVertical: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.base,
+    },
+    saveBtnText: {
+      fontSize: fontSizes.md,
+      fontWeight: fontWeights.bold,
+      color: '#FFFFFF',
+      letterSpacing: -0.2,
+    },
+  });

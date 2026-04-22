@@ -28,7 +28,13 @@ export interface InstituteInfo {
   signatureStampUrl: string | null;
   bankDetails: BankDetails | null;
   upiId: string | null;
+  /** Display name shown to parents beside the UPI ID (e.g. the beneficiary). */
+  upiHolderName: string | null;
   qrCodeImageUrl: string | null;
+  /** When true, parents see the manual-payment option on the fee screen (UPI
+   *  ID / QR / bank details). They pay outside the app and submit a proof
+   *  screenshot for the owner to approve. Disabled by default. */
+  manualPaymentsEnabled: boolean;
 }
 
 export interface AcademyProps {
@@ -134,7 +140,9 @@ export class Academy extends Entity<AcademyProps> {
       signatureStampUrl: null,
       bankDetails: null,
       upiId: null,
+      upiHolderName: null,
       qrCodeImageUrl: null,
+      manualPaymentsEnabled: false,
     };
   }
 
@@ -145,8 +153,10 @@ export class Academy extends Entity<AcademyProps> {
   updateInstituteInfo(params: {
     bankDetails?: BankDetails | null;
     upiId?: string | null;
+    upiHolderName?: string | null;
     signatureStampUrl?: string | null;
     qrCodeImageUrl?: string | null;
+    manualPaymentsEnabled?: boolean;
   }): Academy {
     const current = this.instituteInfo;
     return Academy.reconstitute(this.id.toString(), {
@@ -155,7 +165,12 @@ export class Academy extends Entity<AcademyProps> {
         signatureStampUrl: params.signatureStampUrl !== undefined ? params.signatureStampUrl : current.signatureStampUrl,
         bankDetails: params.bankDetails !== undefined ? params.bankDetails : current.bankDetails,
         upiId: params.upiId !== undefined ? params.upiId : current.upiId,
+        upiHolderName: params.upiHolderName !== undefined ? params.upiHolderName : current.upiHolderName,
         qrCodeImageUrl: params.qrCodeImageUrl !== undefined ? params.qrCodeImageUrl : current.qrCodeImageUrl,
+        manualPaymentsEnabled:
+          params.manualPaymentsEnabled !== undefined
+            ? params.manualPaymentsEnabled
+            : current.manualPaymentsEnabled,
       },
       audit: updateAuditFields(this.props.audit),
     });

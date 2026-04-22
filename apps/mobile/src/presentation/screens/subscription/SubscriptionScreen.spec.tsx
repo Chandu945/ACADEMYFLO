@@ -48,6 +48,8 @@ function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
     forceUpdate: null,
+    sessionExpired: false,
+    dismissSessionExpired: jest.fn(),
     ...overrides,
   };
 }

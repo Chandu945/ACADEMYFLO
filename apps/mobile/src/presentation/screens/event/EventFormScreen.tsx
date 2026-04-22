@@ -19,7 +19,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import type { EventType, TargetAudience, EventDetail } from '../../../domain/event/event.types';
 import { isValidDate } from '../../../domain/common/date-utils';
 import * as eventApi from '../../../infra/event/event-api';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -193,7 +194,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
 
       {/* ── Event Details ─────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        <AppIcon name="calendar-star" size={20} color={colors.primary} />
+        <AppIcon name="calendar-star" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Event Details</Text>
       </View>
       <View style={styles.card}>
@@ -215,6 +216,14 @@ export function EventFormScreen(props: EventFormScreenProps) {
               onPress={() => setEventType(eventType === t.value ? '' : t.value)}
               testID={`event-type-${t.value}`}
             >
+              {eventType === t.value ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <AppIcon
                 name={t.icon}
                 size={14}
@@ -238,7 +247,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
 
       {/* ── Date & Time ──────────────────────────────── */}
       <View style={styles.sectionHeader}>
-        <AppIcon name="calendar-clock" size={20} color={colors.primary} />
+        <AppIcon name="calendar-clock" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Date & Time</Text>
       </View>
       <View style={styles.card}>
@@ -295,7 +304,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
 
       {/* ── Location & Audience ──────────────────────── */}
       <View style={styles.sectionHeader}>
-        <AppIcon name="map-marker-outline" size={20} color={colors.primary} />
+        <AppIcon name="map-marker-outline" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Location & Audience</Text>
       </View>
       <View style={styles.card}>
@@ -317,6 +326,14 @@ export function EventFormScreen(props: EventFormScreenProps) {
               onPress={() => setTargetAudience(targetAudience === a.value ? '' : a.value)}
               testID={`audience-${a.value}`}
             >
+              {targetAudience === a.value ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <AppIcon
                 name={a.icon}
                 size={14}
@@ -337,6 +354,12 @@ export function EventFormScreen(props: EventFormScreenProps) {
         disabled={submitting}
         testID="submit-button"
       >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         {!submitting && (
           <AppIcon name="content-save-outline" size={20} color={colors.white} />
         )}
@@ -409,7 +432,7 @@ const makeStyles = (colors: Colors) =>
       backgroundColor: colors.surface,
     },
     chipActive: {
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
       borderColor: colors.primary,
     },
     chipText: {
@@ -446,7 +469,7 @@ const makeStyles = (colors: Colors) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: spacing.sm,
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
       borderRadius: radius.xl,
       padding: spacing.base,
       marginTop: spacing.xl,

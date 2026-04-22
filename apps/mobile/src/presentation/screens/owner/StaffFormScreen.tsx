@@ -19,7 +19,8 @@ import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUpload
 import type { CreateStaffInput, UpdateStaffInput } from '../../../domain/staff/staff.types';
 import type { SalaryFrequency } from '../../../domain/staff/staff.types';
 import { AppIcon } from '../../components/ui/AppIcon';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -251,14 +252,15 @@ export function StaffFormScreen() {
         currentPhotoUrl={photoUrl}
         uploadPath={mode === 'edit' && staff?.id ? getStaffPhotoUploadPath(staff.id) : undefined}
         onPhotoUploaded={setPhotoUrl}
-        size={90}
+        size={96}
+        shape="rounded"
         testID="staff-form-photo"
       />
 
       {/* Basic Information */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="account-outline" size={18} color={colors.primary} />
+        <AppIcon name="account-outline" size={18} color={colors.text} />
         <Text style={styles.sectionTitle} accessibilityRole="header">Basic Information</Text>
       </View>
       <View style={styles.formCard}>
@@ -318,7 +320,7 @@ export function StaffFormScreen() {
       {/* Personal Details */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="card-account-details-outline" size={18} color={colors.primary} />
+        <AppIcon name="card-account-details-outline" size={18} color={colors.text} />
         <Text style={styles.sectionTitle} accessibilityRole="header">Personal Details</Text>
       </View>
       <View style={styles.formCard}>
@@ -334,6 +336,14 @@ export function StaffFormScreen() {
               accessibilityLabel={`Gender: ${opt.label}`}
               testID={`gender-${opt.value.toLowerCase()}`}
             >
+              {gender === opt.value ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <Text style={[styles.chipText, gender === opt.value && styles.chipTextActive]}>
                 {opt.label}
               </Text>
@@ -353,7 +363,7 @@ export function StaffFormScreen() {
       {/* Contact Information */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="phone-outline" size={18} color={colors.primary} />
+        <AppIcon name="phone-outline" size={18} color={colors.text} />
         <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
       </View>
       <View style={styles.formCard}>
@@ -370,7 +380,7 @@ export function StaffFormScreen() {
       {/* Qualification & Position */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="school-outline" size={18} color={colors.primary} />
+        <AppIcon name="school-outline" size={18} color={colors.text} />
         <Text style={styles.sectionTitle} accessibilityRole="header">Qualification & Position</Text>
       </View>
       <View style={styles.formCard}>
@@ -396,7 +406,7 @@ export function StaffFormScreen() {
       {/* Salary Configuration */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="currency-inr" size={18} color={colors.primary} />
+        <AppIcon name="currency-inr" size={18} color={colors.text} />
         <Text style={styles.sectionTitle} accessibilityRole="header">Salary Configuration</Text>
       </View>
       <View style={styles.formCard}>
@@ -422,6 +432,14 @@ export function StaffFormScreen() {
               accessibilityLabel={`Salary frequency: ${opt.label}`}
               testID={`freq-${opt.value.toLowerCase()}`}
             >
+              {salaryFrequency === opt.value ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <Text style={[styles.chipText, salaryFrequency === opt.value && styles.chipTextActive]}>
                 {opt.label}
               </Text>
@@ -493,7 +511,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   chipActive: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   chipText: {

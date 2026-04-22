@@ -16,6 +16,16 @@ export const paymentRequestItemSchema = z.object({
   reviewedByName: z.string().nullable(),
   reviewedAt: z.string().nullable(),
   rejectionReason: z.string().nullable(),
+  // Phase 4 additions — default to 'STAFF' + nulls if server omits them so
+  // the mobile app works against older API builds during rollout.
+  source: z.enum(['STAFF', 'PARENT']).optional().transform((v) => v ?? 'STAFF'),
+  paymentMethod: z
+    .enum(['UPI', 'BANK', 'CASH', 'OTHER'])
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
+  proofImageUrl: z.string().nullable().optional().transform((v) => v ?? null),
+  paymentRefNumber: z.string().nullable().optional().transform((v) => v ?? null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

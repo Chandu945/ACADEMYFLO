@@ -4,6 +4,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import type { AppError } from '../../../domain/common/errors';
 import type { DailyStaffReportResult } from '../../../domain/staff-attendance/staff-attendance.types';
@@ -95,9 +96,11 @@ export function StaffAttendanceDailyReportScreen() {
   const renderAbsentItem = useCallback(
     ({ item }: { item: { staffUserId: string; fullName: string } }) => (
       <View style={styles.absentRow} testID={`absent-staff-${item.staffUserId}`}>
-        <View style={styles.absentAvatar}>
-          <Text style={styles.absentAvatarText}>{getInitials(item.fullName)}</Text>
-        </View>
+        <InitialsAvatar
+          name={item.fullName}
+          size={40}
+          style={styles.absentAvatar}
+        />
         <Text style={styles.absentName} numberOfLines={1}>{item.fullName}</Text>
         <View style={styles.absentBadge}>
           <Text style={styles.absentBadgeText}>ABSENT</Text>
@@ -243,7 +246,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.base,
@@ -251,7 +254,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   percentageText: {
     fontSize: fontSizes.xl,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   percentageInfo: {
     flex: 1,

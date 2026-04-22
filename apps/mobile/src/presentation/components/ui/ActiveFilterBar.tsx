@@ -33,7 +33,7 @@ export function ActiveFilterBar({ filters, onClearAll }: Props) {
         {filters.map((f) => (
           <View key={f.key} style={styles.pill}>
             
-            <AppIcon name="check-circle" size={14} color={colors.primary} />
+            <AppIcon name="check-circle" size={14} color={colors.textSecondary} />
             <Text style={styles.pillText} numberOfLines={1}>
               <Text style={styles.pillLabel}>{f.label}: </Text>
               {f.value}
@@ -77,7 +77,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderWidth: 1,
     borderColor: colors.primaryLight,
     borderRadius: radius.full,

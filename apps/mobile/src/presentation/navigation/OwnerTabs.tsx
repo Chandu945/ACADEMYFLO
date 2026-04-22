@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StackActions } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { AppIcon } from '../components/ui/AppIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DashboardScreen } from '../screens/owner/DashboardScreen';
 import { DashboardHeaderLeft, DashboardHeaderRight } from '../components/dashboard/DashboardNavHeader';
@@ -15,13 +14,14 @@ import { FABProvider } from '../context/FABContext';
 import type { Colors } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 import { makeTabScreenOptions } from './tab-options';
+import { CustomTabBar } from './CustomTabBar';
 
 const TAB_ICONS: Record<string, string> = {
-  Dashboard: 'view-dashboard-outline',
-  Students: 'school-outline',
-  Attendance: 'calendar-check-outline',
-  Fees: 'currency-inr',
-  More: 'dots-horizontal',
+  Dashboard: 'view-grid-outline',
+  Students: 'account-multiple-outline',
+  Attendance: 'check',
+  Fees: 'credit-card-outline',
+  More: 'apps',
 };
 
 export type OwnerTabParamList = {
@@ -42,13 +42,8 @@ function OwnerTabsInner() {
     <View style={styles.container}>
       {/* @ts-expect-error @types/react version mismatch in monorepo */}
       <Tab.Navigator
-        screenOptions={({ route }) => ({
-          ...makeTabScreenOptions(colors, insets.bottom),
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-
-            <AppIcon name={TAB_ICONS[route.name] ?? 'circle'} size={size} color={color} />
-          ),
-        })}
+        tabBar={(props) => <CustomTabBar {...props} iconMap={TAB_ICONS} />}
+        screenOptions={makeTabScreenOptions(colors, insets.bottom)}
         screenListeners={({ navigation }) => ({
           tabPress: (e) => {
             // Tapping a tab icon should always land on the tab's root screen,

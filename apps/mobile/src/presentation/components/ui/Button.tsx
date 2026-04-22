@@ -3,13 +3,24 @@ import {
   Pressable,
   Animated,
   Text,
+  View,
   ActivityIndicator,
   StyleSheet,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
-import { spacing, fontSizes, fontWeights, radius, disabledOpacity, springConfig, letterSpacing as ls } from '../../theme';
+import {
+  spacing,
+  fontSizes,
+  fontWeights,
+  radius,
+  disabledOpacity,
+  springConfig,
+  letterSpacing as ls,
+  gradient,
+} from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { lightHaptic } from '../../utils/haptics';
@@ -30,7 +41,8 @@ type ButtonProps = {
 
 function getBgColors(colors: Colors): Record<ButtonVariant, string> {
   return {
-    primary: colors.primary,
+    // primary uses a LinearGradient overlay instead of a solid bg — see below.
+    primary: 'transparent',
     secondary: colors.bgSubtle,
     danger: colors.danger,
   };
@@ -71,6 +83,18 @@ export function Button({
     Animated.spring(scale, springConfig.release).start();
   };
 
+  const isPrimary = variant === 'primary';
+
+  const inner = loading ? (
+    <ActivityIndicator color={TEXT_COLORS[variant]} size="small" />
+  ) : (
+    <Text
+      style={[styles.text, size === 'sm' && styles.textSm, { color: TEXT_COLORS[variant] } as TextStyle]}
+    >
+      {title}
+    </Text>
+  );
+
   return (
     <Pressable
       onPress={onPress}
@@ -86,16 +110,22 @@ export function Button({
         style={[
           styles.base,
           size === 'sm' && styles.baseSm,
-          { backgroundColor: BG_COLORS[variant] } as ViewStyle,
+          !isPrimary && ({ backgroundColor: BG_COLORS[variant] } as ViewStyle),
+          isPrimary && styles.baseGradientWrap,
           isDisabled && styles.disabled,
           { transform: [{ scale }] },
         ]}
       >
-        {loading ? (
-          <ActivityIndicator color={TEXT_COLORS[variant]} size="small" />
-        ) : (
-          <Text style={[styles.text, size === 'sm' && styles.textSm, { color: TEXT_COLORS[variant] } as TextStyle]}>{title}</Text>
-        )}
+        {isPrimary ? (
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            // 135deg ≈ top-left to bottom-right.
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <View style={styles.contentWrap}>{inner}</View>
       </Animated.View>
     </Pressable>
   );
@@ -115,6 +145,13 @@ const makeStyles = (_colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     minHeight: 44,
     borderRadius: radius.md,
+  },
+  baseGradientWrap: {
+    overflow: 'hidden',
+  },
+  contentWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   disabled: {
     opacity: disabledOpacity,

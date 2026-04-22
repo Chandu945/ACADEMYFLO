@@ -34,7 +34,8 @@ import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanne
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
 import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
 import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { animateLayout } from '../../utils/layout-animation';
@@ -306,6 +307,12 @@ export function StudentsListScreen() {
                 />
                 {activeFilterCount > 0 && !showFilters && (
                   <View style={styles.filterBadge}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
                     <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
                   </View>
                 )}
@@ -348,7 +355,15 @@ export function StudentsListScreen() {
                     const selected = statusFilter === opt.value;
                     return (
                       <TouchableOpacity key={opt.label} style={[styles.chip, selected && styles.chipSelected]} onPress={() => setStatusFilter(opt.value)} testID={`status-chip-${opt.label.toLowerCase()}`}>
-                        {selected && <AppIcon name="check" size={14} color={colors.primary} />}
+                        {selected && (
+                          <LinearGradient
+                            colors={[gradient.start, gradient.end]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        )}
+                        {selected && <AppIcon name="check" size={14} color="#FFFFFF" />}
                         <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{opt.label}</Text>
                       </TouchableOpacity>
                     );
@@ -367,7 +382,15 @@ export function StudentsListScreen() {
                     const selected = feeFilter === opt.value;
                     return (
                       <TouchableOpacity key={opt.label} style={[styles.chip, selected && styles.chipSelected]} onPress={() => setFeeFilter(opt.value)} testID={`fee-chip-${opt.label.toLowerCase()}`}>
-                        {selected && <AppIcon name="check" size={14} color={colors.primary} />}
+                        {selected && (
+                          <LinearGradient
+                            colors={[gradient.start, gradient.end]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        )}
+                        {selected && <AppIcon name="check" size={14} color="#FFFFFF" />}
                         <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{opt.label}</Text>
                       </TouchableOpacity>
                     );
@@ -386,6 +409,12 @@ export function StudentsListScreen() {
 
               {/* Apply button */}
               <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.filterApplyText}>Show Results</Text>
               </TouchableOpacity>
             </View>
@@ -444,12 +473,18 @@ export function StudentsListScreen() {
           onPress={handleAdd}
           onPressIn={handleFabPressIn}
           onPressOut={handleFabPressOut}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           style={styles.fabTouchable}
           accessibilityLabel="Add new student"
           accessibilityRole="button"
           testID="add-student-button"
         >
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <AppIcon name="plus" size={28} color={colors.white} />
         </TouchableOpacity>
       </Animated.View>
@@ -485,12 +520,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Navbar ─────────────────────────────────────── */
   navbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   titleBar: {
     flexDirection: 'row',
@@ -521,7 +554,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   navBtnActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   searchBar: {
     flexDirection: 'row',
@@ -539,7 +572,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.full,
     width: 16,
     height: 16,
@@ -598,7 +631,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.danger,
   },
   filterApplyBtn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md + 2,
     alignItems: 'center',
@@ -639,13 +672,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.base,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.border,
     gap: 5,
+    overflow: 'hidden',
   },
   chipSelected: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primary,
+    borderColor: 'transparent',
   },
   chipText: {
     fontSize: fontSizes.sm,
@@ -653,7 +686,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textMedium,
   },
   chipTextSelected: {
-    color: colors.primary,
+    color: '#FFFFFF',
     fontWeight: fontWeights.semibold,
   },
 
@@ -681,7 +714,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.xl,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,

@@ -14,7 +14,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { StaffRow } from '../../components/staff/StaffRow';
 import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
-import { spacing, radius, shadows, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -176,7 +177,14 @@ export function StaffListScreen() {
         accessibilityLabel="Add new staff member"
         accessibilityRole="button"
         testID="add-staff-fab"
+        activeOpacity={0.85}
       >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
 
@@ -232,7 +240,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.lg,

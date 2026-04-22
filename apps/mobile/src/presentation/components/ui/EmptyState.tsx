@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { AppIcon } from './AppIcon';
+import LinearGradient from 'react-native-linear-gradient';
 
-import { spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { Button } from './Button';
 import { useTheme } from '../../context/ThemeContext';
@@ -30,16 +31,22 @@ export function EmptyState({
   const isNoResults = variant === 'noResults';
   const resolvedIcon = icon ?? (isNoResults ? 'magnify-close' : undefined);
   const resolvedSubtitle = subtitle ?? (isNoResults ? 'Try adjusting your search or filters' : undefined);
-  const iconColor = isNoResults ? colors.warning : colors.primary;
-  const circleBg = isNoResults ? colors.warningBg : colors.primarySoft;
+  const iconColor = isNoResults ? colors.warning : '#FFFFFF';
 
   const accessLabel = [message, resolvedSubtitle].filter(Boolean).join('. ');
 
   return (
     <View style={styles.container} testID="empty-state" accessibilityLabel={accessLabel}>
       {resolvedIcon && (
-        <View style={[styles.iconCircle, { backgroundColor: circleBg }]}>
-          
+        <View style={[styles.iconCircle, isNoResults && { backgroundColor: colors.warningBg }]}>
+          {!isNoResults && (
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
           <AppIcon name={resolvedIcon} size={40} color={iconColor} />
         </View>
       )}
@@ -66,6 +73,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,

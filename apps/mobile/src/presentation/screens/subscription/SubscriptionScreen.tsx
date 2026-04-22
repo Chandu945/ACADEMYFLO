@@ -1,9 +1,11 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { PaymentStatusBanner } from '../../components/subscription/PaymentStatusBanner';
 import { PayWithCashfreeButton } from '../../components/subscription/PayWithCashfreeButton';
 import { usePaymentFlow } from '../../../application/subscription/use-payment-flow';
@@ -19,7 +21,7 @@ import type {
   PendingTierChange,
   TierKey,
 } from '../../../domain/subscription/subscription.types';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -82,11 +84,13 @@ function formatDate(iso: string): string {
 /* ── Row helpers ──────────────────────────────────────────────────────────── */
 
 function InfoRow({
+  icon,
   label,
   value,
   isLast,
   colors,
 }: {
+  icon: string;
   label: string;
   value: React.ReactNode;
   isLast?: boolean;
@@ -95,6 +99,9 @@ function InfoRow({
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={[styles.infoRow, !isLast && styles.infoRowBorder]}>
+      <View style={styles.infoIconTile}>
+        <AppIcon name={icon} size={16} color={colors.textSecondary} />
+      </View>
       <Text style={styles.infoLabel}>{label}</Text>
       {typeof value === 'string' ? <Text style={styles.infoValue}>{value}</Text> : value}
     </View>
@@ -116,24 +123,29 @@ function TierRow({
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const isHighlighted = isCurrent || (isRequired && !isCurrent);
   return (
     <View
       style={[
         styles.tierRow,
         !isLast && styles.tierRowBorder,
-        isRequired && !isCurrent && styles.tierRowHighlight,
+        isHighlighted && styles.tierRowHighlight,
       ]}
       testID={`tier-row-${tier.tierKey}`}
     >
       <View style={styles.tierLeft}>
-        <Text style={[styles.tierRange, isRequired && !isCurrent && styles.tierRangeHighlight]}>
-          {tier.min}{'\u2013'}{tier.max ?? '\u221E'} students
+        <Text style={[styles.tierRange, isHighlighted && styles.tierRangeHighlight]}>
+          {tier.min}
+          {'\u2013'}
+          {tier.max ?? '\u221E'} students
         </Text>
-        {isCurrent ? <Badge label="Current" variant="info" /> : null}
-        {isRequired && !isCurrent ? <Badge label="Required" variant="warning" /> : null}
+        {isCurrent ? <Badge label="Current" variant="success" dot uppercase /> : null}
+        {isRequired && !isCurrent ? <Badge label="Required" variant="warning" dot uppercase /> : null}
       </View>
-      <Text style={[styles.tierPrice, isRequired && !isCurrent && styles.tierPriceHighlight]}>
-        {'\u20B9'}{tier.priceInr}/mo
+      <Text style={[styles.tierPrice, isHighlighted && styles.tierPriceHighlight]}>
+        {'\u20B9'}
+        {tier.priceInr}
+        /mo
       </Text>
     </View>
   );
@@ -227,34 +239,66 @@ export function SubscriptionScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Status card ─────────────────────────────────────────────── */}
-        <View style={styles.card} testID="status-card">
-          <Text style={styles.sectionTitle}>Subscription</Text>
-
-          <InfoRow
-            label="Status"
-            value={
-              <Badge
-                label={statusLabel(subscription.status)}
-                variant={statusVariant(subscription.status)}
-                testID="status-badge"
+        {/* ── Hero ────────────────────────────────────────────────────── */}
+        <View style={styles.hero} testID="status-card">
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroIconTile}>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
               />
-            }
-            colors={colors}
-          />
-          <InfoRow label="Days Remaining" value={String(subscription.daysRemaining)} colors={colors} />
+              <AppIcon name="shield-check-outline" size={22} color="#FFFFFF" />
+            </View>
+            <Badge
+              label={statusLabel(subscription.status)}
+              variant={statusVariant(subscription.status)}
+              dot
+              uppercase
+              testID="status-badge"
+            />
+          </View>
+          <Text style={styles.heroDays}>{subscription.daysRemaining}</Text>
+          <Text style={styles.heroDaysLabel}>
+            {subscription.daysRemaining === 1 ? 'day remaining' : 'days remaining'}
+          </Text>
+          <Text style={styles.heroTier}>{tierLabel(subscription.currentTierKey)}</Text>
+        </View>
+
+        {/* ── Details card ────────────────────────────────────────────── */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <AppIcon name="information-outline" size={18} color={colors.text} />
+            <Text style={styles.sectionTitle}>Details</Text>
+          </View>
 
           {subscription.trialEndAt ? (
-            <InfoRow label="Trial Ends" value={formatDate(subscription.trialEndAt)} colors={colors} />
+            <InfoRow
+              icon="clock-outline"
+              label="Trial Ends"
+              value={formatDate(subscription.trialEndAt)}
+              colors={colors}
+            />
           ) : null}
 
           {subscription.paidEndAt ? (
-            <InfoRow label="Paid Until" value={formatDate(subscription.paidEndAt)} colors={colors} />
+            <InfoRow
+              icon="calendar-check-outline"
+              label="Paid Until"
+              value={formatDate(subscription.paidEndAt)}
+              colors={colors}
+            />
           ) : null}
 
-          <InfoRow label="Active Students" value={String(subscription.activeStudentCount)} colors={colors} />
-          <InfoRow label="Current Tier" value={tierLabel(subscription.currentTierKey)} colors={colors} />
           <InfoRow
+            icon="account-group-outline"
+            label="Active Students"
+            value={String(subscription.activeStudentCount)}
+            colors={colors}
+          />
+          <InfoRow
+            icon="layers-outline"
             label="Required Tier"
             value={tierLabel(subscription.requiredTierKey)}
             isLast
@@ -294,8 +338,12 @@ export function SubscriptionScreen() {
           currentTierKey={subscription.currentTierKey}
         />
 
-        {/* ── Payment banner / CTA ────────────────────────────────────── */}
-        <PaymentStatusBanner status={paymentFlow.status} error={paymentFlow.error} />
+        {/* ── Payment status takeover (renders as full-screen Modal) ──── */}
+        <PaymentStatusBanner
+          status={paymentFlow.status}
+          error={paymentFlow.error}
+          onDismiss={paymentFlow.reset}
+        />
 
         {user?.role === 'OWNER' &&
           subscription.status !== 'ACTIVE_PAID' &&
@@ -314,7 +362,10 @@ export function SubscriptionScreen() {
 
         {/* ── Pricing table ───────────────────────────────────────────── */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Pricing Plans</Text>
+          <View style={styles.cardHeader}>
+            <AppIcon name="tag-outline" size={18} color={colors.text} />
+            <Text style={styles.sectionTitle}>Pricing Plans</Text>
+          </View>
           {subscription.tiers.map((tier, index) => (
             <TierRow
               key={tier.tierKey}
@@ -370,6 +421,52 @@ const makeStyles = (colors: Colors) =>
       paddingBottom: spacing.xl,
     },
 
+    /* ── Hero ─────────────────────────────────────────────────────── */
+    hero: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.base,
+      marginBottom: spacing.md,
+      alignItems: 'flex-start',
+    },
+    heroTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: '100%',
+      marginBottom: spacing.sm,
+    },
+    heroIconTile: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.md,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroDays: {
+      fontSize: fontSizes['4xl'],
+      fontWeight: fontWeights.heavy,
+      color: colors.text,
+      letterSpacing: -1,
+      lineHeight: 42,
+    },
+    heroDaysLabel: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      marginTop: 2,
+      marginBottom: spacing.xs,
+    },
+    heroTier: {
+      fontSize: fontSizes.xs,
+      color: colors.textDisabled,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      fontWeight: fontWeights.semibold,
+    },
+
     /* ── Cards ────────────────────────────────────────────────────── */
     card: {
       backgroundColor: colors.surface,
@@ -379,32 +476,49 @@ const makeStyles = (colors: Colors) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
+    },
     sectionTitle: {
       fontSize: fontSizes.md,
       fontWeight: fontWeights.bold,
       color: colors.text,
-      marginBottom: spacing.md,
     },
 
     /* ── Info rows ────────────────────────────────────────────────── */
     infoRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: spacing.sm + 2,
+      gap: spacing.sm,
     },
     infoRowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
+    infoIconTile: {
+      width: 28,
+      height: 28,
+      borderRadius: radius.md,
+      backgroundColor: colors.bgSubtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     infoLabel: {
-      fontSize: fontSizes.base,
+      flex: 1,
+      fontSize: fontSizes.sm,
       color: colors.textSecondary,
     },
     infoValue: {
-      fontSize: fontSizes.base,
+      fontSize: fontSizes.sm,
       fontWeight: fontWeights.semibold,
       color: colors.text,
+      textAlign: 'right',
     },
 
     /* ── Block reason ─────────────────────────────────────────────── */
@@ -485,12 +599,12 @@ const makeStyles = (colors: Colors) =>
       borderBottomColor: colors.border,
     },
     tierRowHighlight: {
-      backgroundColor: colors.primarySoft,
+      backgroundColor: colors.bgSubtle,
       borderRadius: radius.lg,
       marginHorizontal: -spacing.xs,
       paddingHorizontal: spacing.md,
       borderWidth: 1,
-      borderColor: colors.primary + '40',
+      borderColor: colors.border,
     },
     tierLeft: {
       flexDirection: 'row',
@@ -511,7 +625,7 @@ const makeStyles = (colors: Colors) =>
       color: colors.text,
     },
     tierPriceHighlight: {
-      color: colors.primary,
+      color: colors.text,
     },
 
     /* ── Footer actions ───────────────────────────────────────────── */

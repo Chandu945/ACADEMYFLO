@@ -7,7 +7,8 @@ import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
 import { changePasswordUseCase } from '../../../application/parent/use-cases/change-password.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -64,8 +65,13 @@ export function ChangePasswordScreen() {
       {/* Header Icon */}
       <View style={styles.headerSection}>
         <View style={styles.headerIcon}>
-          
-          <AppIcon name="shield-key-outline" size={32} color={colors.primary} />
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="shield-key-outline" size={32} color="#FFFFFF" />
         </View>
         <Text style={styles.headerTitle}>Update Password</Text>
         <Text style={styles.headerSubtitle}>
@@ -113,11 +119,17 @@ export function ChangePasswordScreen() {
           activeOpacity={0.8}
           testID="change-pw-submit"
         >
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {saving ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <>
-              
+
               <AppIcon name="lock-check-outline" size={18} color={colors.white} />
               <Text style={styles.submitButtonText}>Update Password</Text>
             </>
@@ -137,7 +149,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -180,7 +192,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.lg,
     padding: spacing.base,
     marginTop: spacing.sm,

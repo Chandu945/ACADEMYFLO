@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { Pressable, Animated, StyleSheet } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
-import { radius, disabledOpacity, springConfig } from '../../theme';
+import { radius, disabledOpacity, springConfig, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { lightHaptic } from '../../utils/haptics';
@@ -47,6 +48,14 @@ export function Toggle({
       accessibilityLabel={accessibilityLabel}
       testID={testID}
     >
+      {value ? (
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <Animated.View style={[styles.thumb, { transform: [{ translateX }] }]} />
     </Pressable>
   );
@@ -62,7 +71,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: 2,
   },
   trackOn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
   },
   disabled: {
     opacity: disabledOpacity,

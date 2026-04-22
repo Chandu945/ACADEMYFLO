@@ -18,7 +18,8 @@ import { Input } from '../../components/ui/Input';
 import { TextArea } from '../../components/ui/TextArea';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { isValidDate, toDateOnly } from '../../../domain/common/date-utils';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -180,7 +181,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
       {/* ── Prospect Information ──────────────────────── */}
       <View style={styles.sectionHeader}>
 
-        <AppIcon name="account-outline" size={20} color={colors.primary} />
+        <AppIcon name="account-outline" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Prospect Information</Text>
       </View>
       <View style={styles.card}>
@@ -215,7 +216,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
       {/* ── Enquiry Details ───────────────────────────── */}
       <View style={styles.sectionHeader}>
 
-        <AppIcon name="clipboard-text-outline" size={20} color={colors.primary} />
+        <AppIcon name="clipboard-text-outline" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Enquiry Details</Text>
       </View>
       <View style={styles.card}>
@@ -240,7 +241,14 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
               accessibilityLabel={s.label}
               testID={`${testIdPrefix}source-${s.value}`}
             >
-
+              {source === s.value ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <AppIcon
                 name={s.icon}
                 size={14}
@@ -265,7 +273,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
       {/* ── Follow-Up ─────────────────────────────────── */}
       <View style={styles.sectionHeader}>
 
-        <AppIcon name="calendar-clock" size={20} color={colors.primary} />
+        <AppIcon name="calendar-clock" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Follow-Up</Text>
       </View>
       <View style={styles.card}>
@@ -285,6 +293,12 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         disabled={isSaveDisabled}
         testID={isEdit ? 'save-enquiry-edit' : 'save-enquiry'}
       >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         {!saving && (
 
           <AppIcon name="content-save-outline" size={20} color={colors.white} />
@@ -357,7 +371,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   sourceChipActive: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   sourceChipText: {
@@ -374,7 +388,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     padding: spacing.base,
     marginTop: spacing.xl,

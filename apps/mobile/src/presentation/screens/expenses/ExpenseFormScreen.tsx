@@ -45,7 +45,8 @@ function friendlyExpenseError(error: AppError, action: 'save' | 'delete' | 'add 
 import * as expenseApi from '../../../infra/expense/expense-api';
 import { TextArea } from '../../components/ui/TextArea';
 import { isValidDate, getTodayIST } from '../../../domain/common/date-utils';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -249,7 +250,7 @@ export function ExpenseFormScreen() {
       {/* ── Category ─────────────────────────────────── */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="tag-outline" size={20} color={colors.primary} />
+        <AppIcon name="tag-outline" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Category</Text>
       </View>
       <View style={styles.card}>
@@ -261,6 +262,14 @@ export function ExpenseFormScreen() {
               onPress={() => setCategoryId(cat.id)}
               testID={`category-${cat.id}`}
             >
+              {categoryId === cat.id ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <AppIcon
                 name={getCategoryIcon(cat.name)}
                 size={14}
@@ -282,7 +291,7 @@ export function ExpenseFormScreen() {
             testID="add-category-button"
           >
             
-            <AppIcon name="plus" size={14} color={colors.primary} />
+            <AppIcon name="plus" size={14} color={colors.textSecondary} />
             <Text style={styles.addCategoryText}>Add</Text>
           </TouchableOpacity>
         </View>
@@ -291,7 +300,7 @@ export function ExpenseFormScreen() {
       {/* ── Date & Amount ────────────────────────────── */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="calendar-outline" size={20} color={colors.primary} />
+        <AppIcon name="calendar-outline" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Date & Amount</Text>
       </View>
       <View style={styles.card}>
@@ -325,7 +334,7 @@ export function ExpenseFormScreen() {
       {/* ── Notes ────────────────────────────────────── */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="note-text-outline" size={20} color={colors.primary} />
+        <AppIcon name="note-text-outline" size={20} color={colors.text} />
         <Text style={styles.sectionTitle}>Notes</Text>
       </View>
       <View style={styles.card}>
@@ -356,8 +365,14 @@ export function ExpenseFormScreen() {
             disabled={saving}
             testID="expense-save-button"
           >
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             {!saving && (
-              
+
               <AppIcon name="content-save-outline" size={20} color={colors.white} />
             )}
             <Text style={styles.saveButtonText}>
@@ -372,8 +387,14 @@ export function ExpenseFormScreen() {
           disabled={saving}
           testID="expense-save-button"
         >
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {!saving && (
-            
+
             <AppIcon name="content-save-outline" size={20} color={colors.white} />
           )}
           <Text style={styles.saveButtonText}>
@@ -395,7 +416,7 @@ export function ExpenseFormScreen() {
               <View style={styles.modalHeader}>
                 <View style={styles.modalTitleRow}>
                   
-                  <AppIcon name="shape-outline" size={22} color={colors.primary} />
+                  <AppIcon name="shape-outline" size={22} color={colors.textSecondary} />
                   <Text style={styles.modalTitle}>New Category</Text>
                 </View>
                 <TouchableOpacity
@@ -437,7 +458,12 @@ export function ExpenseFormScreen() {
                   disabled={addingCategory}
                   testID="save-category-button"
                 >
-                  
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
                   <AppIcon name="plus" size={18} color={colors.white} />
                   <Text style={styles.modalSaveText}>
                     {addingCategory ? 'Adding...' : 'Add'}
@@ -503,7 +529,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   categoryChipActive: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   categoryChipText: {
@@ -520,13 +546,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
     borderStyle: 'dashed',
+    backgroundColor: colors.bgSubtle,
   },
   addCategoryText: {
     fontSize: fontSizes.sm,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
   },
 
@@ -556,14 +583,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   currencySymbol: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   amountInput: {
     flex: 1,
@@ -585,7 +612,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     padding: spacing.base,
   },
@@ -594,7 +621,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     padding: spacing.base,
     marginTop: spacing.xl,
@@ -715,7 +742,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md,
   },

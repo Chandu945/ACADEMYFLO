@@ -8,19 +8,17 @@ import {
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { AppIcon } from '../../components/ui/AppIcon';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { getOverdueStudents } from '../../../infra/fees/fees-api';
 import type { OverdueStudentItem, OverdueStudentsResult } from '../../../domain/fees/overdue.types';
 
 function formatCurrency(amount: number): string {
   return `\u20B9${amount.toLocaleString('en-IN')}`;
-}
-
-function getAvatarLetter(name: string): string {
-  return (name.charAt(0) || '?').toUpperCase();
 }
 
 export function OverdueStudentsScreen() {
@@ -73,9 +71,7 @@ export function OverdueStudentsScreen() {
       <View style={styles.studentCard} testID={`overdue-row-${item.studentId}`}>
         <View style={styles.studentRow}>
           {/* Avatar */}
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getAvatarLetter(item.studentName)}</Text>
-          </View>
+          <InitialsAvatar name={item.studentName} size={40} style={styles.avatarSpacing} />
 
           {/* Info */}
           <View style={styles.studentInfo}>
@@ -135,8 +131,14 @@ export function OverdueStudentsScreen() {
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconCircle, { backgroundColor: colors.primarySoft }]}>
-              <AppIcon name="account-group-outline" size={18} color={colors.primary} />
+            <View style={[styles.summaryIconCircle, { overflow: 'hidden' }]}>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="account-group-outline" size={18} color="#FFFFFF" />
             </View>
             <Text style={styles.summaryLabel}>Students</Text>
             <Text style={styles.summaryValue}>{data.items.length}</Text>
@@ -297,19 +299,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarSpacing: {
     marginRight: spacing.md,
-  },
-  avatarText: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.primary,
   },
   studentInfo: {
     flex: 1,
@@ -363,7 +354,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
   },
   amountTotal: {
-    color: colors.primary,
+    color: colors.text,
   },
   amountPlus: {
     fontSize: fontSizes.sm,

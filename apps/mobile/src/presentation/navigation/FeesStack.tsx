@@ -25,7 +25,7 @@ export function FeesStack() {
     // @ts-expect-error @types/react version mismatch in monorepo
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
+        headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
         headerTitleStyle: { color: colors.text },
         headerShadowVisible: false,

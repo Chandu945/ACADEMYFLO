@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,7 +12,7 @@ import type { ThemeMode } from '../../context/ThemeContext';
 import { Screen } from '../../components/ui/Screen';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'MoreHome'>;
@@ -50,6 +51,7 @@ const OWNER_SECTIONS: MenuSection[] = [
     title: 'Settings',
     items: [
       { key: 'academy-settings', icon: 'cog-outline', label: 'Academy Settings', screen: 'AcademySettings' },
+      { key: 'payment-methods', icon: 'qrcode', label: 'Payment Methods', screen: 'PaymentMethods' },
       { key: 'subscription', icon: 'card-account-details-outline', label: 'Subscription', screen: 'Subscription' },
     ],
   },
@@ -127,11 +129,18 @@ export function MoreScreen() {
                 onPhotoUploaded={(url) => setPhotoUrl(url)}
                 size={56}
                 testID="profile-photo"
+                fallbackName={user.fullName}
               />
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName} numberOfLines={1}>{user.fullName}</Text>
               <View style={styles.profileRoleBadge}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.profileRoleBadgeText}>{user.role}</Text>
               </View>
               <View style={styles.profileContactRow}>
@@ -160,7 +169,15 @@ export function MoreScreen() {
                   testID={`menu-${item.key}`}
                 >
                   <View style={[styles.iconContainer, item.danger && { backgroundColor: colors.dangerBg }]}>
-                    <AppIcon name={item.icon} size={20} color={item.danger ? colors.danger : colors.primary} />
+                    {!item.danger && (
+                      <LinearGradient
+                        colors={[gradient.start, gradient.end]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    )}
+                    <AppIcon name={item.icon} size={20} color={item.danger ? colors.danger : '#FFFFFF'} />
                   </View>
                   <Text style={[styles.menuLabel, item.danger && { color: colors.danger }]}>{item.label}</Text>
                   <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
@@ -185,11 +202,17 @@ export function MoreScreen() {
                 testID={`theme-${opt.key}`}
               >
                 <View style={styles.iconContainer}>
-                  <AppIcon name={opt.icon} size={20} color={colors.primary} />
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name={opt.icon} size={20} color="#FFFFFF" />
                 </View>
                 <Text style={styles.menuLabel}>{opt.label}</Text>
                 {mode === opt.key && (
-                  <AppIcon name="check" size={20} color={colors.primary} />
+                  <AppIcon name="check" size={20} color={colors.textSecondary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -229,35 +252,41 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    padding: spacing.base,
+    paddingVertical: spacing.base,
+    paddingHorizontal: spacing.base,
     marginBottom: spacing.xl,
-    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.base,
   },
   profileAvatarWrap: {
-    marginRight: spacing.base,
     marginBottom: 0,
   },
   profileInfo: {
     flex: 1,
+    minWidth: 0,
   },
   profileName: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    letterSpacing: -0.3,
   },
   profileRoleBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm + 2,
     paddingVertical: 3,
     borderRadius: radius.full,
+    overflow: 'hidden',
     marginTop: spacing.xs,
     marginBottom: spacing.sm,
   },
   profileRoleBadgeText: {
-    fontSize: fontSizes.xs,
+    fontSize: 10,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   profileContactRow: {
     flexDirection: 'row',
@@ -302,7 +331,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,

@@ -11,12 +11,14 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import type { ParentHomeStackParamList } from '../../navigation/ParentHomeStack';
 import type { ChildSummary } from '../../../domain/parent/parent.types';
 import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-my-children.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import { useAuth } from '../../context/AuthContext';
-import { spacing, fontSizes, fontWeights, radius, shadows, avatarColors } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, avatarColors, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { getGreeting, getInitials, formatCurrency } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
@@ -150,8 +152,13 @@ export function ChildrenListScreen() {
           <Text style={styles.parentName}>{user?.fullName ?? 'Parent'}</Text>
         </View>
         <View style={styles.headerBadge}>
-          
-          <AppIcon name="account-child-outline" size={28} color={colors.primary} />
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="account-child-outline" size={28} color="#FFFFFF" />
         </View>
       </View>
     ),
@@ -173,9 +180,7 @@ export function ChildrenListScreen() {
         }
       >
         <View style={styles.cardBody}>
-          <View style={[styles.avatar, { backgroundColor: getAvatarColor(index, isDark) }]}>
-            <Text style={styles.avatarText}>{getInitials(item.fullName)}</Text>
-          </View>
+          <InitialsAvatar name={item.fullName} size={56} style={styles.avatar} />
           <View style={styles.cardInfo}>
             <View style={styles.nameRow}>
               <Text style={styles.childName} numberOfLines={1}>
@@ -205,7 +210,7 @@ export function ChildrenListScreen() {
         <View style={styles.cardAction}>
           <Text style={styles.cardActionText}>View Details</Text>
           
-          <AppIcon name="chevron-right" size={18} color={colors.primary} />
+          <AppIcon name="chevron-right" size={18} color={colors.textSecondary} />
         </View>
       </TouchableOpacity>
     ),
@@ -278,7 +283,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -355,7 +360,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   cardActionText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.medium,
-    color: colors.primary,
+    color: colors.text,
   },
   center: {
     flex: 1,
@@ -378,11 +383,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.base,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.md,
   },
   retryText: {
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
     fontSize: fontSizes.base,
   },

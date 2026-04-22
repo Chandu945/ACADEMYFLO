@@ -19,7 +19,8 @@ import { getAccessToken, tryRefresh } from '../../../infra/http/api-client';
 import { isTokenExpiredOrExpiring } from '../../../infra/auth/token-expiry';
 import { env } from '../../../infra/env';
 import { useAuth } from '../../context/AuthContext';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -238,7 +239,7 @@ export function StudentActionMenu({
       key: 'edit',
       title: 'Edit Student',
       subtitle: 'You can edit student details here',
-      iconColor: colors.primary,
+      iconColor: colors.info,
       iconName: 'pencil-outline',
       onPress: () => { onClose(); onEdit(); },
     },
@@ -246,7 +247,7 @@ export function StudentActionMenu({
       key: 'batch',
       title: 'Assign Batch',
       subtitle: 'You can assign new batch here',
-      iconColor: colors.primary,
+      iconColor: colors.info,
       iconName: 'account-group-outline',
       onPress: () => { onClose(); onAssignBatch(); },
     },
@@ -272,7 +273,7 @@ export function StudentActionMenu({
       key: 'share',
       title: 'Share Login Id And Password',
       subtitle: 'Share login credentials with guardian',
-      iconColor: colors.primary,
+      iconColor: colors.info,
       iconName: 'share-variant-outline',
       onPress: handleShareCredentials,
     },
@@ -442,6 +443,14 @@ function StatusChangeModal({
                 onPress={() => setSelectedStatus(opt.value)}
                 testID={`status-option-${opt.value}`}
               >
+                {selectedStatus === opt.value ? (
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : null}
                 <Text style={[styles.statusChipText, selectedStatus === opt.value && styles.statusChipTextActive]}>
                   {opt.label}
                 </Text>
@@ -469,6 +478,12 @@ function StatusChangeModal({
               disabled={saving}
               testID="status-confirm"
             >
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
               <Text style={styles.confirmButtonText}>{saving ? 'Saving...' : 'Confirm'}</Text>
             </TouchableOpacity>
           </View>
@@ -482,7 +497,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: '80%' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.base, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.semibold, color: colors.primary },
+  headerTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.bold, color: colors.text, letterSpacing: -0.3 },
   closeX: { fontSize: fontSizes.xl, color: colors.textSecondary, padding: spacing.xs },
   scroll: { paddingHorizontal: spacing.base, paddingBottom: spacing.xl },
   actionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -500,7 +515,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   warningText: { flex: 1, fontSize: fontSizes.sm, color: colors.warningText, lineHeight: 18 },
   statusOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   statusChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  statusChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  statusChipActive: { overflow: 'hidden', borderColor: colors.primary },
   statusChipText: { fontSize: fontSizes.sm, color: colors.textSecondary },
   statusChipTextActive: { color: colors.white },
   label: { fontSize: fontSizes.base, fontWeight: fontWeights.medium, color: colors.text, marginBottom: spacing.xs, marginTop: spacing.sm },
@@ -508,7 +523,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   modalButtons: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
   cancelButton: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.base, alignItems: 'center' },
   cancelButtonText: { fontSize: fontSizes.base, fontWeight: fontWeights.medium, color: colors.textSecondary },
-  confirmButton: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.base, alignItems: 'center' },
+  confirmButton: { flex: 1, overflow: 'hidden', borderRadius: radius.md, padding: spacing.base, alignItems: 'center' },
   confirmButtonDisabled: { opacity: 0.6 },
   confirmButtonText: { fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.white },
   // Loading overlay

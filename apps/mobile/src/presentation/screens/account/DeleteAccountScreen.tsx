@@ -14,7 +14,8 @@ import { InlineError } from '../../components/ui/InlineError';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import {
   cancelDeletion,
@@ -143,6 +144,12 @@ export function DeleteAccountScreen() {
             onPress={onCancel}
             disabled={submitting}
           >
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={styles.btnPrimaryText}>
               {submitting ? 'Canceling…' : 'Cancel deletion'}
             </Text>
@@ -330,7 +337,7 @@ const makeStyles = (colors: Colors) =>
       fontSize: fontSizes.base,
       fontWeight: fontWeights.semibold,
     },
-    btnPrimary: { backgroundColor: colors.primary },
+    btnPrimary: { overflow: 'hidden' },
     btnPrimaryText: {
       color: colors.white,
       fontSize: fontSizes.base,

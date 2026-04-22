@@ -1,4 +1,8 @@
 import type { PaymentRequest } from '@domain/fee/entities/payment-request.entity';
+import type {
+  PaymentRequestSource,
+  ParentPaymentMethod,
+} from '@domain/fee/entities/payment-request.entity';
 import type { PaymentRequestStatus } from '@academyflo/contracts';
 
 export interface PaymentRequestDto {
@@ -17,6 +21,11 @@ export interface PaymentRequestDto {
   reviewedByName: string | null;
   reviewedAt: string | null;
   rejectionReason: string | null;
+  // Phase 2 — parent-submission fields. 'STAFF' source keeps method/proof/ref null.
+  source: PaymentRequestSource;
+  paymentMethod: ParentPaymentMethod | null;
+  proofImageUrl: string | null;
+  paymentRefNumber: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +56,10 @@ export function toPaymentRequestDto(
     reviewedByName: names?.reviewedByName ?? null,
     reviewedAt: pr.reviewedAt ? pr.reviewedAt.toISOString() : null,
     rejectionReason: pr.rejectionReason,
+    source: pr.source,
+    paymentMethod: pr.paymentMethod,
+    proofImageUrl: pr.proofImageUrl,
+    paymentRefNumber: pr.paymentRefNumber,
     createdAt: pr.audit.createdAt.toISOString(),
     updatedAt: pr.audit.updatedAt.toISOString(),
   };

@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -36,8 +37,13 @@ export function AttendanceHeader({
           testID="daily-report-button"
         >
           <View style={styles.actionIconWrap}>
-            
-            <AppIcon name="file-chart-outline" size={18} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="file-chart-outline" size={18} color="#FFFFFF" />
           </View>
           <Text style={styles.actionLabel}>Daily Report</Text>
         </TouchableOpacity>
@@ -51,8 +57,13 @@ export function AttendanceHeader({
           testID="monthly-summary-button"
         >
           <View style={styles.actionIconWrap}>
-            
-            <AppIcon name="calendar-text-outline" size={18} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="calendar-text-outline" size={18} color="#FFFFFF" />
           </View>
           <Text style={styles.actionLabel}>Monthly Summary</Text>
         </TouchableOpacity>
@@ -110,7 +121,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },

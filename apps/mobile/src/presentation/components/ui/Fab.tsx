@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -23,7 +24,14 @@ export function Fab({ label, onPress, testID }: FabProps) {
       accessibilityRole="button"
       accessibilityLabel={label}
       testID={testID}
+      activeOpacity={0.9}
     >
+      <LinearGradient
+        colors={[gradient.start, gradient.end]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Text style={styles.text}>{label}</Text>
     </TouchableOpacity>
   );
@@ -35,8 +43,8 @@ const makeStyles = (colors: Colors, bottomInset: number) => StyleSheet.create({
     bottom: bottomInset + spacing.xl,
     right: spacing.base,
     left: spacing.base,
-    backgroundColor: colors.primary,
     borderRadius: radius.lg,
+    overflow: 'hidden',
     paddingVertical: spacing.base,
     alignItems: 'center',
     ...shadows.md,

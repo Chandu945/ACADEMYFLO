@@ -16,7 +16,9 @@ export interface InstituteInfoDto {
   signatureStampUrl: string | null;
   bankDetails: BankDetails | null;
   upiId: string | null;
+  upiHolderName: string | null;
   qrCodeImageUrl: string | null;
+  manualPaymentsEnabled: boolean;
 }
 
 export class GetInstituteInfoUseCase {
@@ -41,7 +43,9 @@ export class GetInstituteInfoUseCase {
       signatureStampUrl: info.signatureStampUrl,
       bankDetails: info.bankDetails,
       upiId: info.upiId,
+      upiHolderName: info.upiHolderName,
       qrCodeImageUrl: info.qrCodeImageUrl,
+      manualPaymentsEnabled: info.manualPaymentsEnabled,
     });
   }
 }

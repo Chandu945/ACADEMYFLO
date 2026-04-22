@@ -27,7 +27,8 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ExportButton } from '../../components/reports/ExportButton';
 import type { StudentWiseDueItem } from '../../../domain/reports/reports.types';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, avatarColors } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, avatarColors, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -200,9 +201,14 @@ export function ReportsHomeScreen() {
               {/* ── KPI Tiles ──────────────────────────── */}
               <View style={styles.kpiRow}>
                 <View style={styles.kpiTile}>
-                  <View style={[styles.kpiIconCircle, { backgroundColor: colors.primarySoft }]}>
-                    
-                    <AppIcon name="cash-multiple" size={20} color={colors.primary} />
+                  <View style={[styles.kpiIconCircle, { overflow: 'hidden' }]}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <AppIcon name="cash-multiple" size={20} color="#FFFFFF" />
                   </View>
                   <Text style={styles.kpiValue}>{formatCurrency(revenue.totalAmount)}</Text>
                   <Text style={styles.kpiLabel}>Total Revenue</Text>
@@ -375,8 +381,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   listSectionCount: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
+    color: colors.text,
+    backgroundColor: colors.bgSubtle,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.full,

@@ -21,7 +21,8 @@ import type { EventListItem, EventListFilters, EventStatus } from '../../../doma
 import * as eventApi from '../../../infra/event/event-api';
 import { EventCard } from '../../components/event/EventCard';
 import { InlineError } from '../../components/ui/InlineError';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -263,6 +264,12 @@ export function EventListScreen() {
                 />
                 {statusFilter !== undefined && !showFilters && (
                   <View style={styles.filterBadge}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
                     <Text style={styles.filterBadgeText}>1</Text>
                   </View>
                 )}
@@ -297,6 +304,14 @@ export function EventListScreen() {
                     onPress={() => setStatusFilter(f.value)}
                     testID={`filter-${f.label}`}
                   >
+                    {statusFilter === f.value ? (
+                      <LinearGradient
+                        colors={[gradient.start, gradient.end]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    ) : null}
                     <Text style={[styles.filterText, statusFilter === f.value && styles.filterTextActive]}>
                       {f.label}
                     </Text>
@@ -305,6 +320,12 @@ export function EventListScreen() {
               </View>
 
               <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.filterApplyText}>Show Results</Text>
               </TouchableOpacity>
             </View>
@@ -321,7 +342,7 @@ export function EventListScreen() {
         <View style={styles.activeFilterBar}>
           <View style={styles.activeFilterPill}>
             
-            <AppIcon name="filter-variant" size={14} color={colors.primary} />
+            <AppIcon name="filter-variant" size={14} color={colors.textSecondary} />
             <Text style={styles.activeFilterText}>
               {STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}
             </Text>
@@ -346,7 +367,7 @@ export function EventListScreen() {
         </TouchableOpacity>
         {month !== currentMonth && (
           <TouchableOpacity onPress={() => { setMonth(currentMonth); setPage(1); setItems([]); }} style={styles.monthResetBtn}>
-            <Text style={[styles.monthResetText, { color: colors.primary }]}>This Month</Text>
+            <Text style={[styles.monthResetText, { color: colors.text }]}>This Month</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -362,8 +383,13 @@ export function EventListScreen() {
       ) : !loading && filteredItems.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            
-            <AppIcon name="calendar-blank-outline" size={48} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="calendar-blank-outline" size={48} color="#FFFFFF" />
           </View>
           <Text style={styles.emptyTitle}>No events found</Text>
           <Text style={styles.emptySubtitle}>
@@ -394,7 +420,14 @@ export function EventListScreen() {
         accessibilityLabel="Add new event"
         accessibilityRole="button"
         testID="add-event-fab"
+        activeOpacity={0.85}
       >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
     </View>
@@ -409,12 +442,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Navbar ─────────────────────────────────────── */
   navbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   titleBar: {
     flexDirection: 'row',
@@ -461,7 +492,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
 
   navBtnActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   filterBadge: {
     position: 'absolute',
@@ -470,7 +501,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -526,7 +557,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.danger,
   },
   filterApplyBtn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md + 2,
     alignItems: 'center',
@@ -557,7 +588,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   filterChipActive: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   filterText: {
@@ -582,14 +613,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
   activeFilterText: {
     fontSize: fontSizes.sm,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.medium,
   },
 
@@ -616,7 +647,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
@@ -643,7 +674,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.lg,

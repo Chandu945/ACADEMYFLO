@@ -5,7 +5,8 @@ import { AppIcon } from '../../components/ui/AppIcon';
 import { getAcademyInfoUseCase } from '../../../application/parent/use-cases/get-academy-info.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import type { AcademyInfo } from '../../../domain/parent/parent.types';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -15,8 +16,13 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   return (
     <View style={rowStyles.row}>
       <View style={rowStyles.iconContainer}>
-        
-        <AppIcon name={icon} size={20} color={colors.primary} />
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AppIcon name={icon} size={20} color="#FFFFFF" />
       </View>
       <View style={rowStyles.content}>
         <Text style={rowStyles.label}>{label}</Text>
@@ -37,7 +43,7 @@ const makeRowStyles = (colors: Colors) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -138,7 +144,7 @@ export function AcademyInfoScreen() {
       <View style={styles.headerCard}>
         <View style={styles.headerIcon}>
           
-          <AppIcon name="school-outline" size={32} color={colors.primary} />
+          <AppIcon name="school-outline" size={32} color={colors.textSecondary} />
         </View>
         <Text style={styles.academyName}>{info.academyName}</Text>
       </View>
@@ -149,8 +155,13 @@ export function AcademyInfoScreen() {
         <InfoRow icon="map-marker-outline" label="Address" value={fullAddress} />
         <View style={[rowStyles.row, { borderBottomWidth: 0 }]}>
           <View style={rowStyles.iconContainer}>
-            
-            <AppIcon name="city-variant-outline" size={20} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="city-variant-outline" size={20} color="#FFFFFF" />
           </View>
           <View style={rowStyles.content}>
             <Text style={rowStyles.label}>City</Text>
@@ -184,17 +195,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.base,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.md,
   },
   retryText: {
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
     fontSize: fontSizes.base,
   },
   headerCard: {
     alignItems: 'center',
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.xl,
     padding: spacing.xl,
     marginBottom: spacing.lg,
@@ -212,7 +223,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   academyName: {
     fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
     textAlign: 'center',
   },
   card: {

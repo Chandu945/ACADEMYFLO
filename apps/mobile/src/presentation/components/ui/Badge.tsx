@@ -5,58 +5,105 @@ import { spacing, fontSizes, fontWeights, radius as radii } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
-type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
+type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'primary';
+type BadgeSize = 'sm' | 'md';
 
 type BadgeProps = {
   label: string;
   variant?: BadgeVariant;
+  size?: BadgeSize;
+  /** Show a coloured leading dot — use for presence/status markers ("• Active"). */
+  dot?: boolean;
+  /** Uppercase the label with wide letter-spacing — matches enum-style statuses. */
+  uppercase?: boolean;
   testID?: string;
 };
 
-function getTintedBg(colors: Colors): Record<BadgeVariant, string> {
+type Tone = { bg: string; border: string; fg: string };
+
+function getTones(colors: Colors): Record<BadgeVariant, Tone> {
   return {
-    success: colors.successBg,
-    danger: colors.dangerBg,
-    warning: colors.warningBg,
-    info: colors.infoBg,
-    neutral: colors.bgSubtle,
+    success: { bg: colors.successBg, border: colors.successBorder, fg: colors.successText },
+    danger: { bg: colors.dangerBg, border: colors.dangerBorder, fg: colors.dangerText },
+    warning: { bg: colors.warningBg, border: colors.warningBorder, fg: colors.warningText },
+    info: { bg: colors.infoBg, border: 'rgba(6,182,212,0.32)', fg: colors.infoText },
+    neutral: { bg: colors.bgSubtle, border: colors.border, fg: colors.textSecondary },
+    primary: { bg: colors.primarySoft, border: colors.primaryLight, fg: colors.primary },
   };
 }
 
-function getTintedText(colors: Colors): Record<BadgeVariant, string> {
-  return {
-    success: colors.success,
-    danger: colors.danger,
-    warning: colors.warningText,
-    info: colors.infoText,
-    neutral: colors.textSecondary,
-  };
-}
-
-export function Badge({ label, variant = 'neutral', testID }: BadgeProps) {
+export function Badge({
+  label,
+  variant = 'neutral',
+  size = 'sm',
+  dot = false,
+  uppercase = false,
+  testID,
+}: BadgeProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const TINTED_BG = useMemo(() => getTintedBg(colors), [colors]);
-  const TINTED_TEXT = useMemo(() => getTintedText(colors), [colors]);
+  const TONES = useMemo(() => getTones(colors), [colors]);
+  const tone = TONES[variant];
+  const displayLabel = uppercase ? label.toUpperCase() : label;
+
   return (
     <View
-      style={[styles.badge, { backgroundColor: TINTED_BG[variant] } as ViewStyle]}
+      style={
+        [
+          styles.badge,
+          size === 'md' && styles.badgeMd,
+          { backgroundColor: tone.bg, borderColor: tone.border } as ViewStyle,
+        ]
+      }
       testID={testID}
     >
-      <Text style={[styles.label, { color: TINTED_TEXT[variant] }]}>{label}</Text>
+      {dot ? <View style={[styles.dot, { backgroundColor: tone.fg }]} /> : null}
+      <Text
+        style={[
+          styles.label,
+          size === 'md' && styles.labelMd,
+          uppercase && styles.labelUppercase,
+          { color: tone.fg },
+        ]}
+        numberOfLines={1}
+      >
+        {displayLabel}
+      </Text>
     </View>
   );
 }
 
-const makeStyles = (_colors: Colors) => StyleSheet.create({
-  badge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 3,
-    borderRadius: radii.full,
-  },
-  label: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.bold,
-    letterSpacing: 0.3,
-  },
-});
+const makeStyles = (_colors: Colors) =>
+  StyleSheet.create({
+    badge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      borderRadius: radii.full,
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+    badgeMd: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: 4,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    label: {
+      fontSize: fontSizes.xs,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: 0.2,
+    },
+    labelMd: {
+      fontSize: fontSizes.sm,
+    },
+    labelUppercase: {
+      letterSpacing: 0.8,
+      fontWeight: fontWeights.bold,
+    },
+  });

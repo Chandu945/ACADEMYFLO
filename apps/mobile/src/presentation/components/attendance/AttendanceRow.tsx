@@ -1,6 +1,8 @@
 import React, { memo, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Toggle } from '../ui/Toggle';
+import { InitialsAvatar } from '../ui/InitialsAvatar';
+import { Badge } from '../ui/Badge';
 import { fontSizes, fontWeights, spacing, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import type { DailyAttendanceItem } from '../../../domain/attendance/attendance.types';
@@ -12,16 +14,6 @@ type AttendanceRowProps = {
   disabled: boolean;
 };
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    const first = parts[0] ?? '';
-    const last = parts[parts.length - 1] ?? '';
-    return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-}
-
 function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -32,21 +24,24 @@ function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps
     onToggle(item.studentId);
   }, [onToggle, item.studentId]);
 
+  const badge = isHoliday
+    ? { label: 'Holiday', variant: 'warning' as const }
+    : isPresent
+      ? { label: 'Present', variant: 'success' as const }
+      : { label: 'Absent', variant: 'danger' as const };
+
   return (
     <View style={styles.card} testID={`attendance-row-${item.studentId}`}>
-      <View style={[styles.avatar, isHoliday ? styles.avatarHoliday : isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
-        <Text style={[styles.avatarText, isHoliday ? styles.avatarTextHoliday : isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
-          {getInitials(item.fullName)}
-        </Text>
-      </View>
+      <InitialsAvatar
+        name={item.fullName}
+        size={40}
+        style={{ marginRight: spacing.md }}
+      />
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{item.fullName}</Text>
         <View style={styles.statusRow}>
-          <View style={[styles.statusDot, isHoliday ? styles.dotHoliday : isPresent ? styles.dotPresent : styles.dotAbsent]} />
-          <Text style={[styles.statusLabel, isHoliday ? styles.labelHoliday : isPresent ? styles.labelPresent : styles.labelAbsent]}>
-            {isHoliday ? 'Holiday' : isPresent ? 'Present' : 'Absent'}
-          </Text>
+          <Badge label={badge.label} variant={badge.variant} dot />
         </View>
       </View>
 
@@ -74,36 +69,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  avatarPresent: {
-    backgroundColor: colors.successBg,
-  },
-  avatarAbsent: {
-    backgroundColor: colors.dangerBg,
-  },
-  avatarHoliday: {
-    backgroundColor: colors.warningLightBg,
-  },
-  avatarText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
-  },
-  avatarTextPresent: {
-    color: colors.success,
-  },
-  avatarTextAbsent: {
-    color: colors.danger,
-  },
-  avatarTextHoliday: {
-    color: colors.warningAccent,
-  },
   info: {
     flex: 1,
   },
@@ -111,38 +76,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginBottom: 2,
+    marginBottom: spacing.xs,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotPresent: {
-    backgroundColor: colors.success,
-  },
-  dotAbsent: {
-    backgroundColor: colors.danger,
-  },
-  dotHoliday: {
-    backgroundColor: colors.warningAccent,
-  },
-  statusLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-  },
-  labelPresent: {
-    color: colors.success,
-  },
-  labelAbsent: {
-    color: colors.danger,
-  },
-  labelHoliday: {
-    color: colors.warningAccent,
   },
 });

@@ -96,11 +96,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: 8,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   retryButtonText: {
     fontSize: fontSizes.base,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
   },
 });

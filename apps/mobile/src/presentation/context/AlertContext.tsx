@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../theme';
 import type { Colors } from '../theme';
 import { useTheme } from './ThemeContext';
 
@@ -108,6 +109,14 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                     onPress={() => handleButton(btn)}
                     activeOpacity={0.7}
                   >
+                    {!isCancel && !isDestructive ? (
+                      <LinearGradient
+                        colors={[gradient.start, gradient.end]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    ) : null}
                     <Text
                       style={[
                         styles.buttonText,
@@ -171,7 +180,7 @@ const makeStyles = (colors: Colors) =>
       alignItems: 'center',
     },
     defaultButton: {
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
     },
     cancelButton: {
       backgroundColor: colors.bgSubtle,

@@ -2,18 +2,37 @@ import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields, updateAuditFields } from '@shared/kernel';
 import type { PaymentRequestStatus } from '@academyflo/contracts';
 
+/** Who authored the request — staff records cash collection, parent submits
+ *  proof of an out-of-band UPI / bank / QR payment they've already made. */
+export type PaymentRequestSource = 'STAFF' | 'PARENT';
+
+/** Payment channel selected by a parent when submitting. Null for staff
+ *  (always cash). */
+export type ParentPaymentMethod = 'UPI' | 'BANK' | 'CASH' | 'OTHER';
+
 export interface PaymentRequestProps {
   academyId: string;
   studentId: string;
   feeDueId: string;
   monthKey: string;
   amount: number;
+  /** User id of the author: staff for 'STAFF' source, parent user id for 'PARENT'. */
   staffUserId: string;
+  /** Author notes. Holds staff cash-collection comment OR parent submission message. */
   staffNotes: string;
   status: PaymentRequestStatus;
   reviewedByUserId: string | null;
   reviewedAt: Date | null;
   rejectionReason: string | null;
+  /** 'STAFF' (cash in hand) or 'PARENT' (proof-of-payment). Defaults to 'STAFF'
+   *  for back-compat with records created before this field existed. */
+  source: PaymentRequestSource;
+  /** Parent's payment channel (null for staff). */
+  paymentMethod: ParentPaymentMethod | null;
+  /** Uploaded screenshot URL (required for PARENT source). */
+  proofImageUrl: string | null;
+  /** Bank / UPI reference number the parent entered (required for PARENT). */
+  paymentRefNumber: string | null;
   audit: AuditFields;
 }
 
@@ -31,6 +50,10 @@ export class PaymentRequest extends Entity<PaymentRequestProps> {
     amount: number;
     staffUserId: string;
     staffNotes: string;
+    source?: PaymentRequestSource;
+    paymentMethod?: ParentPaymentMethod | null;
+    proofImageUrl?: string | null;
+    paymentRefNumber?: string | null;
   }): PaymentRequest {
     return new PaymentRequest(new UniqueId(params.id), {
       academyId: params.academyId,
@@ -44,6 +67,10 @@ export class PaymentRequest extends Entity<PaymentRequestProps> {
       reviewedByUserId: null,
       reviewedAt: null,
       rejectionReason: null,
+      source: params.source ?? 'STAFF',
+      paymentMethod: params.paymentMethod ?? null,
+      proofImageUrl: params.proofImageUrl ?? null,
+      paymentRefNumber: params.paymentRefNumber ?? null,
       audit: createAuditFields(),
     });
   }
@@ -98,6 +125,22 @@ export class PaymentRequest extends Entity<PaymentRequestProps> {
 
   get audit(): AuditFields {
     return this.props.audit;
+  }
+
+  get source(): PaymentRequestSource {
+    return this.props.source;
+  }
+
+  get paymentMethod(): ParentPaymentMethod | null {
+    return this.props.paymentMethod;
+  }
+
+  get proofImageUrl(): string | null {
+    return this.props.proofImageUrl;
+  }
+
+  get paymentRefNumber(): string | null {
+    return this.props.paymentRefNumber;
   }
 
   approve(reviewerId: string, reviewedAt: Date): PaymentRequest {

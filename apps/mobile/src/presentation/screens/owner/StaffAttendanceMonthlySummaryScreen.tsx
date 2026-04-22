@@ -3,6 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, StyleSheet, RefreshControl } f
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import type { AppError } from '../../../domain/common/errors';
 import type { MonthlyStaffSummaryItem } from '../../../domain/staff-attendance/staff-attendance.types';
@@ -51,11 +52,7 @@ function SummaryRowComponent({ item }: SummaryRowProps) {
   return (
     <View style={styles.row} testID={`staff-summary-row-${item.staffUserId}`}>
       <View style={styles.rowTop}>
-        <View style={[styles.avatar, percentage >= 75 ? styles.avatarGood : styles.avatarWarn]}>
-          <Text style={[styles.avatarText, percentage >= 75 ? styles.avatarTextGood : styles.avatarTextWarn]}>
-            {getInitials(item.fullName)}
-          </Text>
-        </View>
+        <InitialsAvatar name={item.fullName} size={40} style={styles.avatar} />
         <View style={styles.rowNameSection}>
           <Text style={styles.name} numberOfLines={1}>{item.fullName}</Text>
           <Text style={styles.rowSubtitle}>{percentage}% attendance</Text>
@@ -215,7 +212,7 @@ export function StaffAttendanceMonthlySummaryScreen() {
         {/* Month Header */}
         <View style={styles.monthHeader}>
           
-          <AppIcon name="calendar-month" size={20} color={colors.primary} />
+          <AppIcon name="calendar-month" size={20} color={colors.textSecondary} />
           <Text style={styles.monthLabel}>{formatMonth(month)}</Text>
         </View>
 
@@ -224,7 +221,7 @@ export function StaffAttendanceMonthlySummaryScreen() {
           <View style={styles.statsCard}>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.primary }]}>{stats.avgPercentage}%</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{stats.avgPercentage}%</Text>
                 <Text style={styles.statLabel}>Avg Attendance</Text>
               </View>
               <View style={styles.statDivider} />
@@ -245,7 +242,7 @@ export function StaffAttendanceMonthlySummaryScreen() {
         {items.length > 0 && (
           <View style={styles.sectionHeader}>
             
-            <AppIcon name="account-multiple-outline" size={18} color={colors.textSecondary} />
+            <AppIcon name="account-multiple-outline" size={18} color={colors.text} />
             <Text style={styles.sectionTitle}>Staff Members ({items.length})</Text>
           </View>
         )}

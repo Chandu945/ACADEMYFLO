@@ -12,7 +12,8 @@ import { getParentProfileUseCase } from '../../../application/parent/use-cases/g
 import { updateParentProfileUseCase } from '../../../application/parent/use-cases/update-parent-profile.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import { useAuth } from '../../context/AuthContext';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -200,11 +201,17 @@ export function ParentProfileScreen() {
           activeOpacity={0.8}
           testID="profile-save"
         >
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {saving ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <>
-              
+
               <AppIcon name="content-save-outline" size={18} color={colors.white} />
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </>
@@ -219,8 +226,13 @@ export function ParentProfileScreen() {
         testID="profile-change-password"
       >
         <View style={styles.cpIconContainer}>
-
-          <AppIcon name="key-outline" size={20} color={colors.primary} />
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="key-outline" size={20} color="#FFFFFF" />
         </View>
         <Text style={styles.changePasswordText}>Change Password</Text>
 
@@ -264,7 +276,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
   },
   roleBadge: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
@@ -273,7 +285,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   roleText: {
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
   },
   errorCard: {
     flexDirection: 'row',
@@ -314,7 +326,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.lg,
     padding: spacing.base,
     marginTop: spacing.sm,
@@ -339,7 +351,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,

@@ -19,7 +19,8 @@ import { AppCard } from '../../components/ui/AppCard';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -166,6 +167,12 @@ export function AddStudentToBatchScreen() {
               accessibilityRole="button"
               testID={`add-student-${item.id}`}
             >
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
               {isAdding ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
@@ -288,7 +295,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginLeft: spacing.md,
   },
   addBtn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.base,
     borderRadius: radius.md,

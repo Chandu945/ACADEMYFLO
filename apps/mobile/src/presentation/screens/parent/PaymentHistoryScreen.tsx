@@ -15,7 +15,8 @@ import type { ParentPaymentsStackParamList } from '../../navigation/ParentPaymen
 import { getPaymentHistoryUseCase } from '../../../application/parent/use-cases/get-payment-history.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import type { PaymentHistoryItem } from '../../../domain/parent/parent.types';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { formatMonthShort, formatCurrency, formatDate } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
@@ -23,7 +24,7 @@ import { useTheme } from '../../context/ThemeContext';
 function getSourceConfig(source: string, colors: Colors) {
   switch (source) {
     case 'PARENT_ONLINE':
-      return { label: 'Online', icon: 'cellphone', color: colors.primary, bg: colors.primarySoft };
+      return { label: 'Online', icon: 'cellphone', color: colors.text, bg: colors.primarySoft };
     case 'OWNER_DIRECT':
       return { label: 'Cash', icon: 'cash', color: colors.success, bg: colors.successBg };
     case 'STAFF_APPROVED':
@@ -107,6 +108,7 @@ export function PaymentHistoryScreen() {
 
   const renderItem = useCallback(({ item }: { item: PaymentHistoryItem }) => {
     const src = getSourceConfig(item.source, colors);
+    const isPrimary = item.source === 'PARENT_ONLINE';
 
     return (
       <TouchableOpacity
@@ -116,9 +118,16 @@ export function PaymentHistoryScreen() {
       >
         <View style={styles.cardTop}>
           <View style={styles.cardLeft}>
-            <View style={[styles.sourceIcon, { backgroundColor: src.bg }]}>
-              
-              <AppIcon name={src.icon} size={18} color={src.color} />
+            <View style={[styles.sourceIcon, isPrimary ? { overflow: 'hidden' } : { backgroundColor: src.bg }]}>
+              {isPrimary && (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
+              <AppIcon name={src.icon} size={18} color={isPrimary ? '#FFFFFF' : src.color} />
             </View>
             <View style={styles.cardInfo}>
               <Text style={styles.studentName} numberOfLines={1}>
@@ -350,11 +359,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.base,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.md,
   },
   retryText: {
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
     fontSize: fontSizes.base,
   },

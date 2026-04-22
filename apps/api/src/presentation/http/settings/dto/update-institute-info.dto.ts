@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
@@ -42,4 +43,13 @@ export class UpdateInstituteInfoDto {
   @MaxLength(50)
   @Matches(/^[\w.+-]+@[\w]+$/, { message: 'UPI ID must be in format: name@provider' })
   upiId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  upiHolderName?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  manualPaymentsEnabled?: boolean;
 }

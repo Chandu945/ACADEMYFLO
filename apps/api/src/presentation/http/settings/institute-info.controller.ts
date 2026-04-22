@@ -68,6 +68,8 @@ export class InstituteInfoController {
       actorRole: user.role,
       bankDetails: dto.bankDetails,
       upiId: dto.upiId,
+      upiHolderName: dto.upiHolderName,
+      manualPaymentsEnabled: dto.manualPaymentsEnabled,
     });
     return mapResultToResponse(result, req);
   }

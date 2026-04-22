@@ -1,7 +1,8 @@
 import React, { memo, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
-import { fontSizes, fontWeights, spacing, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { fontSizes, fontWeights, spacing, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -28,16 +29,27 @@ function DatePickerRowComponent({ date, onPrevious, onNext, onToday, isToday }: 
   return (
     <View style={styles.container}>
       <Pressable onPress={onPrevious} style={styles.arrow} testID="date-prev">
-        
-        <AppIcon name="chevron-left" size={20} color={colors.primary} />
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AppIcon name="chevron-left" size={20} color="#FFFFFF" />
       </Pressable>
 
       <Pressable onPress={onToday} style={styles.dateContainer} testID="date-display">
         
-        <AppIcon name="calendar" size={16} color={colors.primary} style={styles.calIcon} />
+        <AppIcon name="calendar" size={16} color={colors.textSecondary} style={styles.calIcon} />
         <Text style={styles.dateText}>{formatDate(date)}</Text>
         {!isToday && (
           <View style={styles.todayChip}>
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={styles.todayChipText}>Today</Text>
           </View>
         )}
@@ -49,8 +61,15 @@ function DatePickerRowComponent({ date, onPrevious, onNext, onToday, isToday }: 
         disabled={isToday}
         testID="date-next"
       >
-        
-        <AppIcon name="chevron-right" size={20} color={isToday ? colors.textDisabled : colors.primary} />
+        {!isToday && (
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        <AppIcon name="chevron-right" size={20} color={isToday ? colors.textDisabled : '#FFFFFF'} />
       </Pressable>
     </View>
   );
@@ -70,7 +89,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -98,7 +117,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
   },
   todayChip: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.full,

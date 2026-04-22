@@ -20,7 +20,8 @@ import { InlineError } from '../../components/ui/InlineError';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { usePasswordReset } from '../../hooks/usePasswordReset';
 import { useToast } from '../../context/ToastContext';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -52,7 +53,7 @@ const makeStepStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.lg,
   },
   lineDone: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
   },
   dot: {
     width: 28,
@@ -66,12 +67,12 @@ const makeStepStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.xs,
   },
   dotDone: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   dotActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   dotText: {
     fontSize: fontSizes.xs,
@@ -79,7 +80,7 @@ const makeStepStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textSecondary,
   },
   dotTextActive: {
-    color: colors.primary,
+    color: colors.text,
   },
   label: {
     fontSize: fontSizes.xs,
@@ -87,7 +88,7 @@ const makeStepStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.medium,
   },
   labelActive: {
-    color: colors.primary,
+    color: colors.text,
   },
 });
 
@@ -105,7 +106,16 @@ function StepIndicator({ current }: { current: string }) {
             {i > 0 && (
               <View
                 style={[stepStyles.line, (isDone || isActive) && stepStyles.lineDone]}
-              />
+              >
+                {(isDone || isActive) ? (
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : null}
+              </View>
             )}
             <View style={stepStyles.item}>
               <View
@@ -116,7 +126,15 @@ function StepIndicator({ current }: { current: string }) {
                 ]}
               >
                 {isDone ? (
-                  <AppIcon name="check" size={12} color={colors.white} />
+                  <>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <AppIcon name="check" size={12} color={colors.white} />
+                  </>
                 ) : (
                   <Text
                     style={[
@@ -362,7 +380,13 @@ export function ForgotPasswordScreen() {
         {/* Header */}
         <View style={styles.headerSection}>
           <View style={styles.iconBadge}>
-            <AppIcon name={config.icon} size={28} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name={config.icon} size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.title} accessibilityRole="header">{config.title}</Text>
           <Text style={styles.subtitle}>{config.subtitle}</Text>
@@ -505,7 +529,7 @@ export function ForgotPasswordScreen() {
             testID="forgot-back"
           >
             <View style={styles.backRow}>
-              <AppIcon name="arrow-left" size={16} color={colors.primary} />
+              <AppIcon name="arrow-left" size={16} color={colors.textSecondary} />
               <Text style={styles.backText}>
                 {step === 'email' ? 'Back to Sign In' : 'Back'}
               </Text>
@@ -533,7 +557,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -579,7 +603,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   resendText: {
     fontSize: fontSizes.sm,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.medium,
   },
   resendDisabled: {
@@ -596,7 +620,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   backText: {
     fontSize: fontSizes.base,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
   },
 });

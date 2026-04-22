@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
-import { PaymentRequest } from '@domain/fee/entities/payment-request.entity';
+import {
+  PaymentRequest,
+  type PaymentRequestSource,
+  type ParentPaymentMethod,
+} from '@domain/fee/entities/payment-request.entity';
 import { PaymentRequestModel } from '../database/schemas/payment-request.schema';
 import type { PaymentRequestDocument } from '../database/schemas/payment-request.schema';
 import type { PaymentRequestStatus } from '@academyflo/contracts';
@@ -38,6 +42,10 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
         reviewedByUserId: request.reviewedByUserId,
         reviewedAt: request.reviewedAt,
         rejectionReason: request.rejectionReason,
+        source: request.source,
+        paymentMethod: request.paymentMethod,
+        proofImageUrl: request.proofImageUrl,
+        paymentRefNumber: request.paymentRefNumber,
         version: request.audit.version,
       },
       { upsert: isNew, session: getTransactionSession() },
@@ -105,10 +113,24 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
       reviewedByUserId: string | null;
       reviewedAt: Date | null;
       rejectionReason: string | null;
+      source?: string | null;
+      paymentMethod?: string | null;
+      proofImageUrl?: string | null;
+      paymentRefNumber?: string | null;
       createdAt: Date;
       updatedAt: Date;
       version: number;
     };
+
+    const source: PaymentRequestSource =
+      d.source === 'PARENT' ? 'PARENT' : 'STAFF';
+    const method: ParentPaymentMethod | null =
+      d.paymentMethod === 'UPI' ||
+      d.paymentMethod === 'BANK' ||
+      d.paymentMethod === 'CASH' ||
+      d.paymentMethod === 'OTHER'
+        ? d.paymentMethod
+        : null;
 
     return PaymentRequest.reconstitute(String(d._id), {
       academyId: d.academyId,
@@ -122,6 +144,11 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
       reviewedByUserId: d.reviewedByUserId ?? null,
       reviewedAt: d.reviewedAt ?? null,
       rejectionReason: d.rejectionReason ?? null,
+      // Legacy records predating Phase 2 default to STAFF / nulls.
+      source,
+      paymentMethod: method,
+      proofImageUrl: d.proofImageUrl ?? null,
+      paymentRefNumber: d.paymentRefNumber ?? null,
       audit: {
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,

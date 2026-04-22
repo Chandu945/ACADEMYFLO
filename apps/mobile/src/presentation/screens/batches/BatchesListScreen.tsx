@@ -20,7 +20,8 @@ import { listBatches } from '../../../infra/batch/batch-api';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { BatchRow } from '../../components/batches/BatchRow';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -188,7 +189,13 @@ export function BatchesListScreen() {
       ) : !loading && items.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            <AppIcon name="account-group-outline" size={48} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="account-group-outline" size={48} color="#FFFFFF" />
           </View>
           <Text style={styles.emptyTitle}>No batches found</Text>
           <Text style={styles.emptySubtitle}>
@@ -220,7 +227,14 @@ export function BatchesListScreen() {
         accessibilityLabel="Create new batch"
         accessibilityRole="button"
         testID="add-batch-button"
+        activeOpacity={0.85}
       >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
     </View>
@@ -235,12 +249,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Navbar ─────────────────────────────────────── */
   navbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   titleBar: {
     flexDirection: 'row',
@@ -307,7 +319,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
@@ -334,7 +346,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.lg,

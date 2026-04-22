@@ -45,7 +45,8 @@ import { expenseCategoryListSchema } from '../../../domain/expense/expense.schem
 import { InlineError } from '../../components/ui/InlineError';
 import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
 import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import type { ExpenseSummary } from '../../../domain/expense/expense.types';
 import { useTheme } from '../../context/ThemeContext';
@@ -358,7 +359,7 @@ export function ExpensesHomeScreen() {
           testID="prev-month"
         >
           
-          <AppIcon name="chevron-left" size={24} color={colors.primary} />
+          <AppIcon name="chevron-left" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
         <View style={styles.monthCenter}>
           <Text style={styles.monthLabel}>{formatMonth(month)}</Text>
@@ -369,7 +370,7 @@ export function ExpensesHomeScreen() {
           testID="next-month"
         >
           
-          <AppIcon name="chevron-right" size={24} color={colors.primary} />
+          <AppIcon name="chevron-right" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -378,8 +379,13 @@ export function ExpensesHomeScreen() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <View style={styles.summaryIconCircle}>
-              
-              <AppIcon name="wallet-outline" size={20} color={colors.primary} />
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="wallet-outline" size={20} color="#FFFFFF" />
             </View>
             <Text style={styles.summaryTitle}>Monthly Summary</Text>
           </View>
@@ -497,6 +503,14 @@ export function ExpensesHomeScreen() {
               style={[styles.filterChip, !categoryFilter && styles.filterChipActive]}
               onPress={() => setCategoryFilter(undefined)}
             >
+              {!categoryFilter ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <Text style={[styles.filterChipText, !categoryFilter && styles.filterChipTextActive]}>
                 All
               </Text>
@@ -507,7 +521,14 @@ export function ExpensesHomeScreen() {
                 style={[styles.filterChip, categoryFilter === cat.id && styles.filterChipActive]}
                 onPress={() => setCategoryFilter(categoryFilter === cat.id ? undefined : cat.id)}
               >
-                
+                {categoryFilter === cat.id ? (
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : null}
                 <AppIcon
                   name={getCategoryIcon(cat.name)}
                   size={14}
@@ -543,8 +564,13 @@ export function ExpensesHomeScreen() {
           !loading ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                
-                <AppIcon name="cash-remove" size={48} color={colors.primary} />
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <AppIcon name="cash-remove" size={48} color="#FFFFFF" />
               </View>
               <Text style={styles.emptyTitle}>No expenses found</Text>
               <Text style={styles.emptySubtitle}>
@@ -573,8 +599,14 @@ export function ExpensesHomeScreen() {
         accessibilityLabel="Add new expense"
         accessibilityRole="button"
         testID="add-expense-fab"
+        activeOpacity={0.85}
       >
-        
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
     </View>
@@ -589,12 +621,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Navbar ─────────────────────────────────────── */
   navbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   titleBar: {
     flexDirection: 'row',
@@ -695,7 +725,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -758,7 +788,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Filter Panel ─────────────────────────────────── */
   navBtnActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   filterBadge: {
     position: 'absolute',
@@ -813,7 +843,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   filterChipActive: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   filterChipText: {
@@ -897,7 +927,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,
@@ -925,7 +955,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.lg,

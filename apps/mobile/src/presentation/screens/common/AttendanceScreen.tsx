@@ -33,7 +33,8 @@ import { AttendanceHeader } from '../../components/attendance/AttendanceHeader';
 import { AttendanceRow } from '../../components/attendance/AttendanceRow';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
 import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
-import { spacing, fontSizes, fontWeights, radius, listDefaults } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -291,6 +292,12 @@ export function AttendanceScreen() {
                 <AppIcon name="filter-variant" size={22} color={colors.text} />
                 {selectedBatchId !== null && (
                   <View style={styles.filterBadge}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
                     <Text style={styles.filterBadgeText}>1</Text>
                   </View>
                 )}
@@ -329,6 +336,12 @@ export function AttendanceScreen() {
               </View>
 
               <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.filterApplyText}>Show Results</Text>
               </TouchableOpacity>
             </View>
@@ -380,7 +393,13 @@ export function AttendanceScreen() {
       ) : !loading && items.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
-            <AppIcon name="calendar-check-outline" size={48} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="calendar-check-outline" size={48} color="#FFFFFF" />
           </View>
           <Text style={styles.emptyTitle}>No students found</Text>
           <Text style={styles.emptySubtitle}>
@@ -423,12 +442,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Navbar ─────────────────────────────────────── */
   navbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   titleBar: {
     flexDirection: 'row',
@@ -474,7 +491,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.full,
     width: 16,
     height: 16,
@@ -533,7 +550,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.danger,
   },
   filterApplyBtn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md + 2,
     alignItems: 'center',
@@ -586,7 +603,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,

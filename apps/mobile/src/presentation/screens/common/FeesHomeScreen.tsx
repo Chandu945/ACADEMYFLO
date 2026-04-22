@@ -27,7 +27,8 @@ import { UnpaidDuesScreen } from './UnpaidDuesScreen';
 import { PaidFeesScreen } from './PaidFeesScreen';
 import { PendingApprovalsScreen } from '../owner/PendingApprovalsScreen';
 import { MyPaymentRequestsScreen } from '../staff/MyPaymentRequestsScreen';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { animateLayout } from '../../utils/layout-animation';
@@ -319,6 +320,12 @@ export function FeesHomeScreen() {
                   />
                   {selectedBatchId !== null && !showFilters && (
                     <View style={styles.filterBadge}>
+                      <LinearGradient
+                        colors={[gradient.start, gradient.end]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
                       <Text style={styles.filterBadgeText}>1</Text>
                     </View>
                   )}
@@ -366,6 +373,12 @@ export function FeesHomeScreen() {
               </View>
 
               <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.filterApplyText}>Show Results</Text>
               </TouchableOpacity>
             </View>
@@ -434,12 +447,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Navbar ─────────────────────────────────────── */
   navbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   titleBar: {
     flexDirection: 'row',
@@ -470,7 +481,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   navBtnActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   searchBar: {
     flexDirection: 'row',
@@ -489,7 +500,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.full,
     width: 16,
     height: 16,
@@ -548,7 +559,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.danger,
   },
   filterApplyBtn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md + 2,
     alignItems: 'center',

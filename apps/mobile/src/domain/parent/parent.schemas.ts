@@ -101,3 +101,40 @@ export const paymentHistoryItemSchema = z.object({
 });
 
 export const paymentHistoryListSchema = z.array(paymentHistoryItemSchema);
+
+/* ── Manual payment (Phase 2/3) ──────────────────────────────────────────── */
+
+export const academyBankDetailsSchema = z.object({
+  accountHolderName: z.string(),
+  accountNumber: z.string(),
+  ifscCode: z.string(),
+  bankName: z.string(),
+  branchName: z.string(),
+});
+
+export const academyPaymentMethodsSchema = z.object({
+  manualPaymentsEnabled: z.boolean(),
+  upiId: z.string().nullable(),
+  upiHolderName: z.string().nullable(),
+  qrCodeImageUrl: z.string().nullable(),
+  bankDetails: academyBankDetailsSchema.nullable(),
+  academyName: z.string(),
+});
+
+export const parentPaymentRequestSchema = z.object({
+  id: z.string(),
+  academyId: z.string(),
+  studentId: z.string(),
+  feeDueId: z.string(),
+  monthKey: z.string(),
+  amount: z.number(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']),
+  source: z.enum(['STAFF', 'PARENT']),
+  paymentMethod: z.enum(['UPI', 'BANK', 'CASH', 'OTHER']).nullable(),
+  proofImageUrl: z.string().nullable(),
+  paymentRefNumber: z.string().nullable(),
+  staffNotes: z.string(),
+  rejectionReason: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});

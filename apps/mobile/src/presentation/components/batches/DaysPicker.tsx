@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import type { Weekday } from '../../../domain/batch/batch.types';
-import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -54,6 +55,14 @@ export function DaysPicker({ selected, onChange, error }: DaysPickerProps) {
               accessibilityLabel={day.label}
               testID={`day-${day.value.toLowerCase()}`}
             >
+              {isSelected ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                 {day.label}
               </Text>
@@ -88,7 +97,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   chipSelected: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   chipText: {

@@ -328,7 +328,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   forgotText: {
     fontSize: fontSizes.sm,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.medium,
   },
   footer: {
@@ -343,7 +343,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   footerLink: {
     fontSize: fontSizes.base,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
   },
 });

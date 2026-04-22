@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Switch, TouchableOpacity, StyleSheet } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import type { AcademySettings, UpdateAcademySettingsRequest } from '../../../domain/settings/academy-settings.types';
 import type { AppError } from '../../../domain/common/errors';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -151,12 +152,20 @@ export function SettingsForm({ settings, editable, saving, error, onSave }: Sett
                 key={interval}
                 style={[
                   styles.intervalBtn,
-                  repeatInterval === interval && { backgroundColor: colors.primary },
+                  repeatInterval === interval && styles.intervalBtnActive,
                 ]}
                 onPress={() => editable && setRepeatInterval(interval)}
                 disabled={!editable}
                 testID={`interval-btn-${interval}`}
               >
+                {repeatInterval === interval ? (
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : null}
                 <Text
                   style={[
                     styles.intervalBtnText,
@@ -256,6 +265,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
+  },
+  intervalBtnActive: {
+    overflow: 'hidden',
   },
   intervalBtnText: {
     fontSize: fontSizes.base,

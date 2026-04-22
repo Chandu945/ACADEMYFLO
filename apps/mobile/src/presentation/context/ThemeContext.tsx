@@ -16,8 +16,8 @@ type ThemeContextValue = {
 const SERVICE = 'academyflo_theme';
 
 const ThemeContext = createContext<ThemeContextValue>({
-  colors: lightColors,
-  isDark: false,
+  colors: darkColors,
+  isDark: true,
   mode: 'system',
   setMode: () => {},
 });
@@ -46,9 +46,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     Keychain.setGenericPassword('theme', newMode, { service: SERVICE }).catch(() => {});
   }, []);
 
-  const isDark = mode === 'system'
-    ? systemScheme === 'dark'
-    : mode === 'dark';
+  // Resolve isDark from the user's mode + OS setting.
+  //   'dark'   → always dark
+  //   'light'  → always light
+  //   'system' → follow the device (defaults to dark if the OS scheme is null,
+  //              which happens briefly at boot on some platforms).
+  const isDark = useMemo(() => {
+    if (mode === 'dark') return true;
+    if (mode === 'light') return false;
+    return systemScheme !== 'light';
+  }, [mode, systemScheme]);
 
   const colors = isDark ? darkColors : lightColors;
 

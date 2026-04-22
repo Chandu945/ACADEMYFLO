@@ -14,13 +14,17 @@ export interface UpdateInstituteInfoInput {
   actorRole: UserRole;
   bankDetails?: BankDetails | null;
   upiId?: string | null;
+  upiHolderName?: string | null;
+  manualPaymentsEnabled?: boolean;
 }
 
 export interface InstituteInfoDto {
   signatureStampUrl: string | null;
   bankDetails: BankDetails | null;
   upiId: string | null;
+  upiHolderName: string | null;
   qrCodeImageUrl: string | null;
+  manualPaymentsEnabled: boolean;
 }
 
 export class UpdateInstituteInfoUseCase {
@@ -53,6 +57,8 @@ export class UpdateInstituteInfoUseCase {
     const updated = academy.updateInstituteInfo({
       bankDetails: input.bankDetails,
       upiId: input.upiId,
+      upiHolderName: input.upiHolderName,
+      manualPaymentsEnabled: input.manualPaymentsEnabled,
     });
 
     await this.academyRepo.save(updated);
@@ -62,7 +68,9 @@ export class UpdateInstituteInfoUseCase {
       signatureStampUrl: info.signatureStampUrl,
       bankDetails: info.bankDetails,
       upiId: info.upiId,
+      upiHolderName: info.upiHolderName,
       qrCodeImageUrl: info.qrCodeImageUrl,
+      manualPaymentsEnabled: info.manualPaymentsEnabled,
     });
   }
 }

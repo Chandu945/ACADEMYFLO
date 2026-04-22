@@ -76,7 +76,9 @@ export class AcademyModel {
       branchName: string;
     } | null;
     upiId: string | null;
+    upiHolderName: string | null;
     qrCodeImageUrl: string | null;
+    manualPaymentsEnabled: boolean;
   } | null;
 
   @Prop({ default: 1 })

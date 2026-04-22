@@ -119,6 +119,14 @@ export class ApprovePaymentRequestUseCase {
         const next = await this.transactionLogRepo.incrementReceiptCounter(request.academyId, prefix);
         const receiptNumber = generateReceiptNumber(prefix, next);
 
+        // Transaction-log source depends on who authored the request:
+        //   STAFF cash collection  → 'STAFF_APPROVED'
+        //   PARENT manual payment  → 'MANUAL'
+        // Both require owner approval and flow through this same code path;
+        // only the recorded provenance differs.
+        const txLogSource =
+          request.source === 'PARENT' ? 'MANUAL' : 'STAFF_APPROVED';
+
         const txLog = TransactionLog.create({
           id: randomUUID(),
           academyId: request.academyId,
@@ -127,7 +135,7 @@ export class ApprovePaymentRequestUseCase {
           studentId: request.studentId,
           monthKey: request.monthKey,
           amount: request.amount,
-          source: 'STAFF_APPROVED',
+          source: txLogSource,
           collectedByUserId: request.staffUserId,
           approvedByUserId: input.actorUserId,
           receiptNumber,

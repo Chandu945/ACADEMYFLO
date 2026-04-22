@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated } from 'react-native';
+import { Animated, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { LoadingOverlay } from '../components/ui/LoadingOverlay';
 import { AuthStack } from './AuthStack';
@@ -9,11 +9,12 @@ import { ParentTabs } from './ParentTabs';
 import { BlockedStack } from './BlockedStack';
 import { AcademySetupScreen } from '../screens/auth/AcademySetupScreen';
 import { ForceUpdateScreen } from '../screens/auth/ForceUpdateScreen';
+import { SessionExpiredSheet } from '../components/auth/SessionExpiredSheet';
 
 const rootFadeStyle = { flex: 1 } as const;
 
 export function RootNavigator() {
-  const { phase, user, forceUpdate } = useAuth();
+  const { phase, user, forceUpdate, sessionExpired, dismissSessionExpired } = useAuth();
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const prevPhaseRef = useRef(phase);
 
@@ -47,7 +48,12 @@ export function RootNavigator() {
       break;
 
     case 'unauthenticated':
-      content = <AuthStack />;
+      content = (
+        <View style={rootFadeStyle}>
+          <AuthStack />
+          <SessionExpiredSheet visible={sessionExpired} onDismiss={dismissSessionExpired} />
+        </View>
+      );
       break;
 
     case 'needsAcademySetup':

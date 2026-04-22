@@ -10,7 +10,8 @@ import {
 import { AppIcon } from '../ui/AppIcon';
 import type { BirthdayStudent } from '../../../domain/dashboard/dashboard.types';
 import { getBirthdays } from '../../../infra/dashboard/dashboard-api';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -92,8 +93,13 @@ function BirthdayRow({ student, isToday, testID }: BirthdayRowProps) {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={`Call guardian of ${student.fullName}`}
         >
-          
-          <AppIcon name="phone-outline" size={16} color={colors.primary} />
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="phone-outline" size={16} color="#FFFFFF" />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionBtn, styles.whatsappBtn]}
@@ -304,7 +310,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -333,7 +339,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   initialText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   initialTextToday: {
     color: colors.white,
@@ -359,7 +365,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },

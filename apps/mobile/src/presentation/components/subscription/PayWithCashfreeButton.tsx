@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import type { PaymentFlowStatus } from '../../../domain/payments/cashfree.types';
 import { AppIcon } from '../ui/AppIcon';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -66,6 +67,12 @@ export function PayWithCashfreeButton({
           activeOpacity={0.8}
           testID="pay-cashfree-button"
         >
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {isLoading ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
@@ -118,12 +125,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   rupee: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   amount: {
     fontSize: fontSizes['3xl'],
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   period: {
     fontSize: fontSizes.sm,
@@ -139,7 +146,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md + 2,
     gap: spacing.sm,

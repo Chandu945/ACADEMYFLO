@@ -80,7 +80,7 @@ export const AddPhotoTile = React.memo(function AddPhotoTile({
       testID={testID}
     >
       <View style={styles.addIconCircle}>
-        <AppIcon name="camera-plus-outline" size={28} color={colors.primary} />
+        <AppIcon name="camera-plus-outline" size={28} color={colors.textSecondary} />
       </View>
       <Text style={styles.addLabel}>Add Photo</Text>
     </Pressable>
@@ -122,7 +122,7 @@ const makeStyles = (colors: Colors) =>
       borderStyle: 'dashed',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.primarySoft,
+      backgroundColor: colors.bgSubtle,
     },
     addTilePressed: {
       backgroundColor: colors.primary + '20',
@@ -141,6 +141,6 @@ const makeStyles = (colors: Colors) =>
     addLabel: {
       fontSize: fontSizes.sm,
       fontWeight: fontWeights.semibold,
-      color: colors.primary,
+      color: colors.text,
     },
   });

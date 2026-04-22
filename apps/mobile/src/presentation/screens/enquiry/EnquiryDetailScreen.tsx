@@ -47,7 +47,10 @@ function friendlyEnquiryError(error: AppError, action: 'follow-up' | 'close' | '
 import { AppIcon } from '../../components/ui/AppIcon';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
+import { Badge } from '../../components/ui/Badge';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -180,24 +183,26 @@ export function EnquiryDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.headerRow}>
-          <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>{enquiry.prospectName.charAt(0).toUpperCase()}</Text>
-          </View>
+          <InitialsAvatar name={enquiry.prospectName} size={52} style={styles.headerAvatarSpacing} />
           <View style={styles.headerInfo}>
-            <Text style={styles.prospectName}>{enquiry.prospectName}</Text>
-            <View style={[styles.statusBadge, enquiry.status === 'ACTIVE' ? styles.activeBadge : styles.closedBadge]}>
-              <Text style={[styles.statusText, enquiry.status === 'ACTIVE' ? styles.activeText : styles.closedText]}>
-                {enquiry.status}
-              </Text>
-            </View>
+            <Text style={styles.prospectName} numberOfLines={1}>{enquiry.prospectName}</Text>
+            {enquiry.mobileNumber && (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>{enquiry.mobileNumber}</Text>
+            )}
           </View>
+          <Badge
+            label={enquiry.status}
+            variant={enquiry.status === 'ACTIVE' ? 'success' : 'neutral'}
+            dot
+            uppercase
+          />
         </View>
 
         {/* Contact Info */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             
-            <AppIcon name="phone-outline" size={18} color={colors.primary} />
+            <AppIcon name="phone-outline" size={18} color={colors.text} />
             <Text style={styles.sectionTitle}>Contact</Text>
           </View>
           <InfoRow label="Mobile" value={enquiry.mobileNumber} />
@@ -211,7 +216,7 @@ export function EnquiryDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             
-            <AppIcon name="information-outline" size={18} color={colors.primary} />
+            <AppIcon name="information-outline" size={18} color={colors.text} />
             <Text style={styles.sectionTitle}>Details</Text>
           </View>
           {enquiry.interestedIn && <InfoRow label="Interested In" value={enquiry.interestedIn} />}
@@ -230,7 +235,7 @@ export function EnquiryDetailScreen() {
           <View style={styles.section}>
             <View style={styles.sectionTitleRow}>
               
-              <AppIcon name="note-text-outline" size={18} color={colors.primary} />
+              <AppIcon name="note-text-outline" size={18} color={colors.text} />
               <Text style={styles.sectionTitle}>Notes</Text>
             </View>
             <Text style={styles.notesText}>{enquiry.notes}</Text>
@@ -254,13 +259,13 @@ export function EnquiryDetailScreen() {
           <View style={styles.followUpHeader}>
             <View style={styles.sectionTitleRow}>
               
-              <AppIcon name="history" size={18} color={colors.primary} />
+              <AppIcon name="history" size={18} color={colors.text} />
               <Text style={styles.sectionTitle}>Follow-Up History ({enquiry.followUps.length})</Text>
             </View>
             {enquiry.status === 'ACTIVE' && (
               <TouchableOpacity onPress={() => setShowFollowUpModal(true)} style={styles.addFollowUpBtn} testID="add-followup-btn">
                 
-                <AppIcon name="plus" size={16} color={colors.primary} />
+                <AppIcon name="plus" size={16} color={colors.textSecondary} />
                 <Text style={styles.addFollowUpLink}>Add</Text>
               </TouchableOpacity>
             )}
@@ -272,7 +277,7 @@ export function EnquiryDetailScreen() {
               <View key={f.id} style={styles.followUpCard}>
                 <View style={styles.followUpDateRow}>
                   
-                  <AppIcon name="calendar" size={14} color={colors.primary} />
+                  <AppIcon name="calendar" size={14} color={colors.textSecondary} />
                   <Text style={styles.followUpDate}>
                     {safeFormatDate(f.date)}
                   </Text>
@@ -297,7 +302,7 @@ export function EnquiryDetailScreen() {
               testID="edit-enquiry-btn"
             >
               
-              <AppIcon name="pencil-outline" size={18} color={colors.primary} />
+              <AppIcon name="pencil-outline" size={18} color={colors.textSecondary} />
               <Text style={styles.editButtonText}>Edit Enquiry</Text>
             </TouchableOpacity>
             <View style={styles.actionsRow}>
@@ -306,7 +311,12 @@ export function EnquiryDetailScreen() {
                 onPress={() => setShowFollowUpModal(true)}
                 testID="add-followup-action"
               >
-                
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <AppIcon name="phone-forward-outline" size={18} color={colors.white} />
                 <Text style={styles.followUpButtonText}>Follow-Up</Text>
               </TouchableOpacity>
@@ -422,6 +432,12 @@ function AddFollowUpModal({
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={handleSave} disabled={saving} testID="followup-save">
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save'}</Text>
           </TouchableOpacity>
         </View>
@@ -496,6 +512,14 @@ function CloseEnquiryModal({
               onPress={() => setReason(r.value)}
               testID={`reason-${r.value}`}
             >
+              {reason === r.value ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <Text style={[styles.reasonChipText, reason === r.value && styles.reasonChipTextActive]}>
                 {r.label}
               </Text>
@@ -615,6 +639,14 @@ function _ConvertToStudentModal({
                   onPress={() => setGender(g.value)}
                   testID={`convert-gender-${g.value}`}
                 >
+                  {gender === g.value ? (
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  ) : null}
                   <Text style={[styles.reasonChipText, gender === g.value && styles.reasonChipTextActive]}>
                     {g.label}
                   </Text>
@@ -644,6 +676,12 @@ function _ConvertToStudentModal({
                 disabled={saving}
                 testID="convert-confirm"
               >
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.saveBtnText}>{saving ? 'Converting...' : 'Convert'}</Text>
               </TouchableOpacity>
             </View>
@@ -660,25 +698,22 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   /* ── Header ─────────────────────────────────────── */
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
-  headerAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg, gap: spacing.md },
+  headerAvatarSpacing: {
+    // avatar provides own sizing; extra spacing handled by headerRow gap.
   },
-  headerAvatarText: { fontSize: fontSizes['2xl'], fontWeight: fontWeights.bold, color: colors.primary },
-  headerInfo: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  prospectName: { fontSize: fontSizes.xl, fontWeight: fontWeights.bold, color: colors.text, flex: 1 },
-  statusBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full },
-  activeBadge: { backgroundColor: colors.successBg },
-  closedBadge: { backgroundColor: colors.bgSubtle },
-  statusText: { fontSize: fontSizes.sm, fontWeight: fontWeights.semibold },
-  activeText: { color: colors.successText },
-  closedText: { color: colors.textSecondary },
+  headerInfo: { flex: 1, minWidth: 0 },
+  prospectName: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
 
   /* ── Sections ───────────────────────────────────── */
   section: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.base, marginBottom: spacing.md },
@@ -692,14 +727,21 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Follow-Up History ──────────────────────────── */
   followUpHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  addFollowUpBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primarySoft, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full },
-  addFollowUpLink: { fontSize: fontSizes.sm, color: colors.primary, fontWeight: fontWeights.semibold },
+  addFollowUpBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.bgSubtle, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full },
+  addFollowUpLink: { fontSize: fontSizes.sm, color: colors.text, fontWeight: fontWeights.semibold },
   emptyFollowUp: { fontSize: fontSizes.base, color: colors.textSecondary, fontStyle: 'italic' },
-  followUpCard: { backgroundColor: colors.bgSubtle, borderRadius: radius.lg, padding: spacing.md, marginTop: spacing.sm, borderLeftWidth: 3, borderLeftColor: colors.primary },
+  followUpCard: {
+    backgroundColor: colors.bgSubtle,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   followUpDateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   followUpDate: { fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.text },
   followUpNotes: { fontSize: fontSizes.base, color: colors.textLight, marginTop: spacing.xs, lineHeight: 20 },
-  followUpNext: { fontSize: fontSizes.sm, color: colors.primary, marginTop: spacing.sm, fontWeight: fontWeights.medium },
+  followUpNext: { fontSize: fontSizes.sm, color: colors.text, marginTop: spacing.sm, fontWeight: fontWeights.medium },
 
   /* ── Actions ────────────────────────────────────── */
   actionsContainer: { marginTop: spacing.sm },
@@ -708,13 +750,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+    backgroundColor: colors.bgSubtle,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
     borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.sm,
   },
-  editButtonText: { fontSize: fontSizes.md, fontWeight: fontWeights.semibold, color: colors.primary },
+  editButtonText: { fontSize: fontSizes.md, fontWeight: fontWeights.semibold, color: colors.text },
   actionsRow: { flexDirection: 'row', gap: spacing.sm },
   followUpButton: {
     flex: 1,
@@ -722,7 +765,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
@@ -771,13 +814,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   modalButtons: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
   cancelButton: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.base, alignItems: 'center' },
   cancelButtonText: { fontSize: fontSizes.base, fontWeight: fontWeights.medium, color: colors.textSecondary },
-  saveBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.xl, padding: spacing.base, alignItems: 'center' },
+  saveBtn: { flex: 1, overflow: 'hidden', borderRadius: radius.xl, padding: spacing.base, alignItems: 'center' },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.white },
   dangerBtn: { flex: 1, backgroundColor: colors.danger, borderRadius: radius.xl, padding: spacing.base, alignItems: 'center' },
   reasonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   reasonChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  reasonChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  reasonChipActive: { overflow: 'hidden', borderColor: colors.primary },
   reasonChipText: { fontSize: fontSizes.sm, color: colors.textSecondary },
   reasonChipTextActive: { color: colors.white },
   convertModalScroll: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl },

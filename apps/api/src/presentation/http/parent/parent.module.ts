@@ -6,6 +6,8 @@ import { FeePaymentTestController } from './fee-payment-test.controller';
 import { AuthModule } from '../auth/auth.module';
 import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboarding.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { DeviceTokensModule, PUSH_NOTIFICATION_SERVICE } from '../device-tokens/device-tokens.module';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
 
 // Schemas
 import {
@@ -18,6 +20,11 @@ import {
 } from '@infrastructure/database/schemas/fee-payment.schema';
 import { FeeDueModel, FeeDueSchema } from '@infrastructure/database/schemas/fee-due.schema';
 import { StudentModel, StudentSchema } from '@infrastructure/database/schemas/student.schema';
+import {
+  PaymentRequestModel,
+  PaymentRequestSchema,
+} from '@infrastructure/database/schemas/payment-request.schema';
+import { AcademyModel, AcademySchema } from '@infrastructure/database/schemas/academy.schema';
 import {
   TransactionLogModel,
   TransactionLogSchema,
@@ -36,7 +43,10 @@ import { MongoStudentRepository } from '@infrastructure/repositories/mongo-stude
 import { MongoTransactionLogRepository } from '@infrastructure/repositories/mongo-transaction-log.repository';
 import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/mongo-student-attendance.repository';
 import { MongoHolidayRepository } from '@infrastructure/repositories/mongo-holiday.repository';
+import { MongoPaymentRequestRepository } from '@infrastructure/repositories/mongo-payment-request.repository';
+import { MongoAcademyRepository } from '@infrastructure/repositories/mongo-academy.repository';
 import { MongoTransactionService } from '@infrastructure/database/mongo-transaction.service';
+import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 
 // Repository ports
 import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
@@ -48,6 +58,10 @@ import { STUDENT_ATTENDANCE_REPOSITORY } from '@domain/attendance/ports/student-
 import { HOLIDAY_REPOSITORY } from '@domain/attendance/ports/holiday.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
+import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
+import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
+import type { FileStoragePort } from '@application/common/ports/file-storage.port';
+import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
 import { CASHFREE_GATEWAY } from '@domain/subscription-payments/ports/cashfree-gateway.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
@@ -72,6 +86,9 @@ import { UpdateParentProfileUseCase } from '@application/parent/use-cases/update
 import { ChangePasswordUseCase } from '@application/parent/use-cases/change-password.usecase';
 import { GetAcademyInfoUseCase } from '@application/parent/use-cases/get-academy-info.usecase';
 import { GetPaymentHistoryUseCase } from '@application/parent/use-cases/get-payment-history.usecase';
+import { GetAcademyPaymentMethodsUseCase } from '@application/parent/use-cases/get-academy-payment-methods.usecase';
+import { CreateParentPaymentRequestUseCase } from '@application/parent/use-cases/create-parent-payment-request.usecase';
+import { UploadPaymentProofUseCase } from '@application/parent/use-cases/upload-payment-proof.usecase';
 
 // Cashfree infra
 import { CashfreeAdapter } from '@infrastructure/payments/cashfree/cashfree.adapter';
@@ -106,6 +123,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     AuthModule,
     AcademyOnboardingModule,
     AuditLogsModule,
+    DeviceTokensModule,
     MongooseModule.forFeature([
       { name: ParentStudentLinkModel.name, schema: ParentStudentLinkSchema },
       { name: FeePaymentModel.name, schema: FeePaymentSchema },
@@ -114,6 +132,8 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
       { name: TransactionLogModel.name, schema: TransactionLogSchema },
       { name: StudentAttendanceModel.name, schema: StudentAttendanceSchema },
       { name: HolidayModel.name, schema: HolidaySchema },
+      { name: PaymentRequestModel.name, schema: PaymentRequestSchema },
+      { name: AcademyModel.name, schema: AcademySchema },
     ]),
   ],
   controllers: [
@@ -132,6 +152,9 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     { provide: TRANSACTION_LOG_REPOSITORY, useClass: MongoTransactionLogRepository },
     { provide: STUDENT_ATTENDANCE_REPOSITORY, useClass: MongoStudentAttendanceRepository },
     { provide: HOLIDAY_REPOSITORY, useClass: MongoHolidayRepository },
+    { provide: PAYMENT_REQUEST_REPOSITORY, useClass: MongoPaymentRequestRepository },
+    { provide: ACADEMY_REPOSITORY, useClass: MongoAcademyRepository },
+    { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     { provide: CLOCK_PORT, useClass: SystemClock },
 
@@ -363,6 +386,48 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         studentRepo: StudentRepository,
       ) => new GetPaymentHistoryUseCase(linkRepo, txLogRepo, studentRepo),
       inject: [PARENT_STUDENT_LINK_REPOSITORY, TRANSACTION_LOG_REPOSITORY, STUDENT_REPOSITORY],
+    },
+    {
+      provide: 'GET_ACADEMY_PAYMENT_METHODS_USE_CASE',
+      useFactory: (userRepo: UserRepository, academyRepo: AcademyRepository) =>
+        new GetAcademyPaymentMethodsUseCase(userRepo, academyRepo),
+      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY],
+    },
+    {
+      provide: 'UPLOAD_PAYMENT_PROOF_USE_CASE',
+      useFactory: (userRepo: UserRepository, fileStorage: FileStoragePort) =>
+        new UploadPaymentProofUseCase(userRepo, fileStorage),
+      inject: [USER_REPOSITORY, FILE_STORAGE_PORT],
+    },
+    {
+      provide: 'CREATE_PARENT_PAYMENT_REQUEST_USE_CASE',
+      useFactory: (
+        userRepo: UserRepository,
+        studentRepo: StudentRepository,
+        feeDueRepo: FeeDueRepository,
+        academyRepo: AcademyRepository,
+        prRepo: PaymentRequestRepository,
+        linkRepo: ParentStudentLinkRepository,
+        auditRecorder: AuditRecorderPort,
+      ) =>
+        new CreateParentPaymentRequestUseCase(
+          userRepo,
+          studentRepo,
+          feeDueRepo,
+          academyRepo,
+          prRepo,
+          linkRepo,
+          auditRecorder,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        FEE_DUE_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        PAYMENT_REQUEST_REPOSITORY,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+      ],
     },
   ],
   exports: ['INVITE_PARENT_USE_CASE'],

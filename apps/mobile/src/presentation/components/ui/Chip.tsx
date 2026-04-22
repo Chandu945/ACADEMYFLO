@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -23,6 +24,14 @@ export function Chip({ label, selected, onPress, testID }: ChipProps) {
       accessibilityState={{ selected }}
       testID={testID}
     >
+      {selected ? (
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
     </Pressable>
   );
@@ -39,7 +48,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   chipSelected: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
   },
   label: {
     fontSize: fontSizes.sm,

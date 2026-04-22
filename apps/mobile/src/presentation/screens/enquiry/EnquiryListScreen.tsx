@@ -23,7 +23,9 @@ import * as enquiryApi from '../../../infra/enquiry/enquiry-api';
 import { getTodayIST } from '../../../domain/common/date-utils';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
+import { Badge } from '../../components/ui/Badge';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -146,11 +148,12 @@ export function EnquiryListScreen() {
         <View style={styles.cardInfo}>
           <View style={styles.cardHeader}>
             <Text style={styles.prospectName} numberOfLines={1}>{item.prospectName}</Text>
-            <View style={[styles.statusBadge, item.status === 'ACTIVE' ? styles.activeBadge : styles.closedBadge]}>
-              <Text style={[styles.statusText, item.status === 'ACTIVE' ? styles.activeText : styles.closedText]}>
-                {item.status}
-              </Text>
-            </View>
+            <Badge
+              label={item.status}
+              variant={item.status === 'ACTIVE' ? 'success' : 'neutral'}
+              dot
+              uppercase
+            />
           </View>
           <View style={styles.phoneRow}>
             
@@ -246,6 +249,12 @@ export function EnquiryListScreen() {
                 />
                 {activeTab !== 'ALL' && !showFilters && (
                   <View style={styles.filterBadge}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
                     <Text style={styles.filterBadgeText}>1</Text>
                   </View>
                 )}
@@ -280,6 +289,14 @@ export function EnquiryListScreen() {
                     onPress={() => setActiveTab(tab.key)}
                     testID={`filter-${tab.key}`}
                   >
+                    {activeTab === tab.key ? (
+                      <LinearGradient
+                        colors={[gradient.start, gradient.end]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    ) : null}
                     <Text style={[styles.filterChipText, activeTab === tab.key && styles.filterChipTextActive]}>
                       {tab.label}
                     </Text>
@@ -288,6 +305,12 @@ export function EnquiryListScreen() {
               </View>
 
               <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.filterApplyText}>Show Results</Text>
               </TouchableOpacity>
             </View>
@@ -304,7 +327,7 @@ export function EnquiryListScreen() {
         <View style={styles.activeFilterBar}>
           <View style={styles.activeFilterPill}>
             
-            <AppIcon name="filter-variant" size={14} color={colors.primary} />
+            <AppIcon name="filter-variant" size={14} color={colors.textSecondary} />
             <Text style={styles.activeFilterText}>
               {FILTER_TABS.find((t) => t.key === activeTab)?.label}
             </Text>
@@ -352,7 +375,14 @@ export function EnquiryListScreen() {
         accessibilityLabel="Add new enquiry"
         accessibilityRole="button"
         testID="add-enquiry-fab"
+        activeOpacity={0.85}
       >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
     </View>
@@ -367,12 +397,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   /* ── Navbar ─────────────────────────────────────── */
   navbar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   titleBar: {
     flexDirection: 'row',
@@ -419,7 +447,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
 
   navBtnActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   filterBadge: {
     position: 'absolute',
@@ -428,7 +456,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -484,7 +512,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.danger,
   },
   filterApplyBtn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md + 2,
     alignItems: 'center',
@@ -515,7 +543,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   filterChipActive: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   filterChipText: {
@@ -539,14 +567,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
   activeFilterText: {
     fontSize: fontSizes.sm,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.medium,
   },
 
@@ -572,7 +600,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -581,7 +609,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   avatarText: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   cardInfo: {
     flex: 1,
@@ -598,27 +626,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
     flex: 1,
     marginRight: spacing.sm,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  activeBadge: {
-    backgroundColor: colors.successBg,
-  },
-  closedBadge: {
-    backgroundColor: colors.bgSubtle,
-  },
-  statusText: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-  },
-  activeText: {
-    color: colors.successText,
-  },
-  closedText: {
-    color: colors.textSecondary,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -656,7 +663,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   sourceText: {
     fontSize: fontSizes.xs,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.medium,
   },
   followUpRow: {
@@ -683,7 +690,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.full,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.lg,

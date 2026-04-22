@@ -16,7 +16,8 @@ import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanne
 import { PendingDeletionBanner } from '../../components/dashboard/PendingDeletionBanner';
 import { BirthdayWidget } from '../../components/dashboard/BirthdayWidget';
 import { MonthlyChartWidget } from '../../components/dashboard/MonthlyChartWidget';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -102,7 +103,13 @@ export function DashboardScreen() {
                 accessibilityRole="button"
               >
                 <View style={styles.cardHeaderIcon}>
-                  <AppIcon name="rocket-launch-outline" size={18} color={colors.primary} />
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name="rocket-launch-outline" size={18} color="#FFFFFF" />
                 </View>
                 <View style={styles.onboardingText}>
                   <Text style={styles.onboardingTitle}>Get Started</Text>
@@ -116,7 +123,13 @@ export function DashboardScreen() {
             <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('Students')} accessibilityLabel="Students overview. Tap to view students" accessibilityRole="button">
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderIcon}>
-                  <AppIcon name="school-outline" size={18} color={colors.primary} />
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name="school-outline" size={18} color="#FFFFFF" />
                 </View>
                 <Text style={styles.cardTitle}>Students Overview</Text>
                 <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
@@ -149,12 +162,24 @@ export function DashboardScreen() {
               <TouchableOpacity style={styles.pendingBanner} activeOpacity={0.7} onPress={() => navigation.navigate('Fees')} accessibilityLabel={`${data.pendingPaymentRequests} pending payment requests. Tap to review`} accessibilityRole="button">
                 <View style={styles.pendingLeft}>
                   <View style={styles.cardHeaderIcon}>
-                    <AppIcon name="file-document-outline" size={18} color={colors.primary} />
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <AppIcon name="file-document-outline" size={18} color="#FFFFFF" />
                   </View>
                   <Text style={styles.pendingText}>Pending Requests</Text>
                 </View>
                 <View style={styles.pendingRight}>
                   <View style={styles.pendingBadge}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
                     <Text style={styles.pendingBadgeText}>{data.pendingPaymentRequests}</Text>
                   </View>
                   <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
@@ -239,7 +264,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   onboardingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.md,
@@ -280,7 +305,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -346,7 +371,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
   },
   pendingBadge: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.full,
     minWidth: 28,
     height: 28,

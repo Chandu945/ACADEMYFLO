@@ -10,7 +10,8 @@ import {
 import { AppIcon } from '../ui/AppIcon';
 import type { MonthlyChartPoint } from '../../../domain/dashboard/dashboard.types';
 import { getMonthlyChart } from '../../../infra/dashboard/dashboard-api';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -107,7 +108,7 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
           {error}
         </Text>
         <TouchableOpacity onPress={load} style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}>
-          <Text style={{ color: colors.primary, fontWeight: fontWeights.semibold }}>Retry</Text>
+          <Text style={{ color: colors.text, fontWeight: fontWeights.semibold }}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -134,8 +135,13 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
           <View style={styles.iconCircle}>
-            
-            <AppIcon name="chart-bar" size={18} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="chart-bar" size={18} color="#FFFFFF" />
           </View>
           <Text style={styles.title}>Monthly Summary</Text>
           {onPress && (
@@ -364,7 +370,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -528,7 +534,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 30,
   },
   barGroupSelected: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   barGroupCurrent: {
     backgroundColor: colors.bgSubtle,
@@ -557,7 +563,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.medium,
   },
   monthLabelCurrent: {
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.bold,
   },
   monthLabelSelected: {

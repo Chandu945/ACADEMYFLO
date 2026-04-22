@@ -1,7 +1,8 @@
 import React, { memo, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -23,19 +24,29 @@ function MonthPickerRowComponent({ month, onPrevious, onNext }: MonthPickerRowPr
   return (
     <View style={styles.container}>
       <Pressable onPress={onPrevious} style={styles.arrow} testID="month-prev">
-        
-        <AppIcon name="chevron-left" size={20} color={colors.primary} />
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AppIcon name="chevron-left" size={20} color="#FFFFFF" />
       </Pressable>
       <View style={styles.monthContainer}>
         
-        <AppIcon name="calendar-month" size={16} color={colors.primary} />
+        <AppIcon name="calendar-month" size={16} color={colors.textSecondary} />
         <Text style={styles.monthText} testID="month-display">
           {formatMonth(month)}
         </Text>
       </View>
       <Pressable onPress={onNext} style={styles.arrow} testID="month-next">
-        
-        <AppIcon name="chevron-right" size={20} color={colors.primary} />
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AppIcon name="chevron-right" size={20} color="#FFFFFF" />
       </Pressable>
     </View>
   );
@@ -55,7 +66,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },

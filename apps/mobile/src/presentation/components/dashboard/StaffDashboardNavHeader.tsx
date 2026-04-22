@@ -5,6 +5,7 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../ui/AppIcon';
+import { InitialsAvatar } from '../ui/InitialsAvatar';
 import type { StaffTabParamList } from '../../navigation/StaffTabs';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { useAuth } from '../../context/AuthContext';
@@ -54,9 +55,7 @@ export function StaffDashboardHeaderLeft() {
         accessibilityLabel="Open profile"
         accessibilityRole="button"
       >
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.initials}>{initials}</Text>
-        </View>
+        <InitialsAvatar name={user.fullName} size={AVATAR_SIZE} variant="solid" />
         <View style={styles.textContainer}>
           <Text style={styles.name} numberOfLines={1}>
             {user.fullName}
@@ -107,7 +106,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -134,7 +133,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.xs,

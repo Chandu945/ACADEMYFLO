@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { getBatchesCached } from '../../../infra/batch/batch-cache';
-import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -90,6 +91,14 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
               accessibilityLabel={batch.batchName}
               testID={`batch-select-${batch.id}`}
             >
+              {isSelected ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                 {batch.batchName}
               </Text>
@@ -123,7 +132,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   chipSelected: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   chipText: {

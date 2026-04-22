@@ -8,10 +8,12 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { AppIcon } from '../ui/AppIcon';
+import { InitialsAvatar } from '../ui/InitialsAvatar';
 import type { AuthUser } from '../../../domain/auth/auth.types';
 import type { SubscriptionInfo } from '../../../domain/subscription/subscription.types';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -79,13 +81,22 @@ export function ProfileModal({
           <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
             {/* Profile header — compact horizontal layout */}
             <View style={styles.profileRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
+              <InitialsAvatar
+                name={user.fullName}
+                size={52}
+                variant="solid"
+                style={{ marginRight: spacing.md }}
+              />
               <View style={styles.profileInfo}>
                 <Text style={styles.profileName} numberOfLines={1}>{user.fullName}</Text>
                 <Text style={styles.profileEmail} numberOfLines={1}>{user.email}</Text>
                 <View style={styles.roleBadge}>
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
                   <Text style={styles.roleBadgeText}>{user.role}</Text>
                 </View>
               </View>
@@ -97,7 +108,7 @@ export function ProfileModal({
             {/* Contact row */}
             <View style={styles.contactRow}>
               <View style={styles.contactItem}>
-                <AppIcon name="phone-outline" size={16} color={colors.primary} />
+                <AppIcon name="phone-outline" size={16} color={colors.text} />
                 <Text style={styles.contactText} numberOfLines={1}>{user.phoneNumber}</Text>
               </View>
             </View>
@@ -145,7 +156,7 @@ export function ProfileModal({
                   onPress={() => { onClose(); onViewSubscription(); }}
                   testID="view-subscription-btn"
                 >
-                  <AppIcon name="card-account-details-outline" size={18} color={colors.primary} />
+                  <AppIcon name="card-account-details-outline" size={18} color={colors.text} />
                   <Text style={styles.actionBtnText}>Manage Subscription</Text>
                   <AppIcon name="chevron-right" size={16} color={colors.textDisabled} />
                 </TouchableOpacity>
@@ -207,7 +218,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -233,15 +244,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   roleBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.primarySoft,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.full,
+    overflow: 'hidden',
   },
   roleBadgeText: {
     fontSize: 10,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: '#FFFFFF',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },

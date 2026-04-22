@@ -45,6 +45,8 @@ function makeAuth(role: 'OWNER' | 'STAFF' = 'OWNER'): AuthContextValue {
     logout: jest.fn(),
     refreshSubscription: jest.fn(),
     forceUpdate: null,
+    sessionExpired: false,
+    dismissSessionExpired: jest.fn(),
   };
 }
 

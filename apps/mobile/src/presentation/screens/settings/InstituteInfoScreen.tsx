@@ -14,8 +14,9 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useInstituteInfo } from '../../../application/settings/use-institute-info';
 import { instituteInfoApi, uploadInstituteImage, deleteInstituteImage } from '../../../infra/settings/institute-info-api';
+import LinearGradient from 'react-native-linear-gradient';
 import { Input } from '../../components/ui/Input';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -207,7 +208,12 @@ export function InstituteInfoScreen() {
           </View>
           <Text style={styles.errorText}>{error.message}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={refetch} testID="institute-retry">
-            
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <AppIcon name="refresh" size={18} color={colors.white} />
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -230,8 +236,14 @@ export function InstituteInfoScreen() {
         disabled={saving}
         testID="save-institute-info"
       >
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         {!saving && (
-          
+
           <AppIcon name="content-save-outline" size={20} color={colors.white} />
         )}
         <Text style={styles.saveButtonText}>
@@ -284,7 +296,7 @@ function ImageUploadCard({
             testID={`${testID}-change`}
           >
             
-            <AppIcon name="image-edit-outline" size={16} color={colors.primary} />
+            <AppIcon name="image-edit-outline" size={16} color={colors.textSecondary} />
             <Text style={styles.changeButtonText}>Change</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -304,8 +316,13 @@ function ImageUploadCard({
   return (
     <TouchableOpacity style={styles.uploadCard} onPress={onPick} testID={`${testID}-upload`}>
       <View style={styles.uploadIconCircle}>
-        
-        <AppIcon name={icon} size={28} color={colors.primary} />
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AppIcon name={icon} size={28} color="#FFFFFF" />
       </View>
       <Text style={styles.uploadLabel}>{label}</Text>
       <Text style={styles.uploadHint}>JPEG, PNG, or WebP (max 5MB)</Text>
@@ -356,7 +373,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -405,7 +422,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -413,7 +430,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   uploadLabel: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
     marginBottom: spacing.xs,
   },
   uploadHint: {
@@ -423,7 +440,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   uploadingText: {
     marginTop: spacing.sm,
     fontSize: fontSizes.base,
-    color: colors.primary,
+    color: colors.text,
   },
 
   /* ── Image Preview ───────────────────────────────── */
@@ -455,7 +472,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   changeButtonText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
   },
   removeButton: {
     flex: 1,
@@ -480,7 +497,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     padding: spacing.base,
     marginTop: spacing.xl,

@@ -2,6 +2,7 @@ import React, { memo, useMemo, useCallback } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { AppCard } from '../ui/AppCard';
 import { Badge } from '../ui/Badge';
+import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { fontSizes, fontWeights, spacing, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
@@ -53,9 +54,12 @@ function BatchRowComponent({ batch, onPress }: BatchRowProps) {
         {batch.profilePhotoUrl ? (
           <Image source={{ uri: batch.profilePhotoUrl }} style={styles.avatar} />
         ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Text style={styles.avatarInitial}>{batch.batchName.charAt(0).toUpperCase()}</Text>
-          </View>
+          <InitialsAvatar
+            name={batch.batchName}
+            size={48}
+            shape="rounded"
+            style={styles.avatar}
+          />
         )}
 
         <View style={styles.info}>
@@ -99,14 +103,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginRight: spacing.md,
   },
   avatarPlaceholder: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   info: {
     flex: 1,

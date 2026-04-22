@@ -121,7 +121,7 @@ function AddNewModalComponent({ visible, onClose, onSelect }: AddNewModalProps) 
               >
                 <View style={styles.iconContainer}>
                   
-                  <AppIcon name={item.icon} size={24} color={colors.primary} />
+                  <AppIcon name={item.icon} size={24} color={colors.textSecondary} />
                 </View>
                 <View style={styles.menuTextContainer}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
@@ -165,7 +165,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   headerTitle: {
     fontSize: fontSizes.xl,
     fontWeight: fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
   },
   iconContainer: {
     width: 44,

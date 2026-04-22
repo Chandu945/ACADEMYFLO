@@ -11,6 +11,9 @@ import { canManageExpenses } from '@domain/expense/rules/expense.rules';
 import { ExpenseErrors } from '@domain/expense/errors/expense.errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 
+const ID_RE =
+  /^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[a-fA-F0-9]{24})$/;
+
 export interface CreateExpenseInput {
   actorUserId: string;
   actorRole: UserRole;
@@ -49,7 +52,9 @@ export class CreateExpenseUseCase {
       return err(ExpenseErrors.invalidAmount());
     }
 
-    if (!/^[0-9a-fA-F]{24}$/.test(input.categoryId)) {
+    // Accept either UUID (what create-category.usecase generates via randomUUID)
+    // or a legacy 24-char Mongo ObjectId. Matches ParseObjectIdPipe.
+    if (!ID_RE.test(input.categoryId)) {
       return err(ExpenseErrors.invalidCategoryId());
     }
 

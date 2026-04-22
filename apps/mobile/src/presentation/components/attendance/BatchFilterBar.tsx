@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { AppIcon } from '../ui/AppIcon';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { getBatchesCached } from '../../../infra/batch/batch-cache';
-import { fontSizes, fontWeights, radius, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, spacing, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -71,9 +72,14 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
           testID="batch-filter-all"
         >
           {allSelected && (
-
-            <AppIcon name="check" size={14} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
           )}
+          {allSelected && <AppIcon name="check" size={14} color="#FFFFFF" />}
           <Text style={[styles.chipText, allSelected && styles.chipTextSelected]}>
             All Batches
           </Text>
@@ -90,6 +96,14 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
               accessibilityLabel={isSelected ? `${batch.batchName}, selected` : batch.batchName}
               testID={`batch-filter-${batch.id}`}
             >
+              {isSelected && (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
               <View style={[styles.batchInitial, isSelected && styles.batchInitialSelected]}>
                 <Text style={[styles.batchInitialText, isSelected && styles.batchInitialTextSelected]}>
                   {batch.batchName.charAt(0).toUpperCase()}
@@ -98,10 +112,7 @@ export function BatchFilterBar({ selectedBatchId, onChange }: BatchFilterBarProp
               <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
                 {batch.batchName}
               </Text>
-              {isSelected && (
-                
-                <AppIcon name="check" size={14} color={colors.primary} />
-              )}
+              {isSelected && <AppIcon name="check" size={14} color="#FFFFFF" />}
             </Pressable>
           );
         })}
@@ -125,15 +136,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radius.full,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     marginRight: spacing.sm,
     gap: 6,
+    overflow: 'hidden',
   },
   chipSelected: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primary,
+    borderColor: 'transparent',
   },
   chipText: {
     fontSize: fontSizes.sm,
@@ -141,7 +152,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textMedium,
   },
   chipTextSelected: {
-    color: colors.primary,
+    color: '#FFFFFF',
     fontWeight: fontWeights.semibold,
   },
   batchInitial: {
@@ -153,7 +164,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   batchInitialSelected: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   batchInitialText: {
     fontSize: 10,
@@ -161,7 +172,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textSecondary,
   },
   batchInitialTextSelected: {
-    color: colors.primary,
+    color: '#FFFFFF',
   },
   loadingContainer: {
     paddingVertical: spacing.sm,

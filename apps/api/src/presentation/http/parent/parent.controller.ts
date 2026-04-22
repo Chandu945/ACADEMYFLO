@@ -6,13 +6,19 @@ import {
   Body,
   Param,
   Query,
+  HttpCode,
   HttpStatus,
   Inject,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
   Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { MAX_IMAGE_FILE_SIZE } from '@shared/utils/image-validation';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RbacGuard } from '../common/guards/rbac.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -28,8 +34,18 @@ import type { UpdateParentProfileUseCase } from '@application/parent/use-cases/u
 import type { ChangePasswordUseCase } from '@application/parent/use-cases/change-password.usecase';
 import type { GetAcademyInfoUseCase } from '@application/parent/use-cases/get-academy-info.usecase';
 import type { GetPaymentHistoryUseCase } from '@application/parent/use-cases/get-payment-history.usecase';
+import type { GetAcademyPaymentMethodsUseCase } from '@application/parent/use-cases/get-academy-payment-methods.usecase';
+import type { CreateParentPaymentRequestUseCase } from '@application/parent/use-cases/create-parent-payment-request.usecase';
+import type { UploadPaymentProofUseCase } from '@application/parent/use-cases/upload-payment-proof.usecase';
+import { CreateParentPaymentRequestDto } from './dto/create-parent-payment-request.dto';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import { PUSH_NOTIFICATION_SERVICE } from '../device-tokens/device-tokens.module';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
+import { LOGGER_PORT } from '@shared/logging/logger.port';
+import type { LoggerPort } from '@shared/logging/logger.port';
 import { ok as okResult, err as errResult } from '@shared/kernel';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import {
@@ -70,8 +86,20 @@ export class ParentController {
     private readonly getAcademyInfo: GetAcademyInfoUseCase,
     @Inject('GET_PAYMENT_HISTORY_USE_CASE')
     private readonly getPaymentHistory: GetPaymentHistoryUseCase,
+    @Inject('GET_ACADEMY_PAYMENT_METHODS_USE_CASE')
+    private readonly getAcademyPaymentMethods: GetAcademyPaymentMethodsUseCase,
+    @Inject('CREATE_PARENT_PAYMENT_REQUEST_USE_CASE')
+    private readonly createParentPaymentRequest: CreateParentPaymentRequestUseCase,
+    @Inject('UPLOAD_PAYMENT_PROOF_USE_CASE')
+    private readonly uploadPaymentProof: UploadPaymentProofUseCase,
     @Inject(USER_REPOSITORY)
     private readonly userRepo: UserRepository,
+    @Inject(ACADEMY_REPOSITORY)
+    private readonly academyRepo: AcademyRepository,
+    @Inject(PUSH_NOTIFICATION_SERVICE)
+    private readonly pushService: PushNotificationService,
+    @Inject(LOGGER_PORT)
+    private readonly logger: LoggerPort,
   ) {}
 
   @Get('children')
@@ -82,6 +110,94 @@ export class ParentController {
       parentRole: user.role,
     });
     return mapResultToResponse(result, req);
+  }
+
+  @Get('payment-methods')
+  @ApiOperation({
+    summary: 'Get the academy\u2019s configured manual payment methods',
+  })
+  async paymentMethods(@CurrentUser() user: CurrentUserType, @Req() req: Request) {
+    const result = await this.getAcademyPaymentMethods.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+    });
+    return mapResultToResponse(result, req);
+  }
+
+  @Post('payment-requests')
+  @HttpCode(HttpStatus.CREATED)
+  @Throttle({
+    short: { limit: 3, ttl: 10_000 },
+    medium: { limit: 10, ttl: 60_000 },
+    long: { limit: 30, ttl: 900_000 },
+  })
+  @ApiOperation({
+    summary: 'Submit a manual payment request with a proof screenshot',
+  })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_IMAGE_FILE_SIZE } }))
+  async submitPaymentRequest(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() dto: CreateParentPaymentRequestDto,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Payment proof screenshot is required');
+    }
+
+    // Step 1 — upload the proof image.
+    const uploadResult = await this.uploadPaymentProof.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+      originalName: file.originalname,
+    });
+    if (!uploadResult.ok) {
+      return mapResultToResponse(uploadResult, req);
+    }
+
+    // Step 2 — create the payment request pointing at the uploaded URL.
+    const result = await this.createParentPaymentRequest.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      studentId: dto.studentId,
+      feeDueId: dto.feeDueId,
+      amount: dto.amount,
+      paymentMethod: dto.paymentMethod,
+      proofImageUrl: uploadResult.value.url,
+      paymentRefNumber: dto.paymentRefNumber ?? null,
+      parentNote: dto.parentNote ?? null,
+    });
+
+    // Fire-and-forget push notification to the academy owner.
+    // Mirrors the pattern used by the staff payment-requests controller: one
+    // swallowed push error never affects the request the parent submitted.
+    if (result.ok) {
+      const logger = this.logger;
+      this.academyRepo
+        .findById(result.value.academyId)
+        .then((academy) => {
+          if (!academy) return;
+          return this.pushService.sendToUser(academy.ownerUserId, {
+            title: 'New Payment Request',
+            body: `${result.value.staffName ?? 'A parent'} submitted a payment for ${result.value.studentName ?? 'a student'} (${result.value.monthKey}). Tap to review the proof.`,
+            data: {
+              type: 'PAYMENT_REQUEST',
+              requestId: result.value.id,
+              source: 'PARENT',
+            },
+          });
+        })
+        .catch((pushErr) => {
+          logger.warn('Parent payment-request push failed', {
+            error: pushErr instanceof Error ? pushErr.message : String(pushErr),
+          });
+        });
+    }
+
+    return mapResultToResponse(result, req, HttpStatus.CREATED);
   }
 
   @Get('children/:studentId/attendance')

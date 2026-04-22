@@ -164,7 +164,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   prefixText: {
     fontSize: fontSizes.base,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.bold,
     letterSpacing: 0.3,
   },

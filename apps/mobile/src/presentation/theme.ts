@@ -1,133 +1,153 @@
 import { Platform } from 'react-native';
 import type { TextStyle, ViewStyle } from 'react-native';
 
-// ── Light Colors ─────────────────────────────────────────────────────────────
-export const lightColors = {
-  // Primary — cyan palette anchored on #b3f1fc
-  primary: '#0891b2',
-  primaryHover: '#0e7490',
-  primaryLight: '#b3f1fc',
-  primarySoft: '#e0f7fc',
+// ─────────────────────────────────────────────────────────────────────────────
+// Academyflo Design Tokens — single source of truth
+//
+// Colours
+//   bg              #05070D   page background (deepest)
+//   bg-2            #0A0E1A   alt background (headers, navbars)
+//   surface-2       #141824   cards / inputs / panels
+//   surface-3       #1C2233   elevated surface (hover, focused)
+//   accent-gradient #7C3AED → #3B82F6   primary action / default avatar
+//   success         #10B981
+//   warning         #F59E0B
+//   danger          #EF4444
+//   info            #06B6D4
+//
+// Typography (Inter)
+//   display  34 / 800    heading  24 / 700   title  17 / 600
+//   body     15 / 400    small    13         overline 11 / 600
+//
+// The `lightColors` / `darkColors` objects below keep every legacy key name
+// so existing screens compile unchanged; the *values* are consolidated to
+// this palette. The ThemeContext is locked to `darkColors` globally so both
+// entries are identical on purpose.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Surfaces & Backgrounds
-  bg: '#f0fbff',
-  bgSubtle: '#e8f4f8',
-  surface: '#ffffff',
+/** Shared accent-gradient stops. */
+export const gradient = {
+  start: '#7C3AED',
+  end: '#3B82F6',
+} as const;
 
-  // Text
-  text: '#0f172a',
-  textDark: '#1e293b',
-  textMedium: '#334155',
-  textLight: '#475569',
-  textSecondary: '#64748b',
-  textDisabled: '#94a3b8',
+// ── Dark Colors (authoritative dark palette) ─────────────────────────────────
+export const darkColors = {
+  primary: '#7C3AED',
+  primaryHover: '#6D28D9',
+  primaryLight: 'rgba(124,58,237,0.18)',
+  primarySoft: 'rgba(124,58,237,0.10)',
 
-  // Borders
-  border: '#e2e8f0',
-  borderStrong: '#cbd5e1',
+  bg: '#05070D',
+  bgSubtle: '#0A0E1A',
+  surface: '#141824',
 
-  // Semantic — Success
-  success: '#16a34a',
-  successBg: '#f0fdf4',
-  successBorder: '#bbf7d0',
-  successText: '#166534',
+  text: '#E6E9F2',
+  textDark: '#FFFFFF',
+  textMedium: 'rgba(230,233,242,0.72)',
+  textLight: 'rgba(230,233,242,0.64)',
+  textSecondary: 'rgba(230,233,242,0.56)',
+  textDisabled: 'rgba(230,233,242,0.38)',
 
-  // Semantic — Warning
-  warning: '#d97706',
-  warningBg: '#fef3c7',
-  warningText: '#92400e',
-  warningBorder: '#fbbf24',
-  warningLightBg: '#fffbeb',
-  warningAccent: '#f59e0b',
+  border: 'rgba(255,255,255,0.08)',
+  borderStrong: 'rgba(255,255,255,0.14)',
 
-  // Semantic — Danger / Error
-  danger: '#dc2626',
-  dangerBg: '#fef2f2',
-  dangerBorder: '#fecaca',
-  dangerText: '#991b1b',
+  success: '#10B981',
+  successBg: 'rgba(16,185,129,0.14)',
+  successBorder: 'rgba(16,185,129,0.32)',
+  successText: '#34D399',
 
-  // Semantic — Info
-  info: '#0891b2',
-  infoBg: '#e0f7fc',
-  infoText: '#0e7490',
+  warning: '#F59E0B',
+  warningBg: 'rgba(245,158,11,0.14)',
+  warningText: '#FBBF24',
+  warningBorder: 'rgba(245,158,11,0.32)',
+  warningLightBg: 'rgba(245,158,11,0.08)',
+  warningAccent: '#F59E0B',
 
-  // Overlays
-  overlay: 'rgba(0,0,0,0.5)',
+  danger: '#EF4444',
+  dangerBg: 'rgba(239,68,68,0.14)',
+  dangerBorder: 'rgba(239,68,68,0.32)',
+  dangerText: '#F87171',
 
-  // UI state
-  disabledBg: '#f1f5f9',
-  link: '#0369a1',
-  focusRing: 'rgba(8,145,178,0.4)',
+  info: '#06B6D4',
+  infoBg: 'rgba(6,182,212,0.14)',
+  infoText: '#22D3EE',
 
-  // Constant
-  white: '#ffffff',
+  overlay: 'rgba(0,0,0,0.72)',
+
+  disabledBg: 'rgba(255,255,255,0.06)',
+  link: '#3B82F6',
+  focusRing: 'rgba(124,58,237,0.35)',
+
+  white: '#FFFFFF',
   transparent: 'transparent',
 } as const;
 
-// ── Dark Colors (base: #011627) ──────────────────────────────────────────────
-export const darkColors: Colors = {
-  // Primary — brighter cyan for dark backgrounds
-  primary: '#22d3ee',
-  primaryHover: '#06b6d4',
-  primaryLight: '#155e75',
-  primarySoft: '#0c3547',
+export type Colors = { [K in keyof typeof darkColors]: string };
 
-  // Surfaces & Backgrounds
-  bg: '#011627',
-  bgSubtle: '#012038',
-  surface: '#01253f',
+// ── Light Colors (authoritative light palette) ───────────────────────────────
+// Design notes:
+//   • Bg has a whisper-subtle lavender tint (#F3F1FB) so the page breathes the
+//     same purple brand as the gradient CTAs, instead of reading as flat white.
+//   • Surface stays pure white — cards float crisply against the tinted bg.
+//   • bgSubtle is a stronger lavender (#E7E1F5) so chips, inputs and inset
+//     surfaces have more chroma than the page.
+//   • Text is slate-900 (#0F172A) for a modern, readable dark.
+//   • Semantic colours keep their vibrant dark-mode hues (`#10B981`, `#F59E0B`,
+//     `#EF4444`, `#06B6D4`) — only the *Text shades drop to 600/700-level so
+//     inline text remains readable, while icons and progress bars stay bright.
+//   • Tint backgrounds use 14% opacity (matches dark) so pills have presence.
+//   • Gradient stops (#7C3AED → #3B82F6) are unchanged — brand consistent.
+export const lightColors: Colors = {
+  primary: '#7C3AED',
+  primaryHover: '#6D28D9',
+  primaryLight: 'rgba(124,58,237,0.18)',
+  primarySoft: 'rgba(124,58,237,0.10)',
 
-  // Text — light for readability on dark
-  text: '#e2e8f0',
-  textDark: '#f1f5f9',
-  textMedium: '#cbd5e1',
-  textLight: '#94a3b8',
-  textSecondary: '#94adc9',
-  textDisabled: '#6b8aab',
+  bg: '#D4DFFF',
+  bgSubtle: '#EAEEFC',
+  surface: '#FFFFFF',
 
-  // Borders
-  border: '#1e3a5f',
-  borderStrong: '#2d5085',
+  text: '#0F172A',
+  textDark: '#020617',
+  textMedium: 'rgba(15,23,42,0.74)',
+  textLight: 'rgba(15,23,42,0.62)',
+  textSecondary: 'rgba(15,23,42,0.54)',
+  textDisabled: 'rgba(15,23,42,0.38)',
 
-  // Semantic — Success
-  success: '#4ade80',
-  successBg: '#052e16',
-  successBorder: '#166534',
-  successText: '#86efac',
+  border: 'rgba(15,23,42,0.10)',
+  borderStrong: 'rgba(15,23,42,0.16)',
 
-  // Semantic — Warning
-  warning: '#fbbf24',
-  warningBg: '#451a03',
-  warningText: '#fde68a',
-  warningBorder: '#92400e',
-  warningLightBg: '#2d1600',
-  warningAccent: '#f59e0b',
+  success: '#10B981',
+  successBg: 'rgba(16,185,129,0.16)',
+  successBorder: 'rgba(16,185,129,0.32)',
+  successText: '#047857',
 
-  // Semantic — Danger / Error
-  danger: '#f87171',
-  dangerBg: '#450a0a',
-  dangerBorder: '#991b1b',
-  dangerText: '#fca5a5',
+  warning: '#F59E0B',
+  warningBg: 'rgba(245,158,11,0.18)',
+  warningText: '#B45309',
+  warningBorder: 'rgba(245,158,11,0.34)',
+  warningLightBg: 'rgba(245,158,11,0.10)',
+  warningAccent: '#D97706',
 
-  // Semantic — Info
-  info: '#22d3ee',
-  infoBg: '#0c3547',
-  infoText: '#67e8f9',
+  danger: '#EF4444',
+  dangerBg: 'rgba(239,68,68,0.16)',
+  dangerBorder: 'rgba(239,68,68,0.32)',
+  dangerText: '#B91C1C',
 
-  // Overlays
-  overlay: 'rgba(0,0,0,0.7)',
+  info: '#06B6D4',
+  infoBg: 'rgba(6,182,212,0.16)',
+  infoText: '#0E7490',
 
-  // UI state
-  disabledBg: '#0c2a42',
-  link: '#38bdf8',
-  focusRing: 'rgba(34,211,238,0.4)',
+  overlay: 'rgba(15,23,42,0.55)',
 
-  // Constant
-  white: '#ffffff',
+  disabledBg: 'rgba(15,23,42,0.06)',
+  link: '#2563EB',
+  focusRing: 'rgba(124,58,237,0.28)',
+
+  white: '#FFFFFF',
   transparent: 'transparent',
 };
-
-export type Colors = { [K in keyof typeof lightColors]: string };
 
 /** @deprecated Use `useTheme()` hook instead. Kept for backward compatibility during migration. */
 export const colors = lightColors;
@@ -145,17 +165,24 @@ export const spacing = {
   '3xl': 48,
 } as const;
 
-// ── Typography ─────────────────────────────────────────────────────────────
+// ── Typography (Inter — display 34/800 · heading 24/700 · title 17/600 ·
+//                body 15/400 · small 13 · overline 11/600) ──────────────────
+export const fontFamily = Platform.select({
+  ios: 'Inter',
+  android: 'Inter',
+  default: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+});
+
 export const fontSizes = {
-  xs: 11,
-  sm: 12,
-  base: 14,
-  md: 15,
-  lg: 16,
-  xl: 18,
-  '2xl': 20,
-  '3xl': 24,
-  '4xl': 28,
+  xs: 11,      // overline
+  sm: 13,      // small secondary
+  base: 14,    // legacy body — use `md` (15) for new work
+  md: 15,      // body
+  lg: 17,      // title
+  xl: 20,      // subheading
+  '2xl': 22,   // large subheading
+  '3xl': 24,   // heading
+  '4xl': 34,   // display
 } as const;
 
 export const fontWeights = {
@@ -163,17 +190,24 @@ export const fontWeights = {
   medium: '500' as TextStyle['fontWeight'],
   semibold: '600' as TextStyle['fontWeight'],
   bold: '700' as TextStyle['fontWeight'],
+  heavy: '800' as TextStyle['fontWeight'],
 };
 
 export const typography = {
-  h1: { fontSize: fontSizes['3xl'], fontWeight: fontWeights.bold, lineHeight: 32 },
-  h2: { fontSize: fontSizes.xl, fontWeight: fontWeights.bold, lineHeight: 24 },
-  h3: { fontSize: fontSizes.lg, fontWeight: fontWeights.semibold, lineHeight: 22 },
-  body: { fontSize: fontSizes.base, fontWeight: fontWeights.normal, lineHeight: 20 },
-  bodyMedium: { fontSize: fontSizes.base, fontWeight: fontWeights.medium, lineHeight: 20 },
-  caption: { fontSize: fontSizes.sm, fontWeight: fontWeights.normal, lineHeight: 16 },
-  label: { fontSize: fontSizes.base, fontWeight: fontWeights.medium, lineHeight: 20 },
-  small: { fontSize: fontSizes.xs, fontWeight: fontWeights.normal, lineHeight: 14 },
+  display: { fontSize: fontSizes['4xl'], fontWeight: fontWeights.heavy, lineHeight: 40, letterSpacing: -0.8, fontFamily },
+  heading: { fontSize: fontSizes['3xl'], fontWeight: fontWeights.bold, lineHeight: 30, letterSpacing: -0.4, fontFamily },
+  title: { fontSize: fontSizes.lg, fontWeight: fontWeights.semibold, lineHeight: 22, letterSpacing: -0.2, fontFamily },
+  body: { fontSize: fontSizes.md, fontWeight: fontWeights.normal, lineHeight: 22, fontFamily },
+  bodyMedium: { fontSize: fontSizes.md, fontWeight: fontWeights.medium, lineHeight: 22, fontFamily },
+  small: { fontSize: fontSizes.sm, fontWeight: fontWeights.normal, lineHeight: 18, fontFamily },
+  overline: { fontSize: fontSizes.xs, fontWeight: fontWeights.semibold, lineHeight: 14, letterSpacing: 0.8, fontFamily },
+
+  /** Legacy aliases — keep for back-compat with existing screens. */
+  h1: { fontSize: fontSizes['3xl'], fontWeight: fontWeights.bold, lineHeight: 30, letterSpacing: -0.4, fontFamily },
+  h2: { fontSize: fontSizes.xl, fontWeight: fontWeights.bold, lineHeight: 26, fontFamily },
+  h3: { fontSize: fontSizes.lg, fontWeight: fontWeights.semibold, lineHeight: 22, fontFamily },
+  caption: { fontSize: fontSizes.sm, fontWeight: fontWeights.normal, lineHeight: 18, fontFamily },
+  label: { fontSize: fontSizes.md, fontWeight: fontWeights.medium, lineHeight: 22, fontFamily },
 } as const;
 
 // ── Border Radius ──────────────────────────────────────────────────────────

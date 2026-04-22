@@ -12,7 +12,7 @@ export function makeTabScreenOptions(
 ): BottomTabNavigationOptions {
   return {
     headerStyle: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.bg,
       elevation: 0,
       shadowOpacity: 0,
       borderBottomWidth: 0,
@@ -31,7 +31,7 @@ export function makeTabScreenOptions(
       marginBottom: 2,
     },
     tabBarStyle: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.bg,
       borderTopWidth: 0,
       elevation: 8,
       shadowOpacity: 0.08,

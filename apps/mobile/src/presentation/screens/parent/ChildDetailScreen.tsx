@@ -13,7 +13,11 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
 import type { ParentHomeStackParamList } from '../../navigation/ParentHomeStack';
-import type { ChildAttendanceSummary, ChildFeeDue } from '../../../domain/parent/parent.types';
+import type {
+  AcademyPaymentMethods,
+  ChildAttendanceSummary,
+  ChildFeeDue,
+} from '../../../domain/parent/parent.types';
 import { getChildAttendanceUseCase } from '../../../application/parent/use-cases/get-child-attendance.usecase';
 import { getChildFeesUseCase } from '../../../application/parent/use-cases/get-child-fees.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
@@ -138,6 +142,7 @@ export function ChildDetailScreen() {
 
   const [attendance, setAttendance] = useState<ChildAttendanceSummary | null>(null);
   const [fees, setFees] = useState<ChildFeeDue[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<AcademyPaymentMethods | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,15 +179,19 @@ export function ChildDetailScreen() {
     const { from, to } = getMonthRange();
 
     try {
-      const [attResult, feesResult] = await Promise.all([
+      const [attResult, feesResult, methodsResult] = await Promise.all([
         getChildAttendanceUseCase({ parentApi }, studentId, month),
         getChildFeesUseCase({ parentApi }, studentId, from, to),
+        // Payment methods decide whether parents see the Pay button. Failing
+        // this call is non-fatal — we just hide the button.
+        parentApi.getAcademyPaymentMethods(),
       ]);
 
       if (!mountedRef.current) return;
 
       if (attResult.ok) setAttendance(attResult.value);
       if (feesResult.ok) setFees(feesResult.value);
+      if (methodsResult.ok) setPaymentMethods(methodsResult.value);
       if (!attResult.ok && !feesResult.ok) {
         setError('Failed to load details. Pull down to retry.');
       }
@@ -282,7 +291,7 @@ export function ChildDetailScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           
-          <AppIcon name="calendar-check-outline" size={20} color={colors.primary} />
+          <AppIcon name="calendar-check-outline" size={20} color={colors.text} />
           <Text style={styles.sectionTitle}>Attendance</Text>
         </View>
 
@@ -297,7 +306,7 @@ export function ChildDetailScreen() {
           </TouchableOpacity>
           {attMonth !== currentMonth && (
             <TouchableOpacity onPress={() => setAttMonth(currentMonth)} style={styles.monthResetBtn}>
-              <Text style={{ color: colors.primary, fontSize: fontSizes.xs, fontWeight: fontWeights.medium }}>This Month</Text>
+              <Text style={{ color: colors.text, fontSize: fontSizes.xs, fontWeight: fontWeights.medium }}>This Month</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -344,7 +353,7 @@ export function ChildDetailScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           
-          <AppIcon name="receipt" size={20} color={colors.primary} />
+          <AppIcon name="receipt" size={20} color={colors.text} />
           <Text style={styles.sectionTitle}>Fee History</Text>
         </View>
         {fees.map((fee) => (
@@ -417,7 +426,23 @@ export function ChildDetailScreen() {
                   </Text>
                 </View>
             )}
-            {/* Online payment disabled — parents pay at academy, owner/staff marks as paid */}
+            {fee.status === 'DUE' && paymentMethods?.manualPaymentsEnabled ? (
+              <TouchableOpacity
+                style={styles.payButton}
+                onPress={() =>
+                  navigation.navigate('ManualPayment', {
+                    feeDueId: fee.id,
+                    studentId: fee.studentId,
+                    monthKey: fee.monthKey,
+                    amount: fee.amount + (fee.lateFee ?? 0),
+                  })
+                }
+                testID={`pay-fee-${fee.id}`}
+              >
+                <AppIcon name="cash-fast" size={16} color={colors.white} />
+                <Text style={styles.payButtonText}>Pay now</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ))}
         {fees.length === 0 && (
@@ -594,7 +619,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     marginTop: spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     backgroundColor: colors.primary,
     borderRadius: radius.md,
   },
@@ -602,6 +627,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.white,
     fontWeight: fontWeights.semibold,
     fontSize: fontSizes.sm,
+    letterSpacing: 0.2,
   },
   payAtAcademyNote: {
     flexDirection: 'row',

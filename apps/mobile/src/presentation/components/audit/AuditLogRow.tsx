@@ -1,7 +1,8 @@
 import React, { memo, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
-import { fontSizes, fontWeights, radius, shadows, spacing } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { fontSizes, fontWeights, radius, shadows, spacing, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import type { AuditLogItem } from '../../../domain/audit/audit.types';
 import { useTheme } from '../../context/ThemeContext';
@@ -147,14 +148,22 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
     : [];
 
   const colorKey = getActionColorKey(item.action);
-  const iconColor = colors[colorKey];
+  const isPrimary = colorKey === 'primary';
+  const iconColor = isPrimary ? '#FFFFFF' : colors[colorKey];
   const iconBg = getActionBg(colorKey, colors);
 
   return (
     <View style={styles.card} testID={testID}>
       <View style={styles.topRow}>
-        <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
-          
+        <View style={[styles.iconCircle, isPrimary ? { overflow: 'hidden' } : { backgroundColor: iconBg }]}>
+          {isPrimary && (
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
           <AppIcon name={getActionIcon(item.action)} size={18} color={iconColor} />
         </View>
         <View style={styles.headerInfo}>

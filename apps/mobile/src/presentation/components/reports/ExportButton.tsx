@@ -5,7 +5,8 @@ import { Linking } from 'react-native';
 import type { AppError } from '../../../domain/common/errors';
 import type { Result } from '../../../domain/common/result';
 import type { PdfExportResult } from '../../../domain/reports/reports.types';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -94,6 +95,12 @@ export function ExportButton({ onExport, testID }: ExportButtonProps) {
             onPress={handleOpen}
             testID={`${testID}-open`}
           >
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={styles.actionText}>Open</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -101,6 +108,12 @@ export function ExportButton({ onExport, testID }: ExportButtonProps) {
             onPress={handleShare}
             testID={`${testID}-share`}
           >
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -170,7 +183,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   progressText: {
     fontSize: fontSizes.base,
-    color: colors.primary,
+    color: colors.text,
   },
   successText: {
     fontSize: fontSizes.sm,
@@ -184,7 +197,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   actionBtn: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.base,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.base,
@@ -218,6 +231,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   retryText: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
   },
 });

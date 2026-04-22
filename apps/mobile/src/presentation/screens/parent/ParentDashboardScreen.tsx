@@ -17,7 +17,8 @@ import { parentApi } from '../../../infra/parent/parent-api';
 import { useAuth } from '../../context/AuthContext';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
-import { spacing, fontSizes, fontWeights, radius, shadows, avatarColors } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, avatarColors, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { getGreeting, getInitials, formatCurrency, formatMonthShort, formatDate } from '../../utils/format';
@@ -144,8 +145,15 @@ export function ParentDashboardScreen() {
           {user?.profilePhotoUrl ? (
             <Image source={{ uri: user.profilePhotoUrl }} style={styles.profileImage} />
           ) : (
-            
-            <AppIcon name="account-circle-outline" size={28} color={colors.primary} />
+            <>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="account-circle-outline" size={28} color="#FFFFFF" />
+            </>
           )}
         </TouchableOpacity>
       </View>
@@ -171,9 +179,14 @@ export function ParentDashboardScreen() {
               onPress={() => navigation.navigate('Children')}
               activeOpacity={0.7}
             >
-              <View style={[styles.statIconCircle, { backgroundColor: colors.primarySoft }]}>
-                
-                <AppIcon name="account-child" size={20} color={colors.primary} />
+              <View style={[styles.statIconCircle, { overflow: 'hidden' }]}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <AppIcon name="account-child" size={20} color="#FFFFFF" />
               </View>
               <Text style={styles.statValue}>{children.length}</Text>
               <Text style={styles.statLabel}>Children</Text>
@@ -211,9 +224,14 @@ export function ParentDashboardScreen() {
                 accessibilityLabel="My Children"
                 accessibilityRole="button"
               >
-                <View style={[styles.quickActionIcon, { backgroundColor: colors.primarySoft }]}>
-
-                  <AppIcon name="account-child" size={20} color={colors.primary} />
+                <View style={[styles.quickActionIcon, { overflow: 'hidden' }]}>
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name="account-child" size={20} color="#FFFFFF" />
                 </View>
                 <Text style={styles.quickActionLabel}>My{'\n'}Children</Text>
               </TouchableOpacity>
@@ -267,9 +285,14 @@ export function ParentDashboardScreen() {
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.sectionHeaderIcon, { backgroundColor: colors.primarySoft }]}>
-                    
-                    <AppIcon name="account-child" size={18} color={colors.primary} />
+                  <View style={[styles.sectionHeaderIcon, { overflow: 'hidden' }]}>
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <AppIcon name="account-child" size={18} color="#FFFFFF" />
                   </View>
                   <Text style={styles.sectionTitle}>My Children</Text>
                 </View>
@@ -438,7 +461,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -564,7 +586,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   viewAllLink: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
   },
 
   /* ── Children Rows ──────────────────────────────── */

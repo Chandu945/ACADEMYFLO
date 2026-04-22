@@ -44,6 +44,10 @@ export type AuthState = {
   user: AuthUser | null;
   subscription: SubscriptionInfo | null;
   forceUpdate: ForceUpdateInfo | null;
+  /** Set when the session was invalidated server-side (401 past refresh) —
+   *  differentiates a forced sign-out from a manual logout so the UI can
+   *  show a "Session expired" prompt instead of the bare login screen. */
+  sessionExpired: boolean;
 };
 
 type AuthActions = {
@@ -52,6 +56,7 @@ type AuthActions = {
   setupAcademy: (input: AcademySetupRequest) => Promise<AppError | null>;
   logout: () => Promise<void>;
   refreshSubscription: () => Promise<SubscriptionInfo | null>;
+  dismissSessionExpired: () => void;
 };
 
 export type AuthContextValue = AuthState & AuthActions;
@@ -61,11 +66,13 @@ const defaultContext: AuthContextValue = {
   user: null,
   subscription: null,
   forceUpdate: null,
+  sessionExpired: false,
   login: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
   signup: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
   setupAcademy: async () => ({ code: 'UNKNOWN', message: 'Not ready' }),
   logout: async () => {},
   refreshSubscription: async () => null,
+  dismissSessionExpired: () => {},
 };
 
 export const AuthContext = createContext<AuthContextValue>(defaultContext);
@@ -92,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     subscription: null,
     forceUpdate: null,
+    sessionExpired: false,
   });
   const mountedRef = useRef(true);
 
@@ -100,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Parents skip subscription check — go directly to ready
     if (user.role === 'PARENT') {
       if (mountedRef.current) {
-        setState({ phase: 'ready', user, subscription: null, forceUpdate: null });
+        setState({ phase: 'ready', user, subscription: null, forceUpdate: null, sessionExpired: false });
       }
       return null;
     }
@@ -113,21 +121,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!subResult.ok) {
       if (subResult.error.code === 'CONFLICT') {
-        setState({ phase: 'needsAcademySetup', user, subscription: null, forceUpdate: null });
+        setState({ phase: 'needsAcademySetup', user, subscription: null, forceUpdate: null, sessionExpired: false });
       } else if (subResult.error.code === 'UNAUTHORIZED' || subResult.error.code === 'FORBIDDEN') {
-        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: true });
       } else {
         // Transient error — let user proceed, subscription will be rechecked later
-        setState({ phase: 'ready', user, subscription: null, forceUpdate: null });
+        setState({ phase: 'ready', user, subscription: null, forceUpdate: null, sessionExpired: false });
       }
       return null;
     }
 
     const sub = subResult.value;
     if (!sub.canAccessApp) {
-      setState({ phase: 'blocked', user, subscription: sub, forceUpdate: null });
+      setState({ phase: 'blocked', user, subscription: sub, forceUpdate: null, sessionExpired: false });
     } else {
-      setState({ phase: 'ready', user, subscription: sub, forceUpdate: null });
+      setState({ phase: 'ready', user, subscription: sub, forceUpdate: null, sessionExpired: false });
     }
     return sub;
   }, []);
@@ -146,8 +154,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     invalidateBatchCache();
     // Always transition to unauthenticated regardless of errors above
     if (mountedRef.current) {
-      setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+      // Manual logout — skip the session-expired prompt.
+      setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: false });
     }
+  }, []);
+
+  const dismissSessionExpired = useCallback(() => {
+    if (!mountedRef.current) return;
+    setState((prev) => (prev.sessionExpired ? { ...prev, sessionExpired: false } : prev));
   }, []);
 
   useEffect(() => {
@@ -155,7 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unregisterAuthFailure = registerAuthFailureHandler(() => {
       if (mountedRef.current) {
-        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+        // Server-side invalidation — flag as session-expired so the UI can
+        // show the "Session expired" sheet on top of the login screen.
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: true });
       }
     });
 
@@ -177,6 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user: null,
           subscription: null,
           forceUpdate: { storeUrl: versionCheck.storeUrl, minVersion: versionCheck.minVersion },
+          sessionExpired: false,
         });
         return;
       }
@@ -185,14 +202,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mountedRef.current) return;
 
       if (!result.ok) {
-        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+        // No stored session at boot — treat as normal unauthenticated, not expired.
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: false });
         return;
       }
 
       await resolvePhase(result.value.user);
     })().catch(() => {
       if (mountedRef.current) {
-        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+        setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: false });
       }
     });
 
@@ -223,7 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then(async (result) => {
             if (!mountedRef.current) return;
             if (!result.ok) {
-              setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+              setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: true });
               return;
             }
             if (state.user) {
@@ -242,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // transition to unauthenticated immediately instead of waiting for the next API call
             const session = await tokenStore.getSession();
             if (!session) {
-              setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null });
+              setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: true });
             } else {
               accessTokenStore.set(null);
             }
@@ -271,7 +289,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (input: SignupInput): Promise<AppError | null> => {
     const result = await ownerSignupUseCase(input, deps);
     if (!result.ok) return result.error;
-    setState({ phase: 'needsAcademySetup', user: result.value.user, subscription: null, forceUpdate: null });
+    setState({ phase: 'needsAcademySetup', user: result.value.user, subscription: null, forceUpdate: null, sessionExpired: false });
     return null;
   }, []);
 
@@ -303,8 +321,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setupAcademy,
       logout: doLogout,
       refreshSubscription,
+      dismissSessionExpired,
     }),
-    [state, login, signup, setupAcademy, doLogout, refreshSubscription],
+    [state, login, signup, setupAcademy, doLogout, refreshSubscription, dismissSessionExpired],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

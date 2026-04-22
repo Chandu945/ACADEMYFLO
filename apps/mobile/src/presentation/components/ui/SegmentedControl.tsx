@@ -65,7 +65,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textSecondary,
   },
   labelSelected: {
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.bold,
   },
 });

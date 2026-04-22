@@ -12,20 +12,22 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { Badge } from '../../components/ui/Badge';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
-type DetailRoute = RouteProp<MoreStackParamList, 'EventDetail'>;
+type StatusVariant = 'info' | 'success' | 'neutral' | 'danger';
 
-function getStatusColors(colors: Colors): Record<string, { bg: string; text: string }> {
-  return {
-    UPCOMING: { bg: colors.infoBg, text: colors.infoText },
-    ONGOING: { bg: colors.successBg, text: colors.successText },
-    COMPLETED: { bg: '#f1f5f9', text: colors.textSecondary },
-    CANCELLED: { bg: colors.dangerBg, text: colors.dangerText },
-  };
-}
+const STATUS_VARIANT: Record<string, StatusVariant> = {
+  UPCOMING: 'info',
+  ONGOING: 'success',
+  COMPLETED: 'neutral',
+  CANCELLED: 'danger',
+};
+
+type DetailRoute = RouteProp<MoreStackParamList, 'EventDetail'>;
 
 function formatFullDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -51,7 +53,6 @@ type Nav = NativeStackNavigationProp<MoreStackParamList, 'EventDetail'>;
 export function EventDetailScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const STATUS_COLORS = useMemo(() => getStatusColors(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
   const eventId = route.params?.eventId ?? '';
@@ -186,31 +187,48 @@ export function EventDetailScreen() {
     );
   }
 
-  const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS['UPCOMING']!;
   const canEdit = isOwner || event.createdBy === user?.id;
   const showActions = event.status !== 'COMPLETED' && event.status !== 'CANCELLED';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{event.title}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-          <Text style={[styles.statusText, { color: statusStyle.text }]}>{event.status}</Text>
+      {/* Hero */}
+      <View style={styles.hero}>
+        <View style={styles.heroIconTile}>
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="calendar-star" size={26} color="#FFFFFF" />
+        </View>
+        <Text style={styles.title} numberOfLines={3}>{event.title}</Text>
+        <View style={styles.heroBadgeRow}>
+          <Badge
+            label={event.status}
+            variant={STATUS_VARIANT[event.status] ?? 'neutral'}
+            dot
+            uppercase
+          />
+          {event.eventType && (
+            <Badge label={event.eventType.replace(/_/g, ' ')} variant="neutral" uppercase />
+          )}
         </View>
       </View>
 
-      {event.eventType && (
-        <Text style={styles.eventType}>{event.eventType.replace(/_/g, ' ')}</Text>
-      )}
-
       <View style={styles.infoSection}>
-        <InfoRow label="Date" value={
-          event.endDate && event.endDate !== event.startDate
-            ? `${formatFullDate(event.startDate)} - ${formatFullDate(event.endDate)}`
-            : formatFullDate(event.startDate)
-        } />
-
         <InfoRow
+          icon="calendar-blank-outline"
+          label="Date"
+          value={
+            event.endDate && event.endDate !== event.startDate
+              ? `${formatFullDate(event.startDate)} - ${formatFullDate(event.endDate)}`
+              : formatFullDate(event.startDate)
+          }
+        />
+        <InfoRow
+          icon="clock-outline"
           label="Time"
           value={
             event.isAllDay
@@ -220,14 +238,18 @@ export function EventDetailScreen() {
                   .join(' - ') || 'Not set'
           }
         />
-
-        {event.location && <InfoRow label="Location" value={event.location} />}
-        {event.targetAudience && <InfoRow label="Target Audience" value={event.targetAudience} />}
+        {event.location && <InfoRow icon="map-marker-outline" label="Location" value={event.location} />}
+        {event.targetAudience && (
+          <InfoRow icon="account-group-outline" label="Target Audience" value={event.targetAudience} isLast />
+        )}
       </View>
 
       {event.description && (
         <View style={styles.descSection}>
-          <Text style={styles.descTitle}>Description</Text>
+          <View style={styles.sectionTitleRow}>
+            <AppIcon name="text-box-outline" size={18} color={colors.text} />
+            <Text style={styles.descTitle}>Description</Text>
+          </View>
           <Text style={styles.descText}>{event.description}</Text>
         </View>
       )}
@@ -246,7 +268,13 @@ export function EventDetailScreen() {
         testID="gallery-link"
       >
         <View style={styles.galleryIconCircle}>
-          <AppIcon name="image-multiple-outline" size={24} color={colors.primary} />
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="image-multiple-outline" size={24} color="#FFFFFF" />
         </View>
         <View style={styles.galleryInfo}>
           <Text style={styles.galleryTitle}>Photo Gallery</Text>
@@ -259,14 +287,10 @@ export function EventDetailScreen() {
         <AppIcon name="chevron-right" size={22} color={colors.textSecondary} />
       </Pressable>
 
-      <Text style={styles.meta}>
-        Created: {new Date(event.createdAt).toLocaleDateString('en-IN')}
-      </Text>
-
       {/* Action buttons */}
       <View style={styles.actions}>
         {canEdit && (
-          <Button title="Edit" variant="secondary" onPress={handleEdit} disabled={actionLoading} testID="edit-button" />
+          <Button title="Edit" variant="primary" onPress={handleEdit} disabled={actionLoading} testID="edit-button" />
         )}
 
         {isOwner && showActions && (
@@ -320,17 +344,24 @@ export function EventDetailScreen() {
           </>
         )}
       </View>
+
+      <Text style={styles.meta}>
+        Created {new Date(event.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+      </Text>
     </ScrollView>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ icon, label, value, isLast }: { icon: string; label: string; value: string; isLast?: boolean }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={styles.infoRow}>
+    <View style={[styles.infoRow, isLast && styles.infoRowLast]}>
+      <View style={styles.infoIconTile}>
+        <AppIcon name={icon} size={16} color={colors.textSecondary} />
+      </View>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={styles.infoValue} numberOfLines={2}>{value}</Text>
     </View>
   );
 }
@@ -350,69 +381,93 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     padding: spacing.base,
     paddingBottom: 40,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  hero: {
     alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  heroIconTile: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    flex: 1,
     fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.bold,
     color: colors.text,
-    marginRight: spacing.sm,
+    letterSpacing: -0.4,
+    lineHeight: 30,
   },
-  statusBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-  },
-  statusText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-  },
-  eventType: {
-    fontSize: fontSizes.base,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
+  heroBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   infoSection: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.base,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.xs,
     marginBottom: spacing.md,
-    ...shadows.sm,
   },
   infoRow: {
     flexDirection: 'row',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+    gap: spacing.sm,
+  },
+  infoRowLast: {
+    borderBottomWidth: 0,
+  },
+  infoIconTile: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoLabel: {
-    width: 120,
-    fontSize: fontSizes.base,
+    width: 110,
+    fontSize: fontSizes.sm,
     fontWeight: fontWeights.medium,
     color: colors.textSecondary,
   },
   infoValue: {
     flex: 1,
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
     color: colors.text,
+    textAlign: 'right',
   },
   descSection: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.md,
-    ...shadows.sm,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   descTitle: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginBottom: spacing.sm,
   },
   descText: {
     fontSize: fontSizes.base,
@@ -423,16 +478,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.md,
-    ...shadows.sm,
   },
   galleryIconCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -451,9 +507,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: 2,
   },
   meta: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
+    fontSize: fontSizes.xs,
+    color: colors.textDisabled,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+    letterSpacing: 0.3,
   },
   actions: {
     marginTop: spacing.md,

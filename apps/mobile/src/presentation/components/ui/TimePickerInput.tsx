@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet } from 'react-native';
 import { AppIcon } from './AppIcon';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -108,14 +109,14 @@ export function TimePickerInput({
                 <Text style={styles.spinnerLabel}>Hour</Text>
                 <Pressable onPress={incHour} style={styles.spinnerBtn} accessibilityLabel="Increase hour" testID={testID ? `${testID}-hour-up` : undefined}>
                   
-                  <AppIcon name="chevron-up" size={28} color={colors.primary} />
+                  <AppIcon name="chevron-up" size={28} color={colors.textSecondary} />
                 </Pressable>
                 <View style={styles.spinnerValue}>
                   <Text style={styles.spinnerValueText}>{pad2(hour12)}</Text>
                 </View>
                 <Pressable onPress={decHour} style={styles.spinnerBtn} accessibilityLabel="Decrease hour" testID={testID ? `${testID}-hour-down` : undefined}>
                   
-                  <AppIcon name="chevron-down" size={28} color={colors.primary} />
+                  <AppIcon name="chevron-down" size={28} color={colors.textSecondary} />
                 </Pressable>
               </View>
 
@@ -126,14 +127,14 @@ export function TimePickerInput({
                 <Text style={styles.spinnerLabel}>Min</Text>
                 <Pressable onPress={incMin} style={styles.spinnerBtn} accessibilityLabel="Increase minute" testID={testID ? `${testID}-min-up` : undefined}>
                   
-                  <AppIcon name="chevron-up" size={28} color={colors.primary} />
+                  <AppIcon name="chevron-up" size={28} color={colors.textSecondary} />
                 </Pressable>
                 <View style={styles.spinnerValue}>
                   <Text style={styles.spinnerValueText}>{pad2(minute)}</Text>
                 </View>
                 <Pressable onPress={decMin} style={styles.spinnerBtn} accessibilityLabel="Decrease minute" testID={testID ? `${testID}-min-down` : undefined}>
                   
-                  <AppIcon name="chevron-down" size={28} color={colors.primary} />
+                  <AppIcon name="chevron-down" size={28} color={colors.textSecondary} />
                 </Pressable>
               </View>
 
@@ -145,6 +146,14 @@ export function TimePickerInput({
                   accessibilityState={{ selected: !isPM }}
                   testID={testID ? `${testID}-am` : undefined}
                 >
+                  {!isPM ? (
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  ) : null}
                   <Text style={[styles.ampmText, !isPM && styles.ampmTextActive]}>AM</Text>
                 </Pressable>
                 <Pressable
@@ -153,6 +162,14 @@ export function TimePickerInput({
                   accessibilityState={{ selected: isPM }}
                   testID={testID ? `${testID}-pm` : undefined}
                 >
+                  {isPM ? (
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  ) : null}
                   <Text style={[styles.ampmText, isPM && styles.ampmTextActive]}>PM</Text>
                 </Pressable>
               </View>
@@ -167,6 +184,12 @@ export function TimePickerInput({
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.confirmBtn} onPress={handleConfirm} testID={testID ? `${testID}-confirm` : undefined}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
                 <Text style={styles.confirmText}>Done</Text>
               </Pressable>
             </View>
@@ -302,7 +325,7 @@ const makeStyles = (colors: Colors) =>
       alignItems: 'center',
     },
     ampmBtnActive: {
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
       borderColor: colors.primary,
     },
     ampmText: {
@@ -318,7 +341,7 @@ const makeStyles = (colors: Colors) =>
     preview: {
       fontSize: fontSizes.lg,
       fontWeight: fontWeights.semibold,
-      color: colors.primary,
+      color: colors.text,
       textAlign: 'center',
       marginTop: spacing.lg,
     },
@@ -344,7 +367,7 @@ const makeStyles = (colors: Colors) =>
     },
     confirmBtn: {
       flex: 1,
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
       borderRadius: radius.xl,
       paddingVertical: spacing.md,
       alignItems: 'center',

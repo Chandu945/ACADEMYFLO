@@ -8,14 +8,16 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import { spacing, fontSizes, fontWeights } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { getAccessToken, tryRefresh } from '../../../infra/http/api-client';
 import { env } from '../../../infra/env';
 import { generateRequestId } from '../../../infra/http/request-id';
 import { useTheme } from '../../context/ThemeContext';
+import { AppIcon } from '../ui/AppIcon';
 
 const GENERAL_UPLOAD_PATH = '/api/v1/uploads/image';
 
@@ -25,7 +27,25 @@ type Props = {
   onPhotoUploaded: (url: string) => void;
   size?: number;
   testID?: string;
+  /** If provided, renders a solid neutral circle with initials (no gradient) as
+   *  the fallback when there's no uploaded photo yet. */
+  fallbackName?: string;
+  /**
+   * 'circle' (default) → all states use circular shape (size/2 radius).
+   * 'rounded' → all states use a rounded square (radius.xl). Pairs with the
+   * camera-icon-in-dashed-tile placeholder look used on student/staff forms.
+   */
+  shape?: 'circle' | 'rounded';
 };
+
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('');
+}
 
 export function ProfilePhotoUploader({
   currentPhotoUrl,
@@ -33,6 +53,8 @@ export function ProfilePhotoUploader({
   onPhotoUploaded,
   size = 100,
   testID = 'profile-photo-uploader',
+  fallbackName,
+  shape = 'circle',
 }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -157,30 +179,88 @@ export function ProfilePhotoUploader({
       : `${env.API_BASE_URL}${photoUrl}`
     : null;
 
+  const hasPhoto = !!resolvedUri && !loadError;
+  const showInitials = !hasPhoto && !uploading && !!fallbackName;
+  const borderRadiusValue =
+    shape === 'rounded' ? Math.round(size * 0.26) : size / 2;
+  const badgeSize = Math.max(24, Math.round(size * 0.3));
+
   return (
     <TouchableOpacity
-      style={[styles.container, { width: size, height: size, borderRadius: size / 2 }]}
+      style={[styles.container, { width: size, height: size }]}
       onPress={pickImage}
       disabled={uploading}
       testID={testID}
       accessibilityLabel="Upload profile photo"
       accessibilityRole="button"
+      activeOpacity={0.85}
     >
       {uploading ? (
-        <ActivityIndicator size="small" color={colors.primary} />
-      ) : resolvedUri && !loadError ? (
+        <View
+          style={[
+            styles.uploadingWrap,
+            { width: size, height: size, borderRadius: borderRadiusValue },
+          ]}
+        >
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      ) : hasPhoto ? (
         <Image
-          source={{ uri: resolvedUri }}
-          style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]}
+          source={{ uri: resolvedUri! }}
+          style={[styles.image, { width: size, height: size, borderRadius: borderRadiusValue }]}
           testID={`${testID}-image`}
           onError={() => setLoadError(true)}
         />
+      ) : showInitials ? (
+        <View
+          style={[
+            styles.solidFallback,
+            { width: size, height: size, borderRadius: borderRadiusValue },
+          ]}
+        >
+          <Text style={[styles.solidFallbackText, { fontSize: Math.round(size * 0.38) }]}>
+            {getInitials(fallbackName!)}
+          </Text>
+        </View>
+      ) : shape === 'rounded' ? (
+        <View
+          style={[
+            styles.placeholderTile,
+            { width: size, height: size, borderRadius: borderRadiusValue },
+          ]}
+        >
+          <AppIcon name="camera-outline" size={Math.round(size * 0.38)} color={colors.textSecondary} />
+        </View>
       ) : (
-        <View style={[styles.placeholder, { width: size, height: size, borderRadius: size / 2 }]}>
+        <View
+          style={[styles.placeholder, { width: size, height: size, borderRadius: size / 2 }]}
+        >
           <Text style={styles.placeholderText}>+</Text>
           <Text style={styles.placeholderLabel}>Photo</Text>
         </View>
       )}
+      {shape === 'rounded' && !uploading && !hasPhoto && !showInitials ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.addBadge,
+            {
+              width: badgeSize,
+              height: badgeSize,
+              borderRadius: Math.round(badgeSize * 0.26),
+              borderColor: colors.bg,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="plus" size={Math.round(badgeSize * 0.6)} color="#FFFFFF" />
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -189,12 +269,26 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
     alignSelf: 'center',
     marginBottom: spacing.base,
-    overflow: 'hidden',
   },
   image: {
     resizeMode: 'cover',
   },
+  uploadingWrap: {
+    backgroundColor: colors.bgSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   placeholder: {
+    backgroundColor: colors.bgSubtle,
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderTile: {
     backgroundColor: colors.bgSubtle,
     borderWidth: 2,
     borderColor: colors.borderStrong,
@@ -211,5 +305,26 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.xs,
     color: colors.textDisabled,
     marginTop: 2,
+  },
+  solidFallback: {
+    backgroundColor: colors.bgSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  solidFallbackText: {
+    fontWeight: fontWeights.bold,
+    color: colors.textMedium,
+    letterSpacing: 0.5,
+  },
+  addBadge: {
+    position: 'absolute',
+    right: -6,
+    bottom: -6,
+    overflow: 'hidden',
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

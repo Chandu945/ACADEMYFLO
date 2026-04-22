@@ -86,7 +86,17 @@ export class MongoAcademyRepository implements AcademyRepository {
       gracePeriodDays: d.gracePeriodDays ?? 5,
       lateFeeAmountInr: d.lateFeeAmountInr ?? 0,
       lateFeeRepeatIntervalDays: d.lateFeeRepeatIntervalDays ?? 5,
-      instituteInfo: d.instituteInfo ?? undefined,
+      instituteInfo: d.instituteInfo
+        ? {
+            signatureStampUrl: d.instituteInfo.signatureStampUrl ?? null,
+            bankDetails: d.instituteInfo.bankDetails ?? null,
+            upiId: d.instituteInfo.upiId ?? null,
+            // Legacy docs may not have these keys — fall back to safe defaults.
+            upiHolderName: d.instituteInfo.upiHolderName ?? null,
+            qrCodeImageUrl: d.instituteInfo.qrCodeImageUrl ?? null,
+            manualPaymentsEnabled: d.instituteInfo.manualPaymentsEnabled ?? false,
+          }
+        : undefined,
       audit: {
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,

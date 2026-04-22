@@ -23,7 +23,8 @@ import { StudentActionMenu } from '../../components/student/StudentActionMenu';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { InlineError } from '../../components/ui/InlineError';
 import { useToast } from '../../context/ToastContext';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -231,6 +232,12 @@ export function StudentDetailScreen() {
             accessibilityRole="button"
             testID="edit-student-button"
           >
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             <AppIcon name="pencil-outline" size={18} color={colors.white} />
             <Text style={styles.actionButtonText}>Edit</Text>
           </TouchableOpacity>
@@ -241,7 +248,7 @@ export function StudentDetailScreen() {
             accessibilityRole="button"
             testID="more-actions-button"
           >
-            <AppIcon name="dots-horizontal" size={18} color={colors.primary} />
+            <AppIcon name="dots-horizontal" size={18} color={colors.text} />
             <Text style={styles.actionButtonSecondaryText}>More</Text>
           </TouchableOpacity>
         </View>
@@ -258,8 +265,14 @@ export function StudentDetailScreen() {
         {/* Contact Information */}
         <View style={styles.card}>
           <View style={styles.contactSectionHeader}>
-            <View style={[styles.contactSectionIcon, { backgroundColor: colors.primarySoft }]}>
-              <AppIcon name="card-account-phone-outline" size={18} color={colors.primary} />
+            <View style={[styles.contactSectionIcon, { overflow: 'hidden' }]}>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="card-account-phone-outline" size={18} color="#FFFFFF" />
             </View>
             <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
           </View>
@@ -274,8 +287,14 @@ export function StudentDetailScreen() {
           {/* Phone tile */}
           {student.guardian?.mobile && (
             <View style={styles.contactTile}>
-              <View style={[styles.contactTileIcon, { backgroundColor: colors.primarySoft }]}>
-                <AppIcon name="phone-outline" size={20} color={colors.primary} />
+              <View style={[styles.contactTileIcon, { overflow: 'hidden' }]}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <AppIcon name="phone-outline" size={20} color="#FFFFFF" />
               </View>
               <View style={styles.contactTileInfo}>
                 <Text style={styles.contactTileLabel}>Mobile</Text>
@@ -289,6 +308,12 @@ export function StudentDetailScreen() {
                   accessibilityRole="button"
                   testID="call-guardian"
                 >
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
                   <AppIcon name="phone" size={18} color={colors.white} />
                 </TouchableOpacity>
               </View>
@@ -344,8 +369,14 @@ export function StudentDetailScreen() {
         {/* Fee History */}
         <View style={styles.card}>
           <View style={styles.contactSectionHeader}>
-            <View style={[styles.contactSectionIcon, { backgroundColor: colors.primarySoft }]}>
-              <AppIcon name="currency-inr" size={18} color={colors.primary} />
+            <View style={[styles.contactSectionIcon, { overflow: 'hidden' }]}>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="currency-inr" size={18} color="#FFFFFF" />
             </View>
             <Text style={styles.sectionTitle} accessibilityRole="header">Fee History</Text>
           </View>
@@ -508,7 +539,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   actionButton: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -516,7 +547,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.sm,
   },
   actionButtonSecondary: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   actionButtonText: {
     color: colors.white,
@@ -524,7 +555,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.semibold,
   },
   actionButtonSecondaryText: {
-    color: colors.primary,
+    color: colors.text,
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
   },
@@ -678,7 +709,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.sm,

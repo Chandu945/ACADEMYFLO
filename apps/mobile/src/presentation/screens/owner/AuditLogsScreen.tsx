@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useAuth } from '../../context/AuthContext';
 import { useAuditLogs } from '../../../application/audit/use-audit-logs';
@@ -20,7 +21,7 @@ import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import type { AuditLogItem } from '../../../domain/audit/audit.types';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -125,6 +126,12 @@ function AuditLogsContent() {
           />
           {activeFilterCount > 0 && !showFilters && (
             <View style={styles.filterBadge}>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
               <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
             </View>
           )}
@@ -175,7 +182,7 @@ function AuditLogsContent() {
       return (
         <TouchableOpacity style={styles.loadMoreBtn} onPress={fetchMore} testID="load-more-btn">
           
-          <AppIcon name="chevron-down-circle-outline" size={18} color={colors.primary} />
+          <AppIcon name="chevron-down-circle-outline" size={18} color={colors.textSecondary} />
           <Text style={styles.loadMoreText}>Load More</Text>
         </TouchableOpacity>
       );
@@ -212,7 +219,7 @@ function AuditLogsContent() {
           <Text style={styles.errorText}>{error.message}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={refetch} testID="audit-retry">
             
-            <AppIcon name="refresh" size={16} color={colors.primary} />
+            <AppIcon name="refresh" size={16} color={colors.textSecondary} />
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -277,7 +284,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginRight: spacing.xs,
   },
   headerFilterBtnActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   filterBadge: {
     position: 'absolute',
@@ -286,7 +293,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -344,11 +351,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
   },
   retryText: {
     fontSize: fontSizes.sm,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
   },
   skeletonContainer: {
@@ -385,13 +392,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     padding: spacing.md,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.xl,
     marginTop: spacing.sm,
   },
   loadMoreText: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
-    color: colors.primary,
+    color: colors.text,
   },
 });

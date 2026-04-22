@@ -3,6 +3,7 @@ import { View, Text, FlatList, Pressable, RefreshControl, ActivityIndicator, Sty
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import type { DailyStaffAttendanceItem } from '../../../domain/staff-attendance/staff-attendance.types';
 import { useStaffAttendance } from '../../../application/staff-attendance/use-staff-attendance';
@@ -17,7 +18,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { DatePickerRow } from '../../components/attendance/DatePickerRow';
 import { HolidayBanner } from '../../components/attendance/HolidayBanner';
 import { Toggle } from '../../components/ui/Toggle';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults } from '../../theme';
+import { Badge } from '../../components/ui/Badge';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -65,21 +68,22 @@ function StaffAttendanceRowComponent({ item, onToggle, isHoliday }: StaffAttenda
   // tint conveys the holiday context.
   return (
     <View style={[styles.rowCard, isHoliday && styles.rowCardHoliday]} testID={`staff-attendance-row-${item.staffUserId}`}>
-      <View style={[styles.avatar, isPresent ? styles.avatarPresent : styles.avatarAbsent]}>
-        <Text style={[styles.avatarText, isPresent ? styles.avatarTextPresent : styles.avatarTextAbsent]}>
-          {getInitials(item.fullName)}
-        </Text>
-      </View>
+      <InitialsAvatar
+        name={item.fullName}
+        size={40}
+        style={styles.avatar}
+      />
 
       <View style={styles.rowInfo}>
         <Text style={styles.rowName} numberOfLines={1}>
           {item.fullName}
         </Text>
         <View style={styles.statusRow}>
-          <View style={[styles.statusDot, isPresent ? styles.dotPresent : styles.dotAbsent]} />
-          <Text style={[styles.statusLabel, isPresent ? styles.labelPresent : styles.labelAbsent]}>
-            {isPresent ? 'Present' : 'Absent'}
-          </Text>
+          <Badge
+            label={isPresent ? 'Present' : 'Absent'}
+            variant={isPresent ? 'success' : 'danger'}
+            dot
+          />
         </View>
       </View>
 
@@ -123,8 +127,13 @@ function SummaryBarComponent({ items }: SummaryBarProps) {
     <View style={styles.summaryBar}>
       <View style={styles.summaryLeft}>
         <View style={styles.summaryIconCircle}>
-
-          <AppIcon name="account-group" size={18} color={colors.primary} />
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <AppIcon name="account-group" size={18} color="#FFFFFF" />
         </View>
         <View>
           <Text style={styles.summaryTitle}>
@@ -250,9 +259,14 @@ export function StaffAttendanceScreen() {
             accessibilityLabel="View monthly summary"
             testID="staff-monthly-summary-button"
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: colors.primarySoft }]}>
-              
-              <AppIcon name="calendar-month-outline" size={20} color={colors.primary} />
+            <View style={[styles.actionIconCircle, { overflow: 'hidden' }]}>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="calendar-month-outline" size={20} color="#FFFFFF" />
             </View>
             <Text style={styles.actionCardLabel}>Monthly Summary</Text>
             
@@ -350,7 +364,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -462,33 +476,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotPresent: {
-    backgroundColor: colors.success,
-  },
-  dotAbsent: {
-    backgroundColor: colors.danger,
-  },
-  dotHoliday: {
-    backgroundColor: colors.warning,
-  },
-  statusLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-  },
-  labelPresent: {
-    color: colors.success,
-  },
-  labelAbsent: {
-    color: colors.danger,
-  },
-  labelHoliday: {
-    color: colors.warning,
   },
   rowCardHoliday: {
     borderColor: colors.warningBorder,

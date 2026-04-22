@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import LinearGradient from 'react-native-linear-gradient';
 import { AUDIT_ACTION_TYPES, AUDIT_ENTITY_TYPES } from '@academyflo/contracts';
 import type { AuditFilters as AuditFiltersType } from '../../../application/audit/use-audit-logs';
 import { Button } from '../ui/Button';
 import { DatePickerInput } from '../ui/DatePickerInput';
-import { fontSizes, fontWeights, radius, shadows, spacing } from '../../theme';
+import { fontSizes, fontWeights, radius, shadows, spacing, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -46,7 +47,7 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
       {/* ── Date Range ──────────────────────────────── */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="calendar-range" size={16} color={colors.textSecondary} />
+        <AppIcon name="calendar-range" size={16} color={colors.text} />
         <Text style={styles.sectionTitle}>Date Range</Text>
       </View>
       <View style={styles.dateRow}>
@@ -83,7 +84,7 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
       {/* ── Action Type ─────────────────────────────── */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="lightning-bolt-outline" size={16} color={colors.textSecondary} />
+        <AppIcon name="lightning-bolt-outline" size={16} color={colors.text} />
         <Text style={styles.sectionTitle}>Action Type</Text>
       </View>
       <ScrollView
@@ -102,8 +103,16 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
               testID={`action-opt-${opt.value || 'ALL'}`}
               activeOpacity={0.7}
             >
+              {active ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               {active && (
-                
+
                 <AppIcon name="check-circle" size={14} color={colors.white} />
               )}
               <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
@@ -117,7 +126,7 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
       {/* ── Entity Type ─────────────────────────────── */}
       <View style={styles.sectionHeader}>
         
-        <AppIcon name="shape-outline" size={16} color={colors.textSecondary} />
+        <AppIcon name="shape-outline" size={16} color={colors.text} />
         <Text style={styles.sectionTitle}>Entity Type</Text>
       </View>
       <ScrollView
@@ -136,8 +145,16 @@ export function AuditFiltersPanel({ filters, onChange, onApply, onClear }: Audit
               testID={`entity-opt-${opt.value || 'ALL'}`}
               activeOpacity={0.7}
             >
+              {active ? (
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : null}
               {active && (
-                
+
                 <AppIcon name="check-circle" size={14} color={colors.white} />
               )}
               <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
@@ -211,7 +228,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   chipActive: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
   },
   chipText: {
     fontSize: fontSizes.sm,

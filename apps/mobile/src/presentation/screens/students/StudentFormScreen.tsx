@@ -21,7 +21,8 @@ import { createStudent, updateStudent, getStudentPhotoUploadPath } from '../../.
 import { getStudentBatches, setStudentBatches } from '../../../infra/batch/batch-api';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import type { Gender, CreateStudentRequest } from '../../../domain/student/student.types';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -444,7 +445,8 @@ export function StudentFormScreen() {
         currentPhotoUrl={photoUrl}
         uploadPath={mode === 'edit' && student?.id ? getStudentPhotoUploadPath(student.id) : undefined}
         onPhotoUploaded={setPhotoUrl}
-        size={90}
+        size={96}
+        shape="rounded"
         testID="student-form-photo"
       />
 
@@ -514,6 +516,14 @@ export function StudentFormScreen() {
             accessibilityLabel={`Gender: ${opt.label}`}
             testID={`gender-${opt.value.toLowerCase()}`}
           >
+            {gender === opt.value ? (
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null}
             <Text style={[styles.genderLabel, gender === opt.value && styles.genderLabelSelected]}>
               {opt.label}
             </Text>
@@ -652,7 +662,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: radius.lg,
   },
   genderSelected: {
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderColor: colors.primary,
   },
   genderLabel: {

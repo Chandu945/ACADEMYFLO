@@ -157,7 +157,7 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
           
-          <AppIcon name="calendar-check-outline" size={20} color={colors.primary} />
+          <AppIcon name="calendar-check-outline" size={20} color={colors.text} />
           <Text style={styles.title}>Attendance Summary</Text>
           {onPress && (
             
@@ -188,7 +188,7 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
             {error}
           </Text>
           <TouchableOpacity onPress={loadMonth} style={{ marginTop: spacing.sm }}>
-            <Text style={{ color: colors.primary, fontWeight: fontWeights.semibold }}>Retry</Text>
+            <Text style={{ color: colors.text, fontWeight: fontWeights.semibold }}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (

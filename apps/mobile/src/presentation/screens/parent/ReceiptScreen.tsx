@@ -8,7 +8,8 @@ import { AppIcon } from '../../components/ui/AppIcon';
 import type { ReceiptInfo } from '../../../domain/parent/parent.types';
 import { getReceiptUseCase } from '../../../application/parent/use-cases/get-receipt.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { formatMonthKey, formatCurrency, formatDateLong } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
@@ -221,7 +222,12 @@ export function ReceiptScreen() {
 
       {/* Share Button */}
       <TouchableOpacity style={styles.shareButton} activeOpacity={0.8} onPress={handleShare}>
-        
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <AppIcon name="share-variant-outline" size={20} color={colors.white} />
         <Text style={styles.shareButtonText}>Share Receipt</Text>
       </TouchableOpacity>
@@ -252,11 +258,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.base,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.bgSubtle,
     borderRadius: radius.md,
   },
   retryText: {
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.semibold,
     fontSize: fontSizes.base,
   },
@@ -304,7 +310,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.xl,
     paddingVertical: spacing.md,
     marginTop: spacing.xl,

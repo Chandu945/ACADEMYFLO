@@ -3,6 +3,7 @@ import { Pressable, View, Text, Image, StyleSheet } from 'react-native';
 import type { StaffListItem } from '../../../domain/staff/staff.types';
 import { StaffStatusBadge } from './StaffStatusBadge';
 import { AppCard } from '../ui/AppCard';
+import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -29,9 +30,11 @@ function StaffRowComponent({ staff, onPress, onToggleStatus }: StaffRowProps) {
       {staff.profilePhotoUrl ? (
         <Image source={{ uri: staff.profilePhotoUrl }} style={styles.avatar} />
       ) : (
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>{getInitials(staff.fullName)}</Text>
-        </View>
+        <InitialsAvatar
+          name={staff.fullName}
+          size={46}
+          style={{ marginRight: spacing.md }}
+        />
       )}
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>
@@ -119,7 +122,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   position: {
     fontSize: fontSizes.sm,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: fontWeights.medium,
     marginTop: 2,
   },

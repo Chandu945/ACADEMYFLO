@@ -17,7 +17,8 @@ import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { crossAlert } from '../../utils/crossPlatformAlert';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import LinearGradient from 'react-native-linear-gradient';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -172,7 +173,13 @@ export function AcademySetupScreen() {
         {/* Header */}
         <View style={styles.headerSection}>
           <View style={styles.iconBadge}>
-            <AppIcon name="domain" size={28} color={colors.primary} />
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="domain" size={28} color="#FFFFFF" />
           </View>
           <Text style={styles.title} accessibilityRole="header">Set Up Your Academy</Text>
           <Text style={styles.subtitle}>
@@ -343,7 +350,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: colors.primarySoft,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,

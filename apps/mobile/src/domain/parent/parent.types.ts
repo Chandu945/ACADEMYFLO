@@ -111,3 +111,56 @@ export type PaymentHistoryItem = {
   source: PaidSource;
   paidAt: string;
 };
+
+/* ── Manual payment (Phase 2/3) ──────────────────────────────────────────── */
+
+export type AcademyBankDetails = {
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string;
+  branchName: string;
+};
+
+export type AcademyPaymentMethods = {
+  manualPaymentsEnabled: boolean;
+  upiId: string | null;
+  upiHolderName: string | null;
+  qrCodeImageUrl: string | null;
+  bankDetails: AcademyBankDetails | null;
+  academyName: string;
+};
+
+export type ParentPaymentMethod = 'UPI' | 'BANK' | 'CASH' | 'OTHER';
+export type ParentPaymentRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export type ParentPaymentRequest = {
+  id: string;
+  academyId: string;
+  studentId: string;
+  feeDueId: string;
+  monthKey: string;
+  amount: number;
+  status: ParentPaymentRequestStatus;
+  source: 'STAFF' | 'PARENT';
+  paymentMethod: ParentPaymentMethod | null;
+  proofImageUrl: string | null;
+  paymentRefNumber: string | null;
+  staffNotes: string;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SubmitManualPaymentRequestInput = {
+  studentId: string;
+  feeDueId: string;
+  amount: number;
+  paymentMethod: ParentPaymentMethod;
+  paymentRefNumber?: string;
+  parentNote?: string;
+  /** Local image URI (from react-native-image-picker) */
+  proofImageUri: string;
+  proofImageFileName: string;
+  proofImageMimeType: string;
+};

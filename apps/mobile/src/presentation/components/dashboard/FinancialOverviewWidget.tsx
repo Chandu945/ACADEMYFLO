@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import LinearGradient from 'react-native-linear-gradient';
 import { getOwnerDashboard } from '../../../infra/dashboard/dashboard-api';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -30,36 +31,63 @@ type FinancialData = {
   lateFees: number;
 };
 
+type MetricTone = 'success' | 'warning' | 'danger' | 'info';
+
+type ToneStyle = { bg: string; border: string; tint: string; fg: string };
+
+function getToneStyles(tone: MetricTone, colors: Colors): ToneStyle {
+  switch (tone) {
+    case 'success':
+      return { bg: colors.successBg, border: colors.successBorder, tint: colors.success, fg: colors.successText };
+    case 'warning':
+      return { bg: colors.warningBg, border: colors.warningBorder, tint: colors.warning, fg: colors.warningText };
+    case 'danger':
+      return { bg: colors.dangerBg, border: colors.dangerBorder, tint: colors.danger, fg: colors.dangerText };
+    case 'info':
+    default:
+      return { bg: colors.infoBg, border: 'rgba(6,182,212,0.32)', tint: colors.info, fg: colors.infoText };
+  }
+}
+
 function MetricTile({
   icon,
   label,
   amount,
   maxAmount,
+  tone,
   onPress,
 }: {
   icon: string;
   label: string;
   amount: number;
   maxAmount: number;
+  tone: MetricTone;
   onPress?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const t = useMemo(() => getToneStyles(tone, colors), [tone, colors]);
   const pct = maxAmount > 0 ? Math.round((amount / maxAmount) * 100) : 0;
 
   return (
-    <TouchableOpacity style={styles.metricTile} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
-      <View style={styles.metricIconCircle}>
-        
-        <AppIcon name={icon} size={14} color={colors.primary} />
+    <TouchableOpacity
+      style={styles.metricTile}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
+      <View style={[styles.metricIconCircle, { backgroundColor: t.bg, borderColor: t.border }]}>
+        <AppIcon name={icon} size={16} color={t.fg} />
       </View>
-      <Text style={styles.metricAmount}>{formatCurrency(amount)}</Text>
+      <Text style={styles.metricAmount} numberOfLines={1} adjustsFontSizeToFit>
+        {formatCurrency(amount)}
+      </Text>
       <Text style={styles.metricLabel}>{label}</Text>
       <View style={styles.metricBar}>
         <View
           style={[
             styles.metricBarFill,
-            { width: `${pct}%` as any },
+            { width: `${pct}%` as any, backgroundColor: t.tint },
           ]}
         />
       </View>
@@ -176,7 +204,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           
-          <AppIcon name="currency-inr" size={20} color={colors.primary} />
+          <AppIcon name="currency-inr" size={20} color={colors.text} />
           <Text style={styles.title}>Financial Overview</Text>
         </View>
         <View style={styles.monthNav}>
@@ -229,7 +257,14 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
                   styles.profitBarFill,
                   { width: `${profitPct}%` as any },
                 ]}
-              />
+              >
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </View>
             </View>
           </View>
 
@@ -240,6 +275,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
               label="Collected"
               amount={data.collected}
               maxAmount={maxAmount}
+              tone="success"
               onPress={onCollectedPress}
             />
             <MetricTile
@@ -247,6 +283,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
               label="Pending"
               amount={data.pending}
               maxAmount={maxAmount}
+              tone="warning"
               onPress={onPendingPress}
             />
             <MetricTile
@@ -254,6 +291,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
               label="Expenses"
               amount={data.expenses}
               maxAmount={maxAmount}
+              tone="danger"
               onPress={onExpensesPress}
             />
             <MetricTile
@@ -261,6 +299,7 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
               label="Late Fees"
               amount={data.lateFees}
               maxAmount={maxAmount}
+              tone="info"
               onPress={onLateFeesPress}
             />
           </View>
@@ -369,7 +408,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   profitBarFill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    overflow: 'hidden',
     borderRadius: radius.full,
   },
 
@@ -385,21 +424,24 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.bg,
     borderRadius: radius.lg,
     padding: spacing.md,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'flex-start',
   },
   metricIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   metricAmount: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    letterSpacing: -0.3,
     marginBottom: 2,
   },
   metricLabel: {
@@ -407,17 +449,18 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.medium,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   metricBar: {
     width: '100%',
-    height: 4,
+    height: 5,
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.full,
     overflow: 'hidden',
   },
   metricBarFill: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: radius.full,
   },
 });
