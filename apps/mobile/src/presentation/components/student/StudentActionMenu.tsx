@@ -95,7 +95,7 @@ export function StudentActionMenu({
     onClose();
     crossAlert(
       'Invite Parent',
-      `This will create a parent login for ${student.fullName}'s guardian. The guardian must have an email and mobile number set.\n\nContinue?`,
+      `This will create a parent login for ${student.fullName}'s guardian. If no email is set, a temporary login ID will be generated — the parent can update it later from their profile.\n\nContinue?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

@@ -1,4 +1,4 @@
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import { getGlobalAlert } from '../context/AlertContext';
 
 type AlertButton = {
@@ -8,28 +8,20 @@ type AlertButton = {
 };
 
 /**
- * Cross-platform alert that works on both native and web.
- *
- * On native: uses React Native's Alert.alert with full button support.
- * On web: uses a custom styled modal via AlertContext (no more ugly browser alerts).
+ * Cross-platform alert. Routes every call through the app's branded modal
+ * (`AlertProvider`) so dark-mode, iOS, Android, and web all render the same
+ * polished dialog. Falls back to the native `Alert.alert` only if the
+ * provider happens not to be mounted (unlikely post-bootstrap).
  */
 export function crossAlert(
   title: string,
   message?: string,
   buttons?: AlertButton[],
 ): void {
-  if (Platform.OS !== 'web') {
-    Alert.alert(title, message, buttons);
-    return;
-  }
-
-  // Web — use styled modal
   const showAlert = getGlobalAlert();
   if (showAlert) {
     showAlert(title, message, buttons);
-  } else {
-    // Fallback if AlertProvider not mounted yet
-    const g = globalThis as unknown as { alert: (msg: string) => void };
-    g.alert(message ? `${title}\n\n${message}` : title);
+    return;
   }
+  Alert.alert(title, message, buttons);
 }

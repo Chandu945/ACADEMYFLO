@@ -9,11 +9,12 @@ import { MoreStack } from './MoreStack';
 import { useTheme } from '../context/ThemeContext';
 import { makeTabScreenOptions } from './tab-options';
 import { CustomTabBar } from './CustomTabBar';
+import type { IconMap } from './CustomTabBar';
 
-const TAB_ICONS: Record<string, string> = {
-  Dashboard: 'view-grid-outline',
-  Children: 'account-multiple-outline',
-  Payments: 'credit-card-outline',
+const TAB_ICONS: IconMap = {
+  Dashboard: { active: 'view-grid', inactive: 'view-grid-outline' },
+  Children: { active: 'account-multiple', inactive: 'account-multiple-outline' },
+  Payments: { active: 'credit-card', inactive: 'credit-card-outline' },
   More: 'apps',
 };
 

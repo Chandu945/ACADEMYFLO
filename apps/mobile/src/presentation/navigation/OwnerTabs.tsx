@@ -16,11 +16,13 @@ import { useTheme } from '../context/ThemeContext';
 import { makeTabScreenOptions } from './tab-options';
 import { CustomTabBar } from './CustomTabBar';
 
-const TAB_ICONS: Record<string, string> = {
-  Dashboard: 'view-grid-outline',
-  Students: 'account-multiple-outline',
-  Attendance: 'check',
-  Fees: 'credit-card-outline',
+import type { IconMap } from './CustomTabBar';
+
+const TAB_ICONS: IconMap = {
+  Dashboard: { active: 'view-grid', inactive: 'view-grid-outline' },
+  Students: { active: 'account-multiple', inactive: 'account-multiple-outline' },
+  Attendance: { active: 'calendar-check', inactive: 'calendar-check-outline' },
+  Fees: { active: 'credit-card', inactive: 'credit-card-outline' },
   More: 'apps',
 };
 

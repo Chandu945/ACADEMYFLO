@@ -4,22 +4,16 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Image,
-  Switch,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { launchImageLibrary } from 'react-native-image-picker';
 import { AppIcon } from '../../components/ui/AppIcon';
+import { GradientSwitch } from '../../components/ui/GradientSwitch';
 import { Input } from '../../components/ui/Input';
 import { InlineError } from '../../components/ui/InlineError';
 import { crossAlert } from '../../utils/crossPlatformAlert';
-import {
-  instituteInfoApi,
-  uploadInstituteImage,
-  deleteInstituteImage,
-} from '../../../infra/settings/institute-info-api';
+import { instituteInfoApi } from '../../../infra/settings/institute-info-api';
 import { useInstituteInfo } from '../../../application/settings/use-institute-info';
 import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
@@ -45,7 +39,6 @@ export function PaymentMethodsScreen() {
   const [ifscCode, setIfscCode] = useState('');
   const [bankName, setBankName] = useState('');
   const [branchName, setBranchName] = useState('');
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (info && !initialized) {
@@ -109,10 +102,10 @@ export function PaymentMethodsScreen() {
     }
 
     // Warn if enabling but no method is configured
-    if (manualPaymentsEnabled && !upiTrimmed && !info?.qrCodeImageUrl && !hasBankFields) {
+    if (manualPaymentsEnabled && !upiTrimmed && !hasBankFields) {
       crossAlert(
         'No payment method set',
-        'Add at least one method (UPI, QR code, or bank details) before enabling manual payments.',
+        'Add at least one method (UPI or bank details) before enabling manual payments.',
       );
       return;
     }
@@ -148,53 +141,9 @@ export function PaymentMethodsScreen() {
     ifscCode,
     bankName,
     branchName,
-    info?.qrCodeImageUrl,
     update,
     showToast,
   ]);
-
-  const pickQr = useCallback(async () => {
-    const result = await launchImageLibrary({
-      mediaType: 'photo',
-      quality: 0.9,
-      maxWidth: 1200,
-      maxHeight: 1200,
-    });
-    if (result.didCancel || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    if (!asset.uri || !asset.fileName || !asset.type) return;
-    setUploading(true);
-    try {
-      const r = await uploadInstituteImage('qrcode', asset.uri, asset.fileName, asset.type);
-      if (r.ok) {
-        showToast('QR code uploaded');
-        refetch();
-      } else {
-        crossAlert('Upload error', r.error.message);
-      }
-    } finally {
-      setUploading(false);
-    }
-  }, [refetch, showToast]);
-
-  const removeQr = useCallback(() => {
-    crossAlert('Remove QR code?', 'Parents will stop seeing the QR payment option.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          const r = await deleteInstituteImage('qrcode');
-          if (r.ok) {
-            showToast('QR code removed');
-            refetch();
-          } else {
-            crossAlert('Error', r.error.message);
-          }
-        },
-      },
-    ]);
-  }, [refetch, showToast]);
 
   if (loading) {
     return (
@@ -221,18 +170,31 @@ export function PaymentMethodsScreen() {
     >
       {/* ── Toggle ─────────────────────────────────── */}
       <View style={styles.toggleCard}>
+        <View style={styles.toggleIconTile}>
+          <LinearGradient
+            colors={[gradient.start, gradient.end]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.toggleIconTileGradient}
+          />
+          <AppIcon name="cash-fast" size={20} color="#FFFFFF" />
+        </View>
         <View style={styles.toggleText}>
           <Text style={styles.toggleTitle}>Accept manual payments</Text>
           <Text style={styles.toggleSubtitle}>
             Let parents pay via UPI, QR or bank transfer and submit a screenshot for you to approve.
           </Text>
+          <View style={[styles.toggleStatus, manualPaymentsEnabled ? styles.toggleStatusOn : styles.toggleStatusOff]}>
+            <View style={[styles.toggleStatusDot, manualPaymentsEnabled ? styles.toggleStatusDotOn : styles.toggleStatusDotOff]} />
+            <Text style={[styles.toggleStatusText, manualPaymentsEnabled ? styles.toggleStatusTextOn : styles.toggleStatusTextOff]}>
+              {manualPaymentsEnabled ? 'Enabled' : 'Disabled'}
+            </Text>
+          </View>
         </View>
-        <Switch
+        <GradientSwitch
           value={manualPaymentsEnabled}
           onValueChange={setManualPaymentsEnabled}
-          trackColor={{ false: colors.border, true: colors.primary }}
-          thumbColor="#FFFFFF"
-          ios_backgroundColor={colors.border}
+          accessibilityLabel="Accept manual payments"
           testID="manual-payments-toggle"
         />
       </View>
@@ -262,65 +224,8 @@ export function PaymentMethodsScreen() {
         </View>
       </View>
 
-      {/* ── QR code ──────────────────────────────── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <AppIcon name="qrcode-scan" size={18} color={colors.text} />
-          <Text style={styles.sectionTitle}>QR code</Text>
-        </View>
-        <View style={styles.card}>
-          {uploading ? (
-            <View style={styles.qrUploading}>
-              <ActivityIndicator color={colors.primary} />
-              <Text style={styles.qrUploadingText}>Uploading...</Text>
-            </View>
-          ) : info?.qrCodeImageUrl ? (
-            <View>
-              <View style={styles.qrPreviewWrap}>
-                <Image
-                  source={{ uri: info.qrCodeImageUrl }}
-                  style={styles.qrPreview}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={styles.qrActions}>
-                <TouchableOpacity
-                  style={styles.qrActionBtn}
-                  onPress={pickQr}
-                  testID="qr-change"
-                >
-                  <AppIcon name="image-edit-outline" size={16} color={colors.textSecondary} />
-                  <Text style={styles.qrActionText}>Change</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.qrActionBtn, styles.qrRemoveBtn]}
-                  onPress={removeQr}
-                  testID="qr-remove"
-                >
-                  <AppIcon name="trash-can-outline" size={16} color={colors.danger} />
-                  <Text style={[styles.qrActionText, { color: colors.danger }]}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity style={styles.qrUploadTile} onPress={pickQr} testID="qr-upload">
-              <View style={styles.qrUploadIcon}>
-                <LinearGradient
-                  colors={[gradient.start, gradient.end]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <AppIcon name="upload" size={20} color="#FFFFFF" />
-              </View>
-              <Text style={styles.qrUploadTitle}>Upload QR code</Text>
-              <Text style={styles.qrUploadSubtitle}>
-                Square image with your UPI or merchant QR
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      {/* QR code upload removed — we auto-generate a scannable QR on the
+          parent's Pay screen from the UPI ID above. */}
 
       {/* ── Bank ─────────────────────────────────── */}
       <View style={styles.section}>
@@ -406,6 +311,18 @@ const makeStyles = (colors: Colors) =>
       padding: spacing.base,
       marginBottom: spacing.md,
     },
+    toggleIconTile: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    toggleIconTileGradient: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 12,
+    },
     toggleText: { flex: 1, minWidth: 0 },
     toggleTitle: {
       fontSize: fontSizes.md,
@@ -417,6 +334,48 @@ const makeStyles = (colors: Colors) =>
       color: colors.textSecondary,
       marginTop: 3,
       lineHeight: 18,
+    },
+    toggleStatus: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      marginTop: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radius.full,
+      borderWidth: 1,
+    },
+    toggleStatusOn: {
+      backgroundColor: `${colors.success}18`,
+      borderColor: `${colors.success}40`,
+    },
+    toggleStatusOff: {
+      backgroundColor: colors.bgSubtle,
+      borderColor: colors.border,
+    },
+    toggleStatusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    toggleStatusDotOn: {
+      backgroundColor: colors.success,
+    },
+    toggleStatusDotOff: {
+      backgroundColor: colors.textDisabled,
+    },
+    toggleStatusText: {
+      fontSize: 10,
+      fontWeight: fontWeights.bold,
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+    },
+    toggleStatusTextOn: {
+      color: colors.success,
+    },
+    toggleStatusTextOff: {
+      color: colors.textDisabled,
     },
 
     section: { marginBottom: spacing.md },
@@ -440,79 +399,6 @@ const makeStyles = (colors: Colors) =>
       borderColor: colors.border,
       padding: spacing.base,
       gap: spacing.sm,
-    },
-
-    qrUploadTile: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing.xl,
-      backgroundColor: colors.bgSubtle,
-      borderRadius: radius.lg,
-      borderWidth: 2,
-      borderColor: colors.borderStrong,
-      borderStyle: 'dashed',
-    },
-    qrUploadIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: radius.md,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing.sm,
-    },
-    qrUploadTitle: {
-      fontSize: fontSizes.md,
-      fontWeight: fontWeights.semibold,
-      color: colors.text,
-    },
-    qrUploadSubtitle: {
-      fontSize: fontSizes.xs,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-    qrUploading: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: spacing.xl,
-      gap: spacing.sm,
-    },
-    qrUploadingText: { fontSize: fontSizes.sm, color: colors.textSecondary },
-    qrPreviewWrap: {
-      backgroundColor: colors.bgSubtle,
-      borderRadius: radius.lg,
-      padding: spacing.md,
-      alignItems: 'center',
-    },
-    qrPreview: {
-      width: 180,
-      height: 180,
-    },
-    qrActions: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      marginTop: spacing.sm,
-    },
-    qrActionBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.xs,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      backgroundColor: colors.bgSubtle,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    qrRemoveBtn: {
-      backgroundColor: colors.dangerBg,
-      borderColor: colors.dangerBorder,
-    },
-    qrActionText: {
-      fontSize: fontSizes.sm,
-      fontWeight: fontWeights.medium,
-      color: colors.text,
     },
 
     saveBtn: {

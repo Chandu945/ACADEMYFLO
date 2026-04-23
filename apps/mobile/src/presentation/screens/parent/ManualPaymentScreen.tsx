@@ -16,6 +16,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchImageLibrary } from 'react-native-image-picker';
 import LinearGradient from 'react-native-linear-gradient';
+import QRCode from 'react-native-qrcode-svg';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { Badge } from '../../components/ui/Badge';
 import { InlineError } from '../../components/ui/InlineError';
@@ -75,7 +76,7 @@ export function ManualPaymentScreen() {
         if (r.ok) {
           setMethods(r.value);
           // Prefer UPI tab if available, otherwise BANK.
-          if (!r.value.upiId && !r.value.qrCodeImageUrl && r.value.bankDetails) {
+          if (!r.value.upiId && r.value.bankDetails) {
             setTab('BANK');
           }
         } else {
@@ -204,9 +205,16 @@ export function ManualPaymentScreen() {
   }
 
   const hasUpi = !!methods.upiId;
-  const hasQr = !!methods.qrCodeImageUrl;
   const hasBank = !!methods.bankDetails;
-  const upiTabAvailable = hasUpi || hasQr;
+  // QR is always generated from the UPI ID with the current amount + month
+  // baked in, so parents scan and pay the exact due amount without retyping.
+  const generatedQrPayload = hasUpi
+    ? `upi://pay?pa=${encodeURIComponent(methods.upiId!)}` +
+      `&pn=${encodeURIComponent(methods.upiHolderName ?? methods.academyName ?? 'Academy')}` +
+      `&am=${encodeURIComponent(String(amount))}&cu=INR` +
+      `&tn=${encodeURIComponent('Fee ' + monthKey)}`
+    : null;
+  const upiTabAvailable = hasUpi;
 
   return (
     <ScrollView
@@ -274,19 +282,23 @@ export function ManualPaymentScreen() {
       {/* Method detail */}
       {tab === 'UPI' && upiTabAvailable ? (
         <View style={styles.methodCard}>
-          {hasQr && (
+          {generatedQrPayload && (
             <View style={styles.qrWrap}>
-              <Image
-                source={{ uri: methods.qrCodeImageUrl! }}
-                style={styles.qrImage}
-                resizeMode="contain"
-              />
+              <View style={styles.qrGenerated}>
+                <QRCode
+                  value={generatedQrPayload}
+                  size={200}
+                  backgroundColor="#FFFFFF"
+                  color="#05070D"
+                />
+              </View>
               <Text style={styles.qrCaption}>Scan with any UPI app</Text>
             </View>
           )}
           {hasUpi && (
             <View>
-              {hasQr && <View style={styles.methodDivider} />}
+              <View style={styles.methodDivider} />
+              {/* Divider above UPI ID since the QR is always rendered first. */}
               <Text style={styles.fieldLabel}>UPI ID</Text>
               <TouchableOpacity
                 style={styles.copyRow}
@@ -605,9 +617,8 @@ const makeStyles = (colors: Colors) =>
       marginBottom: spacing.md,
     },
     qrWrap: { alignItems: 'center' },
-    qrImage: {
-      width: 200,
-      height: 200,
+    qrGenerated: {
+      padding: spacing.md,
       borderRadius: radius.md,
       backgroundColor: '#FFFFFF',
     },

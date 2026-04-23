@@ -43,15 +43,20 @@ export const studentListResponseSchema = z.object({
 });
 
 export const studentCredentialsSchema = z.object({
-  parentEmail: z.string().nullable(),
-  parentTempPassword: z.string().nullable(),
-  parentInviteSentAt: z.string().nullable(),
+  studentName: z.string(),
+  loginId: z.string(),
+  loginIdType: z.enum(['MOBILE', 'EMAIL']),
+  hasPassword: z.boolean(),
+  academyName: z.string(),
+  shareText: z.string(),
 });
 
 export const inviteParentResponseSchema = z.object({
-  parentUserId: z.string(),
-  email: z.string(),
-  tempPassword: z.string().optional(),
+  parentId: z.string(),
+  studentId: z.string(),
+  parentEmail: z.string(),
+  tempPassword: z.string(),
+  isExistingUser: z.boolean(),
 });
 
 // createStudent / updateStudent return shapes vary across legacy controllers,

@@ -1,18 +1,27 @@
 import React, { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet, type ViewStyle } from 'react-native';
+import { View, Pressable, StyleSheet, type ViewStyle } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../components/ui/AppIcon';
-import { fontSizes, fontWeights, radius, gradient } from '../theme';
+import { gradient } from '../theme';
 import type { Colors } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 
-type IconMap = Record<string, string>;
+/** Icon name(s) per tab. Use a string for both states, or an object to give
+ *  the active and inactive states different glyphs (e.g. filled vs outlined). */
+export type TabIcon = string | { active: string; inactive: string };
+export type IconMap = Record<string, TabIcon>;
 
 type Props = BottomTabBarProps & {
   iconMap: IconMap;
 };
+
+function resolveIcon(entry: TabIcon | undefined, focused: boolean): string {
+  if (!entry) return 'circle';
+  if (typeof entry === 'string') return entry;
+  return focused ? entry.active : entry.inactive;
+}
 
 /**
  * Custom bottom tab bar. Active tab fills its 42px icon tile with the accent
@@ -29,7 +38,7 @@ export function CustomTabBar({ state, navigation, iconMap }: Props) {
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
         const label = route.name;
-        const iconName = iconMap[route.name] ?? 'circle';
+        const iconName = resolveIcon(iconMap[route.name], isFocused);
 
         const onPress = () => {
           const event = navigation.emit({
@@ -57,13 +66,13 @@ export function CustomTabBar({ state, navigation, iconMap }: Props) {
             testID={`tab-${route.name.toLowerCase()}`}
             style={styles.item}
           >
-            <View style={[styles.iconTile, isFocused && styles.iconTileActive]}>
+            <View style={styles.iconTile}>
               {isFocused ? (
                 <LinearGradient
                   colors={[gradient.start, gradient.end]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
+                  style={styles.iconTileGradient}
                 />
               ) : null}
               <AppIcon
@@ -72,12 +81,6 @@ export function CustomTabBar({ state, navigation, iconMap }: Props) {
                 color={isFocused ? '#FFFFFF' : colors.textDisabled}
               />
             </View>
-            <Text
-              style={[styles.label, isFocused ? styles.labelActive : styles.labelInactive]}
-              numberOfLines={1}
-            >
-              {label}
-            </Text>
           </Pressable>
         );
       })}
@@ -100,8 +103,6 @@ const makeStyles = (colors: Colors, bottomInset: number) =>
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 2,
-      gap: 4,
     } as ViewStyle,
     iconTile: {
       width: 42,
@@ -109,20 +110,10 @@ const makeStyles = (colors: Colors, bottomInset: number) =>
       borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
-    } as ViewStyle,
-    iconTileActive: {
       overflow: 'hidden',
     } as ViewStyle,
-    label: {
-      fontSize: fontSizes.xs,
-      letterSpacing: -0.1,
-    },
-    labelActive: {
-      color: colors.text,
-      fontWeight: fontWeights.semibold,
-    },
-    labelInactive: {
-      color: colors.textDisabled,
-      fontWeight: fontWeights.medium,
-    },
+    iconTileGradient: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 12,
+    } as ViewStyle,
   });

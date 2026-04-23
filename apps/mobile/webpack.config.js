@@ -21,6 +21,8 @@ module.exports = {
       'react-native-keychain': path.resolve(appDirectory, 'web/stubs/react-native-keychain.js'),
       'react-native-fs': path.resolve(appDirectory, 'web/stubs/react-native-fs.js'),
       'react-native-share': path.resolve(appDirectory, 'web/stubs/react-native-share.js'),
+      'react-native-linear-gradient': path.resolve(appDirectory, 'web/stubs/react-native-linear-gradient.js'),
+      'react-native-reanimated': path.resolve(appDirectory, 'web/stubs/react-native-reanimated.js'),
       '@react-native-firebase/messaging': path.resolve(appDirectory, 'web/stubs/react-native-firebase-messaging.js'),
       '@react-native-firebase/app': path.resolve(appDirectory, 'web/stubs/react-native-firebase-app.js'),
     },
@@ -35,7 +37,7 @@ module.exports = {
     rules: [
       {
         test: /\.[jt]sx?$/,
-        exclude: /node_modules\/(?!(react-native-web|react-native-safe-area-context|react-native-screens|react-native-gesture-handler|react-native-image-picker|react-native-vector-icons|@react-native|@react-navigation)\/).*/,
+        exclude: /node_modules\/(?!(react-native-web|react-native-safe-area-context|react-native-screens|react-native-gesture-handler|react-native-image-picker|react-native-vector-icons|react-native-svg|react-native-qrcode-svg|@react-native|@react-navigation)\/).*/,
         use: {
           loader: 'babel-loader',
           options: {

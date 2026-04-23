@@ -186,7 +186,7 @@ export function ParentDashboardScreen() {
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
-                <AppIcon name="account-child" size={20} color="#FFFFFF" />
+                <AppIcon name="human-child" size={20} color="#FFFFFF" />
               </View>
               <Text style={styles.statValue}>{children.length}</Text>
               <Text style={styles.statLabel}>Children</Text>
@@ -231,7 +231,7 @@ export function ParentDashboardScreen() {
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFill}
                   />
-                  <AppIcon name="account-child" size={20} color="#FFFFFF" />
+                  <AppIcon name="account-multiple-outline" size={20} color="#FFFFFF" />
                 </View>
                 <Text style={styles.quickActionLabel}>My{'\n'}Children</Text>
               </TouchableOpacity>
@@ -285,14 +285,8 @@ export function ParentDashboardScreen() {
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLeft}>
-                  <View style={[styles.sectionHeaderIcon, { overflow: 'hidden' }]}>
-                    <LinearGradient
-                      colors={[gradient.start, gradient.end]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <AppIcon name="account-child" size={18} color="#FFFFFF" />
+                  <View style={[styles.sectionHeaderIcon, { backgroundColor: colors.warningBg }]}>
+                    <AppIcon name="heart-outline" size={18} color={colors.warning} />
                   </View>
                   <Text style={styles.sectionTitle}>My Children</Text>
                 </View>
@@ -315,45 +309,159 @@ export function ParentDashboardScreen() {
                         ? colors.warning
                         : colors.danger;
 
+                // All paid months for this child. Matched by studentName since
+                // PaymentHistoryItem doesn't expose studentId.
+                const allChildPayments = payments.filter(
+                  (p) => p.studentName === child.fullName,
+                );
+                const currentMonthPayment = allChildPayments.find(
+                  (p) => p.monthKey === currentMonth,
+                );
+                // Past months — most recent two (excluding current).
+                const pastPayments = allChildPayments
+                  .filter((p) => p.monthKey !== currentMonth)
+                  .slice(0, 2);
+
                 return (
-                  <TouchableOpacity
-                    key={child.studentId}
-                    style={styles.childRow}
-                    activeOpacity={0.7}
-                    onPress={() =>
-                      navigation.navigate('Children', {
-                        screen: 'ChildDetail',
-                        params: { studentId: child.studentId, fullName: child.fullName },
-                      })
-                    }
-                  >
-                    <View style={[styles.childAvatar, { backgroundColor: getAvatarColor(index, isDark) }]}>
-                      <Text style={styles.childAvatarText}>{getInitials(child.fullName)}</Text>
-                    </View>
-                    <View style={styles.childInfo}>
-                      <View style={styles.childNameRow}>
-                        <Text style={styles.childName} numberOfLines={1}>{child.fullName}</Text>
-                        <View
-                          style={[
-                            styles.statusDot,
-                            { backgroundColor: child.status === 'ACTIVE' ? colors.success : colors.textDisabled },
-                          ]}
-                        />
+                  <View key={child.studentId} style={styles.childCard}>
+                    <TouchableOpacity
+                      style={styles.childRow}
+                      activeOpacity={0.7}
+                      onPress={() =>
+                        navigation.navigate('Children', {
+                          screen: 'ChildDetail',
+                          params: { studentId: child.studentId, fullName: child.fullName },
+                        })
+                      }
+                    >
+                      <View style={[styles.childAvatar, { backgroundColor: getAvatarColor(index, isDark) }]}>
+                        <Text style={styles.childAvatarText}>{getInitials(child.fullName)}</Text>
                       </View>
-                      <Text style={styles.childFee}>
-                        {formatCurrency(child.monthlyFee)}
-                        <Text style={styles.childFeeLabel}> / month</Text>
-                      </Text>
+                      <View style={styles.childInfo}>
+                        <View style={styles.childNameRow}>
+                          <Text style={styles.childName} numberOfLines={1}>{child.fullName}</Text>
+                          <View
+                            style={[
+                              styles.statusDot,
+                              { backgroundColor: child.status === 'ACTIVE' ? colors.success : colors.textDisabled },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.childFee}>
+                          {formatCurrency(child.monthlyFee)}
+                          <Text style={styles.childFeeLabel}> / month</Text>
+                        </Text>
+                      </View>
+                      <View style={styles.childAttendance}>
+                        <Text style={[styles.childAttendanceValue, { color: attendColor }]}>
+                          {attendPct != null ? `${attendPct}%` : '--'}
+                        </Text>
+                        <Text style={styles.childAttendanceLabel}>Attendance</Text>
+                      </View>
+                      <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
+                    </TouchableOpacity>
+
+                    <View style={styles.childPayments}>
+                      {/* Current-month status card */}
+                      {currentMonthPayment ? (
+                        <TouchableOpacity
+                          style={[styles.monthCard, styles.monthCardAccentPaid]}
+                          activeOpacity={0.7}
+                          onPress={() =>
+                            navigation.navigate('Payments', {
+                              screen: 'Receipt',
+                              params: { feeDueId: currentMonthPayment.feeDueId },
+                            })
+                          }
+                        >
+                          <View style={[styles.monthAccentBar, { backgroundColor: colors.success }]} />
+                          <View style={styles.monthCardBody}>
+                            <View style={styles.monthCardMeta}>
+                              <Text style={styles.monthCardMonth}>
+                                {formatMonthShort(currentMonth)}
+                              </Text>
+                              <View style={[styles.statusPill, styles.statusPillPaid]}>
+                                <View style={[styles.statusPillDot, { backgroundColor: colors.success }]} />
+                                <Text style={[styles.statusPillText, { color: colors.success }]}>Paid</Text>
+                              </View>
+                            </View>
+                            <Text style={styles.monthCardAmount}>
+                              {formatCurrency(currentMonthPayment.amount)}
+                            </Text>
+                          </View>
+                          <View style={styles.monthCardTrailing}>
+                            <AppIcon name="receipt-text-outline" size={18} color={colors.textDisabled} />
+                          </View>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={[styles.monthCard, styles.monthCardAccentPending]}>
+                          <View style={[styles.monthAccentBar, { backgroundColor: colors.warning }]} />
+                          <View style={styles.monthCardBody}>
+                            <View style={styles.monthCardMeta}>
+                              <Text style={styles.monthCardMonth}>
+                                {formatMonthShort(currentMonth)}
+                              </Text>
+                              <View style={[styles.statusPill, styles.statusPillPending]}>
+                                <View style={[styles.statusPillDot, { backgroundColor: colors.warning }]} />
+                                <Text style={[styles.statusPillText, { color: colors.warning }]}>Due</Text>
+                              </View>
+                            </View>
+                            <Text style={styles.monthCardAmount}>
+                              {formatCurrency(child.monthlyFee)}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.payNowBtn}
+                            activeOpacity={0.85}
+                            onPress={() =>
+                              navigation.navigate('Children', {
+                                screen: 'ChildDetail',
+                                params: { studentId: child.studentId, fullName: child.fullName },
+                              })
+                            }
+                          >
+                            <LinearGradient
+                              colors={[gradient.start, gradient.end]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={StyleSheet.absoluteFill}
+                            />
+                            <Text style={styles.payNowBtnText}>Pay</Text>
+                            <AppIcon name="arrow-right" size={14} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {/* Past-month chips */}
+                      {pastPayments.length > 0 && (
+                        <View style={styles.childPaymentsRow}>
+                          {pastPayments.map((p) => (
+                            <TouchableOpacity
+                              key={p.receiptNumber}
+                              style={styles.paymentChip}
+                              activeOpacity={0.7}
+                              onPress={() =>
+                                navigation.navigate('Payments', {
+                                  screen: 'Receipt',
+                                  params: { feeDueId: p.feeDueId },
+                                })
+                              }
+                            >
+                              <View style={styles.paymentChipDot} />
+                              <View style={styles.paymentChipText}>
+                                <Text style={styles.paymentChipMonth}>
+                                  {formatMonthShort(p.monthKey)}
+                                </Text>
+                                <Text style={styles.paymentChipAmount}>
+                                  {formatCurrency(p.amount)}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
                     </View>
-                    <View style={styles.childAttendance}>
-                      <Text style={[styles.childAttendanceValue, { color: attendColor }]}>
-                        {attendPct != null ? `${attendPct}%` : '--'}
-                      </Text>
-                      <Text style={styles.childAttendanceLabel}>Attendance</Text>
-                    </View>
-                    
-                    <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
             </View>
@@ -590,12 +698,16 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
 
   /* ── Children Rows ──────────────────────────────── */
+  childCard: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   childRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   childAvatar: {
     width: 40,
@@ -653,6 +765,146 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: 9,
     color: colors.textSecondary,
     marginTop: 1,
+  },
+
+  /* ── Child-scoped recent payments (3 chips under each child) ─────── */
+  childPayments: {
+    paddingLeft: 52, // align with childInfo (avatar width + gap)
+    paddingRight: 4,
+    paddingTop: 4,
+    gap: 6,
+  },
+  /* Current-month card — subtle dark surface, thin accent bar on the left.
+     Status pill + large amount on the right of a gradient "Pay" pill when due. */
+  monthCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingRight: 6,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgSubtle,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  monthCardAccentPaid: {
+    borderColor: colors.border,
+  },
+  monthCardAccentPending: {
+    borderColor: colors.border,
+  },
+  monthAccentBar: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+  monthCardBody: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 2,
+  },
+  monthCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  monthCardMonth: {
+    fontSize: 11,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  monthCardAmount: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  monthCardTrailing: {
+    paddingHorizontal: 6,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    borderWidth: 1,
+  },
+  statusPillPaid: {
+    backgroundColor: `${colors.success}15`,
+    borderColor: `${colors.success}35`,
+  },
+  statusPillPending: {
+    backgroundColor: `${colors.warning}15`,
+    borderColor: `${colors.warning}35`,
+  },
+  statusPillDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  payNowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  payNowBtnText: {
+    fontSize: 12,
+    fontWeight: fontWeights.bold,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  childPaymentsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  paymentChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: radius.md,
+    backgroundColor: colors.successBg,
+    borderWidth: 1,
+    borderColor: colors.successBorder,
+  },
+  paymentChipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.success,
+  },
+  paymentChipText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  paymentChipMonth: {
+    fontSize: 10,
+    fontWeight: fontWeights.semibold,
+    color: colors.successText,
+    letterSpacing: 0.2,
+  },
+  paymentChipAmount: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.bold,
+    color: colors.successText,
   },
 
   /* ── Payment Summary ────────────────────────────── */

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   holidayItemSchema,
   holidaysResponseSchema,
@@ -8,6 +9,10 @@ import type { AppError } from '../../domain/common/errors';
 import { err, ok, type Result } from '../../domain/common/result';
 import { apiGet, apiPost, apiDelete } from '../http/api-client';
 import type { ZodSchema } from 'zod';
+
+// Remove endpoint returns just the deleted date — the API doesn't send back
+// the full holiday record (it's been deleted) so we validate only what we get.
+const removeHolidayResponseSchema = z.object({ date: z.string() });
 
 // Runtime-validate so a backend drift (missing field, wrong type) surfaces as
 // a clear VALIDATION rather than a silent undefined deep in the UI.
@@ -53,15 +58,11 @@ export async function declareHoliday(
 
 export async function removeHoliday(
   date: string,
-): Promise<Result<HolidayItem, AppError>> {
+): Promise<Result<{ date: string }, AppError>> {
   const result = await apiDelete<unknown>(
     `/api/v1/attendance/holidays/${encodeURIComponent(date)}`,
   );
-  return validateResponse(
-    holidayItemSchema as unknown as ZodSchema<HolidayItem>,
-    result,
-    'removeHoliday',
-  );
+  return validateResponse(removeHolidayResponseSchema, result, 'removeHoliday');
 }
 
 export const holidaysApi = { getHolidays, declareHoliday, removeHoliday };
