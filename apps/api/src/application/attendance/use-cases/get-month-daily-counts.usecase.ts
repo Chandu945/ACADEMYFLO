@@ -58,11 +58,16 @@ export class GetMonthDailyCountsUseCase {
       this.holidayRepo.findByAcademyAndMonth(academyId, input.month),
     ]);
 
-    // Build present count map: date -> count (records now mean PRESENT)
-    const presentCountMap = new Map<string, number>();
+    // Build distinct-student set per date — a two-batch student must NOT
+    // count twice when computing how many students were present.
+    const presentByDate = new Map<string, Set<string>>();
     for (const record of presentRecords) {
-      const count = presentCountMap.get(record.date) ?? 0;
-      presentCountMap.set(record.date, count + 1);
+      let set = presentByDate.get(record.date);
+      if (!set) {
+        set = new Set<string>();
+        presentByDate.set(record.date, set);
+      }
+      set.add(record.studentId);
     }
 
     // Build holiday set
@@ -72,7 +77,7 @@ export class GetMonthDailyCountsUseCase {
     const days: MonthDailyCountDay[] = [];
     for (let d = 1; d <= totalDaysInMonth; d++) {
       const dateStr = `${input.month}-${String(d).padStart(2, '0')}`;
-      const presentCountForDay = presentCountMap.get(dateStr) ?? 0;
+      const presentCountForDay = presentByDate.get(dateStr)?.size ?? 0;
       days.push({
         date: dateStr,
         absentCount: Math.max(0, totalStudents - presentCountForDay),

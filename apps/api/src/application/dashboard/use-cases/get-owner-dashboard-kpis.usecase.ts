@@ -67,9 +67,13 @@ export class GetOwnerDashboardKpisUseCase {
       this.paymentRequestRepo.countPendingByAcademy(academyId),
       this.transactionLogRepo.sumRevenueByAcademyAndDateRange(academyId, input.from, input.to),
       this.feeDueRepo.countDistinctUnpaidStudentsByAcademyAndMonth(academyId, currentMonthKey),
-      this.feeDueRepo.sumUnpaidAmountByAcademy(academyId),
-      // Records now represent PRESENT students (presence-only model)
-      this.attendanceRepo.countPresentByAcademyAndDate(academyId, today),
+      // Scoped to the picked month so past months without fee dues read ₹0
+      // instead of the academy-wide cumulative pending — keeps the Pending
+      // tile consistent with Collected/Expenses/Late Fees, which all filter
+      // by the same month.
+      this.feeDueRepo.sumUnpaidAmountByAcademyAndMonth(academyId, currentMonthKey),
+      // Distinct students — a two-batch student is one human, not two presences.
+      this.attendanceRepo.countDistinctStudentsPresentByAcademyAndDate(academyId, today),
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
       this.feeDueRepo.sumLateFeeCollectedByAcademyAndMonth(academyId, currentMonthKey),
       this.feeDueRepo.countOverdueByAcademy(academyId, today),

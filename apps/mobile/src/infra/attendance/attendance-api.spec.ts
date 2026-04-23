@@ -39,24 +39,26 @@ describe('attendance-api', () => {
   });
 
   describe('markAttendance', () => {
-    it('sends PUT with student ID, date, and status', async () => {
+    it('sends PUT with student ID, batchId, date, and status', async () => {
       mockApiPut.mockResolvedValue(ok({}));
 
-      await markAttendance('s1', '2026-03-04', 'ABSENT');
+      await markAttendance('s1', 'b1', '2026-03-04', 'ABSENT');
 
       expect(mockApiPut).toHaveBeenCalledWith('/api/v1/attendance/students/s1?date=2026-03-04', {
+        batchId: 'b1',
         status: 'ABSENT',
       });
     });
   });
 
   describe('bulkSetAbsences', () => {
-    it('sends PUT to bulk endpoint with absent student IDs', async () => {
+    it('sends PUT to bulk endpoint with batchId + absent student IDs', async () => {
       mockApiPut.mockResolvedValue(ok({}));
 
-      await bulkSetAbsences('2026-03-04', ['s1', 's2']);
+      await bulkSetAbsences('b1', '2026-03-04', ['s1', 's2']);
 
       expect(mockApiPut).toHaveBeenCalledWith('/api/v1/attendance/students/bulk?date=2026-03-04', {
+        batchId: 'b1',
         absentStudentIds: ['s1', 's2'],
       });
     });

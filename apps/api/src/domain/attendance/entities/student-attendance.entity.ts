@@ -2,12 +2,17 @@ import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields } from '@shared/kernel';
 
 /**
- * Represents a PRESENT record for a student on a given date.
- * If no record exists for (academyId, studentId, date), the student is ABSENT.
+ * Represents a PRESENT record for a student, in a specific batch, on a date.
+ * Absence is implicit: no record for (academyId, studentId, batchId, date) =
+ * the student was ABSENT from that batch's session that day.
+ *
+ * A student in two batches (morning + evening) has up to two records per day —
+ * one per batch — letting us track each session independently.
  */
 export interface StudentAttendanceProps {
   academyId: string;
   studentId: string;
+  batchId: string;
   date: string; // YYYY-MM-DD (IST local date)
   markedByUserId: string;
   audit: AuditFields;
@@ -22,12 +27,14 @@ export class StudentAttendance extends Entity<StudentAttendanceProps> {
     id: string;
     academyId: string;
     studentId: string;
+    batchId: string;
     date: string;
     markedByUserId: string;
   }): StudentAttendance {
     return new StudentAttendance(new UniqueId(params.id), {
       academyId: params.academyId,
       studentId: params.studentId,
+      batchId: params.batchId,
       date: params.date,
       markedByUserId: params.markedByUserId,
       audit: createAuditFields(),
@@ -44,6 +51,10 @@ export class StudentAttendance extends Entity<StudentAttendanceProps> {
 
   get studentId(): string {
     return this.props.studentId;
+  }
+
+  get batchId(): string {
+    return this.props.batchId;
   }
 
   get date(): string {

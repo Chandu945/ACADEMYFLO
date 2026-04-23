@@ -20,12 +20,14 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
       {
         academyId: record.academyId,
         studentId: record.studentId,
+        batchId: record.batchId,
         date: record.date,
       },
       {
         _id: record.id.toString(),
         academyId: record.academyId,
         studentId: record.studentId,
+        batchId: record.batchId,
         date: record.date,
         markedByUserId: record.markedByUserId,
         version: record.audit.version,
@@ -34,24 +36,44 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     );
   }
 
-  async deleteByAcademyStudentDate(
+  async deleteByAcademyStudentBatchDate(
     academyId: string,
     studentId: string,
+    batchId: string,
     date: string,
   ): Promise<void> {
-    await this.model.deleteOne({ academyId, studentId, date }, { session: getTransactionSession() });
+    await this.model.deleteOne(
+      { academyId, studentId, batchId, date },
+      { session: getTransactionSession() },
+    );
   }
 
-  async findByAcademyStudentDate(
+  async findByAcademyStudentBatchDate(
     academyId: string,
     studentId: string,
+    batchId: string,
     date: string,
   ): Promise<StudentAttendance | null> {
-    const doc = await this.model.findOne({ academyId, studentId, date }).lean().exec();
+    const doc = await this.model
+      .findOne({ academyId, studentId, batchId, date })
+      .lean()
+      .exec();
     return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;
   }
 
-  async findPresentByAcademyAndDate(academyId: string, date: string): Promise<StudentAttendance[]> {
+  async findPresentByAcademyBatchAndDate(
+    academyId: string,
+    batchId: string,
+    date: string,
+  ): Promise<StudentAttendance[]> {
+    const docs = await this.model.find({ academyId, batchId, date }).lean().exec();
+    return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
+  }
+
+  async findPresentByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<StudentAttendance[]> {
     const docs = await this.model.find({ academyId, date }).lean().exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
@@ -94,7 +116,19 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     return this.model.countDocuments({ academyId, date });
   }
 
-  async deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
+  async countDistinctStudentsPresentByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number> {
+    // DB-side distinct so a two-batch student doesn't double the KPI.
+    const distinctIds = await this.model.distinct('studentId', { academyId, date });
+    return distinctIds.length;
+  }
+
+  async deleteAllByAcademyAndStudent(
+    academyId: string,
+    studentId: string,
+  ): Promise<number> {
     const res = await this.model.deleteMany(
       { academyId, studentId },
       { session: getTransactionSession() },
@@ -107,6 +141,7 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
       _id: string;
       academyId: string;
       studentId: string;
+      batchId: string;
       date: string;
       markedByUserId: string;
       createdAt: Date;
@@ -117,6 +152,7 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     return StudentAttendance.reconstitute(String(d._id), {
       academyId: d.academyId,
       studentId: d.studentId,
+      batchId: d.batchId,
       date: d.date,
       markedByUserId: d.markedByUserId,
       audit: {

@@ -115,16 +115,20 @@ export function OverdueStudentsScreen() {
       <View style={styles.summaryCard} testID="overdue-summary">
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconCircle, { backgroundColor: colors.warningLightBg }]}>
-              <AppIcon name="currency-inr" size={18} color={colors.warning} />
+            {/* Total overdue is the most attention-worthy stat — solid danger
+                red tile so it pops against the dark surface. */}
+            <View style={[styles.summaryIconCircle, { backgroundColor: colors.danger }]}>
+              <AppIcon name="currency-inr" size={18} color="#FFFFFF" />
             </View>
             <Text style={styles.summaryLabel}>Total Overdue</Text>
             <Text style={styles.summaryValue}>{formatCurrency(data.totalOverdueAmount)}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <View style={[styles.summaryIconCircle, { backgroundColor: colors.warningBg }]}>
-              <AppIcon name="clock-alert-outline" size={18} color={colors.warning} />
+            {/* Late fees use solid amber — secondary attention, related to
+                overdue but a different metric. */}
+            <View style={[styles.summaryIconCircle, { backgroundColor: colors.warning }]}>
+              <AppIcon name="clock-alert-outline" size={18} color="#FFFFFF" />
             </View>
             <Text style={styles.summaryLabel}>Late Fees</Text>
             <Text style={styles.summaryValue}>{formatCurrency(data.totalLateFees)}</Text>

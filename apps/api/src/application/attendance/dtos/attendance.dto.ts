@@ -12,14 +12,29 @@ export interface DailyAttendanceReportDto {
   absentStudents: { studentId: string; fullName: string }[];
 }
 
+export interface StudentBatchAttendanceBreakdown {
+  batchId: string;
+  batchName: string;
+  presentCount: number;
+  expectedCount: number;
+  presentDates: string[];
+  absentDates: string[];
+}
+
 export interface StudentMonthlyAttendanceDto {
   studentId: string;
   month: string;
+  /** Dates where the student missed at least one scheduled session. */
   absentDates: string[];
   holidayDates: string[];
+  /** Total session-attendances across all batches the student is in. */
   presentCount: number;
+  /** Total expected sessions minus presentCount (session-level absences). */
   absentCount: number;
+  /** Sum across batches of scheduled-days-in-month minus holidays-on-scheduled-days. */
+  expectedCount: number;
   holidayCount: number;
+  perBatch: StudentBatchAttendanceBreakdown[];
 }
 
 export interface MonthlyAttendanceSummaryItem {

@@ -34,9 +34,16 @@ import {
   StudentAttendanceSchema,
 } from '@infrastructure/database/schemas/student-attendance.schema';
 import { HolidayModel, HolidaySchema } from '@infrastructure/database/schemas/holiday.schema';
+import {
+  StudentBatchModel,
+  StudentBatchSchema,
+} from '@infrastructure/database/schemas/student-batch.schema';
+import { BatchModel, BatchSchema } from '@infrastructure/database/schemas/batch.schema';
 
 // Repository implementations
 import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
+import { MongoStudentBatchRepository } from '@infrastructure/repositories/mongo-student-batch.repository';
+import { MongoBatchRepository } from '@infrastructure/repositories/mongo-batch.repository';
 import { MongoFeePaymentRepository } from '@infrastructure/repositories/mongo-fee-payment.repository';
 import { MongoFeeDueRepository } from '@infrastructure/repositories/mongo-fee-due.repository';
 import { MongoStudentRepository } from '@infrastructure/repositories/mongo-student.repository';
@@ -56,6 +63,10 @@ import { STUDENT_REPOSITORY } from '@domain/student/ports/student.repository';
 import { TRANSACTION_LOG_REPOSITORY } from '@domain/fee/ports/transaction-log.repository';
 import { STUDENT_ATTENDANCE_REPOSITORY } from '@domain/attendance/ports/student-attendance.repository';
 import { HOLIDAY_REPOSITORY } from '@domain/attendance/ports/holiday.repository';
+import { STUDENT_BATCH_REPOSITORY } from '@domain/batch/ports/student-batch.repository';
+import { BATCH_REPOSITORY } from '@domain/batch/ports/batch.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
 import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
@@ -134,6 +145,8 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
       { name: HolidayModel.name, schema: HolidaySchema },
       { name: PaymentRequestModel.name, schema: PaymentRequestSchema },
       { name: AcademyModel.name, schema: AcademySchema },
+      { name: StudentBatchModel.name, schema: StudentBatchSchema },
+      { name: BatchModel.name, schema: BatchSchema },
     ]),
   ],
   controllers: [
@@ -154,6 +167,8 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     { provide: HOLIDAY_REPOSITORY, useClass: MongoHolidayRepository },
     { provide: PAYMENT_REQUEST_REPOSITORY, useClass: MongoPaymentRequestRepository },
     { provide: ACADEMY_REPOSITORY, useClass: MongoAcademyRepository },
+    { provide: STUDENT_BATCH_REPOSITORY, useClass: MongoStudentBatchRepository },
+    { provide: BATCH_REPOSITORY, useClass: MongoBatchRepository },
     { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     { provide: CLOCK_PORT, useClass: SystemClock },
@@ -210,13 +225,26 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         attendanceRepo: StudentAttendanceRepository,
         holidayRepo: HolidayRepository,
         feeDueRepo: FeeDueRepository,
-      ) => new GetMyChildrenUseCase(linkRepo, studentRepo, attendanceRepo, holidayRepo, feeDueRepo),
+        sbr: StudentBatchRepository,
+        br: BatchRepository,
+      ) =>
+        new GetMyChildrenUseCase(
+          linkRepo,
+          studentRepo,
+          attendanceRepo,
+          holidayRepo,
+          feeDueRepo,
+          sbr,
+          br,
+        ),
       inject: [
         PARENT_STUDENT_LINK_REPOSITORY,
         STUDENT_REPOSITORY,
         STUDENT_ATTENDANCE_REPOSITORY,
         HOLIDAY_REPOSITORY,
         FEE_DUE_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+        BATCH_REPOSITORY,
       ],
     },
     {
@@ -226,8 +254,18 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         attendanceRepo: StudentAttendanceRepository,
         holidayRepo: HolidayRepository,
         studentRepo: StudentRepository,
-      ) => new GetChildAttendanceUseCase(linkRepo, attendanceRepo, holidayRepo, studentRepo),
-      inject: [PARENT_STUDENT_LINK_REPOSITORY, STUDENT_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY, STUDENT_REPOSITORY],
+        sbr: StudentBatchRepository,
+        br: BatchRepository,
+      ) =>
+        new GetChildAttendanceUseCase(linkRepo, attendanceRepo, holidayRepo, studentRepo, sbr, br),
+      inject: [
+        PARENT_STUDENT_LINK_REPOSITORY,
+        STUDENT_ATTENDANCE_REPOSITORY,
+        HOLIDAY_REPOSITORY,
+        STUDENT_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+        BATCH_REPOSITORY,
+      ],
     },
     {
       provide: 'GET_CHILD_FEES_USE_CASE',

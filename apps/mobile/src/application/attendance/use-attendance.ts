@@ -117,6 +117,16 @@ export function useAttendance(
     (studentId: string) => {
       if (isHoliday) return;
       if (pendingTogglesRef.current.has(studentId)) return;
+      if (!batchId) {
+        // Attendance is recorded per (student, batch, date). Without a batch
+        // we don't know which session to mark, so block the toggle and tell
+        // the user to pick a batch first.
+        setError({
+          code: 'VALIDATION',
+          message: 'Pick a batch before marking attendance',
+        });
+        return;
+      }
 
       pendingTogglesRef.current.add(studentId);
 
@@ -146,7 +156,7 @@ export function useAttendance(
       const capturedPrevious = previousStatus;
       const capturedNew = newStatus;
 
-      markAttendanceUseCase({ attendanceApi }, studentId, date, capturedNew)
+      markAttendanceUseCase({ attendanceApi }, studentId, batchId, date, capturedNew)
         .then((result) => {
           if (!mountedRef.current) return;
           if (!result.ok) {
@@ -187,7 +197,7 @@ export function useAttendance(
           pendingTogglesRef.current.delete(studentId);
         });
     },
-    [isHoliday, attendanceApi, date],
+    [isHoliday, attendanceApi, date, batchId],
   );
 
   useEffect(() => {

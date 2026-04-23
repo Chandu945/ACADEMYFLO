@@ -6,8 +6,11 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
-import { isValidMonthKey, getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
+import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
+import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
 import { AttendanceErrors } from '../../common/errors';
 import type { MonthlyAttendanceSummaryItem } from '../dtos/attendance.dto';
 import type { UserRole } from '@academyflo/contracts';
@@ -37,6 +40,8 @@ export class GetMonthlyAttendanceSummaryUseCase {
     private readonly studentRepo: StudentRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
+    private readonly studentBatchRepo: StudentBatchRepository,
+    private readonly batchRepo: BatchRepository,
   ) {}
 
   async execute(
@@ -56,39 +61,65 @@ export class GetMonthlyAttendanceSummaryUseCase {
       return err(AttendanceErrors.academyRequired());
     }
 
-    // Get ACTIVE students paginated
     const { students, total } = await this.studentRepo.list(
       { academyId: actor.academyId, status: 'ACTIVE', search: input.search },
       input.page,
       input.pageSize,
     );
+    const studentIds = students.map((s) => s.id.toString());
 
-    // Get all present records and holidays for the month in bulk
     const [allPresent, holidays] = await Promise.all([
       this.attendanceRepo.findPresentByAcademyAndMonth(actor.academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(actor.academyId, input.month),
     ]);
 
-    const holidayCount = holidays.length;
-    const holidayDateSet = new Set(holidays.map((h) => h.date));
-    const daysInMonth = getDaysInMonth(input.month);
+    const holidayDates = holidays.map((h) => h.date);
+    const holidayCount = holidayDates.length;
 
-    // Build present count and overlap count per student (records now mean PRESENT)
-    const presentCountMap = new Map<string, number>();
-    const overlapCountMap = new Map<string, number>();
+    // Per-page enrollments + the matching batches, batched to avoid N+1.
+    const enrollmentsByStudent = new Map<string, string[]>();
+    const allBatchIds = new Set<string>();
+    await Promise.all(
+      studentIds.map(async (sid) => {
+        const enrollments = await this.studentBatchRepo.findByStudentId(sid);
+        const batchIds = enrollments.map((e) => e.batchId);
+        enrollmentsByStudent.set(sid, batchIds);
+        for (const id of batchIds) allBatchIds.add(id);
+      }),
+    );
+    const batches =
+      allBatchIds.size > 0 ? await this.batchRepo.findByIds([...allBatchIds]) : [];
+    const batchById = new Map(batches.map((b) => [b.id.toString(), b]));
+
+    // Cache scheduledDatesInMonth per batch to avoid recomputing per student.
+    const expectedDaysCountByBatch = new Map<string, number>();
+    for (const batch of batches) {
+      expectedDaysCountByBatch.set(
+        batch.id.toString(),
+        scheduledDatesInMonth(input.month, batch.days, holidayDates).length,
+      );
+    }
+
+    // Count present sessions per student (each record = one session-attendance).
+    const presentCountByStudent = new Map<string, number>();
     for (const record of allPresent) {
-      presentCountMap.set(record.studentId, (presentCountMap.get(record.studentId) ?? 0) + 1);
-      if (holidayDateSet.has(record.date)) {
-        overlapCountMap.set(record.studentId, (overlapCountMap.get(record.studentId) ?? 0) + 1);
-      }
+      presentCountByStudent.set(
+        record.studentId,
+        (presentCountByStudent.get(record.studentId) ?? 0) + 1,
+      );
     }
 
     const data: MonthlyAttendanceSummaryItem[] = students.map((s) => {
-      const presentCount = presentCountMap.get(s.id.toString()) ?? 0;
-      const overlapCount = overlapCountMap.get(s.id.toString()) ?? 0;
-      const absentCount = Math.max(0, daysInMonth - presentCount - holidayCount + overlapCount);
+      const sid = s.id.toString();
+      const batchIds = enrollmentsByStudent.get(sid) ?? [];
+      const expectedSessions = batchIds.reduce(
+        (sum, bid) => sum + (batchById.has(bid) ? expectedDaysCountByBatch.get(bid) ?? 0 : 0),
+        0,
+      );
+      const presentCount = presentCountByStudent.get(sid) ?? 0;
+      const absentCount = Math.max(0, expectedSessions - presentCount);
       return {
-        studentId: s.id.toString(),
+        studentId: sid,
         fullName: s.fullName,
         presentCount,
         absentCount,

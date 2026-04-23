@@ -190,6 +190,19 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     return result[0]?.total ?? 0;
   }
 
+  async sumUnpaidAmountByAcademyAndMonth(
+    academyId: string,
+    monthKey: string,
+  ): Promise<number> {
+    const result = await this.model
+      .aggregate<{ total: number }>([
+        { $match: { academyId, monthKey, status: { $in: ['UPCOMING', 'DUE'] } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ])
+      .exec();
+    return result[0]?.total ?? 0;
+  }
+
   async countDistinctUnpaidStudentsByAcademyAndMonth(
     academyId: string,
     monthKey: string,

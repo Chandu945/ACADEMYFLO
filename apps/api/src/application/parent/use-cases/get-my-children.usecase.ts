@@ -6,8 +6,10 @@ import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-st
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
-import { getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
+import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
 import { ParentErrors } from '../../common/errors';
 import type { ChildSummaryDto } from '../dtos/parent.dto';
 import type { UserRole } from '@academyflo/contracts';
@@ -24,6 +26,8 @@ export class GetMyChildrenUseCase {
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
     private readonly feeDueRepo: FeeDueRepository,
+    private readonly studentBatchRepo: StudentBatchRepository,
+    private readonly batchRepo: BatchRepository,
   ) {}
 
   async execute(input: GetMyChildrenInput): Promise<Result<ChildSummaryDto[], AppError>> {
@@ -36,41 +40,54 @@ export class GetMyChildrenUseCase {
     const studentIds = links.map((l) => l.studentId);
     const students = await this.studentRepo.findByIds(studentIds);
 
-    // Current month attendance percentage
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const daysInMonth = getDaysInMonth(currentMonth);
 
-    // Build academyId set from links for holiday loading
+    // Pre-load holidays per academy (one cache key per academy in scope).
     const academyIds = [...new Set(links.map((l) => l.academyId))];
-    const holidaysByAcademy = new Map<string, number>();
+    const holidayDatesByAcademy = new Map<string, string[]>();
     await Promise.all(
       academyIds.map(async (aid) => {
         const holidays = await this.holidayRepo.findByAcademyAndMonth(aid, currentMonth);
-        holidaysByAcademy.set(aid, holidays.length);
+        holidayDatesByAcademy.set(aid, holidays.map((h) => h.date));
       }),
     );
 
-    // Map studentId -> academyId from links
     const studentAcademy = new Map(links.map((l) => [l.studentId, l.academyId]));
 
     const summaries: ChildSummaryDto[] = await Promise.all(
       students.map(async (s) => {
         const sid = s.id.toString();
         const academyId = studentAcademy.get(sid) ?? s.academyId;
+        const holidayDates = holidayDatesByAcademy.get(academyId) ?? [];
         let currentMonthAttendancePercent: number | null = null;
 
         try {
-          const absentRecords = await this.attendanceRepo.findPresentByAcademyStudentAndMonth(
-            academyId,
-            sid,
-            currentMonth,
-          );
-          const holidayCount = holidaysByAcademy.get(academyId) ?? 0;
-          const present = Math.max(0, daysInMonth - absentRecords.length - holidayCount);
-          currentMonthAttendancePercent = Math.round((present / daysInMonth) * 100);
+          const [presentRecords, enrollments] = await Promise.all([
+            this.attendanceRepo.findPresentByAcademyStudentAndMonth(
+              academyId,
+              sid,
+              currentMonth,
+            ),
+            this.studentBatchRepo.findByStudentId(sid),
+          ]);
+
+          if (enrollments.length > 0) {
+            const batches = await this.batchRepo.findByIds(enrollments.map((e) => e.batchId));
+            const expectedSessions = batches.reduce(
+              (sum, b) => sum + scheduledDatesInMonth(currentMonth, b.days, holidayDates).length,
+              0,
+            );
+            if (expectedSessions > 0) {
+              currentMonthAttendancePercent = Math.round(
+                (presentRecords.length / expectedSessions) * 100,
+              );
+            } else {
+              currentMonthAttendancePercent = null;
+            }
+          }
         } catch {
-          // If attendance data unavailable, leave as null
+          // If attendance/enrollment data unavailable, leave as null.
         }
 
         let currentMonthFeeDueId: string | null = null;

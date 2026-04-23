@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { View, FlatList, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import type { AppError } from '../../../domain/common/errors';
 import { ownerMarkPaidUseCase } from '../../../application/fees/use-cases/owner-mark-paid.usecase';
@@ -9,7 +9,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { FeeDueRow } from '../../components/fees/FeeDueRow';
-import { spacing, listDefaults } from '../../theme';
+import { spacing, fontSizes, fontWeights, listDefaults } from '../../theme';
 import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -42,6 +42,7 @@ export function UnpaidDuesScreen({
   studentNameMap,
   loadingMore,
   onEndReached,
+  total,
   skeletonCount = 5,
 }: UnpaidDuesScreenProps) {
   const { colors } = useTheme();
@@ -137,6 +138,15 @@ export function UnpaidDuesScreen({
   const handleScrollBeginDrag = useCallback(() => {
     userScrolledRef.current = true;
   }, []);
+  // onScrollBeginDrag only fires on touch drags. On react-native-web a mouse
+  // wheel scroll bypasses it, which kept the gate closed and blocked page 2
+  // from ever loading. onScroll fires for every scroll source (wheel, touch,
+  // trackpad, programmatic), so we trip the gate once real movement happens.
+  const handleScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    if (!userScrolledRef.current && e.nativeEvent.contentOffset.y > 4) {
+      userScrolledRef.current = true;
+    }
+  }, []);
   const handleEndReached = useCallback(() => {
     if (userScrolledRef.current && onEndReached) onEndReached();
   }, [onEndReached]);
@@ -159,6 +169,12 @@ export function UnpaidDuesScreen({
     );
   }
 
+  // The header makes the dashboard ↔ list relationship obvious. Without it,
+  // a user seeing page 1 (20 rows) can't tell it matches the "39 Due" KPI.
+  const shownCount = visibleItems.length;
+  const headerTotal = total ?? shownCount;
+  const allLoaded = shownCount >= headerTotal && headerTotal > 0;
+
   return (
     <View style={styles.container}>
       {visibleItems.length === 0 ? (
@@ -175,14 +191,38 @@ export function UnpaidDuesScreen({
           }
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.3}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           onScrollBeginDrag={handleScrollBeginDrag}
           removeClippedSubviews
           windowSize={11}
           maxToRenderPerBatch={5}
+          ListHeaderComponent={
+            headerTotal > 0 ? (
+              <View style={styles.countHeader} testID="unpaid-count-header">
+                <Text style={[styles.countHeaderText, { color: colors.textSecondary }]}>
+                  {allLoaded
+                    ? `${headerTotal} unpaid`
+                    : `Showing ${shownCount} of ${headerTotal} unpaid`}
+                </Text>
+                {!allLoaded && (
+                  <Text style={[styles.countHeaderHint, { color: colors.textDisabled }]}>
+                    Scroll for more
+                  </Text>
+                )}
+              </View>
+            ) : null
+          }
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.footer}>
                 <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : allLoaded && shownCount > 5 ? (
+              <View style={styles.footer}>
+                <Text style={[styles.endOfList, { color: colors.textDisabled }]}>
+                  End of list
+                </Text>
               </View>
             ) : null
           }
@@ -221,5 +261,30 @@ const styles = StyleSheet.create({
   footer: {
     paddingVertical: spacing.md,
     alignItems: 'center' as const,
+  },
+  countHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
+  countHeaderText: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.semibold,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+  },
+  countHeaderHint: {
+    fontSize: 10,
+    fontWeight: fontWeights.medium,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+  },
+  endOfList: {
+    fontSize: 11,
+    fontWeight: fontWeights.medium,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
   },
 });

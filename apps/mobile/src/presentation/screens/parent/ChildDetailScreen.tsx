@@ -243,13 +243,10 @@ export function ChildDetailScreen() {
     );
   }
 
-  const totalDays =
-    attendance
-      ? attendance.presentCount + attendance.absentCount + attendance.holidayCount
-      : 0;
+  // Session-level: % of expected sessions actually attended across all batches.
   const attendancePct =
-    totalDays > 0
-      ? Math.round((attendance!.presentCount / ((totalDays - attendance!.holidayCount) || 1)) * 100)
+    attendance && attendance.expectedCount > 0
+      ? Math.round((attendance.presentCount / attendance.expectedCount) * 100)
       : 0;
 
   const totalDue = fees
@@ -341,6 +338,29 @@ export function ChildDetailScreen() {
                 holidayDates={attendance.holidayDates}
               />
             </View>
+
+            {/* Per-batch breakdown — only rendered for multi-batch students */}
+            {attendance.perBatch.length > 1 && (
+              <View style={[styles.sectionCard, { marginTop: spacing.sm }]}>
+                <Text style={[styles.sectionTitle, { marginBottom: spacing.sm, fontSize: fontSizes.sm }]}>
+                  By Session
+                </Text>
+                {attendance.perBatch.map((b) => {
+                  const pct = b.expectedCount > 0
+                    ? Math.round((b.presentCount / b.expectedCount) * 100)
+                    : 0;
+                  return (
+                    <View key={b.batchId} style={styles.batchRow}>
+                      <Text style={styles.batchName} numberOfLines={1}>{b.batchName}</Text>
+                      <Text style={styles.batchCount}>
+                        {b.presentCount}/{b.expectedCount}
+                      </Text>
+                      <Text style={styles.batchPct}>{pct}%</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </>
         ) : (
           <View style={styles.sectionCard}>
@@ -694,5 +714,29 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.xs,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  batchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+  },
+  batchName: {
+    flex: 1,
+    fontSize: fontSizes.sm,
+    color: colors.text,
+  },
+  batchCount: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    minWidth: 40,
+    textAlign: 'right',
+  },
+  batchPct: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+    minWidth: 38,
+    textAlign: 'right',
   },
 });

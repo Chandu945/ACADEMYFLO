@@ -23,11 +23,13 @@ export type DailyAttendancePage = {
 
 export type MarkAttendanceResult = {
   studentId: string;
+  batchId: string;
   date: string;
   status: AttendanceStatus;
 };
 
 export type BulkSetAbsencesResult = {
+  batchId: string;
   date: string;
   absentCount: number;
 };
@@ -58,6 +60,15 @@ export type MonthlySummaryPage = {
   };
 };
 
+export type StudentBatchAttendanceBreakdown = {
+  batchId: string;
+  batchName: string;
+  presentCount: number;
+  expectedCount: number;
+  presentDates: string[];
+  absentDates: string[];
+};
+
 export type StudentMonthlyDetail = {
   studentId: string;
   month: string;
@@ -65,7 +76,9 @@ export type StudentMonthlyDetail = {
   holidayDates: string[];
   presentCount: number;
   absentCount: number;
+  expectedCount: number;
   holidayCount: number;
+  perBatch: StudentBatchAttendanceBreakdown[];
 };
 
 export type HolidayItem = {

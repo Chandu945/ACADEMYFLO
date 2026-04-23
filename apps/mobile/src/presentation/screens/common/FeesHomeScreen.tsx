@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   Keyboard,
   Modal,
@@ -18,7 +19,8 @@ import { useFees } from '../../../application/fees/use-fees';
 import { listUnpaidDues, listPaidDues } from '../../../infra/fees/fees-api';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
-import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
+import { getBatchesCached } from '../../../infra/batch/batch-cache';
+import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
 import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
@@ -51,6 +53,48 @@ function formatMonthLabel(monthStr: string): string {
   return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
 
+type FilterChipProps = {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  testID: string;
+  styles: ReturnType<typeof makeStyles>;
+  colors: Colors;
+};
+
+// Wrapped chip used in the Fees filter modal — mirrors the Audit-logs filter
+// chip so all filter modals share the same look.
+function FilterChip({ label, active, onPress, testID, styles, colors }: FilterChipProps) {
+  return (
+    <TouchableOpacity
+      style={[styles.batchChip, active && styles.batchChipActive]}
+      onPress={onPress}
+      testID={testID}
+      activeOpacity={0.75}
+    >
+      {active ? (
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      {active && <AppIcon name="check" size={12} color="#FFFFFF" />}
+      <Text
+        style={[
+          styles.batchChipText,
+          active && styles.batchChipTextActive,
+          { color: active ? '#FFFFFF' : colors.text },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export function FeesHomeScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -73,6 +117,19 @@ export function FeesHomeScreen() {
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [selectedBatchName, setSelectedBatchName] = useState<string | null>(null);
   const [batchStudentIds, setBatchStudentIds] = useState<Set<string> | null>(null);
+  const [batches, setBatches] = useState<BatchListItem[]>([]);
+
+  // Load the batch list for the in-modal picker. Cached by `getBatchesCached`
+  // so revisiting the screen / opening the modal is instant after the first hit.
+  useEffect(() => {
+    let cancelled = false;
+    getBatchesCached().then((items) => {
+      if (!cancelled) setBatches(items);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const mountedRef = useRef(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
@@ -340,39 +397,83 @@ export function FeesHomeScreen() {
       {/* ── Active Filter Pills (visible when panel closed) ── */}
       {!showFilters && showSearchAndFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />}
 
-      {/* ── Filter Modal ──────────────────────────────── */}
+      {/* ── Filter Modal (centered dialog) ────────────── */}
       {(() => {
         if (!showSearchAndFilters) return null;
         const filterContent = (
           <View style={styles.filterModalOverlay}>
-            <TouchableOpacity style={styles.filterModalBackdrop} activeOpacity={1} onPress={() => setShowFilters(false)} />
+            <TouchableOpacity
+              style={styles.filterModalBackdrop}
+              activeOpacity={1}
+              onPress={() => setShowFilters(false)}
+            />
             <View style={styles.filterModalSheet}>
-              <View style={styles.filterModalHandle} />
               <View style={styles.filterModalHeader}>
-                <Text style={styles.filterModalTitle}>Filters</Text>
+                <View style={styles.filterModalIconWrap}>
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name="filter-variant" size={20} color="#FFFFFF" />
+                </View>
+                <View style={styles.filterModalTitleWrap}>
+                  <Text style={styles.filterModalTitle}>Filter Fees</Text>
+                  <Text style={styles.filterModalSubtitle}>
+                    Pick a batch to narrow the results
+                  </Text>
+                </View>
                 {selectedBatchId !== null && (
-                  <TouchableOpacity onPress={clearAllFilters} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={styles.filterModalClear}>Clear All</Text>
+                  <TouchableOpacity
+                    onPress={clearAllFilters}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.filterModalClear}>Clear</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
-              <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
-              <SegmentedControl
-                segments={segments}
-                selectedIndex={selectedSegment}
-                onSelect={handleSegmentChange}
-                testID="fees-segments"
-              />
-              <View style={styles.filterCard}>
-                <View style={styles.filterCardHeader}>
-                  <AppIcon name="account-group-outline" size={15} color={colors.textSecondary} />
-                  <Text style={styles.filterCardTitle}>Batch</Text>
-                </View>
-                <BatchFilterBar selectedBatchId={selectedBatchId} onChange={handleBatchChange} />
+              <View style={styles.filterDivider} />
+
+              <View style={styles.filterSectionLabelRow}>
+                <AppIcon name="account-group-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.filterCardTitle}>Batch</Text>
               </View>
 
-              <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
+              {/* Wrapped chip grid — every batch visible at once, no horizontal
+                  scrolling. Scrollable container as a fallback for very long lists. */}
+              <ScrollView
+                style={styles.filterChipsScroll}
+                contentContainerStyle={styles.filterChipsWrap}
+                showsVerticalScrollIndicator={false}
+              >
+                <FilterChip
+                  active={selectedBatchId === null}
+                  onPress={() => handleBatchChange(null)}
+                  testID="fees-batch-all"
+                  styles={styles}
+                  colors={colors}
+                  label="All Batches"
+                />
+                {batches.map((batch) => (
+                  <FilterChip
+                    key={batch.id}
+                    active={selectedBatchId === batch.id}
+                    onPress={() => handleBatchChange(batch.id, batch.batchName)}
+                    testID={`fees-batch-${batch.id}`}
+                    styles={styles}
+                    colors={colors}
+                    label={batch.batchName}
+                  />
+                ))}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.filterApplyBtn}
+                onPress={() => setShowFilters(false)}
+                activeOpacity={0.85}
+              >
                 <LinearGradient
                   colors={[gradient.start, gradient.end]}
                   start={{ x: 0, y: 0 }}
@@ -387,21 +488,31 @@ export function FeesHomeScreen() {
 
         if (!showFilters) return null;
         if (Platform.OS === 'web') return filterContent;
-        return <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>{filterContent}</Modal>;
+        return (
+          <Modal
+            visible={showFilters}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowFilters(false)}
+            statusBarTranslucent
+          >
+            {filterContent}
+          </Modal>
+        );
       })()}
 
-      {/* ── Controls (always visible when filter panel is closed) ── */}
-      {!showFilters && (
-        <View style={styles.controlsSection}>
-          <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
-          <SegmentedControl
-            segments={segments}
-            selectedIndex={selectedSegment}
-            onSelect={handleSegmentChange}
-            testID="fees-segments"
-          />
-        </View>
-      )}
+      {/* ── Controls — always visible. The filter modal floats above this
+          content, so hiding the date/segment row would just create awkward
+          empty space behind the dialog. */}
+      <View style={styles.controlsSection}>
+        <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
+        <SegmentedControl
+          segments={segments}
+          selectedIndex={selectedSegment}
+          onSelect={handleSegmentChange}
+          testID="fees-segments"
+        />
+      </View>
 
       {selectedSegment === 0 && (
         <UnpaidDuesScreen
@@ -529,64 +640,109 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.xl + 4,
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
-    gap: spacing.md,
     width: '100%',
-    maxWidth: 400,
-  },
-  filterModalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
+    maxWidth: 420,
+    maxHeight: '85%',
   },
   filterModalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: spacing.md,
+  },
+  filterModalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterModalTitleWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   filterModalTitle: {
-    fontSize: fontSizes.xl,
+    fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    letterSpacing: -0.2,
+  },
+  filterModalSubtitle: {
+    marginTop: 2,
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
   },
   filterModalClear: {
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.bold,
     color: colors.danger,
   },
-  filterApplyBtn: {
-    overflow: 'hidden',
-    borderRadius: radius.xl,
-    paddingVertical: spacing.md + 2,
-    alignItems: 'center',
-    marginTop: spacing.sm,
+  filterDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
   },
-  filterApplyText: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: colors.white,
-  },
-  filterCard: {
-    backgroundColor: colors.bg,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-  },
-  filterCardHeader: {
+  filterSectionLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 6,
     marginBottom: spacing.sm,
   },
   filterCardTitle: {
     fontSize: fontSizes.xs,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.bold,
     color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  filterChipsScroll: {
+    maxHeight: 280,
+    flexGrow: 0,
+  },
+  filterChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs + 2,
+    paddingBottom: spacing.sm,
+  },
+  batchChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+    overflow: 'hidden',
+  },
+  batchChipActive: {
+    borderColor: 'transparent',
+  },
+  batchChipText: {
+    fontSize: 12,
+    fontWeight: fontWeights.semibold,
+    letterSpacing: 0.2,
+  },
+  batchChipTextActive: {
+    color: '#FFFFFF',
+  },
+  filterApplyBtn: {
+    overflow: 'hidden',
+    borderRadius: radius.full,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+  },
+  filterApplyText: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 
   /* ── Controls ──────────────────────────────────── */

@@ -35,6 +35,12 @@ export interface FeeDueRepository {
    */
   sumUnpaidAmountByAcademy(academyId: string): Promise<number>;
   /**
+   * DB-side SUM of unpaid fee amounts for a specific month. Used by the
+   * dashboard's Pending tile so the value tracks the picked month (past
+   * months without dues correctly show ₹0).
+   */
+  sumUnpaidAmountByAcademyAndMonth(academyId: string, monthKey: string): Promise<number>;
+  /**
    * DB-side DISTINCT-count of students with at least one unpaid fee
    * (UPCOMING or DUE) in the given month.
    */

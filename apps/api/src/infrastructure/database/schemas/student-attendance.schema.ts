@@ -4,8 +4,9 @@ import { type HydratedDocument } from 'mongoose';
 export type StudentAttendanceDocument = HydratedDocument<StudentAttendanceModel>;
 
 /**
- * ABSENT-only records: if no record exists for (academyId, studentId, date),
- * the student is considered PRESENT.
+ * PRESENT-only records keyed by (academy, student, batch, date).
+ * No record = the student was absent from that batch's session on that date.
+ * A two-session student in morning + evening batches has up to two records/day.
  */
 @Schema({
   collection: 'studentAttendance',
@@ -23,6 +24,9 @@ export class StudentAttendanceModel {
   studentId!: string;
 
   @Prop({ required: true })
+  batchId!: string;
+
+  @Prop({ required: true })
   date!: string; // YYYY-MM-DD
 
   @Prop({ required: true })
@@ -34,8 +38,14 @@ export class StudentAttendanceModel {
 
 export const StudentAttendanceSchema = SchemaFactory.createForClass(StudentAttendanceModel);
 
-// Unique: one absent record per (academy, student, date)
-StudentAttendanceSchema.index({ academyId: 1, studentId: 1, date: 1 }, { unique: true });
+// One present record per (academy, student, batch, date).
+StudentAttendanceSchema.index(
+  { academyId: 1, studentId: 1, batchId: 1, date: 1 },
+  { unique: true },
+);
 
-// Query: all absences for a given day
+// Day-level queries (e.g. "all present today" across batches).
 StudentAttendanceSchema.index({ academyId: 1, date: 1 });
+
+// Per-batch day queries (the marking screen filtered by batch).
+StudentAttendanceSchema.index({ academyId: 1, batchId: 1, date: 1 });

@@ -20,11 +20,13 @@ export const dailyAttendanceResponseSchema = z.object({
 
 export const markAttendanceResponseSchema = z.object({
   studentId: z.string(),
+  batchId: z.string(),
   date: z.string(),
   status: z.enum(['PRESENT', 'ABSENT']),
 });
 
 export const bulkSetAbsencesResponseSchema = z.object({
+  batchId: z.string(),
   date: z.string(),
   absentCount: z.number().int(),
 });
@@ -50,6 +52,15 @@ export const monthlySummaryItemSchema = z.object({
   holidayCount: z.number().int(),
 });
 
+export const studentBatchAttendanceBreakdownSchema = z.object({
+  batchId: z.string(),
+  batchName: z.string(),
+  presentCount: z.number().int(),
+  expectedCount: z.number().int(),
+  presentDates: z.array(z.string()),
+  absentDates: z.array(z.string()),
+});
+
 export const monthlySummaryResponseSchema = z.object({
   data: z.array(monthlySummaryItemSchema),
   meta: z.object({
@@ -67,7 +78,9 @@ export const studentMonthlyDetailResponseSchema = z.object({
   holidayDates: z.array(z.string()),
   presentCount: z.number().int(),
   absentCount: z.number().int(),
+  expectedCount: z.number().int().default(0),
   holidayCount: z.number().int(),
+  perBatch: z.array(studentBatchAttendanceBreakdownSchema).default([]),
 });
 
 export const monthDailyCountDaySchema = z.object({

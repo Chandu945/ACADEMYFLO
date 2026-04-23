@@ -183,13 +183,13 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
           <Text style={[styles.summaryValue, { color: INCOME_COLOR }]}>
             {formatCurrency(totalIncome)}
           </Text>
-          <Text style={styles.summaryLabel}>Income</Text>
+          <Text style={[styles.summaryLabel, { color: INCOME_COLOR }]}>Income</Text>
         </View>
         <View style={[styles.summaryItem, { backgroundColor: EXPENSE_BG }]}>
           <Text style={[styles.summaryValue, { color: EXPENSE_COLOR }]}>
             {formatCurrency(totalExpense)}
           </Text>
-          <Text style={styles.summaryLabel}>Expense</Text>
+          <Text style={[styles.summaryLabel, { color: EXPENSE_COLOR }]}>Expense</Text>
         </View>
         <View
           style={[
@@ -202,7 +202,11 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
           >
             {formatCurrency(Math.abs(netAmount))}
           </Text>
-          <Text style={styles.summaryLabel}>{isProfit ? 'Profit' : 'Loss'}</Text>
+          <Text
+            style={[styles.summaryLabel, { color: isProfit ? INCOME_COLOR : EXPENSE_COLOR }]}
+          >
+            {isProfit ? 'Profit' : 'Loss'}
+          </Text>
         </View>
       </View>
 
@@ -421,9 +425,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   summaryLabel: {
     fontSize: fontSizes.xs,
-    color: colors.textSecondary,
+    // Default color is intentionally overridden inline per-tile so each label
+    // matches its accent (INCOME_COLOR / EXPENSE_COLOR) and stays legible
+    // against the tinted tile background.
+    color: colors.text,
     marginTop: 2,
-    fontWeight: fontWeights.medium,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
   },
 
   /* ── Tooltip ────────────────────────────────────── */

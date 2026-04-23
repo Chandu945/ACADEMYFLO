@@ -47,9 +47,21 @@ function StatusBadge({ status, colors }: { status: string; colors: Colors }) {
     status === 'ACTIVE' ? colors.successBg : status === 'INACTIVE' ? colors.warningBg : colors.dangerBg;
   const textColor =
     status === 'ACTIVE' ? colors.successText : status === 'INACTIVE' ? colors.warningText : colors.dangerText;
+  const dotColor =
+    status === 'ACTIVE' ? colors.success : status === 'INACTIVE' ? colors.warning : colors.danger;
+  const borderColor =
+    status === 'ACTIVE'
+      ? colors.successBorder
+      : status === 'INACTIVE'
+        ? colors.warningBorder
+        : colors.dangerBorder;
 
   return (
-    <View style={[styles.badge, { backgroundColor: bgColor }]} accessibilityLabel={`Status: ${status}`}>
+    <View
+      style={[styles.badge, { backgroundColor: bgColor, borderColor }]}
+      accessibilityLabel={`Status: ${status}`}
+    >
+      <View style={[styles.badgeDot, { backgroundColor: dotColor }]} />
       <Text style={[styles.badgeText, { color: textColor }]}>{status}</Text>
     </View>
   );
@@ -201,7 +213,9 @@ export function StudentDetailScreen() {
             size={90}
             testID="student-detail-photo"
           />
-          <Text style={styles.studentName} accessibilityRole="header">{student.fullName}</Text>
+          <Text style={styles.studentName} accessibilityRole="header" numberOfLines={1}>
+            {student.fullName}
+          </Text>
           <StatusBadge status={student.status} colors={colors} />
         </View>
 
@@ -284,63 +298,51 @@ export function StudentDetailScreen() {
             </View>
           )}
 
-          {/* Phone tile */}
+          {/* Phone tile — info blue identity for "call this number" */}
           {student.guardian?.mobile && (
             <View style={styles.contactTile}>
-              <View style={[styles.contactTileIcon, { overflow: 'hidden' }]}>
-                <LinearGradient
-                  colors={[gradient.start, gradient.end]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
+              <View style={[styles.contactTileIcon, { backgroundColor: colors.info }]}>
                 <AppIcon name="phone-outline" size={20} color="#FFFFFF" />
               </View>
               <View style={styles.contactTileInfo}>
                 <Text style={styles.contactTileLabel}>Mobile</Text>
                 <Text style={styles.contactTileValue}>{student.guardian.mobile}</Text>
               </View>
-              <View style={styles.contactTileActions}>
-                <TouchableOpacity
-                  style={styles.callCircle}
-                  onPress={() => handleCall(student.guardian!.mobile)}
-                  accessibilityLabel={`Call guardian at ${student.guardian!.mobile}`}
-                  accessibilityRole="button"
-                  testID="call-guardian"
-                >
-                  <LinearGradient
-                    colors={[gradient.start, gradient.end]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <AppIcon name="phone" size={18} color={colors.white} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={[styles.contactActionPill, { backgroundColor: colors.info }]}
+                onPress={() => handleCall(student.guardian!.mobile)}
+                accessibilityLabel={`Call guardian at ${student.guardian!.mobile}`}
+                accessibilityRole="button"
+                testID="call-guardian"
+                activeOpacity={0.85}
+              >
+                <AppIcon name="phone" size={14} color="#FFFFFF" />
+                <Text style={styles.contactActionPillText}>Call</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* WhatsApp tile — uses mobileNumber or guardian mobile as fallback */}
+          {/* WhatsApp tile — brand-green identity, distinct from the call row */}
           {(student.mobileNumber || student.guardian?.mobile || student.whatsappNumber) && (
             <View style={styles.contactTile}>
-              <View style={[styles.contactTileIcon, { backgroundColor: colors.successBg }]}>
-                <AppIcon name="whatsapp" size={20} color="#25D366" />
+              <View style={[styles.contactTileIcon, { backgroundColor: '#25D366' }]}>
+                <AppIcon name="whatsapp" size={20} color="#FFFFFF" />
               </View>
               <View style={styles.contactTileInfo}>
                 <Text style={styles.contactTileLabel}>WhatsApp</Text>
                 <Text style={styles.contactTileValue}>{student.mobileNumber || student.guardian?.mobile || student.whatsappNumber}</Text>
               </View>
-              <View style={styles.contactTileActions}>
-                <TouchableOpacity
-                  style={styles.whatsappCircle}
-                  onPress={() => handleWhatsApp((student.mobileNumber || student.guardian?.mobile || student.whatsappNumber)!)}
-                  accessibilityLabel={`Open WhatsApp chat with ${student.fullName}`}
-                  accessibilityRole="button"
-                  testID="whatsapp-student"
-                >
-                  <AppIcon name="message-text-outline" size={18} color={colors.white} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={[styles.contactActionPill, { backgroundColor: '#25D366' }]}
+                onPress={() => handleWhatsApp((student.mobileNumber || student.guardian?.mobile || student.whatsappNumber)!)}
+                accessibilityLabel={`Open WhatsApp chat with ${student.fullName}`}
+                accessibilityRole="button"
+                testID="whatsapp-student"
+                activeOpacity={0.85}
+              >
+                <AppIcon name="message-text" size={14} color="#FFFFFF" />
+                <Text style={styles.contactActionPillText}>Chat</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -494,17 +496,30 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.bold,
     color: colors.text,
+    letterSpacing: -0.3,
     marginTop: spacing.sm,
+    textAlign: 'center',
   },
   badge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 5,
     borderRadius: radius.full,
+    borderWidth: 1,
     marginTop: spacing.sm,
   },
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 4,
+  },
   badgeText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
+    fontSize: 11,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
   },
   card: {
     backgroundColor: colors.surface,
@@ -701,27 +716,22 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.text,
     fontWeight: fontWeights.semibold,
   },
-  contactTileActions: {
+  // Action pill — labeled (icon + word) so the user knows exactly what
+  // happens, instead of two same-color circles that look like decoration.
+  contactActionPill: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  callCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 7,
+    borderRadius: radius.full,
     ...shadows.sm,
   },
-  whatsappCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#25D366',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
+  contactActionPillText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.3,
   },
   contactDetailRow: {
     flexDirection: 'row',

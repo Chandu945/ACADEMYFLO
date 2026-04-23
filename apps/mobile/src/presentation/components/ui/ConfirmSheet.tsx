@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { View, Text, Modal, Keyboard, StyleSheet } from 'react-native';
+import { View, Text, Modal, Keyboard, StyleSheet, Pressable } from 'react-native';
 
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { Button } from './Button';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,7 +32,15 @@ export function ConfirmSheet({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <Modal visible={visible} transparent animationType="fade" onShow={Keyboard.dismiss} onRequestClose={onCancel} testID={testID}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onShow={Keyboard.dismiss}
+      onRequestClose={onCancel}
+      statusBarTranslucent
+      testID={testID}
+    >
       <View
         style={styles.overlay}
         accessible
@@ -40,7 +48,15 @@ export function ConfirmSheet({
         accessibilityLabel={`${title}. ${message}`}
         accessibilityViewIsModal
       >
-        <View style={styles.sheet}>
+        {/* Tap outside to dismiss — backdrop is a sibling press target so
+            taps on the dialog itself don't bubble to it. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={loading ? undefined : onCancel}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+        <View style={styles.dialog}>
           <Text style={styles.title} accessibilityRole="header">{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
@@ -75,13 +91,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: colors.overlay,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
   },
-  sheet: {
+  dialog: {
+    width: '100%',
+    maxWidth: 420,
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderRadius: radius.xl,
     padding: spacing.xl,
+    ...shadows.sm,
   },
   title: {
     fontSize: fontSizes.xl,
@@ -93,6 +113,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.base,
     color: colors.textSecondary,
     marginBottom: spacing.xl,
+    lineHeight: 22,
   },
   actions: {
     flexDirection: 'row',

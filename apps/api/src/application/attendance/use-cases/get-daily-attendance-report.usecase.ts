@@ -66,8 +66,10 @@ export class GetDailyAttendanceReportUseCase {
       input.date,
     );
 
-    // Build set of present student IDs
+    // Distinct students present in any batch today. With batch-scoped records
+    // a two-batch student would otherwise be counted twice in presentRecords.
     const presentSet = new Set(presentRecords.map((r) => r.studentId));
+    const distinctPresent = presentSet.size;
 
     // Absent students = all active students who do NOT have a present record
     const absentStudents: { studentId: string; fullName: string }[] = [];
@@ -80,8 +82,8 @@ export class GetDailyAttendanceReportUseCase {
     return ok({
       date: input.date,
       isHoliday: false,
-      presentCount: presentRecords.length,
-      absentCount: Math.max(0, totalActive - presentRecords.length),
+      presentCount: distinctPresent,
+      absentCount: Math.max(0, totalActive - distinctPresent),
       absentStudents,
     });
   }

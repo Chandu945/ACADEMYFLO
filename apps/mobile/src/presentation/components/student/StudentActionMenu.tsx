@@ -41,6 +41,7 @@ interface ActionItem {
   iconColor: string;
   iconName: string;
   ownerOnly?: boolean;
+  destructive?: boolean;
   onPress: () => void;
 }
 
@@ -238,15 +239,15 @@ export function StudentActionMenu({
     {
       key: 'edit',
       title: 'Edit Student',
-      subtitle: 'You can edit student details here',
-      iconColor: colors.info,
+      subtitle: 'Update name, contact, fees and more',
+      iconColor: colors.primary,
       iconName: 'pencil-outline',
       onPress: () => { onClose(); onEdit(); },
     },
     {
       key: 'batch',
       title: 'Assign Batch',
-      subtitle: 'You can assign new batch here',
+      subtitle: 'Move student to a different batch',
       iconColor: colors.info,
       iconName: 'account-group-outline',
       onPress: () => { onClose(); onAssignBatch(); },
@@ -254,8 +255,10 @@ export function StudentActionMenu({
     {
       key: 'status',
       title: 'Close / Reactivate',
-      subtitle: 'Change student status (Active, Inactive, Left)',
-      iconColor: colors.danger,
+      // Status flips are reversible — amber instead of danger so it doesn't
+      // sit at the same visual weight as Delete below.
+      subtitle: 'Set Active, Inactive, or Left',
+      iconColor: colors.warning,
       iconName: 'swap-horizontal-circle-outline',
       ownerOnly: true,
       onPress: () => { onClose(); setShowStatusModal(true); },
@@ -263,7 +266,7 @@ export function StudentActionMenu({
     {
       key: 'invite-parent',
       title: 'Invite Parent',
-      subtitle: 'Create guardian login for this student',
+      subtitle: 'Create a guardian login for this student',
       iconColor: colors.success,
       iconName: 'account-plus-outline',
       ownerOnly: true,
@@ -271,29 +274,32 @@ export function StudentActionMenu({
     },
     {
       key: 'share',
-      title: 'Share Login Id And Password',
-      subtitle: 'Share login credentials with guardian',
+      title: 'Share Login & Password',
+      subtitle: 'Send credentials to the guardian',
       iconColor: colors.info,
       iconName: 'share-variant-outline',
       onPress: handleShareCredentials,
     },
     {
-      key: 'delete',
-      title: 'Delete Student',
-      subtitle: 'You can delete student here',
-      iconColor: colors.danger,
-      iconName: 'delete-outline',
-      ownerOnly: true,
-      onPress: handleDelete,
-    },
-    {
       key: 'report',
       title: 'Generate Report',
-      subtitle: 'Generate student attendance & fee report',
-      iconColor: colors.success,
+      subtitle: 'Attendance & fee report as PDF',
+      iconColor: colors.primary,
       iconName: 'chart-bar',
       ownerOnly: true,
       onPress: () => handleGenerateDocument('report', 'Generating Report...'),
+    },
+    {
+      key: 'delete',
+      title: 'Delete Student',
+      subtitle: 'Permanently remove this student',
+      iconColor: colors.danger,
+      iconName: 'delete-outline',
+      ownerOnly: true,
+      // Pinned to the bottom so the destructive action is visually separated
+      // from the everyday actions above it.
+      destructive: true,
+      onPress: handleDelete,
     },
   ];
 
@@ -310,22 +316,42 @@ export function StudentActionMenu({
                 <Text style={styles.closeX}>✕</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.scroll}>
+            <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
               {visibleActions.map((action) => (
                 <TouchableOpacity
                   key={action.key}
-                  style={styles.actionRow}
+                  style={[
+                    styles.actionRow,
+                    action.destructive && styles.actionRowDestructive,
+                  ]}
                   onPress={action.onPress}
+                  activeOpacity={0.7}
                   testID={`action-${action.key}`}
                 >
-                  <View style={[styles.iconContainer, { backgroundColor: action.iconColor + '20' }]}>
-                    
-                    <AppIcon name={action.iconName} size={22} color={action.iconColor} />
+                  <View
+                    style={[
+                      styles.iconContainer,
+                      { backgroundColor: action.iconColor },
+                    ]}
+                  >
+                    <AppIcon name={action.iconName} size={20} color="#FFFFFF" />
                   </View>
                   <View style={styles.actionText}>
-                    <Text style={styles.actionTitle}>{action.title}</Text>
+                    <Text
+                      style={[
+                        styles.actionTitle,
+                        action.destructive && { color: action.iconColor },
+                      ]}
+                    >
+                      {action.title}
+                    </Text>
                     <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
                   </View>
+                  <AppIcon
+                    name="chevron-right"
+                    size={18}
+                    color={colors.textDisabled}
+                  />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -500,11 +526,42 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   headerTitle: { fontSize: fontSizes.xl, fontWeight: fontWeights.bold, color: colors.text, letterSpacing: -0.3 },
   closeX: { fontSize: fontSizes.xl, color: colors.textSecondary, padding: spacing.xs },
   scroll: { paddingHorizontal: spacing.base, paddingBottom: spacing.xl },
-  actionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  iconContainer: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  actionText: { flex: 1, marginLeft: spacing.md },
-  actionTitle: { fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.text },
-  actionSubtitle: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 2 },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  // Subtle danger tint behind the destructive row so users can spot it
+  // without it shouting like a primary CTA.
+  actionRowDestructive: {
+    backgroundColor: colors.dangerBg,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.sm,
+    marginTop: spacing.sm,
+    borderBottomWidth: 0,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: { flex: 1, minWidth: 0 },
+  actionTitle: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    letterSpacing: -0.1,
+  },
+  actionSubtitle: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   // Status modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.xl },
   modalContent: { backgroundColor: colors.bg, borderRadius: radius.lg, padding: spacing.xl },

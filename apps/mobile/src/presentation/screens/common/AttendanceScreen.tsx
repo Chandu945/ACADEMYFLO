@@ -9,8 +9,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   Keyboard,
-  Modal,
-  Platform,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -31,7 +29,12 @@ import { DatePickerRow } from '../../components/attendance/DatePickerRow';
 import { HolidayBanner } from '../../components/attendance/HolidayBanner';
 import { AttendanceHeader } from '../../components/attendance/AttendanceHeader';
 import { AttendanceRow } from '../../components/attendance/AttendanceRow';
-import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
+import { BatchPickerSheet } from '../../components/attendance/BatchPickerSheet';
+import { BatchSessionHeader } from '../../components/attendance/BatchSessionHeader';
+import { SelectBatchPrompt } from '../../components/attendance/SelectBatchPrompt';
+import { OffScheduleDayPrompt } from '../../components/attendance/OffScheduleDayPrompt';
+import { getBatchesCached } from '../../../infra/batch/batch-cache';
+import type { BatchListItem, Weekday } from '../../../domain/batch/batch.types';
 import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import LinearGradient from 'react-native-linear-gradient';
 import { spacing, fontSizes, fontWeights, radius, listDefaults, gradient } from '../../theme';
@@ -42,6 +45,31 @@ type Nav = NativeStackNavigationProp<AttendanceStackParamList, 'AttendanceMain'>
 
 const attendanceApi = { getDailyAttendance, markAttendance };
 const holidaysApiRef = { declareHoliday, removeHoliday };
+
+// Maps JS Date.getDay() (0=Sun..6=Sat) to the contracts Weekday literal so
+// we can check whether a calendar day matches the batch's schedule.
+const JS_WEEKDAY_TO_LABEL: Weekday[] = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+function weekdayOf(dateStr: string): Weekday {
+  const d = new Date(dateStr + 'T00:00:00');
+  return JS_WEEKDAY_TO_LABEL[d.getDay()]!;
+}
+
+/**
+ * Find the next date on or after `fromDate` that matches one of the batch's
+ * scheduled weekdays. Returns null if the batch has no scheduled days at all.
+ * Capped at 14 days out as a safety net so we don't loop indefinitely.
+ */
+function findNextScheduledDate(fromDate: string, days: readonly Weekday[]): string | null {
+  if (days.length === 0) return null;
+  const set = new Set(days);
+  let cursor = fromDate;
+  for (let i = 0; i < 14; i++) {
+    cursor = addDays(cursor, 1);
+    if (set.has(weekdayOf(cursor))) return cursor;
+  }
+  return null;
+}
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -74,10 +102,40 @@ export function AttendanceScreen() {
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showBatchPicker, setShowBatchPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [batches, setBatches] = useState<BatchListItem[]>([]);
+  const [batchesLoading, setBatchesLoading] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
+
+  // Load batches once and auto-select when there's exactly one — small academies
+  // don't need to click through a picker every session.
+  useEffect(() => {
+    let mounted = true;
+    getBatchesCached()
+      .then((items) => {
+        if (!mounted) return;
+        setBatches(items);
+        if (items.length === 1 && !selectedBatchId) {
+          setSelectedBatchId(items[0]!.id);
+        }
+      })
+      .finally(() => {
+        if (mounted) setBatchesLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+    // Intentionally only runs on mount; selectedBatchId is read to avoid
+    // clobbering a user's explicit choice during a fast remount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectedBatch = useMemo(
+    () => batches.find((b) => b.id === selectedBatchId) ?? null,
+    [batches, selectedBatchId],
+  );
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -282,96 +340,67 @@ export function AttendanceScreen() {
               <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search students" accessibilityRole="button">
                 <AppIcon name="magnify" size={22} color={colors.text} />
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowFilters((v) => !v)}
-                style={styles.navBtn}
-                testID="filter-button"
-                accessibilityLabel="Toggle filters"
-                accessibilityRole="button"
-              >
-                <AppIcon name="filter-variant" size={22} color={colors.text} />
-                {selectedBatchId !== null && (
-                  <View style={styles.filterBadge}>
-                    <LinearGradient
-                      colors={[gradient.start, gradient.end]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <Text style={styles.filterBadgeText}>1</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              {/* Batch switcher lives in the session header below — only show
+                  this nav affordance when there's no batch picked yet, so the
+                  user always has a fast path to the picker. */}
+              {!selectedBatchId && batches.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setShowBatchPicker(true)}
+                  style={styles.navBtn}
+                  testID="open-batch-picker-button"
+                  accessibilityLabel="Select batch"
+                  accessibilityRole="button"
+                >
+                  <AppIcon name="account-group-outline" size={22} color={colors.text} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
       </View>
 
-      {/* ── Filter Modal ──────────────────────────────── */}
-      {(() => {
-        const filterContent = (
-          <View style={styles.filterModalOverlay}>
-            <TouchableOpacity style={styles.filterModalBackdrop} activeOpacity={1} onPress={() => setShowFilters(false)} />
-            <View style={styles.filterModalSheet}>
-              <View style={styles.filterModalHandle} />
-              <View style={styles.filterModalHeader}>
-                <Text style={styles.filterModalTitle}>Filters</Text>
-                {selectedBatchId !== null && (
-                  <TouchableOpacity onPress={() => setSelectedBatchId(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={styles.filterModalClear}>Clear All</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+      {/* Bottom-sheet picker for choosing (or changing) the batch. */}
+      <BatchPickerSheet
+        visible={showBatchPicker}
+        batches={batches}
+        loading={batchesLoading}
+        selectedBatchId={selectedBatchId}
+        onSelect={(batchId) => {
+          setSelectedBatchId(batchId);
+          setShowBatchPicker(false);
+        }}
+        onClose={() => setShowBatchPicker(false)}
+      />
 
-              <DatePickerRow
-                date={selectedDate}
-                onPrevious={goToPrev}
-                onNext={goToNext}
-                onToday={goToToday}
-                isToday={isToday}
-              />
-              <View style={styles.filterSection}>
-                <Text style={styles.filterLabel}>Batch</Text>
-                <BatchFilterBar selectedBatchId={selectedBatchId} onChange={setSelectedBatchId} />
-              </View>
+      {/* Date + actions stay visible at all times — they're independent of
+          batch selection and let staff scrub the date before picking a batch. */}
+      <View style={styles.controlsSection}>
+        <DatePickerRow
+          date={selectedDate}
+          onPrevious={goToPrev}
+          onNext={goToNext}
+          onToday={goToToday}
+          isToday={isToday}
+        />
+        <AttendanceHeader
+          isOwner={isOwner}
+          isHoliday={isHoliday}
+          onDeclareHoliday={handleDeclareHoliday}
+          onDailyReport={handleDailyReport}
+          onMonthlySummary={handleMonthlySummary}
+          declaringHoliday={declaringHoliday}
+        />
+      </View>
 
-              <TouchableOpacity style={styles.filterApplyBtn} onPress={() => setShowFilters(false)}>
-                <LinearGradient
-                  colors={[gradient.start, gradient.end]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <Text style={styles.filterApplyText}>Show Results</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-
-        if (!showFilters) return null;
-        if (Platform.OS === 'web') return filterContent;
-        return <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>{filterContent}</Modal>;
-      })()}
-
-      {/* ── Date + Action Buttons (always visible when filter panel is closed) ── */}
-      {!showFilters && (
-        <View style={styles.controlsSection}>
-          <DatePickerRow
-            date={selectedDate}
-            onPrevious={goToPrev}
-            onNext={goToNext}
-            onToday={goToToday}
-            isToday={isToday}
-          />
-          <AttendanceHeader
-            isOwner={isOwner}
-            isHoliday={isHoliday}
-            onDeclareHoliday={handleDeclareHoliday}
-            onDailyReport={handleDailyReport}
-            onMonthlySummary={handleMonthlySummary}
-            declaringHoliday={declaringHoliday}
-          />
-        </View>
+      {/* Session header: persistent "which batch am I marking" context. */}
+      {selectedBatch && (
+        <BatchSessionHeader
+          batchName={selectedBatch.batchName}
+          days={selectedBatch.days}
+          startTime={selectedBatch.startTime}
+          endTime={selectedBatch.endTime}
+          onChange={() => setShowBatchPicker(true)}
+        />
       )}
 
       {isHoliday && (
@@ -384,7 +413,29 @@ export function AttendanceScreen() {
 
       {error && <InlineError message={error.message} onRetry={refetch} />}
 
-      {loading && !refreshing ? (
+      {!selectedBatchId ? (
+        // Without a batch we have nothing to mark. Prompt explicitly rather
+        // than showing a confusing student list or filter bar.
+        <SelectBatchPrompt
+          onSelectBatch={() => setShowBatchPicker(true)}
+          loading={batchesLoading}
+          noBatchesAvailable={!batchesLoading && batches.length === 0}
+        />
+      ) : selectedBatch &&
+        selectedBatch.days.length > 0 &&
+        !selectedBatch.days.includes(weekdayOf(selectedDate)) ? (
+        // Block marking on a day the batch doesn't meet — prevents stray
+        // (student, batch, off-day) records that would skew session math.
+        <OffScheduleDayPrompt
+          batchName={selectedBatch.batchName}
+          selectedWeekday={weekdayOf(selectedDate)}
+          scheduledDays={selectedBatch.days}
+          onJumpToNext={() => {
+            const next = findNextScheduledDate(selectedDate, selectedBatch.days);
+            if (next) setSelectedDate(next);
+          }}
+        />
+      ) : loading && !refreshing ? (
         <View testID="skeleton-container" style={styles.skeletons}>
           <SkeletonTile />
           <SkeletonTile />
@@ -401,9 +452,9 @@ export function AttendanceScreen() {
             />
             <AppIcon name="calendar-check-outline" size={48} color="#FFFFFF" />
           </View>
-          <Text style={styles.emptyTitle}>No students found</Text>
+          <Text style={styles.emptyTitle}>No students in this batch</Text>
           <Text style={styles.emptySubtitle}>
-            No attendance records for this date. Try a different date or batch filter.
+            This batch has no active students on the selected date. Try another date or add students to the batch.
           </Text>
         </View>
       ) : (
@@ -487,92 +538,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingVertical: 8,
     marginLeft: spacing.xs,
   },
-  filterBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    overflow: 'hidden',
-    borderRadius: radius.full,
-    width: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBadgeText: {
-    fontSize: 9,
-    fontWeight: fontWeights.bold,
-    color: colors.white,
-  },
-
-  /* ── Filter Modal ──────────────────────────────── */
-  filterModalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.lg,
-    ...(Platform.OS === 'web' ? { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } : {}),
-  },
-  filterModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  filterModalSheet: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl + 4,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    gap: spacing.md,
-    width: '100%',
-    maxWidth: 400,
-  },
-  filterModalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  filterModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  filterModalTitle: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-  },
-  filterModalClear: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.danger,
-  },
-  filterApplyBtn: {
-    overflow: 'hidden',
-    borderRadius: radius.xl,
-    paddingVertical: spacing.md + 2,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  filterApplyText: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: colors.white,
-  },
-  filterSection: {
-    marginTop: spacing.sm,
-  },
-  filterLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.semibold,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
-  },
-
   /* ── Controls ──────────────────────────────────── */
   controlsSection: {
     paddingHorizontal: spacing.base,

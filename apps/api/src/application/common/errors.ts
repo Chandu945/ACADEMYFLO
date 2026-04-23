@@ -52,6 +52,9 @@ export const AttendanceErrors = {
   holidayRemoveNotAllowed: () => AppError.forbidden('Only owners can remove holidays'),
   studentNotActive: (id: string) => AppError.validation(`Student '${id}' is not active`),
   batchNotInAcademy: () => AppError.forbidden('Batch does not belong to your academy'),
+  batchNotFound: (id: string) => AppError.notFound('Batch', id),
+  studentNotInBatch: () =>
+    AppError.validation('Student is not enrolled in this batch'),
 } as const;
 
 export const FeeErrors = {

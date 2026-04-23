@@ -141,11 +141,16 @@ export class GetDailyAttendanceViewUseCase {
       });
     }
 
-    // Fetch present records for these students on this date
-    const presentRecords = await this.attendanceRepo.findPresentByAcademyAndDate(
-      actor.academyId,
-      input.date,
-    );
+    // When the caller scopes to a batch, only that batch's records count as
+    // "present" on this screen — a student present in their morning batch but
+    // absent in evening should show ABSENT on the evening view.
+    const presentRecords = input.batchId
+      ? await this.attendanceRepo.findPresentByAcademyBatchAndDate(
+          actor.academyId,
+          input.batchId,
+          input.date,
+        )
+      : await this.attendanceRepo.findPresentByAcademyAndDate(actor.academyId, input.date);
     const presentSet = new Set(presentRecords.map((r) => r.studentId));
 
     const data: DailyAttendanceViewItem[] = students.map((s) => ({

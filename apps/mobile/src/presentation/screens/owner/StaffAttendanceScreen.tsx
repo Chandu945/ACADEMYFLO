@@ -125,7 +125,8 @@ function SummaryBarComponent({ items }: SummaryBarProps) {
 
   return (
     <View style={styles.summaryBar}>
-      <View style={styles.summaryLeft}>
+      {/* Top row: icon + headline + percentage badge */}
+      <View style={styles.summaryHeader}>
         <View style={styles.summaryIconCircle}>
           <LinearGradient
             colors={[gradient.start, gradient.end]}
@@ -135,19 +136,79 @@ function SummaryBarComponent({ items }: SummaryBarProps) {
           />
           <AppIcon name="account-group" size={18} color="#FFFFFF" />
         </View>
-        <View>
+        <View style={styles.summaryHeadline}>
+          <Text style={styles.summaryEyebrow}>Today's Attendance</Text>
           <Text style={styles.summaryTitle}>
-            {presentCount}/{totalCount} Present
+            {presentCount} of {totalCount} present
           </Text>
-          <Text style={styles.summarySubtitle}>{percentage}% attendance</Text>
+        </View>
+        <View
+          style={[
+            styles.summaryPctBadge,
+            {
+              backgroundColor:
+                percentage >= 75
+                  ? colors.successBg
+                  : percentage >= 50
+                    ? colors.warningBg
+                    : colors.dangerBg,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.summaryPctText,
+              {
+                color:
+                  percentage >= 75
+                    ? colors.success
+                    : percentage >= 50
+                      ? colors.warning
+                      : colors.danger,
+              },
+            ]}
+          >
+            {percentage}%
+          </Text>
         </View>
       </View>
-      <View style={styles.summaryCountsRow}>
-        <View style={[styles.summaryChip, { backgroundColor: colors.successBg }]}>
-          <Text style={[styles.summaryChipText, { color: colors.success }]}>{presentCount}P</Text>
+
+      {/* Progress bar — visual sense of how much of the team is in today */}
+      <View style={styles.summaryProgressTrack}>
+        <View
+          style={[
+            styles.summaryProgressFill,
+            {
+              width: `${percentage}%`,
+              backgroundColor:
+                percentage >= 75
+                  ? colors.success
+                  : percentage >= 50
+                    ? colors.warning
+                    : colors.danger,
+            },
+          ]}
+        />
+      </View>
+
+      {/* Stat pills with clear labels — no more cryptic 0P / 8A */}
+      <View style={styles.summaryStatsRow}>
+        <View style={styles.summaryStat}>
+          <View style={[styles.summaryStatDot, { backgroundColor: colors.success }]} />
+          <Text style={styles.summaryStatValue}>{presentCount}</Text>
+          <Text style={styles.summaryStatLabel}>Present</Text>
         </View>
-        <View style={[styles.summaryChip, { backgroundColor: colors.dangerBg }]}>
-          <Text style={[styles.summaryChipText, { color: colors.danger }]}>{absentCount}A</Text>
+        <View style={styles.summaryStatDivider} />
+        <View style={styles.summaryStat}>
+          <View style={[styles.summaryStatDot, { backgroundColor: colors.danger }]} />
+          <Text style={styles.summaryStatValue}>{absentCount}</Text>
+          <Text style={styles.summaryStatLabel}>Absent</Text>
+        </View>
+        <View style={styles.summaryStatDivider} />
+        <View style={styles.summaryStat}>
+          <View style={[styles.summaryStatDot, { backgroundColor: colors.textDisabled }]} />
+          <Text style={styles.summaryStatValue}>{totalCount}</Text>
+          <Text style={styles.summaryStatLabel}>Staff</Text>
         </View>
       </View>
     </View>
@@ -346,50 +407,96 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   // ── Summary Bar ──
   summaryBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.md,
     ...shadows.sm,
   },
-  summaryLeft: {
+  summaryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    marginBottom: spacing.md,
   },
   summaryIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  summaryHeadline: {
+    flex: 1,
+    minWidth: 0,
+  },
+  summaryEyebrow: {
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    color: colors.textSecondary,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
   summaryTitle: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    letterSpacing: -0.2,
   },
-  summarySubtitle: {
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  summaryCountsRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  summaryChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+  summaryPctBadge: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
     borderRadius: radius.full,
   },
-  summaryChipText: {
-    fontSize: fontSizes.xs,
+  summaryPctText: {
+    fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
+    letterSpacing: -0.2,
+  },
+  summaryProgressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.bgSubtle,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  summaryProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  summaryStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  summaryStat: {
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  summaryStatDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  summaryStatValue: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+  },
+  summaryStatLabel: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.medium,
+  },
+  summaryStatDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: colors.border,
   },
 
   // ── Action Cards ──

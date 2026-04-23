@@ -53,14 +53,17 @@ export class GenerateStudentReportUseCase {
       actor.academyId, input.studentId, fromMonth, toMonth,
     );
 
-    // Fetch attendance for each month in range
+    // Fetch attendance for each month in range. Records are PRESENT records
+    // keyed by (student, batch, date) — count distinct dates so a two-batch
+    // student isn't double-counted in the report.
     const months = this.getMonthRange(fromMonth, toMonth);
     const attendanceByMonth: { month: string; absentCount: number }[] = [];
     for (const month of months) {
-      const absentRecords = await this.attendanceRepo.findPresentByAcademyStudentAndMonth(
+      const records = await this.attendanceRepo.findPresentByAcademyStudentAndMonth(
         actor.academyId, input.studentId, month,
       );
-      attendanceByMonth.push({ month, absentCount: absentRecords.length });
+      const distinctPresentDates = new Set(records.map((r) => r.date)).size;
+      attendanceByMonth.push({ month, absentCount: distinctPresentDates });
     }
 
     try {

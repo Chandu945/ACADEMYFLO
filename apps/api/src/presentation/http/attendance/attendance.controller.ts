@@ -103,12 +103,14 @@ export class AttendanceController {
     const result = await this.bulkSetAbsences.execute({
       actorUserId: user.userId,
       actorRole: user.role,
+      batchId: dto.batchId,
       date: query.date,
       absentStudentIds: dto.absentStudentIds,
     });
 
     if (result.ok) {
       this.logger.info('Bulk absences set', {
+        batchId: dto.batchId,
         date: query.date,
         absentCount: result.value.absentCount,
         actorUserId: user.userId,
@@ -132,6 +134,7 @@ export class AttendanceController {
       actorUserId: user.userId,
       actorRole: user.role,
       studentId,
+      batchId: dto.batchId,
       date: query.date,
       status: dto.status,
     });
@@ -139,6 +142,7 @@ export class AttendanceController {
     if (result.ok) {
       this.logger.info('Attendance marked', {
         studentId,
+        batchId: dto.batchId,
         date: query.date,
         status: dto.status,
         actorUserId: user.userId,

@@ -39,7 +39,7 @@ function DatePickerRowComponent({ date, onPrevious, onNext, onToday, isToday }: 
       </Pressable>
 
       <Pressable onPress={onToday} style={styles.dateContainer} testID="date-display">
-        
+
         <AppIcon name="calendar" size={16} color={colors.textSecondary} style={styles.calIcon} />
         <Text style={styles.dateText}>{formatDate(date)}</Text>
         {!isToday && (

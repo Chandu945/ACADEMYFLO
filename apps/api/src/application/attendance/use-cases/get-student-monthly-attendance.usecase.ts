@@ -6,10 +6,16 @@ import type { StudentAttendanceRepository } from '@domain/attendance/ports/stude
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
-import { isValidMonthKey, getDaysInMonth, getAllDatesInMonth } from '@domain/attendance/value-objects/local-date.vo';
+import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
+import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
 import { AttendanceErrors } from '../../common/errors';
-import type { StudentMonthlyAttendanceDto } from '../dtos/attendance.dto';
+import type {
+  StudentMonthlyAttendanceDto,
+  StudentBatchAttendanceBreakdown,
+} from '../dtos/attendance.dto';
 import type { UserRole } from '@academyflo/contracts';
 
 export interface GetStudentMonthlyAttendanceInput {
@@ -25,6 +31,8 @@ export class GetStudentMonthlyAttendanceUseCase {
     private readonly studentRepo: StudentRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
+    private readonly studentBatchRepo: StudentBatchRepository,
+    private readonly batchRepo: BatchRepository,
   ) {}
 
   async execute(
@@ -54,37 +62,64 @@ export class GetStudentMonthlyAttendanceUseCase {
       return err(AttendanceErrors.studentNotInAcademy());
     }
 
-    const [presentRecords, holidays] = await Promise.all([
+    const [presentRecords, holidays, enrollments] = await Promise.all([
       this.attendanceRepo.findPresentByAcademyStudentAndMonth(
         actor.academyId,
         input.studentId,
         input.month,
       ),
       this.holidayRepo.findByAcademyAndMonth(actor.academyId, input.month),
+      this.studentBatchRepo.findByStudentId(input.studentId),
     ]);
 
-    const presentDates = presentRecords.map((r) => r.date);
-    const presentDateSet = new Set(presentDates);
     const holidayDates = holidays.map((h) => h.date);
-    const holidayDateSet = new Set(holidayDates);
-    const daysInMonth = getDaysInMonth(input.month);
-    const holidayCount = holidayDates.length;
-    const overlapCount = presentDates.filter((d) => holidayDateSet.has(d)).length;
-    const presentCount = presentDates.length;
-    const absentCount = Math.max(0, daysInMonth - presentCount - holidayCount + overlapCount);
+    const studentBatchIds = enrollments.map((e) => e.batchId);
+    const batches =
+      studentBatchIds.length > 0 ? await this.batchRepo.findByIds(studentBatchIds) : [];
 
-    // Build absentDates: all dates in the month that are neither present nor holidays
-    const allDates = getAllDatesInMonth(input.month);
-    const absentDates = allDates.filter((d) => !presentDateSet.has(d) && !holidayDateSet.has(d));
+    // Group present records by batch for per-batch breakdown.
+    const presentByBatch = new Map<string, Set<string>>();
+    for (const record of presentRecords) {
+      let set = presentByBatch.get(record.batchId);
+      if (!set) {
+        set = new Set<string>();
+        presentByBatch.set(record.batchId, set);
+      }
+      set.add(record.date);
+    }
+
+    let totalExpected = 0;
+    let totalPresent = 0;
+    const allMissedDates = new Set<string>();
+    const perBatch: StudentBatchAttendanceBreakdown[] = batches.map((batch) => {
+      const batchId = batch.id.toString();
+      const expectedDates = scheduledDatesInMonth(input.month, batch.days, holidayDates);
+      const presentSet = presentByBatch.get(batchId) ?? new Set<string>();
+      const presentDates = expectedDates.filter((d) => presentSet.has(d));
+      const absentDates = expectedDates.filter((d) => !presentSet.has(d));
+      for (const d of absentDates) allMissedDates.add(d);
+      totalExpected += expectedDates.length;
+      totalPresent += presentDates.length;
+      return {
+        batchId,
+        batchName: batch.batchName,
+        expectedCount: expectedDates.length,
+        presentCount: presentDates.length,
+        presentDates,
+        absentDates,
+      };
+    });
 
     return ok({
       studentId: input.studentId,
       month: input.month,
-      absentDates,
+      absentDates: [...allMissedDates].sort(),
       holidayDates,
-      presentCount: Math.max(0, presentCount),
-      absentCount,
-      holidayCount,
+      presentCount: totalPresent,
+      absentCount: Math.max(0, totalExpected - totalPresent),
+      expectedCount: totalExpected,
+      holidayCount: holidayDates.length,
+      perBatch,
     });
   }
 }

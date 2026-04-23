@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Keyboard,
+  Modal,
+  Pressable,
+  ScrollView,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -487,41 +490,66 @@ export function ExpensesHomeScreen() {
         )}
       </View>
 
-      {/* ── Active Filter Pills (visible when panel closed) ── */}
-      {!showFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearCategoryFilter} />}
+      {/* ── Active Filter Pills (always visible when a filter is on) ── */}
+      <ActiveFilterBar filters={activeFilters} onClearAll={clearCategoryFilter} />
 
-      {/* ── Filter Panel ──────────────────────────────── */}
-      {showFilters && (
-        <View style={styles.filterPanel}>
-          <View style={styles.filterPanelHeader}>
-            
-            <AppIcon name="tag-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.filterPanelTitle}>Category</Text>
-          </View>
-          <View style={styles.filterRow}>
-            <TouchableOpacity
-              style={[styles.filterChip, !categoryFilter && styles.filterChipActive]}
-              onPress={() => setCategoryFilter(undefined)}
-            >
-              {!categoryFilter ? (
+      {/* ── Filter Modal (centered dialog, matches ConfirmSheet) ── */}
+      <Modal
+        visible={showFilters}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilters(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.filterOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowFilters(false)}
+          />
+          <View style={styles.filterSheet}>
+
+            <View style={styles.filterSheetHeader}>
+              <View style={styles.filterSheetIconWrap}>
                 <LinearGradient
                   colors={[gradient.start, gradient.end]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
-              ) : null}
-              <Text style={[styles.filterChipText, !categoryFilter && styles.filterChipTextActive]}>
-                All
-              </Text>
-            </TouchableOpacity>
-            {categories.map((cat) => (
+                <AppIcon name="filter-variant" size={20} color="#FFFFFF" />
+              </View>
+              <View style={styles.filterSheetTitleWrap}>
+                <Text style={styles.filterSheetTitle}>Filter Expenses</Text>
+                <Text style={styles.filterSheetSubtitle}>
+                  Pick a category to narrow the list
+                </Text>
+              </View>
+              {categoryFilter && (
+                <TouchableOpacity
+                  onPress={clearCategoryFilter}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  testID="filter-sheet-clear"
+                >
+                  <Text style={styles.filterSheetClear}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.filterSectionLabelRow}>
+              <AppIcon name="tag-outline" size={14} color={colors.textSecondary} />
+              <Text style={styles.filterPanelTitle}>Category</Text>
+            </View>
+
+            <ScrollView
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterRow}
+              showsVerticalScrollIndicator={false}
+            >
               <TouchableOpacity
-                key={cat.id}
-                style={[styles.filterChip, categoryFilter === cat.id && styles.filterChipActive]}
-                onPress={() => setCategoryFilter(categoryFilter === cat.id ? undefined : cat.id)}
+                style={[styles.filterChip, !categoryFilter && styles.filterChipActive]}
+                onPress={() => setCategoryFilter(undefined)}
               >
-                {categoryFilter === cat.id ? (
+                {!categoryFilter ? (
                   <LinearGradient
                     colors={[gradient.start, gradient.end]}
                     start={{ x: 0, y: 0 }}
@@ -529,31 +557,60 @@ export function ExpensesHomeScreen() {
                     style={StyleSheet.absoluteFill}
                   />
                 ) : null}
-                <AppIcon
-                  name={getCategoryIcon(cat.name)}
-                  size={14}
-                  color={categoryFilter === cat.id ? colors.white : colors.textSecondary}
-                />
                 <Text
-                  style={[
-                    styles.filterChipText,
-                    categoryFilter === cat.id && styles.filterChipTextActive,
-                  ]}
+                  style={[styles.filterChipText, !categoryFilter && styles.filterChipTextActive]}
                 >
-                  {cat.name}
+                  All
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
-          {categoryFilter && (
-            <TouchableOpacity style={styles.clearFilters} onPress={clearCategoryFilter}>
-              
-              <AppIcon name="filter-remove-outline" size={16} color={colors.danger} />
-              <Text style={styles.clearFiltersText}>Clear Filter</Text>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.filterChip, categoryFilter === cat.id && styles.filterChipActive]}
+                  onPress={() => setCategoryFilter(categoryFilter === cat.id ? undefined : cat.id)}
+                >
+                  {categoryFilter === cat.id ? (
+                    <LinearGradient
+                      colors={[gradient.start, gradient.end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  ) : null}
+                  <AppIcon
+                    name={getCategoryIcon(cat.name)}
+                    size={14}
+                    color={categoryFilter === cat.id ? colors.white : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      categoryFilter === cat.id && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.filterApplyBtn}
+              onPress={() => setShowFilters(false)}
+              activeOpacity={0.85}
+              testID="filter-sheet-apply"
+            >
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.filterApplyBtnText}>Show Results</Text>
             </TouchableOpacity>
-          )}
+          </View>
         </View>
-      )}
+      </Modal>
 
       <FlatList
         data={filteredItems}
@@ -806,30 +863,98 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: colors.white,
   },
-  filterPanel: {
+  /* ── Filter Modal (centered dialog) ────────────── */
+  filterOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  filterSheet: {
+    width: '100%',
+    maxWidth: 420,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
+    borderRadius: radius.xl + 4,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    maxHeight: '85%',
+    ...shadows.sm,
+  },
+  filterSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  filterPanelHeader: {
+  filterSheetIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterSheetTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  filterSheetTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  filterSheetSubtitle: {
+    marginTop: 2,
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+  },
+  filterSheetClear: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.bold,
+    color: colors.danger,
+  },
+  filterSectionLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 6,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
+  filterScroll: {
+    maxHeight: 280,
+    flexGrow: 0,
+  },
   filterPanelTitle: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.bold,
     color: colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  filterApplyBtn: {
+    height: 50,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+  },
+  filterApplyBtnText: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   filterChip: {
     flexDirection: 'row',
@@ -853,20 +978,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   filterChipTextActive: {
     color: colors.white,
   },
-  clearFilters: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    alignSelf: 'flex-start',
-    marginTop: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  clearFiltersText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.semibold,
-    color: colors.danger,
-  },
-
   /* ── Expense Card ────────────────────────────────── */
   expenseCard: {
     backgroundColor: colors.surface,

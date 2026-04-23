@@ -7,7 +7,13 @@ import type { StudentAttendanceRepository } from '@domain/attendance/ports/stude
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
-import { canMarkAttendance, validateLocalDate, validateDateRange } from '@domain/attendance/rules/attendance.rules';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import {
+  canMarkAttendance,
+  validateLocalDate,
+  validateDateRange,
+} from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
@@ -17,11 +23,14 @@ import { randomUUID } from 'crypto';
 export interface BulkSetAbsencesInput {
   actorUserId: string;
   actorRole: UserRole;
+  batchId: string;
   date: string;
+  /** Students in the batch who were ABSENT. Everyone else in the batch is PRESENT. */
   absentStudentIds: string[];
 }
 
 export interface BulkSetAbsencesOutput {
+  batchId: string;
   date: string;
   absentCount: number;
 }
@@ -32,6 +41,8 @@ export class BulkSetAbsencesUseCase {
     private readonly studentRepo: StudentRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
+    private readonly batchRepo: BatchRepository,
+    private readonly studentBatchRepo: StudentBatchRepository,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly transaction?: TransactionPort,
   ) {}
@@ -58,21 +69,35 @@ export class BulkSetAbsencesUseCase {
     }
     const academyId: string = actor.academyId;
 
+    const batch = await this.batchRepo.findById(input.batchId);
+    if (!batch) {
+      return err(AttendanceErrors.batchNotFound(input.batchId));
+    }
+    if (batch.academyId !== academyId) {
+      return err(AttendanceErrors.batchNotInAcademy());
+    }
+
     // Check holiday
     const holiday = await this.holidayRepo.findByAcademyAndDate(academyId, input.date);
     if (holiday) {
       return err(AttendanceErrors.holidayDeclared());
     }
 
-    // Validate unique IDs
-    const uniqueIds = [...new Set(input.absentStudentIds)];
+    // Validate every input student is enrolled in this batch (catches typos and
+    // prevents marking absences for someone outside the batch's roster).
+    const uniqueAbsent = [...new Set(input.absentStudentIds)];
+    const enrollments = await this.studentBatchRepo.findByBatchId(input.batchId);
+    const rosterIds = new Set(enrollments.map((e) => e.studentId));
+    for (const sid of uniqueAbsent) {
+      if (!rosterIds.has(sid)) {
+        return err(AttendanceErrors.studentNotInBatch());
+      }
+    }
 
-    // Batch-fetch all students to avoid N+1 queries
-    const students = await this.studentRepo.findByIds(uniqueIds);
+    // Confirm the absent students still exist + are active in the academy.
+    const students = await this.studentRepo.findByIds(uniqueAbsent);
     const studentMap = new Map(students.map((s) => [s.id.toString(), s]));
-
-    // Validate all students belong to academy and are ACTIVE
-    for (const studentId of uniqueIds) {
+    for (const studentId of uniqueAbsent) {
       const student = studentMap.get(studentId);
       if (!student || student.isDeleted()) {
         return err(AttendanceErrors.studentNotFound(studentId));
@@ -85,43 +110,48 @@ export class BulkSetAbsencesUseCase {
       }
     }
 
-    // Fetch all active students to compute who should be PRESENT
-    const allActiveStudents = await this.studentRepo.listActiveByAcademy(academyId);
-    const absentSet = new Set(uniqueIds);
-    const shouldBePresentIds = allActiveStudents
-      .map((s) => s.id.toString())
-      .filter((id) => !absentSet.has(id));
+    // Active students in the batch should be PRESENT; everyone else (in absent
+    // set or inactive) should not have a record. We filter to ACTIVE because
+    // attendance for inactive students isn't tracked.
+    const allRosterStudents = await this.studentRepo.findByIds([...rosterIds]);
+    const activeRosterIds = allRosterStudents
+      .filter((s) => !s.isDeleted() && s.status === 'ACTIVE')
+      .map((s) => s.id.toString());
+    const absentSet = new Set(uniqueAbsent);
+    const shouldBePresentIds = activeRosterIds.filter((id) => !absentSet.has(id));
 
-    // Get current present records for the day (records now mean PRESENT)
-    const currentPresent = await this.attendanceRepo.findPresentByAcademyAndDate(
+    // Records currently saved for this batch on this date.
+    const currentPresent = await this.attendanceRepo.findPresentByAcademyBatchAndDate(
       academyId,
+      input.batchId,
       input.date,
     );
     const currentPresentSet = new Set(currentPresent.map((r) => r.studentId));
     const targetPresentSet = new Set(shouldBePresentIds);
 
-    // Wrap delete+create in a transaction to ensure atomicity.
-    // Without this, a failure mid-way could leave attendance in an inconsistent state
-    // (some records deleted but new ones not yet created).
+    // Wrap delete+create in a transaction so a mid-flight failure doesn't leave
+    // the batch in a partial state.
     const bulkOps = async () => {
-      // Delete present records for students not in target present set (they are now ABSENT)
+      // Delete present records for students no longer present.
       for (const record of currentPresent) {
         if (!targetPresentSet.has(record.studentId)) {
-          await this.attendanceRepo.deleteByAcademyStudentDate(
+          await this.attendanceRepo.deleteByAcademyStudentBatchDate(
             academyId,
             record.studentId,
+            input.batchId,
             input.date,
           );
         }
       }
 
-      // Create missing present records
+      // Insert missing present records.
       for (const studentId of shouldBePresentIds) {
         if (!currentPresentSet.has(studentId)) {
           const record = StudentAttendance.create({
             id: randomUUID(),
             academyId,
             studentId,
+            batchId: input.batchId,
             date: input.date,
             markedByUserId: input.actorUserId,
           });
@@ -137,17 +167,22 @@ export class BulkSetAbsencesUseCase {
     }
 
     await this.auditRecorder.record({
-      academyId: actor.academyId,
+      academyId,
       actorUserId: input.actorUserId,
       action: 'STUDENT_ATTENDANCE_EDITED',
       entityType: 'STUDENT_ATTENDANCE',
-      entityId: actor.academyId,
-      context: { date: input.date, absentCount: String(uniqueIds.length) },
+      entityId: input.batchId,
+      context: {
+        batchId: input.batchId,
+        date: input.date,
+        absentCount: String(uniqueAbsent.length),
+      },
     });
 
     return ok({
+      batchId: input.batchId,
       date: input.date,
-      absentCount: uniqueIds.length,
+      absentCount: uniqueAbsent.length,
     });
   }
 }

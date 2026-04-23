@@ -170,6 +170,25 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
     load(true);
   }, [load]);
 
+  // Hooks must run on every render (Rules of Hooks). These have to live above
+  // the loading/error early-returns below — otherwise the hook count changes
+  // between renders and the whole screen crashes with "Rendered more hooks
+  // than during the previous render."
+  const counts = useMemo(
+    () => ({
+      ALL: items.length,
+      STAFF: items.filter((i) => i.source !== 'PARENT').length,
+      PARENT: items.filter((i) => i.source === 'PARENT').length,
+    }),
+    [items],
+  );
+
+  const filteredItems = useMemo(() => {
+    if (sourceFilter === 'ALL') return items;
+    if (sourceFilter === 'PARENT') return items.filter((i) => i.source === 'PARENT');
+    return items.filter((i) => i.source !== 'PARENT');
+  }, [items, sourceFilter]);
+
   if (loading && !refreshing) {
     return (
       <View style={styles.content} testID="skeleton-container">
@@ -186,21 +205,6 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
       </View>
     );
   }
-
-  const counts = useMemo(
-    () => ({
-      ALL: items.length,
-      STAFF: items.filter((i) => i.source !== 'PARENT').length,
-      PARENT: items.filter((i) => i.source === 'PARENT').length,
-    }),
-    [items],
-  );
-
-  const filteredItems = useMemo(() => {
-    if (sourceFilter === 'ALL') return items;
-    if (sourceFilter === 'PARENT') return items.filter((i) => i.source === 'PARENT');
-    return items.filter((i) => i.source !== 'PARENT');
-  }, [items, sourceFilter]);
 
   return (
     <View style={styles.container}>

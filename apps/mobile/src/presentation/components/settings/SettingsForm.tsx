@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, Switch, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import type { AcademySettings, UpdateAcademySettingsRequest } from '../../../domain/settings/academy-settings.types';
 import type { AppError } from '../../../domain/common/errors';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
+import { GradientSwitch } from '../ui/GradientSwitch';
+import { AppIcon } from '../ui/AppIcon';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -108,14 +110,56 @@ export function SettingsForm({ settings, editable, saving, error, onSave }: Sett
       <Text style={styles.sectionTitle}>Late Fee</Text>
 
       <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Enable Late Fee</Text>
-        <Switch
+        <View style={styles.switchIcon}>
+          {lateFeeEnabled ? (
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+          <AppIcon
+            name="clock-alert-outline"
+            size={20}
+            color={lateFeeEnabled ? '#FFFFFF' : colors.textSecondary}
+          />
+        </View>
+        <View style={styles.switchTextWrap}>
+          <Text style={styles.switchLabel}>Enable Late Fee</Text>
+          <Text style={styles.switchSubtitle}>
+            {lateFeeEnabled
+              ? 'A late fee will apply after the grace period'
+              : 'Charge nothing extra when fees are paid late'}
+          </Text>
+        </View>
+        <View
+          style={[
+            styles.switchStatusPill,
+            lateFeeEnabled ? styles.switchStatusPillOn : styles.switchStatusPillOff,
+          ]}
+        >
+          <View
+            style={[
+              styles.switchStatusDot,
+              { backgroundColor: lateFeeEnabled ? colors.success : colors.textDisabled },
+            ]}
+          />
+          <Text
+            style={[
+              styles.switchStatusText,
+              { color: lateFeeEnabled ? colors.success : colors.textSecondary },
+            ]}
+          >
+            {lateFeeEnabled ? 'On' : 'Off'}
+          </Text>
+        </View>
+        <GradientSwitch
           value={lateFeeEnabled}
           onValueChange={setLateFeeEnabled}
           disabled={!editable}
-          trackColor={{ false: colors.border, true: colors.primaryLight }}
-          thumbColor={lateFeeEnabled ? colors.primary : colors.textDisabled}
           testID="switch-late-fee"
+          accessibilityLabel="Enable late fee"
         />
       </View>
 
@@ -245,13 +289,69 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   switchRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginVertical: spacing.sm,
+    ...shadows.sm,
+  },
+  switchIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bgSubtle,
+  },
+  switchTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   switchLabel: {
     fontSize: fontSizes.base,
+    fontWeight: fontWeights.bold,
     color: colors.text,
+    letterSpacing: -0.1,
+  },
+  switchSubtitle: {
+    marginTop: 2,
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  switchStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+    borderWidth: 1,
+  },
+  switchStatusPillOn: {
+    backgroundColor: colors.successBg,
+    borderColor: colors.successBorder,
+  },
+  switchStatusPillOff: {
+    backgroundColor: colors.bgSubtle,
+    borderColor: colors.border,
+  },
+  switchStatusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+  switchStatusText: {
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase' as const,
   },
   intervalRow: {
     flexDirection: 'row',

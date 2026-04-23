@@ -7,6 +7,9 @@ import {
   RefreshControl,
   TouchableOpacity,
   StyleSheet,
+  Modal,
+  Pressable,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -192,22 +195,66 @@ function AuditLogsContent() {
 
   return (
     <View style={styles.screen} testID="audit-logs-screen">
-      {/* ── Active filter pills (when panel is closed) ── */}
-      {!showFilters && activeFilterPills.length > 0 && (
+      {/* ── Active filter pills (visible when filters are applied) ── */}
+      {activeFilterPills.length > 0 && (
         <ActiveFilterBar filters={activeFilterPills} onClearAll={handleClear} />
       )}
 
-      {/* ── Collapsible filter panel ─────────────────── */}
-      {showFilters && (
-        <View style={styles.filterPanel}>
-          <AuditFiltersPanel
-            filters={filters}
-            onChange={setFilters}
-            onApply={handleApply}
-            onClear={handleClear}
+      {/* ── Filter Modal (centered dialog, matches expenses & confirm sheet) ── */}
+      <Modal
+        visible={showFilters}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFilters(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.filterOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowFilters(false)}
           />
+          <View style={styles.filterDialog}>
+            <View style={styles.filterDialogHeader}>
+              <View style={styles.filterDialogIconWrap}>
+                <LinearGradient
+                  colors={[gradient.start, gradient.end]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <AppIcon name="filter-variant" size={20} color="#FFFFFF" />
+              </View>
+              <View style={styles.filterDialogTitleWrap}>
+                <Text style={styles.filterDialogTitle}>Filter Audit Logs</Text>
+                <Text style={styles.filterDialogSubtitle}>
+                  Narrow by date range, action, or entity
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowFilters(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Close filters"
+                testID="filter-dialog-close"
+              >
+                <AppIcon name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.filterDialogScroll}
+              contentContainerStyle={styles.filterDialogScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <AuditFiltersPanel
+                filters={filters}
+                onChange={setFilters}
+                onApply={handleApply}
+                onClear={handleClear}
+              />
+            </ScrollView>
+          </View>
         </View>
-      )}
+      </Modal>
 
       {/* ── Error state ──────────────────────────────── */}
       {error && (
@@ -302,8 +349,61 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: colors.white,
   },
-  filterPanel: {
-    paddingHorizontal: spacing.base,
+  /* ── Filter Modal (centered dialog) ────────────── */
+  filterOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  filterDialog: {
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '85%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl + 4,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    ...shadows.sm,
+  },
+  filterDialogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  filterDialogIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterDialogTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  filterDialogTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  filterDialogSubtitle: {
+    marginTop: 2,
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+  },
+  filterDialogScroll: {
+    flexGrow: 0,
+  },
+  filterDialogScrollContent: {
+    paddingTop: spacing.md,
     paddingBottom: spacing.xs,
   },
   center: {

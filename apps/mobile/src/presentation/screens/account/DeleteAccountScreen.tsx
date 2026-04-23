@@ -165,27 +165,45 @@ export function DeleteAccountScreen() {
         <>
           <View style={styles.warningCard}>
             <View style={styles.warningIconCircle}>
-              <AppIcon name="shield-alert-outline" size={22} color={colors.warningAccent} />
+              <AppIcon name="alert-octagon" size={26} color="#FFFFFF" />
             </View>
             <Text style={styles.warningTitle}>Delete this academy</Text>
             <Text style={styles.warningBody}>
-              This permanently removes your academy and everything in it after a{' '}
-              {COOLING_OFF_DAYS}-day cooling-off period. This action cannot be undone
-              once the period elapses.
+              Everything below will be removed after a {COOLING_OFF_DAYS}-day
+              cooling-off period. After that, the deletion cannot be undone.
             </Text>
-            <View style={styles.bulletList}>
+
+            {/* What gets deleted — semantic icons, not plain dots */}
+            <View style={styles.consequenceList}>
               {[
-                'All staff, students, parents and their logins are removed',
-                'All attendance, fee and expense records are deleted',
-                'All batches, events, enquiries and gallery photos are deleted',
-                'Your active subscription is canceled',
-                'Audit logs and payment receipts are retained for legal compliance',
-              ].map((b) => (
-                <View key={b} style={styles.bulletRow}>
-                  <View style={styles.bulletDot} />
-                  <Text style={styles.bulletText}>{b}</Text>
+                { icon: 'account-multiple-remove-outline', text: 'All staff, students, parents and their logins' },
+                { icon: 'database-remove-outline', text: 'All attendance, fee and expense records' },
+                { icon: 'image-broken-variant', text: 'All batches, events, enquiries and gallery photos' },
+                { icon: 'credit-card-off-outline', text: 'Your active subscription is canceled' },
+              ].map((row) => (
+                <View key={row.text} style={styles.consequenceRow}>
+                  <View style={styles.consequenceIconWrap}>
+                    <AppIcon name={row.icon} size={14} color={colors.danger} />
+                  </View>
+                  <Text style={styles.consequenceText}>{row.text}</Text>
                 </View>
               ))}
+            </View>
+
+            {/* What's preserved — distinct positive callout */}
+            <View style={styles.preservedCallout}>
+              <AppIcon name="shield-check-outline" size={16} color={colors.success} />
+              <Text style={styles.preservedText}>
+                Audit logs and payment receipts are kept for legal compliance.
+              </Text>
+            </View>
+
+            {/* The cooling-off note — visually tied to the action so it's not lost */}
+            <View style={styles.coolingCallout}>
+              <AppIcon name="clock-outline" size={14} color={colors.warning} />
+              <Text style={styles.coolingText}>
+                You have {COOLING_OFF_DAYS} days to cancel after submitting.
+              </Text>
             </View>
           </View>
 
@@ -224,10 +242,16 @@ export function DeleteAccountScreen() {
             style={[styles.btn, styles.btnDanger, submitting && styles.btnDisabled]}
             onPress={onSubmit}
             disabled={submitting}
+            activeOpacity={0.85}
             testID="delete-account-submit"
           >
+            <AppIcon
+              name={submitting ? 'progress-clock' : 'trash-can-outline'}
+              size={18}
+              color="#FFFFFF"
+            />
             <Text style={styles.btnDangerText}>
-              {submitting ? 'Submitting…' : `Schedule deletion (${COOLING_OFF_DAYS}-day cooling-off)`}
+              {submitting ? 'Submitting…' : `Schedule deletion · ${COOLING_OFF_DAYS}-day cooling-off`}
             </Text>
           </TouchableOpacity>
 
@@ -267,26 +291,31 @@ const makeStyles = (colors: Colors) =>
     warningCard: {
       padding: spacing.lg,
       backgroundColor: colors.surface,
-      borderColor: colors.border,
+      borderColor: colors.dangerBorder,
       borderWidth: 1,
       borderRadius: radius.xl,
       marginBottom: spacing.base,
       alignItems: 'center',
     },
     warningIconCircle: {
-      width: 48,
-      height: 48,
+      width: 64,
+      height: 64,
       borderRadius: radius.full,
-      backgroundColor: colors.warningLightBg,
+      backgroundColor: colors.danger,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: spacing.md,
+      shadowColor: colors.danger,
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
     },
     warningTitle: {
-      fontSize: fontSizes.lg,
+      fontSize: fontSizes.xl,
       fontWeight: fontWeights.bold,
       color: colors.text,
       marginBottom: spacing.sm,
+      letterSpacing: -0.3,
     },
     warningBody: {
       fontSize: fontSizes.sm,
@@ -295,47 +324,90 @@ const makeStyles = (colors: Colors) =>
       lineHeight: 20,
       marginBottom: spacing.md,
     },
-    bulletList: {
+    consequenceList: {
       alignSelf: 'stretch',
-      backgroundColor: colors.bgSubtle,
+      backgroundColor: colors.dangerBg,
       borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.dangerBorder,
       padding: spacing.md,
-      gap: spacing.sm,
+      gap: spacing.sm + 2,
     },
-    bulletRow: {
+    consequenceRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: spacing.sm,
     },
-    bulletDot: {
-      width: 5,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: colors.textDisabled,
-      marginTop: 6,
-    },
-    bulletText: {
-      flex: 1,
-      fontSize: fontSizes.sm,
-      color: colors.textMedium,
-      lineHeight: 18,
-    },
-    btn: {
-      paddingVertical: 14,
-      borderRadius: radius.lg,
+    consequenceIconWrap: {
+      width: 24,
+      height: 24,
+      borderRadius: radius.md,
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    consequenceText: {
+      flex: 1,
+      fontSize: fontSizes.sm,
+      color: colors.text,
+      lineHeight: 18,
+      paddingTop: 2,
+    },
+    preservedCallout: {
+      alignSelf: 'stretch',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+      padding: spacing.sm + 2,
+      borderRadius: radius.md,
+      backgroundColor: colors.successBg,
+      borderWidth: 1,
+      borderColor: colors.successBorder,
+    },
+    preservedText: {
+      flex: 1,
+      fontSize: 12,
+      color: colors.successText,
+      lineHeight: 16,
+    },
+    coolingCallout: {
+      alignSelf: 'stretch',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: spacing.sm,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs + 2,
+    },
+    coolingText: {
+      flex: 1,
+      fontSize: 11,
+      color: colors.warning,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: 0.2,
+    },
+    btn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingVertical: 14,
+      borderRadius: radius.lg,
       marginTop: spacing.base,
     },
     btnDanger: {
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.danger,
+      backgroundColor: colors.danger,
+      shadowColor: colors.danger,
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
     },
     btnDangerText: {
-      color: colors.danger,
+      color: '#FFFFFF',
       fontSize: fontSizes.base,
-      fontWeight: fontWeights.semibold,
+      fontWeight: fontWeights.bold,
+      letterSpacing: 0.2,
     },
     btnPrimary: { overflow: 'hidden' },
     btnPrimaryText: {

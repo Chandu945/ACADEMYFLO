@@ -7,6 +7,8 @@ import type { StudentAttendanceRepository } from '@domain/attendance/ports/stude
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { BatchRepository } from '@domain/batch/ports/batch.repository';
+import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import {
   canMarkAttendance,
   validateLocalDate,
@@ -22,12 +24,14 @@ export interface MarkStudentAttendanceInput {
   actorUserId: string;
   actorRole: UserRole;
   studentId: string;
+  batchId: string;
   date: string;
   status: string;
 }
 
 export interface MarkStudentAttendanceOutput {
   studentId: string;
+  batchId: string;
   date: string;
   status: StudentAttendanceStatus;
 }
@@ -38,6 +42,8 @@ export class MarkStudentAttendanceUseCase {
     private readonly studentRepo: StudentRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
+    private readonly batchRepo: BatchRepository,
+    private readonly studentBatchRepo: StudentBatchRepository,
     private readonly auditRecorder: AuditRecorderPort,
   ) {}
 
@@ -82,6 +88,20 @@ export class MarkStudentAttendanceUseCase {
       return err(AttendanceErrors.studentNotActive(input.studentId));
     }
 
+    const batch = await this.batchRepo.findById(input.batchId);
+    if (!batch) {
+      return err(AttendanceErrors.batchNotFound(input.batchId));
+    }
+    if (batch.academyId !== actor.academyId) {
+      return err(AttendanceErrors.batchNotInAcademy());
+    }
+
+    // Confirm enrollment so a typo in batchId can't silently insert orphan rows.
+    const studentBatches = await this.studentBatchRepo.findByStudentId(input.studentId);
+    if (!studentBatches.some((sb) => sb.batchId === input.batchId)) {
+      return err(AttendanceErrors.studentNotInBatch());
+    }
+
     // Check holiday
     const holiday = await this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date);
     if (holiday) {
@@ -90,9 +110,10 @@ export class MarkStudentAttendanceUseCase {
 
     if (input.status === 'PRESENT') {
       // Upsert present record (idempotent)
-      const existing = await this.attendanceRepo.findByAcademyStudentDate(
+      const existing = await this.attendanceRepo.findByAcademyStudentBatchDate(
         actor.academyId,
         input.studentId,
+        input.batchId,
         input.date,
       );
       if (!existing) {
@@ -100,6 +121,7 @@ export class MarkStudentAttendanceUseCase {
           id: randomUUID(),
           academyId: actor.academyId,
           studentId: input.studentId,
+          batchId: input.batchId,
           date: input.date,
           markedByUserId: input.actorUserId,
         });
@@ -107,9 +129,10 @@ export class MarkStudentAttendanceUseCase {
       }
     } else {
       // ABSENT: delete present record if exists (idempotent)
-      await this.attendanceRepo.deleteByAcademyStudentDate(
+      await this.attendanceRepo.deleteByAcademyStudentBatchDate(
         actor.academyId,
         input.studentId,
+        input.batchId,
         input.date,
       );
     }
@@ -120,11 +143,17 @@ export class MarkStudentAttendanceUseCase {
       action: 'STUDENT_ATTENDANCE_EDITED',
       entityType: 'STUDENT_ATTENDANCE',
       entityId: input.studentId,
-      context: { studentId: input.studentId, date: input.date, status: input.status },
+      context: {
+        studentId: input.studentId,
+        batchId: input.batchId,
+        date: input.date,
+        status: input.status,
+      },
     });
 
     return ok({
       studentId: input.studentId,
+      batchId: input.batchId,
       date: input.date,
       status: input.status as StudentAttendanceStatus,
     });

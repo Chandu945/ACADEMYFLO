@@ -59,12 +59,13 @@ export async function getDailyAttendance(
 
 export async function markAttendance(
   studentId: string,
+  batchId: string,
   date: string,
   status: AttendanceStatus,
 ): Promise<Result<MarkAttendanceApiResponse, AppError>> {
   const result = await apiPut<unknown>(
     `/api/v1/attendance/students/${studentId}?date=${encodeURIComponent(date)}`,
-    { status },
+    { batchId, status },
   );
   return validateResponse(
     markAttendanceResponseSchema as unknown as ZodSchema<MarkAttendanceApiResponse>,
@@ -74,12 +75,13 @@ export async function markAttendance(
 }
 
 export async function bulkSetAbsences(
+  batchId: string,
   date: string,
   absentStudentIds: string[],
 ): Promise<Result<BulkSetAbsencesApiResponse, AppError>> {
   const result = await apiPut<unknown>(
     `/api/v1/attendance/students/bulk?date=${encodeURIComponent(date)}`,
-    { absentStudentIds },
+    { batchId, absentStudentIds },
   );
   return validateResponse(
     bulkSetAbsencesResponseSchema as unknown as ZodSchema<BulkSetAbsencesApiResponse>,

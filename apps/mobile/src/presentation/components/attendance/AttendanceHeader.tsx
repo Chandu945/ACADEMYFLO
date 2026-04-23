@@ -36,13 +36,7 @@ export function AttendanceHeader({
           accessibilityRole="button"
           testID="daily-report-button"
         >
-          <View style={styles.actionIconWrap}>
-            <LinearGradient
-              colors={[gradient.start, gradient.end]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+          <View style={[styles.actionIconWrap, { backgroundColor: colors.info }]}>
             <AppIcon name="file-chart-outline" size={18} color="#FFFFFF" />
           </View>
           <Text style={styles.actionLabel}>Daily Report</Text>
@@ -82,9 +76,8 @@ export function AttendanceHeader({
               <ActivityIndicator size="small" color={colors.warning} />
             ) : (
               <>
-                <View style={[styles.actionIconWrap, styles.holidayIconWrap]}>
-                  
-                  <AppIcon name="calendar-star" size={18} color={colors.warning} />
+                <View style={[styles.actionIconWrap, { backgroundColor: colors.warning }]}>
+                  <AppIcon name="calendar-star" size={18} color="#FFFFFF" />
                 </View>
                 <Text style={styles.actionLabel}>Holiday</Text>
               </>
@@ -124,9 +117,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  holidayIconWrap: {
-    backgroundColor: colors.warningBg,
   },
   actionLabel: {
     fontSize: fontSizes.xs,

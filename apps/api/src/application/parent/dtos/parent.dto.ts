@@ -40,14 +40,29 @@ export interface PaymentHistoryItemDto {
   paidAt: string;
 }
 
+export interface ChildBatchAttendanceBreakdown {
+  batchId: string;
+  batchName: string;
+  presentCount: number;
+  expectedCount: number;
+  presentDates: string[];
+  absentDates: string[];
+}
+
 export interface ChildAttendanceSummaryDto {
   studentId: string;
   month: string;
+  /** Dates the child missed at least one scheduled session. */
   absentDates: string[];
   holidayDates: string[];
+  /** Total session-attendances across all of the child's batches. */
   presentCount: number;
+  /** expectedCount minus presentCount. Session-level. */
   absentCount: number;
+  /** Sum across batches of scheduled-days-in-month minus holidays-on-scheduled-days. */
+  expectedCount: number;
   holidayCount: number;
+  perBatch: ChildBatchAttendanceBreakdown[];
 }
 
 export interface ChildFeeDueDto {

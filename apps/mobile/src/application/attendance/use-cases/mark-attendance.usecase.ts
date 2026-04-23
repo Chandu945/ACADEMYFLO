@@ -13,6 +13,7 @@ import {
 export type MarkAttendanceApiPort = {
   markAttendance(
     studentId: string,
+    batchId: string,
     date: string,
     status: AttendanceStatus,
   ): Promise<Result<MarkAttendanceApiResponse, AppError>>;
@@ -25,10 +26,11 @@ export type MarkAttendanceDeps = {
 export async function markAttendanceUseCase(
   deps: MarkAttendanceDeps,
   studentId: string,
+  batchId: string,
   date: string,
   status: AttendanceStatus,
 ): Promise<Result<MarkAttendanceResult, AppError>> {
-  const result = await deps.attendanceApi.markAttendance(studentId, date, status);
+  const result = await deps.attendanceApi.markAttendance(studentId, batchId, date, status);
 
   if (!result.ok) {
     return result;

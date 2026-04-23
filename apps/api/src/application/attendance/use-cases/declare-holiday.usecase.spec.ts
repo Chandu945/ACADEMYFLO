@@ -43,13 +43,15 @@ function buildDeps() {
   };
   const attendanceRepo: jest.Mocked<StudentAttendanceRepository> = {
     save: jest.fn(),
-    deleteByAcademyStudentDate: jest.fn(),
-    findByAcademyStudentDate: jest.fn(),
+    deleteByAcademyStudentBatchDate: jest.fn(),
+    findByAcademyStudentBatchDate: jest.fn(),
+    findPresentByAcademyBatchAndDate: jest.fn(),
     findPresentByAcademyAndDate: jest.fn(),
     findPresentByAcademyStudentAndMonth: jest.fn(),
     findPresentByAcademyAndMonth: jest.fn(),
     deleteByAcademyAndDate: jest.fn(),
     countPresentByAcademyAndDate: jest.fn(),
+    countDistinctStudentsPresentByAcademyAndDate: jest.fn(),
     deleteAllByAcademyAndStudent: jest.fn(),
   };
   const auditRecorder = { record: jest.fn() };
