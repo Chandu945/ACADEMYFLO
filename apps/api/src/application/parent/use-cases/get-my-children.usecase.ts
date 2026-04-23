@@ -5,6 +5,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
+import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
 import { ParentErrors } from '../../common/errors';
@@ -22,6 +23,7 @@ export class GetMyChildrenUseCase {
     private readonly studentRepo: StudentRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly holidayRepo: HolidayRepository,
+    private readonly feeDueRepo: FeeDueRepository,
   ) {}
 
   async execute(input: GetMyChildrenInput): Promise<Result<ChildSummaryDto[], AppError>> {
@@ -71,6 +73,24 @@ export class GetMyChildrenUseCase {
           // If attendance data unavailable, leave as null
         }
 
+        let currentMonthFeeDueId: string | null = null;
+        let currentMonthFeeAmount: number | null = null;
+        let currentMonthFeeStatus: ChildSummaryDto['currentMonthFeeStatus'] = null;
+        try {
+          const feeDue = await this.feeDueRepo.findByAcademyStudentMonth(
+            academyId,
+            sid,
+            currentMonth,
+          );
+          if (feeDue) {
+            currentMonthFeeDueId = feeDue.id.toString();
+            currentMonthFeeAmount = feeDue.amount + (feeDue.lateFeeApplied ?? 0);
+            currentMonthFeeStatus = feeDue.status;
+          }
+        } catch {
+          // If fee due unavailable, keep nulls — UI falls back to monthlyFee.
+        }
+
         return {
           studentId: sid,
           fullName: s.fullName,
@@ -78,6 +98,9 @@ export class GetMyChildrenUseCase {
           monthlyFee: s.monthlyFee,
           academyId: s.academyId,
           currentMonthAttendancePercent,
+          currentMonthFeeDueId,
+          currentMonthFeeAmount,
+          currentMonthFeeStatus,
         };
       }),
     );

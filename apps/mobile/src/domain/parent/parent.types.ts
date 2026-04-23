@@ -7,6 +7,9 @@ export type ChildSummary = {
   monthlyFee: number;
   academyId: string;
   currentMonthAttendancePercent: number | null;
+  currentMonthFeeDueId: string | null;
+  currentMonthFeeAmount: number | null;
+  currentMonthFeeStatus: FeeDueStatus | null;
 };
 
 export type ChildAttendanceSummary = {

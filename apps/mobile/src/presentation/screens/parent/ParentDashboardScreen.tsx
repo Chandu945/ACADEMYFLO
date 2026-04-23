@@ -407,18 +407,32 @@ export function ParentDashboardScreen() {
                               </View>
                             </View>
                             <Text style={styles.monthCardAmount}>
-                              {formatCurrency(child.monthlyFee)}
+                              {formatCurrency(child.currentMonthFeeAmount ?? child.monthlyFee)}
                             </Text>
                           </View>
                           <TouchableOpacity
                             style={styles.payNowBtn}
                             activeOpacity={0.85}
-                            onPress={() =>
-                              navigation.navigate('Children', {
-                                screen: 'ChildDetail',
-                                params: { studentId: child.studentId, fullName: child.fullName },
-                              })
-                            }
+                            onPress={() => {
+                              if (child.currentMonthFeeDueId) {
+                                navigation.navigate('Children', {
+                                  screen: 'ManualPayment',
+                                  params: {
+                                    feeDueId: child.currentMonthFeeDueId,
+                                    studentId: child.studentId,
+                                    monthKey: currentMonth,
+                                    amount: child.currentMonthFeeAmount ?? child.monthlyFee,
+                                  },
+                                });
+                              } else {
+                                // Fee due not yet generated — fall back to ChildDetail
+                                // so the parent can still see the child's context.
+                                navigation.navigate('Children', {
+                                  screen: 'ChildDetail',
+                                  params: { studentId: child.studentId, fullName: child.fullName },
+                                });
+                              }
+                            }}
                           >
                             <LinearGradient
                               colors={[gradient.start, gradient.end]}

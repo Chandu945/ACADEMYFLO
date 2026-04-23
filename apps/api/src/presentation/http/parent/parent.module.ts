@@ -209,12 +209,14 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         studentRepo: StudentRepository,
         attendanceRepo: StudentAttendanceRepository,
         holidayRepo: HolidayRepository,
-      ) => new GetMyChildrenUseCase(linkRepo, studentRepo, attendanceRepo, holidayRepo),
+        feeDueRepo: FeeDueRepository,
+      ) => new GetMyChildrenUseCase(linkRepo, studentRepo, attendanceRepo, holidayRepo, feeDueRepo),
       inject: [
         PARENT_STUDENT_LINK_REPOSITORY,
         STUDENT_REPOSITORY,
         STUDENT_ATTENDANCE_REPOSITORY,
         HOLIDAY_REPOSITORY,
+        FEE_DUE_REPOSITORY,
       ],
     },
     {

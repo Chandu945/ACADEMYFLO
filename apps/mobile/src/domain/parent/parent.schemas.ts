@@ -9,6 +9,9 @@ export const childSummarySchema = z.object({
   monthlyFee: z.number(),
   academyId: z.string(),
   currentMonthAttendancePercent: z.number().nullable(),
+  currentMonthFeeDueId: z.string().nullable().default(null),
+  currentMonthFeeAmount: z.number().nullable().default(null),
+  currentMonthFeeStatus: z.enum(['UPCOMING', 'DUE', 'PAID']).nullable().default(null),
 });
 
 export const childrenListSchema = z.array(childSummarySchema);

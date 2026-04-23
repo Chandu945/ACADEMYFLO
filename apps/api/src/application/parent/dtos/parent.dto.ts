@@ -7,6 +7,9 @@ export interface ChildSummaryDto {
   monthlyFee: number;
   academyId: string;
   currentMonthAttendancePercent: number | null;
+  currentMonthFeeDueId: string | null;
+  currentMonthFeeAmount: number | null;
+  currentMonthFeeStatus: FeeDueStatus | null;
 }
 
 export interface ParentProfileDto {
