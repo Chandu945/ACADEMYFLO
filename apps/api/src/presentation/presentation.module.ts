@@ -26,6 +26,7 @@ import { AdminAuthModule } from './http/admin-auth/admin-auth.module';
 import { AdminModule } from './http/admin/admin.module';
 import { MetricsModule } from './http/metrics/metrics.module';
 import { ParentModule } from './http/parent/parent.module';
+import { ReviewsModule } from './http/reviews/reviews.module';
 import { UploadsModule } from './http/uploads/uploads.module';
 import { ProfileModule } from './http/profile/profile.module';
 import { AccountDeletionModule } from './http/account-deletion/account-deletion.module';
@@ -64,6 +65,7 @@ import { HttpLoggingInterceptor } from './http/common/interceptors/http-logging.
     AdminModule,
     MetricsModule,
     ParentModule,
+    ReviewsModule,
     UploadsModule,
     ProfileModule,
     AccountDeletionModule,

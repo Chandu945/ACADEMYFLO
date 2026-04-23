@@ -45,6 +45,7 @@ const OWNER_SECTIONS: MenuSection[] = [
       { key: 'staff-attendance', icon: 'calendar-account-outline', label: 'Staff Attendance', screen: 'StaffAttendance' },
       { key: 'audit-logs', icon: 'clipboard-text-clock-outline', label: 'Audit Logs', screen: 'AuditLogs' },
       { key: 'overdue-students', icon: 'alert-circle-outline', label: 'Overdue Students', screen: 'OverdueStudents' },
+      { key: 'parent-reviews', icon: 'message-star-outline', label: 'Parent Reviews', screen: 'AcademyReviews' },
     ],
   },
   {
@@ -81,6 +82,7 @@ const PARENT_SECTIONS: MenuSection[] = [
       { key: 'parent-profile', icon: 'account-outline', label: 'My Profile', screen: 'ParentProfile' },
       { key: 'academy-info', icon: 'school-outline', label: 'Academy Info', screen: 'AcademyInfo' },
       { key: 'payment-history', icon: 'history', label: 'Payment History', screen: 'PaymentHistory' },
+      { key: 'rate-academy', icon: 'star-outline', label: 'Rate Academy', screen: 'RateAcademy' },
     ],
   },
 ];

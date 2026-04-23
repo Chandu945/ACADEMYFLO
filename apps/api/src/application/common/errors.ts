@@ -136,6 +136,15 @@ export const StudentBatchErrors = {
     AppError.forbidden('Only owners and staff can view student batch assignments'),
 } as const;
 
+export const ReviewErrors = {
+  submitNotAllowed: () => AppError.forbidden('Only parents can review the academy'),
+  viewNotAllowed: () => AppError.forbidden('Only the academy owner can view reviews'),
+  noLinkedAcademy: () => AppError.forbidden('You are not linked to any academy'),
+  ownerAcademyRequired: () =>
+    new AppError('ACADEMY_SETUP_REQUIRED', 'Please complete academy setup first'),
+  notFound: () => AppError.notFound('AcademyReview'),
+} as const;
+
 export const ParentErrors = {
   inviteNotAllowed: () => AppError.forbidden('Only owners can invite parents'),
   parentNotFound: (id: string) => AppError.notFound('Parent', id),
