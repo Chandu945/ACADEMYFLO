@@ -92,6 +92,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       requestId = uuidv4();
       request.headers[REQUEST_ID_HEADER.toLowerCase()] = requestId;
     }
+
+    // Streaming endpoints (PDF/file downloads) may have flushed headers before
+    // the error reached us. Attempting to setHeader/json() after that throws
+    // ERR_HTTP_HEADERS_SENT and cascades into a second filter invocation.
+    // Bail out instead — the response is already committed; all we can do is
+    // log (which we did above at INTERNAL_SERVER_ERROR branch) and let it end.
+    if (response.headersSent) {
+      this.logger.warn('Exception after response committed — cannot send error envelope', {
+        path: request.url,
+        method: request.method,
+        requestId,
+      });
+      return;
+    }
+
     response.setHeader(REQUEST_ID_HEADER, requestId);
 
     const envelope: ErrorEnvelope = {

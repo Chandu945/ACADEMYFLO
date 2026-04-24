@@ -108,4 +108,32 @@ export class Subscription extends Entity<SubscriptionProps> {
   get audit(): AuditFields {
     return this.props.audit;
   }
+
+  /**
+   * Returns a new Subscription with tier-evaluation fields updated and the
+   * audit version bumped. The bump is what lets the optimistic-concurrency
+   * guard in the repository distinguish this save from a stale one. Calling
+   * `reconstitute` directly keeps the old version and makes every subsequent
+   * save throw ConcurrentModificationError once anything else in the system
+   * has written to the doc.
+   */
+  withTierEvaluation(params: {
+    pendingTierKey: TierKey | null;
+    pendingTierEffectiveAt: Date | null;
+    activeStudentCountSnapshot: number | null;
+    peakStudentCountThisCycle: number | null;
+  }): Subscription {
+    return new Subscription(this.id, {
+      ...this.props,
+      pendingTierKey: params.pendingTierKey,
+      pendingTierEffectiveAt: params.pendingTierEffectiveAt,
+      activeStudentCountSnapshot: params.activeStudentCountSnapshot,
+      peakStudentCountThisCycle: params.peakStudentCountThisCycle,
+      audit: {
+        ...this.props.audit,
+        updatedAt: new Date(),
+        version: this.props.audit.version + 1,
+      },
+    });
+  }
 }

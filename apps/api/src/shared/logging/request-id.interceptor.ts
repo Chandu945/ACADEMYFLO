@@ -5,7 +5,6 @@ import {
   type CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 import type { Request, Response } from 'express';
 import { requestContextStorage } from '@shared/context/request-context';
@@ -23,16 +22,17 @@ export class RequestIdInterceptor implements NestInterceptor {
 
     request.headers[REQUEST_ID_HEADER.toLowerCase()] = requestId;
 
+    // Set the response header eagerly — streaming handlers (PDF/file downloads)
+    // flush headers before next.handle() completes, so a tap() on emission
+    // throws ERR_HTTP_HEADERS_SENT. Doing it here, before any handler runs,
+    // keeps JSON and streaming paths happy without special-casing either.
+    if (!response.headersSent) {
+      response.setHeader(REQUEST_ID_HEADER, requestId);
+    }
+
     return new Observable((subscriber) => {
       requestContextStorage.run({ requestId }, () => {
-        next
-          .handle()
-          .pipe(
-            tap(() => {
-              response.setHeader(REQUEST_ID_HEADER, requestId);
-            }),
-          )
-          .subscribe(subscriber);
+        next.handle().subscribe(subscriber);
       });
     });
   }

@@ -77,14 +77,24 @@ export class EvaluateTierUseCase {
       subscription.paidEndAt,
     );
 
-    const updated = Subscription.reconstitute(subscription.id.toString(), {
-      ...subscription['props'],
-      pendingTierKey: pendingChange?.tierKey ?? null,
-      pendingTierEffectiveAt: pendingChange?.effectiveAt ?? null,
-      activeStudentCountSnapshot: activeStudentCount,
-      peakStudentCountThisCycle: peakStudentCount,
-    });
-    await this.subscriptionRepo.save(updated);
+    // Skip the save entirely if nothing actually changed — keeps the audit
+    // version monotonic and avoids needless writes racing with real updates.
+    const nothingChanged =
+      subscription.pendingTierKey === (pendingChange?.tierKey ?? null) &&
+      (subscription.pendingTierEffectiveAt?.getTime() ?? null) ===
+        (pendingChange?.effectiveAt?.getTime() ?? null) &&
+      subscription.activeStudentCountSnapshot === activeStudentCount &&
+      subscription.peakStudentCountThisCycle === peakStudentCount;
+
+    if (!nothingChanged) {
+      const updated = subscription.withTierEvaluation({
+        pendingTierKey: pendingChange?.tierKey ?? null,
+        pendingTierEffectiveAt: pendingChange?.effectiveAt ?? null,
+        activeStudentCountSnapshot: activeStudentCount,
+        peakStudentCountThisCycle: peakStudentCount,
+      });
+      await this.subscriptionRepo.save(updated);
+    }
 
     // Fire-and-forget: notify owner only when a new tier change is detected
     const hadPendingBefore = subscription.pendingTierKey !== null;
