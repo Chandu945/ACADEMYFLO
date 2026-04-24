@@ -29,12 +29,15 @@ export interface OverduePushReminderSummary {
 /**
  * Determines if a push reminder should be sent for a given number of days overdue.
  *
- * Schedule: due date (0), +1 day, +2 days, then every 3 days (5, 8, 11, ...)
+ * Schedule: due date (0), +1, +2, +3, +7, +14. Stops after 30 days so
+ * ghosted accounts don't get pinged forever — owners handle those manually.
  */
+const REMINDER_OFFSETS = new Set([0, 1, 2, 3, 7, 14]);
+const MAX_OVERDUE_DAYS = 30;
+
 function shouldSendReminder(daysOverdue: number): boolean {
-  if (daysOverdue < 0) return false;
-  if (daysOverdue <= 2) return true;
-  return (daysOverdue - 2) % 3 === 0;
+  if (daysOverdue < 0 || daysOverdue > MAX_OVERDUE_DAYS) return false;
+  return REMINDER_OFFSETS.has(daysOverdue);
 }
 
 function diffDays(dueDateStr: string, todayStr: string): number {
@@ -144,11 +147,17 @@ export class SendOverduePushRemindersUseCase {
         ? ` A late fee of \u20B9${safeLateFee} has been added.`
         : '';
 
+      // Escalating tone as days pass — first ping is gentle, week-mark adds
+      // urgency, two-week mark signals it's the last automated nudge.
       let body: string;
       if (daysOverdue === 0) {
         body = `Fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) is due today. Please pay to avoid late fees.`;
       } else if (daysOverdue === 1) {
         body = `Fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) was due yesterday. Please pay now.${lateFeeNote}`;
+      } else if (daysOverdue === 14) {
+        body = `Final reminder: fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) is overdue by 2 weeks.${lateFeeNote} Please pay immediately to avoid further action.`;
+      } else if (daysOverdue === 7) {
+        body = `Fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) has been overdue for a week.${lateFeeNote} Please pay now.`;
       } else {
         body = `Fee of \u20B9${safeAmount} for ${studentName} (${formatMonthKey(due.monthKey)}) is overdue by ${daysOverdue} days.${lateFeeNote} Please pay immediately.`;
       }

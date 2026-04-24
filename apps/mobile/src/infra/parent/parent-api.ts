@@ -51,7 +51,18 @@ function validateResponse<T>(
     if (__DEV__) {
       console.error(`[parentApi] ${label} schema mismatch:`, parsed.error.issues);
     }
-    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+    // Surface the failing field path even in production so users (and us)
+    // can see which field broke without needing dev tools. Pre-launch this is
+    // strictly better than the opaque generic message.
+    const detail = parsed.error.issues
+      .slice(0, 2)
+      .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+      .join('; ');
+    const truncated = detail.length > 180 ? `${detail.slice(0, 180)}…` : detail;
+    return err({
+      code: 'UNKNOWN',
+      message: truncated ? `Unexpected server response (${truncated})` : 'Unexpected server response',
+    });
   }
   return ok(parsed.data);
 }

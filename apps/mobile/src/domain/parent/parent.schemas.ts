@@ -93,17 +93,31 @@ export const academyInfoSchema = z.object({
   }),
 });
 
+// Defensive shape — the screen breaks the entire list if any single tx fails
+// to validate, so we widen the brittle fields. `source` falls back to MANUAL
+// for unknown values (no UI mapping exists for the rendered chip otherwise).
 export const paymentHistoryItemSchema = z.object({
   feeDueId: z.string(),
-  receiptNumber: z.string(),
-  studentName: z.string(),
-  monthKey: z.string(),
-  amount: z.number(),
-  source: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL']),
-  paidAt: z.string(),
+  receiptNumber: z.string().nullable().transform((v) => v ?? '—'),
+  studentName: z.string().nullable().transform((v) => v ?? 'Unknown'),
+  monthKey: z.string().nullable().transform((v) => v ?? ''),
+  amount: z.number().nullable().transform((v) => v ?? 0),
+  source: z
+    .enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL'])
+    .catch('MANUAL'),
+  paidAt: z.string().nullable().transform((v) => v ?? ''),
 });
 
-export const paymentHistoryListSchema = z.array(paymentHistoryItemSchema);
+// Drop tx items that are too broken to even render (missing feeDueId — the row
+// key) instead of failing the whole list.
+export const paymentHistoryListSchema = z
+  .array(z.unknown())
+  .transform((items) =>
+    items
+      .map((it) => paymentHistoryItemSchema.safeParse(it))
+      .filter((r): r is { success: true; data: z.infer<typeof paymentHistoryItemSchema> } => r.success)
+      .map((r) => r.data),
+  );
 
 /* ── Manual payment (Phase 2/3) ──────────────────────────────────────────── */
 

@@ -53,6 +53,7 @@ export function StudentActionMenu({
   const { user } = useAuth();
   const isOwner = user?.role === 'OWNER';
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showNoParentModal, setShowNoParentModal] = useState(false);
   const [generating, setGenerating] = useState<string | null>(null);
 
   const handleDelete = () => {
@@ -82,6 +83,13 @@ export function StudentActionMenu({
     onClose();
     const result = await studentApi.getStudentCredentials(student.id);
     if (result.ok) {
+      // Backend returns ok with hasPassword:false when no parent is linked yet —
+      // surface a proper prompt to invite first instead of opening the share
+      // sheet with placeholder text.
+      if (!result.value.hasPassword) {
+        setShowNoParentModal(true);
+        return;
+      }
       try {
         await Share.share({ message: result.value.shareText });
       } catch {
@@ -90,6 +98,11 @@ export function StudentActionMenu({
     } else {
       crossAlert('Error', result.error.message);
     }
+  };
+
+  const handleInviteFromNoParent = () => {
+    setShowNoParentModal(false);
+    handleInviteParent();
   };
 
   const handleInviteParent = () => {
@@ -366,6 +379,53 @@ export function StudentActionMenu({
         onChanged={() => { setShowStatusModal(false); onStatusChanged(); }}
       />
 
+      <Modal
+        visible={showNoParentModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNoParentModal(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.noParentOverlay}>
+          <View style={styles.noParentCard}>
+            <View style={styles.noParentIconRing}>
+              <View style={styles.noParentIcon}>
+                <AppIcon name="account-plus-outline" size={36} color={colors.success} />
+              </View>
+            </View>
+            <Text style={styles.noParentTitle}>No Parent Invited Yet</Text>
+            <Text style={styles.noParentBody}>
+              You need to invite a parent for{' '}
+              <Text style={styles.noParentBodyStrong}>{student.fullName}</Text>{' '}
+              before you can share login credentials.
+            </Text>
+            <TouchableOpacity
+              style={styles.noParentPrimary}
+              onPress={handleInviteFromNoParent}
+              testID="no-parent-invite"
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="account-plus-outline" size={18} color={colors.white} />
+              <Text style={styles.noParentPrimaryText}>Invite Parent</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.noParentCancel}
+              onPress={() => setShowNoParentModal(false)}
+              testID="no-parent-cancel"
+              activeOpacity={0.7}
+            >
+              <Text style={styles.noParentCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {generating && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>
@@ -583,6 +643,103 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   confirmButton: { flex: 1, overflow: 'hidden', borderRadius: radius.md, padding: spacing.base, alignItems: 'center' },
   confirmButtonDisabled: { opacity: 0.6 },
   confirmButtonText: { fontSize: fontSizes.base, fontWeight: fontWeights.semibold, color: colors.white },
+  confirmButtonInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  // No-parent prompt — centered card with success-tinted icon hero
+  // Heavier scrim than the status modal so the page content stops bleeding through
+  // (the action sheet sits behind on the same surface and was visible at 0.5).
+  noParentOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  noParentCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    paddingTop: spacing.xl + spacing.sm,
+    width: '100%',
+    maxWidth: 380,
+    alignSelf: 'center',
+    alignItems: 'stretch',
+    borderWidth: 1,
+    borderColor: colors.border,
+    // Soft elevation to lift the card off the scrim
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+  },
+  noParentIconRing: {
+    alignSelf: 'center',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.successBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  noParentIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.bg,
+    borderWidth: 2,
+    borderColor: colors.successBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noParentTitle: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+    letterSpacing: -0.3,
+  },
+  noParentBody: {
+    fontSize: fontSizes.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.xs,
+  },
+  noParentBodyStrong: {
+    color: colors.text,
+    fontWeight: fontWeights.semibold,
+  },
+  // Stacked buttons — primary on top, cancel below — avoids the icon+text wrap
+  // that horizontal flex:1 buttons hit on the narrow card.
+  noParentPrimary: {
+    overflow: 'hidden',
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  noParentPrimaryText: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.white,
+    letterSpacing: 0.1,
+  },
+  noParentCancel: {
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+  },
+  noParentCancelText: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.medium,
+    color: colors.textSecondary,
+  },
   // Loading overlay
   loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   loadingBox: { backgroundColor: colors.bg, borderRadius: radius.lg, padding: spacing.xl, alignItems: 'center', gap: spacing.md },

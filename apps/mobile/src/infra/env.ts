@@ -31,7 +31,7 @@ const ENV_MAP: Record<AppEnv, EnvConfig> = {
     SENTRY_DSN,
   },
   production: {
-    API_BASE_URL: 'https://playconnect-8g17.onrender.com',
+    API_BASE_URL: 'https://academyflo.onrender.com',
     APP_ENV: 'production',
     SENTRY_DSN,
   },
