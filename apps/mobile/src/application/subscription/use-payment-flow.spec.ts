@@ -83,6 +83,32 @@ describe('usePaymentFlow', () => {
     expect(result.current.error).toBe('Payment already in progress');
   });
 
+  it('fails fast when checkout rejects (e.g. Cashfree onError)', async () => {
+    subscriptionApi.initiatePayment.mockResolvedValue({
+      ok: true,
+      value: {
+        orderId: 'pc_sub_test',
+        paymentSessionId: 'session_123',
+        amountInr: 299,
+        currency: 'INR',
+        tierKey: 'TIER_0_50',
+        expiresAt: '2026-03-15T13:00:00Z',
+      },
+    });
+    openCashfreeCheckout.mockRejectedValueOnce(new Error('Invalid payment session'));
+
+    const onSuccess = jest.fn();
+    const { result } = renderHook(() => usePaymentFlow(deps, onSuccess));
+
+    await act(async () => {
+      await result.current.startPayment();
+    });
+
+    expect(result.current.status).toBe('failed');
+    expect(result.current.error).toBe('Invalid payment session');
+    expect(subscriptionApi.getPaymentStatus).not.toHaveBeenCalled();
+  });
+
   it('reset returns to idle state', async () => {
     subscriptionApi.initiatePayment.mockResolvedValue({
       ok: false,
