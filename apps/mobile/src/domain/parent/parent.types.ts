@@ -10,6 +10,18 @@ export type ChildSummary = {
   currentMonthFeeDueId: string | null;
   currentMonthFeeAmount: number | null;
   currentMonthFeeStatus: FeeDueStatus | null;
+  currentMonthFeeMonthKey: string | null;
+  totalUnpaidMonths: number;
+  totalUnpaidAmount: number;
+};
+
+export type ChildBatchAttendanceBreakdown = {
+  batchId: string;
+  batchName: string;
+  presentCount: number;
+  expectedCount: number;
+  presentDates: string[];
+  absentDates: string[];
 };
 
 export type ChildAttendanceSummary = {
@@ -20,6 +32,8 @@ export type ChildAttendanceSummary = {
   presentCount: number;
   absentCount: number;
   holidayCount: number;
+  expectedCount: number;
+  perBatch: ChildBatchAttendanceBreakdown[];
 };
 
 export type ChildFeeDue = {

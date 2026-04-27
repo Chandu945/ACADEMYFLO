@@ -9,12 +9,28 @@ export const childSummarySchema = z.object({
   monthlyFee: z.number(),
   academyId: z.string(),
   currentMonthAttendancePercent: z.number().nullable(),
+  // Fields below describe the OLDEST unpaid fee surfaced to the parent — not
+  // strictly the current calendar month. Defaults make the schema tolerant of
+  // older backend builds that don't return the new fields yet.
   currentMonthFeeDueId: z.string().nullable().default(null),
   currentMonthFeeAmount: z.number().nullable().default(null),
   currentMonthFeeStatus: z.enum(['UPCOMING', 'DUE', 'PAID']).nullable().default(null),
+  currentMonthFeeMonthKey: z.string().nullable().default(null),
+  totalUnpaidMonths: z.number().default(0),
+  totalUnpaidAmount: z.number().default(0),
 });
 
 export const childrenListSchema = z.array(childSummarySchema);
+
+// Per-batch breakdown — backend returns one entry per batch the student is in.
+const childBatchAttendanceBreakdownSchema = z.object({
+  batchId: z.string(),
+  batchName: z.string(),
+  presentCount: z.number(),
+  expectedCount: z.number(),
+  presentDates: z.array(z.string()).default([]),
+  absentDates: z.array(z.string()).default([]),
+});
 
 export const childAttendanceSummarySchema = z.object({
   studentId: z.string(),
@@ -24,6 +40,12 @@ export const childAttendanceSummarySchema = z.object({
   presentCount: z.number(),
   absentCount: z.number(),
   holidayCount: z.number(),
+  // Required by ChildDetailScreen (% calc + per-batch breakdown render).
+  // Backend already returns these — they were getting stripped because Zod's
+  // default strip-unknown behavior dropped fields not declared here. The
+  // ChildDetailScreen then crashed on `attendance.perBatch.length`.
+  expectedCount: z.number().default(0),
+  perBatch: z.array(childBatchAttendanceBreakdownSchema).default([]),
 });
 
 export const childFeeDueSchema = z.object({

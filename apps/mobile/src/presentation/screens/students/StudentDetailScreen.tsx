@@ -128,6 +128,14 @@ export function StudentDetailScreen() {
       if (!mountedRef.current) return;
       if (result.ok) {
         setStudent(result.value);
+      } else if (result.error.code === 'NOT_FOUND') {
+        // Student no longer exists (deleted or never existed). Don't strand
+        // the user on a screen with stale data + a 404 error banner — pop
+        // back to the list with a toast explaining what happened.
+        showToast('This student is no longer available.', 'error');
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        }
       } else {
         setError(result.error.message);
       }
@@ -137,18 +145,24 @@ export function StudentDetailScreen() {
         setError('Failed to load student data.');
       }
     }
-  }, [studentId]);
+  }, [studentId, showToast, navigation]);
 
-  // Auto-refetch when screen gains focus (e.g., returning from edit)
+  // Auto-refetch when screen gains focus (e.g., returning from edit).
+  // First focus normally skips the refetch because the list screen already
+  // hands us full student data via route params. But the edit form's
+  // navigation.replace passes only `{ id }` (mutation response schema strips
+  // everything else), leaving a stub. Detect that and force a refetch.
   const isFirstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
-      if (isFirstFocus.current) {
+      const isStub = !paramStudent?.fullName;
+      if (isFirstFocus.current && !isStub) {
         isFirstFocus.current = false;
         return;
       }
+      isFirstFocus.current = false;
       refetchStudent();
-    }, [refetchStudent]),
+    }, [refetchStudent, paramStudent?.fullName]),
   );
 
   const onRefresh = useCallback(async () => {

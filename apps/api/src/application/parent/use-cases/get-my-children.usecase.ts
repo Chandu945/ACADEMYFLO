@@ -19,6 +19,16 @@ export interface GetMyChildrenInput {
   parentRole: UserRole;
 }
 
+/** Shift "YYYY-MM" by `delta` months (negative goes back). */
+function monthKeyOffset(monthKey: string, delta: number): string {
+  const [y, m] = monthKey.split('-').map(Number);
+  if (!y || !m) return monthKey;
+  const total = y * 12 + (m - 1) + delta;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12 + 12) % 12;
+  return `${ny}-${String(nm + 1).padStart(2, '0')}`;
+}
+
 export class GetMyChildrenUseCase {
   constructor(
     private readonly linkRepo: ParentStudentLinkRepository,
@@ -90,19 +100,41 @@ export class GetMyChildrenUseCase {
           // If attendance/enrollment data unavailable, leave as null.
         }
 
+        // Surface the OLDEST unpaid fee (DUE or UPCOMING) — older dues take
+        // priority so the backlog gets cleared in order and late fees apply
+        // to the right month. Falls back to current-month fee if no backlog.
         let currentMonthFeeDueId: string | null = null;
         let currentMonthFeeAmount: number | null = null;
         let currentMonthFeeStatus: ChildSummaryDto['currentMonthFeeStatus'] = null;
+        let currentMonthFeeMonthKey: string | null = null;
+        let totalUnpaidMonths = 0;
+        let totalUnpaidAmount = 0;
         try {
-          const feeDue = await this.feeDueRepo.findByAcademyStudentMonth(
+          // Look back 24 months — generous safety margin for any realistic
+          // backlog. Anything older than that is unlikely to be settled
+          // through the app and probably needs admin intervention.
+          const fromMonth = monthKeyOffset(currentMonth, -24);
+          const fees = await this.feeDueRepo.listByStudentAndRange(
             academyId,
             sid,
+            fromMonth,
             currentMonth,
           );
-          if (feeDue) {
-            currentMonthFeeDueId = feeDue.id.toString();
-            currentMonthFeeAmount = feeDue.amount + (feeDue.lateFeeApplied ?? 0);
-            currentMonthFeeStatus = feeDue.status;
+          // listByStudentAndRange returns sorted ASC by monthKey already.
+          const unpaid = fees.filter(
+            (f) => f.status === 'DUE' || f.status === 'UPCOMING',
+          );
+          totalUnpaidMonths = unpaid.length;
+          totalUnpaidAmount = unpaid.reduce(
+            (sum, f) => sum + f.amount + (f.lateFeeApplied ?? 0),
+            0,
+          );
+          const oldest = unpaid[0];
+          if (oldest) {
+            currentMonthFeeDueId = oldest.id.toString();
+            currentMonthFeeAmount = oldest.amount + (oldest.lateFeeApplied ?? 0);
+            currentMonthFeeStatus = oldest.status;
+            currentMonthFeeMonthKey = oldest.monthKey;
           }
         } catch {
           // If fee due unavailable, keep nulls — UI falls back to monthlyFee.
@@ -118,6 +150,9 @@ export class GetMyChildrenUseCase {
           currentMonthFeeDueId,
           currentMonthFeeAmount,
           currentMonthFeeStatus,
+          currentMonthFeeMonthKey,
+          totalUnpaidMonths,
+          totalUnpaidAmount,
         };
       }),
     );

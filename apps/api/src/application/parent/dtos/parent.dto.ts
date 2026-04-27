@@ -7,9 +7,20 @@ export interface ChildSummaryDto {
   monthlyFee: number;
   academyId: string;
   currentMonthAttendancePercent: number | null;
+  // The "fee to pay" surfaced to the parent. Semantics changed: this is the
+  // OLDEST unpaid fee (DUE or UPCOMING), not strictly the current month.
+  // Older dues take priority over newer ones — late fees apply correctly
+  // and the backlog gets cleared in order.
   currentMonthFeeDueId: string | null;
   currentMonthFeeAmount: number | null;
   currentMonthFeeStatus: FeeDueStatus | null;
+  /** monthKey of the fee surfaced above (e.g. "2026-03"), so the UI can
+   *  render the right label instead of hardcoding the current calendar month. */
+  currentMonthFeeMonthKey: string | null;
+  /** Count of unpaid (UPCOMING + DUE) fees across all months for this student. */
+  totalUnpaidMonths: number;
+  /** Sum of unpaid amounts (incl. late fee) across all months. */
+  totalUnpaidAmount: number;
 }
 
 export interface ParentProfileDto {

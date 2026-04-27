@@ -24,7 +24,9 @@ function getStatusStyles(colors: Colors): Record<string, { bg: string; text: str
   return {
     UPCOMING: { bg: colors.infoBg, text: colors.infoText },
     ONGOING: { bg: colors.successBg, text: colors.successText },
-    COMPLETED: { bg: '#f1f5f9', text: colors.textSecondary },
+    // Was hardcoded #f1f5f9 (slate-100) which becomes white-on-white in
+    // dark mode. Use theme tokens so the badge has contrast in both modes.
+    COMPLETED: { bg: colors.border, text: colors.textSecondary },
     CANCELLED: { bg: colors.dangerBg, text: colors.dangerText },
   };
 }

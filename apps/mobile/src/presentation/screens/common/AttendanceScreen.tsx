@@ -55,22 +55,6 @@ function weekdayOf(dateStr: string): Weekday {
   return JS_WEEKDAY_TO_LABEL[d.getDay()]!;
 }
 
-/**
- * Find the next date on or after `fromDate` that matches one of the batch's
- * scheduled weekdays. Returns null if the batch has no scheduled days at all.
- * Capped at 14 days out as a safety net so we don't loop indefinitely.
- */
-function findNextScheduledDate(fromDate: string, days: readonly Weekday[]): string | null {
-  if (days.length === 0) return null;
-  const set = new Set(days);
-  let cursor = fromDate;
-  for (let i = 0; i < 14; i++) {
-    cursor = addDays(cursor, 1);
-    if (set.has(weekdayOf(cursor))) return cursor;
-  }
-  return null;
-}
-
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
@@ -430,10 +414,6 @@ export function AttendanceScreen() {
           batchName={selectedBatch.batchName}
           selectedWeekday={weekdayOf(selectedDate)}
           scheduledDays={selectedBatch.days}
-          onJumpToNext={() => {
-            const next = findNextScheduledDate(selectedDate, selectedBatch.days);
-            if (next) setSelectedDate(next);
-          }}
         />
       ) : loading && !refreshing ? (
         <View testID="skeleton-container" style={styles.skeletons}>

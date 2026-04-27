@@ -6,6 +6,7 @@
     "baseUrl": ".",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "ignoreDeprecations": "5.0",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "declaration": true,

@@ -38,10 +38,19 @@ export interface CreateEnquiryOutput {
   source: string | null;
   notes: string | null;
   status: string;
+  // Closure fields — always null for a freshly created (ACTIVE) enquiry, but
+  // they must be present in the response so the mobile schema (which mirrors
+  // the GET-detail shape) parses successfully. Without these, every create
+  // surfaces as "Unexpected server response" on the client.
+  closureReason: string | null;
+  convertedStudentId: string | null;
+  closedBy: string | null;
+  closedAt: string | null;
   nextFollowUpDate: string | null;
   followUps: unknown[];
   createdBy: string;
   createdAt: string;
+  updatedAt: string;
   warning?: string;
 }
 
@@ -124,10 +133,15 @@ export class CreateEnquiryUseCase {
       source: enquiry.source,
       notes: enquiry.notes,
       status: enquiry.status,
+      closureReason: null,
+      convertedStudentId: null,
+      closedBy: null,
+      closedAt: null,
       nextFollowUpDate: enquiry.nextFollowUpDate?.toISOString() ?? null,
       followUps: [],
       createdBy: enquiry.createdBy,
       createdAt: enquiry.audit.createdAt.toISOString(),
+      updatedAt: enquiry.audit.updatedAt.toISOString(),
     };
 
     if (existing) {

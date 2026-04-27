@@ -43,6 +43,11 @@ export interface CreateEventOutput {
   status: string;
   createdBy: string;
   createdAt: string;
+  // Mobile's eventDetailSchema extends the list-item shape with updatedAt
+  // (required). Without this field, every successful create surfaces as
+  // "Unexpected server response" on the client even though persistence
+  // succeeded — same bug pattern that hit create-enquiry earlier.
+  updatedAt: string;
 }
 
 export class CreateEventUseCase {
@@ -139,6 +144,7 @@ export class CreateEventUseCase {
       status: event.status,
       createdBy: event.createdBy,
       createdAt: event.audit.createdAt.toISOString(),
+      updatedAt: event.audit.updatedAt.toISOString(),
     });
   }
 }

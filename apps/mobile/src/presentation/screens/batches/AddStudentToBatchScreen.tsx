@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  Modal,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
@@ -16,6 +18,7 @@ import type { StudentListItem } from '../../../domain/student/student.types';
 import { listStudents } from '../../../infra/student/student-api';
 import { addStudentToBatch } from '../../../infra/batch/batch-api';
 import { AppCard } from '../../components/ui/AppCard';
+import { AppIcon } from '../../components/ui/AppIcon';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -39,6 +42,7 @@ export function AddStudentToBatchScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [capacityModalVisible, setCapacityModalVisible] = useState(false);
   const [search, setSearch] = useState('');
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set(existingStudentIds));
   const [addingId, setAddingId] = useState<string | null>(null);
@@ -131,7 +135,19 @@ export function AddStudentToBatchScreen() {
         if (result.ok) {
           setAddedIds((prev) => new Set(prev).add(student.id));
         } else {
-          setError(result.error.message);
+          // Capacity-full is a foreseen domain conflict — promote it to a
+          // modal so the owner clearly understands they must edit the batch
+          // size before continuing, instead of dismissing an inline banner
+          // and tapping "Add" again.
+          const msg = result.error.message ?? '';
+          const isCapacityFull =
+            result.error.code === 'CONFLICT' &&
+            /maximum.*capacity|capacity.*maximum|reached.*capacity/i.test(msg);
+          if (isCapacityFull) {
+            setCapacityModalVisible(true);
+          } else {
+            setError(msg);
+          }
         }
       } catch (err) {
         if (__DEV__) console.error('[AddStudentToBatchScreen] handleAdd failed:', err);
@@ -237,6 +253,41 @@ export function AddStudentToBatchScreen() {
           testID="add-student-list"
         />
       )}
+
+      <Modal
+        visible={capacityModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCapacityModalVisible(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconWrap}>
+              <AppIcon name="account-group-outline" size={36} color={colors.warning} />
+            </View>
+            <Text style={styles.modalTitle}>Batch is Full</Text>
+            <Text style={styles.modalBody}>
+              This batch has reached its maximum student capacity. To add more
+              students, edit the batch and increase its capacity first.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalPrimary}
+              onPress={() => setCapacityModalVisible(false)}
+              activeOpacity={0.85}
+              testID="capacity-modal-ok"
+            >
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.modalPrimaryText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -315,5 +366,68 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   listContent: {
     padding: spacing.base,
     paddingBottom: listDefaults.contentPaddingBottom,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    paddingTop: spacing.xl + spacing.sm,
+    width: '100%',
+    maxWidth: 380,
+    alignSelf: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
+  },
+  modalIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.warningBg,
+    borderWidth: 1,
+    borderColor: colors.warningBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    fontSize: fontSizes.xl,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+    letterSpacing: -0.3,
+  },
+  modalBody: {
+    fontSize: fontSizes.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+  },
+  modalPrimary: {
+    overflow: 'hidden',
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  modalPrimaryText: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.white,
+    letterSpacing: 0.1,
   },
 });

@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform, StyleSheet, Linking } from 'react-native';
 import Share from 'react-native-share';
-import { Linking } from 'react-native';
 import type { AppError } from '../../../domain/common/errors';
 import type { Result } from '../../../domain/common/result';
 import type { PdfExportResult } from '../../../domain/reports/reports.types';
@@ -41,11 +40,24 @@ export function ExportButton({ onExport, testID }: ExportButtonProps) {
 
   const handleOpen = useCallback(async () => {
     if (!result) return;
+    // Android 7+ refuses Linking.openURL on file:// URIs (FileUriExposedException)
+    // and silently does nothing — that's the bug users hit. react-native-share
+    // wraps the file via FileProvider internally; passing showAppsToView: true
+    // makes it dispatch ACTION_VIEW instead of ACTION_SEND, so the OS launches
+    // the default PDF viewer (or shows a "Open with…" chooser if multiple
+    // viewers are installed). iOS can still use Linking against the local path.
     try {
-      const fileUri = Platform.OS === 'android'
-        ? `file://${result.filePath}`
-        : result.filePath;
-      await Linking.openURL(fileUri);
+      if (Platform.OS === 'android') {
+        await Share.open({
+          url: `file://${result.filePath}`,
+          type: 'application/pdf',
+          filename: result.filename,
+          showAppsToView: true,
+          failOnCancel: false,
+        });
+      } else {
+        await Linking.openURL(result.filePath);
+      }
     } catch {
       setErrorMsg('Unable to open file. You can still share it.');
     }

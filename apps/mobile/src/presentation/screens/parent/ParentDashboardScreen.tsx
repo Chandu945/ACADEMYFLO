@@ -322,6 +322,14 @@ export function ParentDashboardScreen() {
                   .filter((p) => p.monthKey !== currentMonth)
                   .slice(0, 2);
 
+                // Fee surfaced to parent: ALWAYS prioritize the oldest unpaid
+                // month. If nothing is unpaid, fall back to the green
+                // "paid this month" card. Otherwise the parent could see
+                // "April PAID" while March 2026 quietly remains unpaid forever.
+                const hasUnpaidBacklog = child.totalUnpaidMonths > 0;
+                const surfacedMonthKey = child.currentMonthFeeMonthKey ?? currentMonth;
+                const olderPendingCount = Math.max(0, child.totalUnpaidMonths - 1);
+
                 return (
                   <View key={child.studentId} style={styles.childCard}>
                     <TouchableOpacity
@@ -362,8 +370,68 @@ export function ParentDashboardScreen() {
                     </TouchableOpacity>
 
                     <View style={styles.childPayments}>
-                      {/* Current-month status card */}
-                      {currentMonthPayment ? (
+                      {/* Surfaced fee card. Priority order:
+                          1. Oldest unpaid month (clear backlog first)
+                          2. Current-month paid receipt (positive feedback)
+                          3. Nothing (current-month fee not generated yet) */}
+                      {hasUnpaidBacklog ? (
+                        <View style={[styles.monthCard, styles.monthCardAccentPending]}>
+                          <View style={[styles.monthAccentBar, { backgroundColor: colors.warning }]} />
+                          <View style={styles.monthCardBody}>
+                            <View style={styles.monthCardMeta}>
+                              <Text style={styles.monthCardMonth}>
+                                {formatMonthShort(surfacedMonthKey)}
+                              </Text>
+                              <View style={[styles.statusPill, styles.statusPillPending]}>
+                                <View style={[styles.statusPillDot, { backgroundColor: colors.warning }]} />
+                                <Text style={[styles.statusPillText, { color: colors.warning }]}>Due</Text>
+                              </View>
+                            </View>
+                            <Text style={styles.monthCardAmount}>
+                              {formatCurrency(child.currentMonthFeeAmount ?? child.monthlyFee)}
+                            </Text>
+                            {olderPendingCount > 0 && (
+                              <Text style={styles.morePendingHint}>
+                                +{olderPendingCount} more pending • ₹
+                                {child.totalUnpaidAmount.toLocaleString('en-IN')} total
+                              </Text>
+                            )}
+                          </View>
+                          <TouchableOpacity
+                            style={styles.payNowBtn}
+                            activeOpacity={0.85}
+                            onPress={() => {
+                              if (child.currentMonthFeeDueId) {
+                                navigation.navigate('Children', {
+                                  screen: 'ManualPayment',
+                                  params: {
+                                    feeDueId: child.currentMonthFeeDueId,
+                                    studentId: child.studentId,
+                                    monthKey: surfacedMonthKey,
+                                    amount: child.currentMonthFeeAmount ?? child.monthlyFee,
+                                  },
+                                });
+                              } else {
+                                // Fee due not yet generated — fall back to ChildDetail
+                                // so the parent can still see the child's context.
+                                navigation.navigate('Children', {
+                                  screen: 'ChildDetail',
+                                  params: { studentId: child.studentId, fullName: child.fullName },
+                                });
+                              }
+                            }}
+                          >
+                            <LinearGradient
+                              colors={[gradient.start, gradient.end]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={StyleSheet.absoluteFill}
+                            />
+                            <Text style={styles.payNowBtnText}>Pay</Text>
+                            <AppIcon name="arrow-right" size={14} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : currentMonthPayment ? (
                         <TouchableOpacity
                           style={[styles.monthCard, styles.monthCardAccentPaid]}
                           activeOpacity={0.7}
@@ -393,58 +461,7 @@ export function ParentDashboardScreen() {
                             <AppIcon name="receipt-text-outline" size={18} color={colors.textDisabled} />
                           </View>
                         </TouchableOpacity>
-                      ) : (
-                        <View style={[styles.monthCard, styles.monthCardAccentPending]}>
-                          <View style={[styles.monthAccentBar, { backgroundColor: colors.warning }]} />
-                          <View style={styles.monthCardBody}>
-                            <View style={styles.monthCardMeta}>
-                              <Text style={styles.monthCardMonth}>
-                                {formatMonthShort(currentMonth)}
-                              </Text>
-                              <View style={[styles.statusPill, styles.statusPillPending]}>
-                                <View style={[styles.statusPillDot, { backgroundColor: colors.warning }]} />
-                                <Text style={[styles.statusPillText, { color: colors.warning }]}>Due</Text>
-                              </View>
-                            </View>
-                            <Text style={styles.monthCardAmount}>
-                              {formatCurrency(child.currentMonthFeeAmount ?? child.monthlyFee)}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            style={styles.payNowBtn}
-                            activeOpacity={0.85}
-                            onPress={() => {
-                              if (child.currentMonthFeeDueId) {
-                                navigation.navigate('Children', {
-                                  screen: 'ManualPayment',
-                                  params: {
-                                    feeDueId: child.currentMonthFeeDueId,
-                                    studentId: child.studentId,
-                                    monthKey: currentMonth,
-                                    amount: child.currentMonthFeeAmount ?? child.monthlyFee,
-                                  },
-                                });
-                              } else {
-                                // Fee due not yet generated — fall back to ChildDetail
-                                // so the parent can still see the child's context.
-                                navigation.navigate('Children', {
-                                  screen: 'ChildDetail',
-                                  params: { studentId: child.studentId, fullName: child.fullName },
-                                });
-                              }
-                            }}
-                          >
-                            <LinearGradient
-                              colors={[gradient.start, gradient.end]}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 1 }}
-                              style={StyleSheet.absoluteFill}
-                            />
-                            <Text style={styles.payNowBtnText}>Pay</Text>
-                            <AppIcon name="arrow-right" size={14} color="#FFFFFF" />
-                          </TouchableOpacity>
-                        </View>
-                      )}
+                      ) : null}
 
                       {/* Past-month chips */}
                       {pastPayments.length > 0 && (
@@ -836,6 +853,12 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.bold,
     color: colors.text,
     letterSpacing: -0.2,
+  },
+  morePendingHint: {
+    fontSize: fontSizes.xs,
+    color: colors.warning,
+    fontWeight: fontWeights.medium,
+    marginTop: 2,
   },
   monthCardTrailing: {
     paddingHorizontal: 6,

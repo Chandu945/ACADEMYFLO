@@ -160,7 +160,9 @@ export function MoreStack() {
         component={AddEnquiryScreen}
         options={({ navigation }) => ({
           title: 'Add Enquiry',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('EnquiryList')}
@@ -173,7 +175,9 @@ export function MoreStack() {
         component={EnquiryDetailScreen}
         options={({ navigation }) => ({
           title: 'Enquiry Detail',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('EnquiryList')}
@@ -186,7 +190,9 @@ export function MoreStack() {
         component={EditEnquiryScreen}
         options={({ route, navigation }) => ({
           title: 'Edit Enquiry',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('EnquiryDetail', { enquiryId: (route.params as { enquiry: { id: string } }).enquiry.id })}
@@ -204,7 +210,9 @@ export function MoreStack() {
         component={AddEventScreen}
         options={({ navigation }) => ({
           title: 'Add Event',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('EventList')}
@@ -217,7 +225,9 @@ export function MoreStack() {
         component={EditEventScreen}
         options={({ route, navigation }) => ({
           title: 'Edit Event',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('EventDetail', { eventId: (route.params as { event: { id: string } }).event.id })}
@@ -230,7 +240,9 @@ export function MoreStack() {
         component={EventDetailScreen}
         options={({ navigation }) => ({
           title: 'Event Detail',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('EventList')}
@@ -243,7 +255,9 @@ export function MoreStack() {
         component={EventGalleryScreen}
         options={({ navigation }) => ({
           title: 'Photo Gallery',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('EventList')}
@@ -374,7 +388,9 @@ export function MoreStack() {
         component={StaffFormScreen}
         options={({ route, navigation }) => ({
           title: route.params.mode === 'create' ? 'Add Staff' : 'Edit Staff',
-          headerBackVisible: true,
+          // headerBackVisible:true would render the native back arrow
+          // alongside our custom headerLeft → two arrows on screen.
+          headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => navigation.navigate('StaffList')}

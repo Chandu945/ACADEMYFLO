@@ -9,26 +9,64 @@ const _global = globalThis as any;
  * Opens Cashfree checkout.
  *
  * - Web: Uses the Cashfree JS SDK (loaded from CDN) to render a payment modal.
- * - Native: Opens web checkout in-app via the Cashfree React Native SDK (future).
- *           Falls back to Linking.openURL for basic flow.
+ * - Native: Uses react-native-cashfree-pg-sdk to render the native checkout
+ *   sheet. Cashfree v3 has no hostable checkout URL, so we must use the SDK
+ *   rather than Linking.openURL (which would route to cashfree.com's 404).
+ *
+ * In both cases this resolves once the checkout UI has been opened. The
+ * subscription status polling in use-payment-flow handles the actual outcome
+ * via the backend webhook — these callbacks are advisory.
  */
 export async function openCashfreeCheckout(
   paymentSessionId: string,
-  _orderId: string,
+  orderId: string,
 ): Promise<void> {
   if (Platform.OS === 'web') {
     return openWebCheckout(paymentSessionId);
   }
 
-  // Native fallback — open Cashfree checkout via Linking
-  // Note: For production native apps, integrate react-native-cashfree-pg-sdk
-  const { Linking } = await import('react-native');
-  const isSandbox = env.APP_ENV !== 'production';
-  const baseUrl = isSandbox
-    ? 'https://sandbox.cashfree.com/pg/orders/sessions'
-    : 'https://cashfree.com/pg/orders/sessions';
-  const checkoutUrl = `${baseUrl}/${paymentSessionId}`;
-  await Linking.openURL(checkoutUrl);
+  return openNativeCheckout(paymentSessionId, orderId);
+}
+
+async function openNativeCheckout(
+  paymentSessionId: string,
+  orderId: string,
+): Promise<void> {
+  // Dynamic import keeps the native module out of the web bundle. The web
+  // bundle would fail to resolve react-native-cashfree-pg-sdk's native imports.
+  const sdk = await import('react-native-cashfree-pg-sdk');
+  const contract = await import('cashfree-pg-api-contract');
+  const { CFPaymentGatewayService } = sdk;
+  const { CFDropCheckoutPayment, CFSession, CFEnvironment } = contract;
+
+  const environment =
+    env.APP_ENV === 'production' ? CFEnvironment.PRODUCTION : CFEnvironment.SANDBOX;
+
+  // Log always (not just in __DEV__) — release builds are where we need this
+  // visibility most, because onError surfacing native-SDK failures (invalid
+  // session, unregistered SHA-256, missing activities) is the only way to
+  // diagnose "checkout never opened" without adb logcat access.
+  CFPaymentGatewayService.setCallback({
+    onVerify(verifiedOrderId: string) {
+      console.log('[Cashfree] onVerify', verifiedOrderId);
+    },
+    onError(error, failedOrderId: string) {
+      const msg =
+        (typeof error?.getMessage === 'function' && error.getMessage()) ||
+        (typeof error?.getCode === 'function' && error.getCode()) ||
+        String(error);
+      console.error('[Cashfree] onError', failedOrderId, msg);
+    },
+  });
+
+  try {
+    const session = new CFSession(paymentSessionId, orderId, environment);
+    const payment = new CFDropCheckoutPayment(session, null, null);
+    CFPaymentGatewayService.doPayment(payment);
+  } catch (err) {
+    console.error('[Cashfree] doPayment threw', err);
+    throw err;
+  }
 }
 
 /**
