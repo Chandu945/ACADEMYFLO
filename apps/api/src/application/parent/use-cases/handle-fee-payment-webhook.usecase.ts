@@ -40,22 +40,32 @@ export class HandleFeePaymentWebhookUseCase {
       return err(AppError.unauthorized('Invalid webhook signature'));
     }
 
-    // Replay detection: reject webhooks with clock skew > 60 seconds.
-    // Tight window shrinks the attack surface if a signature ever leaks.
-    const WEBHOOK_TOLERANCE_SECONDS = 60;
+    // Replay detection. Tolerance widened to 120s — a tighter 60s window was
+    // rejecting legitimate webhooks any time the server clock drifted (Render
+    // instances aren't always tightly NTP-synced). 120s still keeps the replay
+    // attack surface small while surviving normal cloud clock jitter. We also
+    // warn on skew > 30s so clock-drift problems surface in logs early instead
+    // of silently ageing into hard rejections. Matches the subscription
+    // webhook handler.
+    const WEBHOOK_TOLERANCE_SECONDS = 120;
+    const WEBHOOK_SKEW_WARN_SECONDS = 30;
     const rawTimestamp = Number(headers.timestamp);
     // Cashfree sends timestamp in milliseconds; normalize to seconds
     const webhookTimestamp = rawTimestamp > 1e12 ? Math.floor(rawTimestamp / 1000) : rawTimestamp;
     const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    if (
-      Number.isNaN(webhookTimestamp) ||
-      Math.abs(nowEpochSeconds - webhookTimestamp) > WEBHOOK_TOLERANCE_SECONDS
-    ) {
+    const skew = Math.abs(nowEpochSeconds - webhookTimestamp);
+    if (Number.isNaN(webhookTimestamp) || skew > WEBHOOK_TOLERANCE_SECONDS) {
       this.logger.error('Fee payment webhook timestamp too old or invalid', {
         webhookTimestamp: headers.timestamp,
         serverTime: nowEpochSeconds,
+        skewSeconds: skew,
       });
       return err(AppError.unauthorized('Webhook timestamp is stale or invalid'));
+    }
+    if (skew > WEBHOOK_SKEW_WARN_SECONDS) {
+      this.logger.warn('Fee payment webhook clock skew is high — check NTP sync', {
+        skewSeconds: skew,
+      });
     }
 
     let payload: WebhookPayload;

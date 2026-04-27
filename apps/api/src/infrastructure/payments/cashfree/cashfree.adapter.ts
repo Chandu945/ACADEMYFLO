@@ -41,7 +41,11 @@ export class CashfreeAdapter implements CashfreeGatewayPort {
       order_currency: input.orderCurrency,
       customer_details: {
         customer_id: input.customerId,
-        customer_phone: input.customerPhone.replace('+91', ''),
+        // Normalize to a 10-digit phone regardless of whether the stored format
+        // includes a "+91" / "91" / no prefix. Cashfree v3 expects exactly 10
+        // digits for Indian numbers — passing 12 digits ("919876543210") is
+        // rejected as invalid_phone.
+        customer_phone: input.customerPhone.replace(/^\+?91/, '').slice(-10),
       },
     };
 

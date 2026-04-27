@@ -49,8 +49,21 @@ async function bootstrap() {
   // HTTP response compression (helps mobile apps connecting directly, internal service calls, dev without nginx)
   app.use(compression({ threshold: 1024 })); // Compress responses > 1KB
 
-  // Request body size limits
-  app.use(json({ limit: '1mb' }));
+  // Request body size limits.
+  // The `verify` callback captures the raw request bytes onto req.rawBody so
+  // the Cashfree webhook controller can verify HMAC-SHA256 signatures against
+  // the exact bytes Cashfree signed (not the JSON-reserialized version, which
+  // can differ by key order / whitespace and break signature verification).
+  // NestFactory's `rawBody: true` setting needs this explicit hook because
+  // explicitly calling `app.use(json())` here replaces NestJS's default parser.
+  app.use(
+    json({
+      limit: '1mb',
+      verify: (req, _res, buf) => {
+        (req as { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
   app.use(urlencoded({ limit: '1mb', extended: true }));
 
   // CORS — restrict to configured origins

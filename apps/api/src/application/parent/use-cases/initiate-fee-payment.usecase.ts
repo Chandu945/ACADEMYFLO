@@ -98,7 +98,11 @@ export class InitiateFeePaymentUseCase {
 
     // Create order id and persist PENDING payment record BEFORE calling Cashfree
     const orderId = generateFeeOrderId();
-    const idempotencyKey = randomUUID();
+    // Derive the idempotency key deterministically from orderId so a network
+    // retry of this initiate call (where the first createOrder already reached
+    // Cashfree but the response was lost) reuses the same key and Cashfree
+    // dedupes correctly. Matches the pattern used for subscription payments.
+    const idempotencyKey = `idemp_fee_${orderId}`;
 
     const payment = FeePayment.create({
       id: randomUUID(),

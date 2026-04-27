@@ -99,6 +99,15 @@ function formatDate(dateStr: string): string {
   return `${day} ${months[parseInt(m!, 10) - 1]}`;
 }
 
+/** Normalise a free-text category name to Title Case so chips don't mix
+ *  "water" with "Equipment & Supplies". Lowercases first to handle ALL-CAPS
+ *  data, then capitalises each whitespace-separated word. */
+function formatCategoryName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /** Map common expense category names to MaterialCommunityIcons */
 function getCategoryIcon(name: string): string {
   const lower = name.toLowerCase();
@@ -521,7 +530,9 @@ export function ExpensesHomeScreen() {
               <View style={styles.filterSheetTitleWrap}>
                 <Text style={styles.filterSheetTitle}>Filter Expenses</Text>
                 <Text style={styles.filterSheetSubtitle}>
-                  Pick a category to narrow the list
+                  {selectedCategoryName
+                    ? `Showing: ${formatCategoryName(selectedCategoryName)}`
+                    : `${categories.length} ${categories.length === 1 ? 'category' : 'categories'} available`}
                 </Text>
               </View>
               {categoryFilter && (
@@ -529,8 +540,10 @@ export function ExpensesHomeScreen() {
                   onPress={clearCategoryFilter}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   testID="filter-sheet-clear"
+                  style={styles.filterSheetClearBtn}
                 >
-                  <Text style={styles.filterSheetClear}>Clear</Text>
+                  <AppIcon name="refresh" size={13} color={colors.danger} />
+                  <Text style={styles.filterSheetClear}>Reset</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -548,6 +561,7 @@ export function ExpensesHomeScreen() {
               <TouchableOpacity
                 style={[styles.filterChip, !categoryFilter && styles.filterChipActive]}
                 onPress={() => setCategoryFilter(undefined)}
+                activeOpacity={0.85}
               >
                 {!categoryFilter ? (
                   <LinearGradient
@@ -557,41 +571,50 @@ export function ExpensesHomeScreen() {
                     style={StyleSheet.absoluteFill}
                   />
                 ) : null}
+                <AppIcon
+                  name="view-grid-outline"
+                  size={14}
+                  color={!categoryFilter ? colors.white : colors.textSecondary}
+                />
                 <Text
                   style={[styles.filterChipText, !categoryFilter && styles.filterChipTextActive]}
                 >
                   All
                 </Text>
               </TouchableOpacity>
-              {categories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.filterChip, categoryFilter === cat.id && styles.filterChipActive]}
-                  onPress={() => setCategoryFilter(categoryFilter === cat.id ? undefined : cat.id)}
-                >
-                  {categoryFilter === cat.id ? (
-                    <LinearGradient
-                      colors={[gradient.start, gradient.end]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  ) : null}
-                  <AppIcon
-                    name={getCategoryIcon(cat.name)}
-                    size={14}
-                    color={categoryFilter === cat.id ? colors.white : colors.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.filterChipText,
-                      categoryFilter === cat.id && styles.filterChipTextActive,
-                    ]}
+              {categories.map((cat) => {
+                const isActive = categoryFilter === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.filterChip, isActive && styles.filterChipActive]}
+                    onPress={() => setCategoryFilter(isActive ? undefined : cat.id)}
+                    activeOpacity={0.85}
                   >
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    {isActive ? (
+                      <LinearGradient
+                        colors={[gradient.start, gradient.end]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    ) : null}
+                    <AppIcon
+                      name={getCategoryIcon(cat.name)}
+                      size={14}
+                      color={isActive ? colors.white : colors.textSecondary}
+                    />
+                    <Text
+                      style={[styles.filterChipText, isActive && styles.filterChipTextActive]}
+                    >
+                      {formatCategoryName(cat.name)}
+                    </Text>
+                    {isActive && (
+                      <AppIcon name="check" size={13} color={colors.white} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
 
             <TouchableOpacity
@@ -606,7 +629,11 @@ export function ExpensesHomeScreen() {
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
-              <Text style={styles.filterApplyBtnText}>Show Results</Text>
+              <Text style={styles.filterApplyBtnText}>
+                {selectedCategoryName
+                  ? `Show ${formatCategoryName(selectedCategoryName)} Only`
+                  : 'Show All Expenses'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -913,21 +940,35 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.xs,
     color: colors.textSecondary,
   },
+  filterSheetClearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(239,68,68,0.10)',
+  },
   filterSheetClear: {
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.xs,
     fontWeight: fontWeights.bold,
     color: colors.danger,
+    letterSpacing: 0.2,
   },
   filterSectionLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
   filterScroll: {
     maxHeight: 280,
     flexGrow: 0,
+    backgroundColor: colors.bg,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.sm,
   },
   filterPanelTitle: {
     fontSize: fontSizes.xs,
@@ -959,9 +1000,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 6,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    minHeight: 36,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border,
@@ -969,7 +1011,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
   filterChipActive: {
     overflow: 'hidden',
-    borderColor: colors.primary,
+    borderColor: 'transparent',
+    ...shadows.sm,
   },
   filterChipText: {
     fontSize: fontSizes.sm,
