@@ -146,6 +146,11 @@ export function PaymentStatusBanner({ status, error, onDismiss }: Props) {
 
   const visible = status !== 'idle';
   const isTerminal = status === 'success' || status === 'failed';
+  // Allow dismissing during polling too — polling can stall for up to ~92s
+  // and there's no other escape hatch from the modal. We don't allow dismiss
+  // during 'initiating' / 'checkout' because those are short-lived states
+  // and dismissing mid-handshake creates orphan state.
+  const canDismiss = isTerminal || status === 'polling';
 
   let body: React.ReactNode = null;
 
@@ -196,11 +201,11 @@ export function PaymentStatusBanner({ status, error, onDismiss }: Props) {
       transparent
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={isTerminal ? onDismiss : undefined}
+      onRequestClose={canDismiss ? onDismiss : undefined}
     >
       <View style={styles.fullScreen} testID="payment-status-banner">
         <View style={styles.content}>{body}</View>
-        {isTerminal && onDismiss ? (
+        {canDismiss && onDismiss ? (
           <TouchableOpacity
             style={styles.dismissBtn}
             onPress={onDismiss}
@@ -217,7 +222,9 @@ export function PaymentStatusBanner({ status, error, onDismiss }: Props) {
             ) : (
               <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgSubtle, borderRadius: radius.xl }]} />
             )}
-            <Text style={styles.dismissText}>{status === 'success' ? 'Done' : 'Try again'}</Text>
+            <Text style={styles.dismissText}>
+              {status === 'success' ? 'Done' : status === 'polling' ? 'Cancel' : 'Try again'}
+            </Text>
           </TouchableOpacity>
         ) : null}
       </View>

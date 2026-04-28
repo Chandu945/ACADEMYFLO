@@ -155,11 +155,22 @@ export function usePaymentFlow(
       setOrderId(data.orderId);
       setStatus('checkout');
 
-      // Open checkout (web SDK or native fallback)
+      // Open checkout. Native rejects on Cashfree onError (invalid session,
+      // env mismatch, unregistered SHA-256, etc.) — bail out instead of
+      // entering a polling loop that will never see a webhook.
       try {
         await deps.checkout.openCheckout(data.paymentSessionId, data.orderId);
-      } catch {
-        // If browser open fails, still start polling
+      } catch (err) {
+        if (!mountedRef.current) return;
+        const message =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'object' && err !== null && 'message' in err
+              ? String((err as { message: unknown }).message)
+              : 'Checkout could not be completed. Please try again.';
+        setStatus('failed');
+        setError(message);
+        return;
       }
 
       if (!mountedRef.current) return;

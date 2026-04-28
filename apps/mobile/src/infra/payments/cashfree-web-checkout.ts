@@ -13,9 +13,10 @@ const _global = globalThis as any;
  *   sheet. Cashfree v3 has no hostable checkout URL, so we must use the SDK
  *   rather than Linking.openURL (which would route to cashfree.com's 404).
  *
- * In both cases this resolves once the checkout UI has been opened. The
- * subscription status polling in use-payment-flow handles the actual outcome
- * via the backend webhook — these callbacks are advisory.
+ * Resolves on onVerify (user finished checkout — backend webhook will confirm
+ * via polling) and rejects on onError (invalid session, env mismatch,
+ * unregistered SHA-256, etc.). The reject path is what stops use-payment-flow
+ * from entering a doomed polling loop when Cashfree closes without a payment.
  */
 export async function openCashfreeCheckout(
   paymentSessionId: string,
@@ -28,12 +29,22 @@ export async function openCashfreeCheckout(
   return openNativeCheckout(paymentSessionId, orderId);
 }
 
+class CashfreeCheckoutError extends Error {
+  constructor(message: string, readonly code?: string) {
+    super(message);
+    this.name = 'CashfreeCheckoutError';
+  }
+}
+
+interface CFErrorLike {
+  getCode?: () => string;
+  getMessage?: () => string;
+}
+
 async function openNativeCheckout(
   paymentSessionId: string,
   orderId: string,
 ): Promise<void> {
-  // Dynamic import keeps the native module out of the web bundle. The web
-  // bundle would fail to resolve react-native-cashfree-pg-sdk's native imports.
   const sdk = await import('react-native-cashfree-pg-sdk');
   const contract = await import('cashfree-pg-api-contract');
   const { CFPaymentGatewayService } = sdk;
@@ -42,31 +53,43 @@ async function openNativeCheckout(
   const environment =
     env.APP_ENV === 'production' ? CFEnvironment.PRODUCTION : CFEnvironment.SANDBOX;
 
-  // Log always (not just in __DEV__) — release builds are where we need this
-  // visibility most, because onError surfacing native-SDK failures (invalid
-  // session, unregistered SHA-256, missing activities) is the only way to
-  // diagnose "checkout never opened" without adb logcat access.
-  CFPaymentGatewayService.setCallback({
-    onVerify(verifiedOrderId: string) {
-      console.log('[Cashfree] onVerify', verifiedOrderId);
-    },
-    onError(error, failedOrderId: string) {
-      const msg =
-        (typeof error?.getMessage === 'function' && error.getMessage()) ||
-        (typeof error?.getCode === 'function' && error.getCode()) ||
-        String(error);
-      console.error('[Cashfree] onError', failedOrderId, msg);
-    },
-  });
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      fn();
+    };
 
-  try {
-    const session = new CFSession(paymentSessionId, orderId, environment);
-    const payment = new CFDropCheckoutPayment(session, null, null);
-    CFPaymentGatewayService.doPayment(payment);
-  } catch (err) {
-    console.error('[Cashfree] doPayment threw', err);
-    throw err;
-  }
+    CFPaymentGatewayService.setCallback({
+      onVerify(verifiedOrderId: string) {
+        console.warn('[Cashfree] onVerify', verifiedOrderId);
+        // Match orderId to ignore stale callbacks from a prior attempt.
+        if (verifiedOrderId !== orderId) return;
+        settle(resolve);
+      },
+      onError(error: CFErrorLike, failedOrderId: string) {
+        const code =
+          (typeof error?.getCode === 'function' && error.getCode()) || undefined;
+        const msg =
+          (typeof error?.getMessage === 'function' && error.getMessage()) ||
+          code ||
+          String(error);
+        console.error('[Cashfree] onError', failedOrderId, code, msg);
+        if (failedOrderId !== orderId) return;
+        settle(() => reject(new CashfreeCheckoutError(msg, code)));
+      },
+    });
+
+    try {
+      const session = new CFSession(paymentSessionId, orderId, environment);
+      const payment = new CFDropCheckoutPayment(session, null, null);
+      CFPaymentGatewayService.doPayment(payment);
+    } catch (err) {
+      console.error('[Cashfree] doPayment threw', err);
+      settle(() => reject(err instanceof Error ? err : new CashfreeCheckoutError(String(err))));
+    }
+  });
 }
 
 /**
