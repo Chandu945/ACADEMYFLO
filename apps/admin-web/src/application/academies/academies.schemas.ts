@@ -2,9 +2,11 @@ import { z } from 'zod';
 
 const academyListRowSchema = z.object({
   academyId: z.string(),
-  academyName: z.string(),
-  ownerName: z.string(),
-  ownerEmail: z.string(),
+  // Some legacy / partially-onboarded rows have null/missing name + owner
+  // fields. Tolerate them at the schema layer; the table renders a fallback.
+  academyName: z.string().nullable().optional(),
+  ownerName: z.string().nullable().optional(),
+  ownerEmail: z.string().nullable().optional(),
   ownerPhone: z.string().nullable().optional(),
   status: z.string(),
   tierKey: z.string().nullable(),

@@ -20,6 +20,9 @@ type ManualSubscriptionModalProps = {
   onClose: () => void;
 };
 
+const NOTES_MAX = 200;
+const PAYMENT_REF_MAX = 200;
+
 const TIER_OPTIONS = [
   { value: '', label: 'Select tier' },
   ...TIER_KEYS.map((t) => ({ value: t, label: formatTierLabel(t) })),
@@ -28,11 +31,11 @@ const TIER_OPTIONS = [
 function formatTierLabel(tierKey: string): string {
   switch (tierKey) {
     case 'TIER_0_50':
-      return '0\u201350 students';
+      return '0–50 students  ·  ₹299 / month';
     case 'TIER_51_100':
-      return '51\u2013100 students';
+      return '51–100 students  ·  ₹499 / month';
     case 'TIER_101_PLUS':
-      return '101+ students';
+      return '101+ students  ·  ₹699 / month';
     default:
       return tierKey;
   }
@@ -97,58 +100,98 @@ export function ManualSubscriptionModal({
   }, [tierKey, paidStartAt, paidEndAt, manualNotes, paymentReference, onSubmit]);
 
   return (
-    <Modal open={open} title="Set Manual Subscription" onClose={handleClose}>
+    <Modal open={open} title="Set manual subscription" onClose={handleClose}>
+      <p className={styles.intro}>
+        Manually grant a paid subscription to this academy. Use for offline
+        payments, comp accounts, or migration from an old system.
+      </p>
+
       <div className={styles.form}>
-        <Select
-          label="Tier"
-          name="tierKey"
-          options={TIER_OPTIONS}
-          value={tierKey}
-          onChange={(e) => setTierKey(e.target.value)}
-        />
-        {errors['tierKey'] && <span className={styles.error}>{errors['tierKey']}</span>}
+        <div>
+          <Select
+            label="Tier"
+            name="tierKey"
+            options={TIER_OPTIONS}
+            value={tierKey}
+            onChange={(e) => setTierKey(e.target.value)}
+            aria-invalid={!!errors['tierKey'] || undefined}
+          />
+          {errors['tierKey'] ? (
+            <span className={styles.error}>{errors['tierKey']}</span>
+          ) : (
+            <span className={styles.hint}>
+              Pricing tier the academy will be billed against.
+            </span>
+          )}
+        </div>
 
-        <Input
-          label="Start Date"
-          name="paidStartAt"
-          type="date"
-          value={paidStartAt}
-          onChange={(e) => setPaidStartAt(e.target.value)}
-          error={errors['paidStartAt']}
-        />
+        <div>
+          <div className={styles.dateRow}>
+            <Input
+              label="Start date"
+              name="paidStartAt"
+              type="date"
+              value={paidStartAt}
+              onChange={(e) => setPaidStartAt(e.target.value)}
+              error={errors['paidStartAt']}
+            />
+            <Input
+              label="End date"
+              name="paidEndAt"
+              type="date"
+              value={paidEndAt}
+              onChange={(e) => setPaidEndAt(e.target.value)}
+              error={errors['paidEndAt']}
+            />
+          </div>
+          {!errors['paidStartAt'] && !errors['paidEndAt'] && (
+            <span className={styles.hint}>
+              Paid period runs from start (inclusive) to end (inclusive).
+            </span>
+          )}
+        </div>
 
-        <Input
-          label="End Date"
-          name="paidEndAt"
-          type="date"
-          value={paidEndAt}
-          onChange={(e) => setPaidEndAt(e.target.value)}
-          error={errors['paidEndAt']}
-        />
+        <div className={styles.notesField}>
+          <TextArea
+            label="Notes (optional)"
+            name="manualNotes"
+            value={manualNotes}
+            onChange={(e) => setManualNotes(e.target.value.slice(0, NOTES_MAX))}
+            maxLength={NOTES_MAX}
+            rows={3}
+            placeholder="e.g. Comp account for partner academy until end of pilot."
+          />
+          <span
+            className={styles.notesCounter}
+            aria-live="polite"
+            aria-label={`${manualNotes.length} of ${NOTES_MAX} characters used`}
+          >
+            {manualNotes.length} / {NOTES_MAX}
+          </span>
+        </div>
 
-        <TextArea
-          label="Notes (optional)"
-          name="manualNotes"
-          value={manualNotes}
-          onChange={(e) => setManualNotes(e.target.value)}
-          maxLength={200}
-          rows={2}
-        />
-
-        <Input
-          label="Payment Reference (optional)"
-          name="paymentReference"
-          value={paymentReference}
-          onChange={(e) => setPaymentReference(e.target.value)}
-          maxLength={200}
-        />
+        <div>
+          <Input
+            label="Payment reference (optional)"
+            name="paymentReference"
+            value={paymentReference}
+            onChange={(e) => setPaymentReference(e.target.value)}
+            maxLength={PAYMENT_REF_MAX}
+            placeholder="e.g. NEFT-2026-00347 or invoice number"
+          />
+          <span className={styles.hint}>
+            Receipt number, bank txn ID, or invoice — recorded to the audit
+            trail.
+          </span>
+        </div>
       </div>
+
       <div className={styles.actions}>
-        <Button variant="secondary" size="sm" onClick={handleClose} disabled={loading}>
+        <Button variant="secondary" size="md" onClick={handleClose} disabled={loading}>
           Cancel
         </Button>
-        <Button variant="primary" size="sm" onClick={handleSubmit} loading={loading}>
-          Set Subscription
+        <Button variant="primary" size="md" onClick={handleSubmit} loading={loading}>
+          Set subscription
         </Button>
       </div>
     </Modal>

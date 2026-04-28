@@ -59,9 +59,9 @@ export async function listAcademies(
     data: {
       items: parsed.data.items.map((row) => ({
         academyId: row.academyId,
-        academyName: row.academyName,
-        ownerName: row.ownerName,
-        ownerEmail: row.ownerEmail,
+        academyName: row.academyName ?? '(unnamed)',
+        ownerName: row.ownerName ?? '(no owner)',
+        ownerEmail: row.ownerEmail ?? '',
         ownerPhone: row.ownerPhone ?? null,
         status: row.status as AcademiesListResult['items'][number]['status'],
         tierKey: row.tierKey as AcademiesListResult['items'][number]['tierKey'],

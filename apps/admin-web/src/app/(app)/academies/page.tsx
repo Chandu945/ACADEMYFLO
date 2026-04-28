@@ -8,6 +8,7 @@ import { parseQuery } from '@/application/academies/query';
 import type { AcademyStatusFilter, TierFilter } from '@/domain/admin/academies';
 import { AcademiesFilters } from '@/components/academies/AcademiesFilters';
 import { AcademiesTable } from '@/components/academies/AcademiesTable';
+import { ExportCsvButton } from '@/components/common/ExportCsvButton';
 import { Pagination } from '@/components/academies/Pagination';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -64,7 +65,18 @@ export default function AcademiesPage() {
 
   return (
     <div>
-      <h1 className={styles.heading}>Academies</h1>
+      <div className={styles.headerRow}>
+        <h1 className={styles.heading}>Academies</h1>
+        <ExportCsvButton
+          href="/api/admin/academies/export"
+          params={{
+            status: query.status,
+            tier: query.tier,
+            search: query.search,
+          }}
+          disabled={loading || !data || data.meta.totalItems === 0}
+        />
+      </div>
 
       <AcademiesFilters
         status={query.status}

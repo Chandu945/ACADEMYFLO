@@ -2,8 +2,16 @@
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
   color: var(--color-text);
-  margin-bottom: var(--space-5);
+  margin: 0;
   letter-spacing: -0.3px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
 .alertWrapper {

@@ -24,6 +24,10 @@ import { EventsModule } from './http/events/events.module';
 import { AuditLogsModule } from './http/audit-logs/audit-logs.module';
 import { AdminAuthModule } from './http/admin-auth/admin-auth.module';
 import { AdminModule } from './http/admin/admin.module';
+import { AdminAuditModule } from './http/admin-audit/admin-audit.module';
+import { AdminPaymentsModule } from './http/admin-payments/admin-payments.module';
+import { AdminUsersModule } from './http/admin-users/admin-users.module';
+import { AdminRevenueModule } from './http/admin-revenue/admin-revenue.module';
 import { MetricsModule } from './http/metrics/metrics.module';
 import { ParentModule } from './http/parent/parent.module';
 import { ReviewsModule } from './http/reviews/reviews.module';
@@ -63,6 +67,10 @@ import { HttpLoggingInterceptor } from './http/common/interceptors/http-logging.
     AuditLogsModule,
     AdminAuthModule,
     AdminModule,
+    AdminAuditModule,
+    AdminPaymentsModule,
+    AdminUsersModule,
+    AdminRevenueModule,
     MetricsModule,
     ParentModule,
     ReviewsModule,

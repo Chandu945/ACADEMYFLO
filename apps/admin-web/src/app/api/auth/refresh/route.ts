@@ -1,45 +1,31 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-import { apiPost } from '@/infra/http/api-client';
-import {
-  getSessionCookie,
-  setSessionCookie,
-  clearSessionCookie,
-} from '@/infra/auth/session-cookie';
+import { refreshAccessToken } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { setCsrfCookie, clearCsrfCookie } from '@/infra/auth/csrf-token';
-
-type BackendRefreshResponse = {
-  accessToken: string;
-  refreshToken: string;
-};
 
 export async function POST(request: NextRequest) {
   if (!isOriginValid(request)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const session = await getSessionCookie();
-  if (!session) {
-    return NextResponse.json({ error: 'No session' }, { status: 401 });
-  }
+  const outcome = await refreshAccessToken();
 
-  const result = await apiPost<BackendRefreshResponse>('/api/v1/admin/auth/refresh', {
-    refreshToken: session.refreshToken,
-    deviceId: session.deviceId,
-    userId: session.userId,
-  });
-
-  if (!result.ok) {
-    await clearSessionCookie();
-    await clearCsrfCookie();
+  if (!outcome.ok) {
+    // Permanent failure (UNAUTHORIZED/FORBIDDEN): refreshAccessToken already
+    // cleared the session cookie. Transient failure (parallel refresh that
+    // already rotated the cookie, network blip): leave the session alone —
+    // a sibling call may have just renewed it, and clearing here would
+    // spuriously log the user out.
+    if (outcome.permanent) {
+      await clearCsrfCookie();
+    }
     return NextResponse.json({ error: 'Session expired' }, { status: 401 });
   }
 
-  // Rotate cookies with new refresh token + new CSRF token
-  await setSessionCookie(result.data.refreshToken, session.deviceId, session.userId);
+  // refreshAccessToken already rotated the session cookie. Rotate CSRF too.
   await setCsrfCookie();
 
-  return NextResponse.json({ accessToken: result.data.accessToken });
+  return NextResponse.json({ accessToken: outcome.accessToken });
 }

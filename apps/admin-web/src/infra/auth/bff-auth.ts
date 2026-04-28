@@ -14,8 +14,32 @@ type RefreshResult = {
   refreshToken: string;
 };
 
-// Deduplication map: prevents concurrent refresh calls from racing
-const _refreshPromises = new Map<string, Promise<string | null>>();
+type RefreshOutcome =
+  | { ok: true; accessToken: string }
+  | { ok: false; permanent: boolean };
+
+// Deduplication map: prevents concurrent refresh calls from racing.
+// Shared by resolveAccessToken (server-side) and the /api/auth/refresh route
+// (client-driven) so React strict-mode double-mount or 8-min timers can't
+// fire two parallel refreshes that race the backend's atomic token rotation.
+const _refreshPromises = new Map<string, Promise<RefreshOutcome>>();
+
+/**
+ * Refresh the access token using the session cookie, with concurrent-call
+ * deduplication. Used by both server-side `resolveAccessToken` and the
+ * client-facing `/api/auth/refresh` BFF route.
+ */
+export async function refreshAccessToken(): Promise<RefreshOutcome> {
+  const session = await getSessionCookie();
+  if (!session) return { ok: false, permanent: true };
+
+  const existing = _refreshPromises.get(session.userId);
+  if (existing) return existing;
+
+  const promise = doRefresh(session);
+  _refreshPromises.set(session.userId, promise);
+  return promise;
+}
 
 /**
  * Extract access token from the request Authorization header,
@@ -23,30 +47,20 @@ const _refreshPromises = new Map<string, Promise<string | null>>();
  * Returns the access token or null if unauthenticated.
  */
 export async function resolveAccessToken(request: NextRequest): Promise<string | null> {
-  // Try Authorization header first
   const authHeader = request.headers.get('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
     return authHeader.slice(7);
   }
 
-  // Fall back to refreshing via session cookie
-  const session = await getSessionCookie();
-  if (!session) return null;
-
-  // Deduplicate concurrent refreshes by userId
-  const existing = _refreshPromises.get(session.userId);
-  if (existing) return existing;
-
-  const promise = refreshFromCookie(session);
-  _refreshPromises.set(session.userId, promise);
-  return promise;
+  const outcome = await refreshAccessToken();
+  return outcome.ok ? outcome.accessToken : null;
 }
 
-async function refreshFromCookie(session: {
+async function doRefresh(session: {
   refreshToken: string;
   deviceId: string;
   userId: string;
-}): Promise<string | null> {
+}): Promise<RefreshOutcome> {
   try {
     const result = await apiPost<RefreshResult>('/api/v1/admin/auth/refresh', {
       refreshToken: session.refreshToken,
@@ -55,21 +69,20 @@ async function refreshFromCookie(session: {
     });
 
     if (!result.ok) {
-      // Only clear cookie for permanent auth failures, not transient errors
       const code = result.error.code;
-      if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') {
+      const permanent = code === 'UNAUTHORIZED' || code === 'FORBIDDEN';
+      if (permanent) {
         await clearSessionCookie();
       }
-      return null;
+      return { ok: false, permanent };
     }
 
-    // Rotate cookie
     await setSessionCookie(
       result.data.refreshToken ?? session.refreshToken,
       session.deviceId,
       session.userId,
     );
-    return result.data.accessToken;
+    return { ok: true, accessToken: result.data.accessToken };
   } finally {
     _refreshPromises.delete(session.userId);
   }

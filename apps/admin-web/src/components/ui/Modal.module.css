@@ -1,28 +1,42 @@
+/* Native <dialog> element. We rely on the browser top-layer for stacking, but
+   pin centering explicitly because UA-stylesheet defaults vary just enough to
+   leave dialogs flush-left in some setups. */
 .dialog {
-  border: none;
-  border-radius: var(--radius-xl);
+  /* Reset UA defaults */
+  position: fixed;
+  inset: 0;
+  margin: auto;
   padding: 0;
-  max-width: 480px;
-  width: 90vw;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+
+  /* Sizing — wider than a generic confirm dialog so form fields breathe */
+  width: min(90vw, 540px);
+  max-height: calc(100vh - 32px);
+
+  /* Surface */
+  background-color: var(--color-surface);
   box-shadow: var(--shadow-xl);
-  animation: modalIn var(--transition-base) ease-out;
   overflow: hidden;
+
+  animation: modalIn 200ms cubic-bezier(0.2, 0, 0.1, 1);
 }
 
 .dialog::backdrop {
-  background-color: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(6px);
-  animation: fadeIn var(--transition-base) ease-out;
+  background-color: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 180ms ease-out;
 }
 
 @keyframes modalIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(8px);
+    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -35,24 +49,33 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog::backdrop {
+    animation: none;
+  }
+}
+
 .content {
   display: flex;
   flex-direction: column;
+  max-height: calc(100vh - 32px);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-4);
   padding: var(--space-5) var(--space-6);
   border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-subtle);
 }
 
 .title {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
   color: var(--color-text);
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
@@ -62,22 +85,29 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: none;
+  background: transparent;
   border: none;
-  font-size: 18px;
+  font-size: 22px;
+  line-height: 1;
   color: var(--color-text-secondary);
   cursor: pointer;
   border-radius: var(--radius-md);
   transition:
-    color var(--transition-fast),
-    background-color var(--transition-fast);
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
 .closeButton:hover {
   color: var(--color-text);
-  background-color: var(--color-border);
+  background-color: var(--color-bg-subtle);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .body {
   padding: var(--space-6);
+  overflow-y: auto;
 }

@@ -6,7 +6,7 @@ import { resolveAccessToken, handleBackend401 } from '@/infra/auth/bff-auth';
 import { isOriginValid } from '@/infra/auth/csrf';
 import { validateCsrfToken } from '@/infra/auth/csrf-token';
 
-const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
+const ACADEMY_ID_RE = /^([0-9a-fA-F]{24}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
 
 export async function POST(
   request: NextRequest,
@@ -17,7 +17,7 @@ export async function POST(
   }
 
   const { academyId } = await context.params;
-  if (!OBJECT_ID_RE.test(academyId)) {
+  if (!ACADEMY_ID_RE.test(academyId)) {
     return NextResponse.json({ error: 'Invalid academy id' }, { status: 400 });
   }
 
