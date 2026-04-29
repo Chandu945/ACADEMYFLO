@@ -74,7 +74,9 @@ function AttendanceContent({ studentId }: { studentId: string }) {
 
   const { data: rawAttendance, loading } = useChildAttendance(studentId, monthParam);
 
-  // API returns flat { studentId, month, presentCount, absentCount, holidayCount }
+  // API returns flat { studentId, month, presentCount, absentCount, holidayCount, expectedCount, perBatch }
+  // perBatch was added in mobile commit 29a54fb to support students enrolled in
+  // multiple batches with different schedules — render below the summary if present.
   const attendanceData = rawAttendance as Record<string, unknown> | null;
   const summary = attendanceData?.presentCount != null
     ? {
@@ -84,6 +86,16 @@ function AttendanceContent({ studentId }: { studentId: string }) {
         total: (Number(attendanceData['presentCount']) || 0) + (Number(attendanceData['absentCount']) || 0) + (Number(attendanceData['holidayCount']) || 0),
       }
     : undefined;
+
+  type PerBatchEntry = {
+    batchId?: string;
+    batchName?: string;
+    presentCount?: number;
+    absentCount?: number;
+    expectedCount?: number;
+  };
+  const perBatchRaw = attendanceData?.['perBatch'];
+  const perBatch: PerBatchEntry[] = Array.isArray(perBatchRaw) ? (perBatchRaw as PerBatchEntry[]) : [];
 
   const handlePrev = () => {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -136,6 +148,32 @@ function AttendanceContent({ studentId }: { studentId: string }) {
 
           {!summary && (
             <p className={styles.empty}>No attendance records for this month.</p>
+          )}
+
+          {/* Per-batch breakdown — only render if the student is in 2+ batches.
+              For a single-batch student the totals above already tell the
+              whole story, and an extra section just adds noise. */}
+          {perBatch.length > 1 && (
+            <div className={styles.perBatchSection}>
+              <h3 className={styles.perBatchTitle}>By batch</h3>
+              <div className={styles.perBatchList}>
+                {perBatch.map((entry, idx) => {
+                  const present = Number(entry.presentCount) || 0;
+                  const expected = Number(entry.expectedCount) || 0;
+                  const pct = expected > 0 ? Math.round((present / expected) * 100) : null;
+                  return (
+                    <div key={entry.batchId ?? idx} className={styles.perBatchRow}>
+                      <span className={styles.perBatchName}>
+                        {entry.batchName ?? 'Batch'}
+                      </span>
+                      <span className={styles.perBatchCounts}>
+                        {present} / {expected} present{pct !== null ? ` · ${pct}%` : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </>
       )}

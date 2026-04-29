@@ -139,9 +139,22 @@ export default function LoginForm() {
           if (Object.keys(serverFieldErrors).length > 0) {
             setFieldErrors(serverFieldErrors);
           }
-          // Start cooldown on failure (matches mobile rate limit behavior)
+          // Start cooldown on failure (matches mobile rate limit behavior).
+          // Honour the server's Retry-After header when present (mirrors
+          // apps/mobile/src/presentation/screens/auth/LoginScreen.tsx) — the
+          // server knows how much window is left and our hardcoded 30s can
+          // be both wrong and frustrating for the user.
           if (res.status === 429 || (typeof data['code'] === 'string' && data['code'] === 'RATE_LIMITED')) {
-            setCooldown(RATE_LIMIT_COOLDOWN_S);
+            const retryAfterRaw = res.headers.get('Retry-After');
+            let cooldownS = RATE_LIMIT_COOLDOWN_S;
+            if (retryAfterRaw) {
+              const asInt = Number.parseInt(retryAfterRaw, 10);
+              if (Number.isFinite(asInt) && asInt > 0) {
+                // Cap so a misbehaving server can't lock the UI for hours.
+                cooldownS = Math.min(asInt, 300);
+              }
+            }
+            setCooldown(cooldownS);
           }
           showError(
             (typeof data['message'] === 'string' ? data['message'] : null) ??

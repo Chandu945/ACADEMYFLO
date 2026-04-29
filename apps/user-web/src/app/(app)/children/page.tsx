@@ -143,6 +143,20 @@ export default function ChildrenPage() {
                     {currencyFormatter.format(child.monthlyFee)}
                   </span>
                 </div>
+                {/* Surface unpaid aggregates from the new backend contract.
+                    Only render when the field is present and non-zero so the
+                    card stays compact for parents who are paid up. */}
+                {(child.totalUnpaidMonths ?? 0) > 0 && (
+                  <div className={styles.stat}>
+                    <span className={styles.statLabel}>Unpaid</span>
+                    <span className={styles.statValue}>
+                      {currencyFormatter.format(child.totalUnpaidAmount ?? 0)}
+                      <span style={{ marginLeft: 6, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        ({child.totalUnpaidMonths} mo)
+                      </span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className={styles.cardActions}>
@@ -151,6 +165,18 @@ export default function ChildrenPage() {
                     View Details
                   </Button>
                 </Link>
+                {/* If backend says there's a current-month fee that isn't
+                    PAID, give a one-tap path to the existing /pay flow. */}
+                {child.currentMonthFeeDueId && child.currentMonthFeeStatus && child.currentMonthFeeStatus !== 'PAID' && (
+                  <Link
+                    href={`/children/${child.studentId}/pay?feeDueId=${encodeURIComponent(child.currentMonthFeeDueId)}`}
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <Button variant="secondary" size="sm" fullWidth>
+                      Pay {currencyFormatter.format(child.currentMonthFeeAmount ?? 0)}
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           ))}

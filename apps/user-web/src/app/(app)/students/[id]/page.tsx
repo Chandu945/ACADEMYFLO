@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useStudentDetail, deleteStudent, updateStudent, inviteParent } from '@/application/students/use-students';
+import { useStudentDetail, deleteStudent, inviteParent, changeStudentStatus } from '@/application/students/use-students';
 import { useAuth } from '@/application/auth/use-auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -107,9 +107,14 @@ export default function StudentDetailPage() {
     setStatusChanging(true);
     setStatusError(null);
     try {
-      const result = await updateStudent(
+      // Use dedicated /status endpoint (mirrors apps/mobile). The main PATCH
+      // route does not accept transitions to LEFT and uses a different
+      // request-body key, so going through changeStudentStatus is the
+      // parity-correct path.
+      const result = await changeStudentStatus(
         params.id,
-        { status: newStatus, statusChangeReason: statusReason.trim() || undefined },
+        newStatus as 'ACTIVE' | 'INACTIVE' | 'LEFT',
+        statusReason.trim() || undefined,
         accessToken,
       );
       if (!result.ok) {
@@ -156,6 +161,88 @@ export default function StudentDetailPage() {
       tempPassword: result.data.tempPassword,
       isExistingUser: result.data.isExistingUser,
     });
+  }, [params.id, accessToken]);
+
+  // Mobile-parity: copy parent login credentials to clipboard.
+  // apps/mobile uses native Share; web fallback is clipboard + toast since
+  // there's no equivalent share sheet in browsers.
+  const [credentialsLoading, setCredentialsLoading] = useState(false);
+  const [credentialsToast, setCredentialsToast] = useState<string | null>(null);
+  const handleShareCredentials = useCallback(async () => {
+    if (!params.id || !accessToken) return;
+    setCredentialsLoading(true);
+    setCredentialsToast(null);
+    try {
+      const res = await fetch(`/api/students/${encodeURIComponent(params.id)}/credentials`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(15000),
+      });
+      const json = (await res.json().catch(() => null)) as { shareText?: string; hasPassword?: boolean; message?: string } | null;
+      if (!res.ok || !json) {
+        setCredentialsToast(json?.message ?? 'Failed to fetch credentials');
+        return;
+      }
+      if (!json.shareText) {
+        setCredentialsToast('Credentials are not available for this student.');
+        return;
+      }
+      // Web Share API → Clipboard fallback. Web Share works on mobile browsers
+      // and Safari macOS; clipboard is the desktop-everywhere fallback.
+      const shareText = json.shareText;
+      if (typeof navigator !== 'undefined' && 'share' in navigator) {
+        try {
+          await (navigator as Navigator & { share: (data: { text: string }) => Promise<void> }).share({ text: shareText });
+          setCredentialsToast('Credentials shared.');
+          return;
+        } catch {
+          // User cancelled or share unavailable — fall through to clipboard
+        }
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareText);
+        setCredentialsToast('Credentials copied to clipboard.');
+        return;
+      }
+      setCredentialsToast('Could not share automatically. Please copy manually from the next prompt.');
+      window.prompt('Copy parent login credentials:', shareText);
+    } catch {
+      setCredentialsToast('Network error. Please try again.');
+    } finally {
+      setCredentialsLoading(false);
+      setTimeout(() => setCredentialsToast(null), 4000);
+    }
+  }, [params.id, accessToken]);
+
+  // Mobile-parity: download generated PDFs (report / id-card / registration-form).
+  const [docDownloading, setDocDownloading] = useState<string | null>(null);
+  const handleDownloadDocument = useCallback(async (docType: 'report' | 'id-card' | 'registration-form') => {
+    if (!params.id || !accessToken) return;
+    setDocDownloading(docType);
+    try {
+      const res = await fetch(`/api/students/${encodeURIComponent(params.id)}/documents?type=${docType}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { message?: string } | null;
+        setCredentialsToast(json?.message ?? 'Failed to generate document');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${docType}-${params.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setCredentialsToast('Network error during download.');
+    } finally {
+      setDocDownloading(null);
+      setTimeout(() => setCredentialsToast(null), 4000);
+    }
   }, [params.id, accessToken]);
 
   if (loading) return <Spinner centered size="lg" />;
@@ -225,6 +312,38 @@ export default function StudentDetailPage() {
               Invite Parent
             </Button>
           )}
+          {canEdit && (
+            <Button variant="outline" onClick={handleShareCredentials} loading={credentialsLoading}>
+              Share Credentials
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="outline"
+              onClick={() => handleDownloadDocument('id-card')}
+              loading={docDownloading === 'id-card'}
+            >
+              ID Card
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="outline"
+              onClick={() => handleDownloadDocument('registration-form')}
+              loading={docDownloading === 'registration-form'}
+            >
+              Registration Form
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="outline"
+              onClick={() => handleDownloadDocument('report')}
+              loading={docDownloading === 'report'}
+            >
+              Report
+            </Button>
+          )}
           {canChangeStatus && (
             <Button variant="outline" onClick={openStatusModal}>
               Change Status
@@ -241,6 +360,9 @@ export default function StudentDetailPage() {
             </Button>
           )}
         </div>
+        {credentialsToast && (
+          <Alert variant="info" message={credentialsToast} />
+        )}
       </div>
 
       {/* Info Cards */}
@@ -309,9 +431,23 @@ export default function StudentDetailPage() {
             <span className={styles.infoLabel}>Mobile</span>
             <span className={styles.infoValue}>
               {guardianMobile ? (
-                <a href={`tel:${guardianMobile}`} className={styles.contactLink}>
-                  {guardianMobile}
-                </a>
+                <>
+                  <a href={`tel:${guardianMobile}`} className={styles.contactLink}>
+                    {guardianMobile}
+                  </a>
+                  {/* WhatsApp shortcut — mirrors apps/mobile StudentDetailScreen
+                      contact pills. Strips the "+" (wa.me expects bare digits). */}
+                  <a
+                    href={`https://wa.me/${guardianMobile.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.contactLink}
+                    style={{ marginLeft: 12, color: '#25D366' }}
+                    aria-label={`Open WhatsApp chat with ${student.guardian?.name ?? 'guardian'}`}
+                  >
+                    WhatsApp
+                  </a>
+                </>
               ) : '-'}
             </span>
           </div>

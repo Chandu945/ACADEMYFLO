@@ -285,6 +285,15 @@ export default function EditStudentPage() {
                 placeholder="+919876543210"
                 hint="E.164 format with +91 prefix"
               />
+              <Input
+                label="WhatsApp Number"
+                type="tel"
+                value={form.whatsappNumber}
+                onChange={(e) => set('whatsappNumber', e.target.value)}
+                error={fieldErrors['whatsappNumber']}
+                placeholder="+919876543210"
+                hint="Optional. Leave blank to use the mobile number for WhatsApp."
+              />
             </div>
           </div>
 

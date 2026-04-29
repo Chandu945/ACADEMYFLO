@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { SubscriptionStatus, TierKey } from '@academyflo/contracts';
 import { useAuth } from '@/application/auth/use-auth';
 import { csrfHeaders } from '@/infra/auth/csrf-client';
+import { openCashfreeCheckout } from '@/infra/payments/cashfree-checkout';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
@@ -21,7 +22,7 @@ const POLL_SCHEDULE_MS = [2000, 3000, 5000, 8000, 13000, 21000, 30000, 30000];
 
 type PendingPoll =
   | { state: 'idle' }
-  | { state: 'polling'; orderId: string; attempt: number }
+  | { state: 'polling'; orderId: string; attempt: number; sessionExpiresAtMs?: number }
   | { state: 'success'; orderId: string }
   | { state: 'failed'; orderId: string; reason: string }
   | { state: 'timeout'; orderId: string };
@@ -160,7 +161,16 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     if (pendingPoll.state !== 'polling') return;
-    const { orderId, attempt } = pendingPoll;
+    const { orderId, attempt, sessionExpiresAtMs } = pendingPoll;
+
+    // Mobile parity: bail early once Cashfree has marked the session expired.
+    // sessionExpiresAtMs is only set on the live path (fresh initiate); the
+    // resume path falls through to the server, which still surfaces EXPIRED.
+    if (sessionExpiresAtMs && Date.now() > sessionExpiresAtMs) {
+      sessionStorage.removeItem(PENDING_ORDER_KEY);
+      setPendingPoll({ state: 'failed', orderId, reason: 'Payment session expired. Please try again.' });
+      return;
+    }
 
     let cancelled = false;
     const controller = new AbortController();
@@ -193,14 +203,14 @@ export default function SubscriptionPage() {
           setPendingPoll({ state: 'timeout', orderId });
           return;
         }
-        setPendingPoll({ state: 'polling', orderId, attempt: attempt + 1 });
+        setPendingPoll({ state: 'polling', orderId, attempt: attempt + 1, sessionExpiresAtMs });
       } catch {
         if (cancelled) return;
         if (attempt + 1 >= POLL_SCHEDULE_MS.length) {
           setPendingPoll({ state: 'timeout', orderId });
           return;
         }
-        setPendingPoll({ state: 'polling', orderId, attempt: attempt + 1 });
+        setPendingPoll({ state: 'polling', orderId, attempt: attempt + 1, sessionExpiresAtMs });
       }
     }, POLL_SCHEDULE_MS[attempt] ?? 30000);
 
@@ -243,19 +253,39 @@ export default function SubscriptionPage() {
         setPaymentError(body?.error || body?.message || 'Failed to initiate payment');
         return;
       }
-      const data: { orderId?: string; checkoutUrl?: string } = await res.json();
-      if (data.checkoutUrl && data.orderId) {
-        // Stash orderId BEFORE redirect so the next page load (return from
-        // Cashfree) can resume polling. Kept in sessionStorage only — cleared
-        // automatically on tab close or by our terminal-state handlers above.
-        sessionStorage.setItem(
-          PENDING_ORDER_KEY,
-          JSON.stringify({ orderId: data.orderId, startedAt: Date.now() }),
-        );
-        window.location.href = data.checkoutUrl;
-      } else {
-        setPaymentError('Payment gateway unavailable. Please try again later.');
+      const data: { orderId?: string; paymentSessionId?: string; expiresAt?: string } = await res.json();
+      if (!data.paymentSessionId || !data.orderId) {
+        setPaymentError('Payment gateway returned an incomplete session. Please try again.');
+        return;
       }
+      // Mobile parity: capture Cashfree's session expiry so the poller can
+      // bail fast once it's known to be dead. Falls back to undefined if
+      // backend didn't return one (resume path will see EXPIRED via server).
+      const sessionExpiresAtMs = data.expiresAt && Number.isFinite(Date.parse(data.expiresAt))
+        ? Date.parse(data.expiresAt)
+        : undefined;
+      // Stash orderId BEFORE opening the modal so polling resumes if the user
+      // closes the tab mid-checkout. Cleared automatically by terminal-state
+      // handlers above (success / failed) or via cancelPendingAndRetry.
+      sessionStorage.setItem(
+        PENDING_ORDER_KEY,
+        JSON.stringify({ orderId: data.orderId, startedAt: Date.now() }),
+      );
+      try {
+        await openCashfreeCheckout(data.paymentSessionId);
+      } catch (err) {
+        sessionStorage.removeItem(PENDING_ORDER_KEY);
+        setPaymentError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to open Cashfree checkout. Please try again.',
+        );
+        return;
+      }
+      // Modal closed — start polling for terminal state. The polling effect
+      // handles SUCCESS / FAILED / timeout and refreshes the subscription
+      // card on success.
+      setPendingPoll({ state: 'polling', orderId: data.orderId, attempt: 0, sessionExpiresAtMs });
     } catch {
       setPaymentError('Network error. Please try again.');
     } finally {

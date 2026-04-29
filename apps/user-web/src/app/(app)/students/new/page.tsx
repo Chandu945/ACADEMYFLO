@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createStudent } from '@/application/students/use-students';
 import { useBatches } from '@/application/batches/use-batches';
 import { useAuth } from '@/application/auth/use-auth';
+import { useUnsavedChangesWarning } from '@/application/common/use-unsaved-changes-warning';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -72,15 +73,8 @@ export default function NewStudentPage() {
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(formRef.current);
 
-  // Warn on unsaved changes
-  useEffect(() => {
-    if (!isDirty || success) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty, success]);
+  // Warn on unsaved changes (mirrors apps/mobile useUnsavedChangesWarning).
+  useUnsavedChangesWarning(isDirty && !success);
 
   const set = useCallback((field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -253,6 +247,15 @@ export default function NewStudentPage() {
                 error={fieldErrors['mobileNumber']}
                 placeholder="+919876543210"
                 hint="E.164 format with +91 prefix"
+              />
+              <Input
+                label="WhatsApp Number"
+                type="tel"
+                value={form.whatsappNumber}
+                onChange={(e) => set('whatsappNumber', e.target.value)}
+                error={fieldErrors['whatsappNumber']}
+                placeholder="+919876543210"
+                hint="Optional. Leave blank to use the mobile number for WhatsApp."
               />
             </div>
           </div>

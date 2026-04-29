@@ -87,6 +87,13 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ message: 'date is required and must be in YYYY-MM-DD format' }, { status: 400 });
   }
 
+  // batchId is required by the backend for both single-mark and bulk paths —
+  // attendance is recorded per batch session, not per (student, date).
+  const batchId = body['batchId'];
+  if (!isValidObjectId(batchId)) {
+    return NextResponse.json({ message: 'batchId is required and must be a valid id' }, { status: 400 });
+  }
+
   if (body['bulk']) {
     const rawUpdates = body['updates'];
     if (!Array.isArray(rawUpdates)) {
@@ -112,7 +119,7 @@ export async function PUT(request: NextRequest) {
       }
       if (status === 'ABSENT') absentStudentIds.push(sid);
     }
-    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(date)}`, { absentStudentIds }, { accessToken });
+    const result = await apiPut(`/api/v1/attendance/students/bulk?date=${encodeURIComponent(date)}`, { batchId, absentStudentIds }, { accessToken });
     if (!result.ok) return toErrorResponse(result.error);
     return NextResponse.json(result.data);
   }
@@ -126,7 +133,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ message: 'status must be PRESENT or ABSENT' }, { status: 400 });
   }
 
-  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(studentId)}?date=${encodeURIComponent(date)}`, { status }, { accessToken });
+  const result = await apiPut(`/api/v1/attendance/students/${encodeURIComponent(studentId)}?date=${encodeURIComponent(date)}`, { batchId, status }, { accessToken });
   if (!result.ok) return toErrorResponse(result.error);
   return NextResponse.json(result.data);
 }

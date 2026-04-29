@@ -4,8 +4,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/application/auth/use-auth';
 import { csrfHeaders } from '@/infra/auth/csrf-client';
 
-type ChildSummary = { studentId: string; fullName: string; status: string; monthlyFee: number; currentMonthAttendancePercent: number | null };
-type ParentProfile = { fullName: string; email: string; phoneNumber: string; profilePhotoUrl?: string | null };
+// Mirrors apps/mobile/src/domain/parent/parent.schemas.ts (childSummarySchema).
+// Recent backend additions surface fee obligations directly on the children
+// list so the parent-side UI can show "Pay now" without a second round-trip.
+export type ChildSummary = {
+  studentId: string;
+  fullName: string;
+  status: string;
+  monthlyFee: number;
+  currentMonthAttendancePercent: number | null;
+  /** Current-month fee aggregates — added in mobile commit 3589f80. Optional
+   *  here because older backend builds may not include them; treat absence
+   *  as "no current dues to surface" rather than an error. */
+  currentMonthFeeDueId?: string | null;
+  currentMonthFeeAmount?: number | null;
+  currentMonthFeeStatus?: 'UPCOMING' | 'DUE' | 'PAID' | null;
+  currentMonthFeeMonthKey?: string | null;
+  totalUnpaidMonths?: number;
+  totalUnpaidAmount?: number;
+};
+export type ParentProfile = { fullName: string; email: string; phoneNumber: string; profilePhotoUrl?: string | null };
 
 export function useChildren() {
   const { accessToken } = useAuth();

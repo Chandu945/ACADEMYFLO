@@ -85,7 +85,13 @@ export function useDailyAttendance(date: string, batchId?: string, search?: stri
   return { data, loading, error, refetch: fetch_ };
 }
 
-export async function markAttendance(studentId: string, date: string, status: string, accessToken?: string | null) {
+export async function markAttendance(
+  studentId: string,
+  batchId: string,
+  date: string,
+  status: string,
+  accessToken?: string | null,
+) {
   try {
     const res = await fetch('/api/attendance', {
       method: 'PUT',
@@ -93,7 +99,7 @@ export async function markAttendance(studentId: string, date: string, status: st
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       }),
-      body: JSON.stringify({ studentId, date, status }),
+      body: JSON.stringify({ studentId, batchId, date, status }),
       signal: AbortSignal.timeout(10000),
     });
     const json = await safeJson(res);
@@ -106,7 +112,12 @@ export async function markAttendance(studentId: string, date: string, status: st
   }
 }
 
-export async function markBulkAttendance(date: string, updates: { studentId: string; status: string }[], accessToken?: string | null) {
+export async function markBulkAttendance(
+  batchId: string,
+  date: string,
+  updates: { studentId: string; status: string }[],
+  accessToken?: string | null,
+) {
   try {
     const res = await fetch('/api/attendance', {
       method: 'PUT',
@@ -114,7 +125,7 @@ export async function markBulkAttendance(date: string, updates: { studentId: str
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       }),
-      body: JSON.stringify({ bulk: true, date, updates }),
+      body: JSON.stringify({ bulk: true, batchId, date, updates }),
       signal: AbortSignal.timeout(15000),
     });
     const json = await safeJson(res);

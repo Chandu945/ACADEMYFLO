@@ -213,6 +213,37 @@ export async function updateStudent(id: string, body: Record<string, unknown>, a
   }
 }
 
+/**
+ * Status change for a student. Mirrors apps/mobile's dedicated
+ * `/students/{id}/status` endpoint with `{status, reason}` body. Allows
+ * transition to LEFT, which the main PATCH endpoint deliberately does not.
+ */
+export async function changeStudentStatus(
+  id: string,
+  status: 'ACTIVE' | 'INACTIVE' | 'LEFT',
+  reason: string | undefined,
+  accessToken?: string | null,
+) {
+  try {
+    const res = await fetch(`/api/students/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: csrfHeaders({
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      }),
+      body: JSON.stringify({ status, reason: reason?.trim() || undefined }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await safeJson(res);
+    if (!res.ok) {
+      return { ok: false as const, error: (json?.['message'] as string) || 'Failed to change status' };
+    }
+    return { ok: true as const, data: json ?? {} };
+  } catch {
+    return { ok: false as const, error: 'Network error. Please try again.' };
+  }
+}
+
 export async function inviteParent(studentId: string, accessToken?: string | null) {
   try {
     const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/invite-parent`, {

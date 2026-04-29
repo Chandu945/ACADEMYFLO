@@ -60,6 +60,29 @@ export default function AttendancePage() {
     ...batches.map((b) => ({ value: b.id, label: b.batchName })),
   ];
 
+  // Mobile parity: attendance is recorded per (batch, date) session. To mark
+  // attendance the user must (a) pick a specific batch and (b) be on a day
+  // that batch actually meets. Mirrors apps/mobile's OffScheduleDayPrompt UX.
+  const WEEKDAY_FROM_DATE = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+  const WEEKDAY_FULL: Record<string, string> = {
+    MON: 'Mondays', TUE: 'Tuesdays', WED: 'Wednesdays', THU: 'Thursdays',
+    FRI: 'Fridays', SAT: 'Saturdays', SUN: 'Sundays',
+  };
+  const selectedBatch = useMemo(
+    () => (batchId ? batches.find((b) => b.id === batchId) : null),
+    [batchId, batches],
+  );
+  const scheduledDays: string[] = useMemo(() => {
+    const raw = (selectedBatch as unknown as { days?: string[] } | null)?.days;
+    return Array.isArray(raw) ? raw : [];
+  }, [selectedBatch]);
+  const selectedWeekday = useMemo(() => {
+    const dow = new Date(selectedDate + 'T00:00:00').getDay();
+    return WEEKDAY_FROM_DATE[dow] ?? 'SUN';
+  }, [selectedDate]);
+  const isOffSchedule = !!selectedBatch && scheduledDays.length > 0 && !scheduledDays.includes(selectedWeekday);
+  const canMark = !!batchId && !isOffSchedule && !attendance?.isHoliday;
+
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -99,18 +122,26 @@ export default function AttendancePage() {
   }, []);
 
   const handleStatusChange = useCallback(async (studentId: string, status: string) => {
+    if (!batchId) {
+      setAttendanceError('Select a batch before marking attendance');
+      return;
+    }
     const previousStatus = localStatuses[studentId];
     setLocalStatuses((prev) => ({ ...prev, [studentId]: status }));
     setAttendanceError(null);
-    const result = await markAttendance(studentId, selectedDate, status, accessToken);
+    const result = await markAttendance(studentId, batchId, selectedDate, status, accessToken);
     if (!result.ok) {
       setLocalStatuses((prev) => ({ ...prev, [studentId]: previousStatus }));
       setAttendanceError(result.error || 'Failed to mark attendance');
     }
-  }, [selectedDate, accessToken, localStatuses]);
+  }, [batchId, selectedDate, accessToken, localStatuses]);
 
   const handleBulk = useCallback(async (status: string) => {
     if (!attendance?.data) return;
+    if (!batchId) {
+      setAttendanceError('Select a batch before marking attendance');
+      return;
+    }
     setBulkLoading(true);
     setAttendanceError(null);
     const previousStatuses = { ...localStatuses };
@@ -120,7 +151,7 @@ export default function AttendancePage() {
       updates.forEach((u) => { n[u.studentId] = u.status; });
       return n;
     });
-    const result = await markBulkAttendance(selectedDate, updates, accessToken);
+    const result = await markBulkAttendance(batchId, selectedDate, updates, accessToken);
     setBulkLoading(false);
     if (!result.ok) {
       setLocalStatuses(previousStatuses);
@@ -128,21 +159,25 @@ export default function AttendancePage() {
       return;
     }
     refetch();
-  }, [attendance, selectedDate, accessToken, refetch, localStatuses]);
+  }, [attendance, batchId, selectedDate, accessToken, refetch, localStatuses]);
 
   const handleDeclareHoliday = useCallback(async () => {
     if (!attendance?.data) return;
+    if (!batchId) {
+      setAttendanceError('Select a batch before declaring a holiday');
+      return;
+    }
     setBulkLoading(true);
     setAttendanceError(null);
     const updates = attendance.data.map((item) => ({ studentId: item.studentId, status: 'HOLIDAY' }));
-    const result = await markBulkAttendance(selectedDate, updates, accessToken);
+    const result = await markBulkAttendance(batchId, selectedDate, updates, accessToken);
     setBulkLoading(false);
     if (!result.ok) {
       setAttendanceError(result.error || 'Failed to declare holiday');
       return;
     }
     refetch();
-  }, [attendance, selectedDate, accessToken, refetch]);
+  }, [attendance, batchId, selectedDate, accessToken, refetch]);
 
   // Task 2: Remove holiday via DELETE endpoint instead of bulk-marking ABSENT
   const handleRemoveHoliday = useCallback(async () => {
@@ -219,19 +254,36 @@ export default function AttendancePage() {
           onChange={(e) => setBatchId(e.target.value)}
         />
         <div className={styles.bulkActions}>
-          <Button variant="outline" size="sm" disabled={bulkLoading} onClick={() => setBulkConfirm({ action: 'PRESENT', label: 'Mark All Present' })}>
+          <Button variant="outline" size="sm" disabled={bulkLoading || !canMark} onClick={() => setBulkConfirm({ action: 'PRESENT', label: 'Mark All Present' })}>
             Mark All Present
           </Button>
-          <Button variant="outline" size="sm" disabled={bulkLoading} onClick={() => setBulkConfirm({ action: 'ABSENT', label: 'Mark All Absent' })}>
+          <Button variant="outline" size="sm" disabled={bulkLoading || !canMark} onClick={() => setBulkConfirm({ action: 'ABSENT', label: 'Mark All Absent' })}>
             Mark All Absent
           </Button>
           {isOwner && !attendance?.isHoliday && (
-            <Button variant="secondary" size="sm" disabled={bulkLoading} onClick={() => setBulkConfirm({ action: 'HOLIDAY', label: 'Declare Holiday' })}>
+            <Button variant="secondary" size="sm" disabled={bulkLoading || !batchId || isOffSchedule} onClick={() => setBulkConfirm({ action: 'HOLIDAY', label: 'Declare Holiday' })}>
               Declare Holiday
             </Button>
           )}
         </div>
       </div>
+
+      {/* Off-schedule day prompt — mirrors apps/mobile OffScheduleDayPrompt */}
+      {isOffSchedule && selectedBatch && (
+        <Alert
+          variant="warning"
+          title={`${selectedBatch.batchName} doesn't meet on ${WEEKDAY_FULL[selectedWeekday] ?? selectedWeekday}`}
+          message={`This batch is scheduled on ${scheduledDays.map((d) => d.charAt(0) + d.slice(1).toLowerCase()).join(', ')}. Pick one of those days to mark attendance.`}
+        />
+      )}
+
+      {/* No batch selected — can view but not mark */}
+      {!batchId && !attendance?.isHoliday && (
+        <Alert
+          variant="info"
+          message="Select a batch to mark attendance. With 'All Batches' selected you can view roster but not record attendance."
+        />
+      )}
 
       {/* Search */}
       <SearchInput
@@ -268,6 +320,7 @@ export default function AttendancePage() {
                   <div className={styles.statusToggle}>
                     <button
                       type="button"
+                      disabled={!canMark}
                       className={`${styles.statusBtn} ${localStatuses[item.studentId] === 'PRESENT' ? styles.present : ''}`}
                       onClick={() => handleStatusChange(item.studentId, 'PRESENT')}
                       aria-pressed={localStatuses[item.studentId] === 'PRESENT'}
@@ -277,6 +330,7 @@ export default function AttendancePage() {
                     </button>
                     <button
                       type="button"
+                      disabled={!canMark}
                       className={`${styles.statusBtn} ${localStatuses[item.studentId] === 'ABSENT' ? styles.absent : ''}`}
                       onClick={() => handleStatusChange(item.studentId, 'ABSENT')}
                       aria-pressed={localStatuses[item.studentId] === 'ABSENT'}

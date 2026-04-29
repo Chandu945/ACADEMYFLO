@@ -26,12 +26,18 @@ type AuthState = {
   accessToken: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /** True when the session was invalidated server-side (refresh failed
+   *  while we were authenticated) — distinguishes a forced sign-out from
+   *  a manual logout so the login screen can show "Session expired".
+   *  Mirrors apps/mobile AuthContext.sessionExpired. */
+  sessionExpired: boolean;
 };
 
 type AuthContextValue = AuthState & {
   login: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  dismissSessionExpired: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -74,19 +80,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: null,
     isLoading: true,
     isAuthenticated: false,
+    sessionExpired: false,
   });
   const [initialAuthDone, setInitialAuthDone] = useState(false);
 
   const refreshAuth = useCallback(async () => {
+    // Capture authenticated-ness at call time. If we were authenticated and
+    // the refresh fails, that's a server-side invalidation → set
+    // sessionExpired so the login screen can show the "session expired"
+    // banner. If we weren't authenticated, this is normal and not "expired".
+    const wasAuthenticated = state.isAuthenticated;
     try {
       const res = await fetch('/api/auth/refresh', { method: 'POST' });
       if (!res.ok) {
-        setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
+        setState({
+          user: null,
+          accessToken: null,
+          isLoading: false,
+          isAuthenticated: false,
+          sessionExpired: wasAuthenticated,
+        });
         return;
       }
       const data: AuthResponse = await res.json();
       if (!data.user) {
-        setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
+        setState({
+          user: null,
+          accessToken: null,
+          isLoading: false,
+          isAuthenticated: false,
+          sessionExpired: wasAuthenticated,
+        });
         return;
       }
       setState({
@@ -94,11 +118,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessToken: data.accessToken,
         isLoading: false,
         isAuthenticated: true,
+        sessionExpired: false,
       });
     } catch {
-      setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
+      setState({
+        user: null,
+        accessToken: null,
+        isLoading: false,
+        isAuthenticated: false,
+        sessionExpired: wasAuthenticated,
+      });
     }
-  }, []);
+  }, [state.isAuthenticated]);
 
   // Initial auth: refresh from server (session cookie → fresh access token + user)
   useEffect(() => {
@@ -111,9 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           accessToken: data.accessToken,
           isLoading: false,
           isAuthenticated: true,
+          sessionExpired: false,
         });
       } else {
-        setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
+        // Cold boot with no valid session — normal, not "expired".
+        setState({
+          user: null,
+          accessToken: null,
+          isLoading: false,
+          isAuthenticated: false,
+          sessionExpired: false,
+        });
       }
       setInitialAuthDone(true);
     });
@@ -140,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessToken: data.accessToken,
         isLoading: false,
         isAuthenticated: true,
+        sessionExpired: false,
       });
       return { ok: true };
     } catch {
@@ -152,14 +192,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetch('/api/auth/logout', { method: 'POST' });
     } finally {
       _initPromise = null;
-      setState({ user: null, accessToken: null, isLoading: false, isAuthenticated: false });
+      // Manual logout — never flag as session-expired.
+      setState({
+        user: null,
+        accessToken: null,
+        isLoading: false,
+        isAuthenticated: false,
+        sessionExpired: false,
+      });
       router.replace('/login');
     }
   }, [router]);
 
+  const dismissSessionExpired = useCallback(() => {
+    setState((prev) => (prev.sessionExpired ? { ...prev, sessionExpired: false } : prev));
+  }, []);
+
   const value = useMemo(
-    () => ({ ...state, login, logout, refreshAuth }),
-    [state, login, logout, refreshAuth],
+    () => ({ ...state, login, logout, refreshAuth, dismissSessionExpired }),
+    [state, login, logout, refreshAuth, dismissSessionExpired],
   );
 
   // Periodically refresh the access token while authenticated
