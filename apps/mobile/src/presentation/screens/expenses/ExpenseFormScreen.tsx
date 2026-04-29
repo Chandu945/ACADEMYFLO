@@ -9,6 +9,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
@@ -241,7 +242,8 @@ export function ExpenseFormScreen() {
   };
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -475,6 +477,7 @@ export function ExpenseFormScreen() {
         </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

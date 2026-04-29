@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, SafeAreaView, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -145,7 +145,8 @@ export function StaffAttendanceDailyReportScreen() {
   const percentage = totalCount > 0 ? Math.round((report.presentCount / totalCount) * 100) : 0;
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
@@ -206,13 +207,14 @@ export function StaffAttendanceDailyReportScreen() {
 
       {report.absentStaff.length === 0 && (
         <View style={styles.allPresentCard}>
-          
+
           <AppIcon name="party-popper" size={32} color={colors.success} />
           <Text style={styles.allPresentTitle}>Everyone Present!</Text>
           <Text style={styles.allPresentSubtitle}>All staff members are present today</Text>
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

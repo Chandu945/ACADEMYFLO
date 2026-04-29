@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect } from 'react';
 import {
   View,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -139,7 +140,7 @@ export function FeePaymentScreen() {
     status === 'initiating' ? 1 : status === 'checkout' ? 2 : status === 'polling' ? 3 : 0;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Summary Card */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryIcon}>
@@ -287,12 +288,12 @@ export function FeePaymentScreen() {
       {/* Secure badge */}
       {!isProcessing && status !== 'success' && status !== 'failed' && (
         <View style={styles.secureBadge}>
-          
+
           <AppIcon name="lock-outline" size={14} color={colors.textDisabled} />
           <Text style={styles.secureText}>Secured by Cashfree</Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

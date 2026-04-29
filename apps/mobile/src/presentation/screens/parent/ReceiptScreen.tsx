@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, SafeAreaView, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -173,11 +173,11 @@ export function ReceiptScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.card}>
         {/* Success Badge */}
         <View style={styles.successBadge}>
-          
+
           <AppIcon name="check-circle" size={40} color={colors.success} />
         </View>
 
@@ -231,7 +231,7 @@ export function ReceiptScreen() {
         <AppIcon name="share-variant-outline" size={20} color={colors.white} />
         <Text style={styles.shareButtonText}>Share Receipt</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

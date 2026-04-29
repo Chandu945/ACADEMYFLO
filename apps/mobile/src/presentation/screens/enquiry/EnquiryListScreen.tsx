@@ -7,6 +7,7 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
+  SafeAreaView,
   StyleSheet,
   Keyboard,
   Modal,
@@ -190,7 +191,7 @@ export function EnquiryListScreen() {
   ), [styles, colors, navigation, isOverdue, formatDate]);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (
@@ -385,7 +386,7 @@ export function EnquiryListScreen() {
         />
         <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

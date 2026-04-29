@@ -6,6 +6,7 @@ import {
   FlatList,
   Text,
   ActivityIndicator,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -166,7 +167,7 @@ export function ReportsHomeScreen() {
   );
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
         <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
         <SegmentedControl
@@ -312,7 +313,7 @@ export function ReportsHomeScreen() {
           )}
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

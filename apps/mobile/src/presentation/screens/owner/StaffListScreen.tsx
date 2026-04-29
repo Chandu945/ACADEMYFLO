@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -138,7 +138,7 @@ export function StaffListScreen() {
   }, [loadingMore, colors, styles]);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {error && <InlineError message={error.message} onRetry={refetch} />}
 
       {loading && !refreshing ? (
@@ -208,7 +208,7 @@ export function StaffListScreen() {
         loading={toggling}
         testID="status-confirm"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

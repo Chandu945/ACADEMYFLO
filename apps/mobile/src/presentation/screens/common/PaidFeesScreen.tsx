@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
+import { View, FlatList, RefreshControl, SafeAreaView, StyleSheet } from 'react-native';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import type { AppError } from '../../../domain/common/errors';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
@@ -70,7 +70,8 @@ export function PaidFeesScreen({
   }
 
   return (
-    <FlatList
+    <SafeAreaView style={{ flex: 1 }}>
+      <FlatList
       data={items}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
@@ -81,6 +82,7 @@ export function PaidFeesScreen({
       }
       testID="paid-list"
     />
+    </SafeAreaView>
   );
 }
 

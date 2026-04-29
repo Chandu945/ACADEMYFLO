@@ -5,6 +5,7 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  SafeAreaView,
   StyleSheet,
   Image,
 } from 'react-native';
@@ -122,7 +123,8 @@ export function ParentDashboardScreen() {
   const recentPayments = payments.slice(0, 3);
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       refreshControl={
@@ -566,6 +568,7 @@ export function ParentDashboardScreen() {
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

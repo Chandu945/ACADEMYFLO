@@ -4,6 +4,7 @@ import {
   TextInput,
   FlatList,
   RefreshControl,
+  SafeAreaView,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
@@ -119,7 +120,7 @@ export function BatchesListScreen() {
   }, [loadingMore, colors, styles]);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (
@@ -237,7 +238,7 @@ export function BatchesListScreen() {
         />
         <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

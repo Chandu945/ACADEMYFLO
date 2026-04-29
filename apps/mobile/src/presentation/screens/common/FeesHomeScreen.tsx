@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  SafeAreaView,
   StyleSheet,
   Keyboard,
   Modal,
@@ -315,7 +316,7 @@ export function FeesHomeScreen() {
   const showSearchAndFilters = selectedSegment !== 2;
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive && showSearchAndFilters ? (
@@ -546,7 +547,7 @@ export function FeesHomeScreen() {
         ) : (
           <MyPaymentRequestsScreen />
         ))}
-    </View>
+    </SafeAreaView>
   );
 }
 

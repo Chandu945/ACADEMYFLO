@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -122,7 +123,8 @@ export function DeleteAccountScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {pending ? (
         <View style={styles.pendingCard}>
           <View style={styles.pendingHeader}>
@@ -265,6 +267,7 @@ export function DeleteAccountScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

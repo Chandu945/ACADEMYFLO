@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import type { AttendanceStackParamList } from '../../navigation/AttendanceStack';
@@ -105,7 +105,8 @@ export function StudentMonthlyAttendanceScreen() {
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {fullName ? <Text style={styles.studentName} accessibilityRole="header">{fullName}</Text> : null}
       <Text style={styles.monthLabel}>{new Date(detail.month + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</Text>
 
@@ -145,6 +146,7 @@ export function StudentMonthlyAttendanceScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

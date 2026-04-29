@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Keyboard,
+  SafeAreaView,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -277,7 +278,7 @@ export function AttendanceScreen() {
   const isToday = selectedDate === getTodayIST();
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (
@@ -461,7 +462,7 @@ export function AttendanceScreen() {
           testID="attendance-list"
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
@@ -179,7 +180,7 @@ export function EnquiryDetailScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.headerRow}>
@@ -354,7 +355,7 @@ export function EnquiryDetailScreen() {
         onClosed={() => { setShowCloseModal(false); loadDetail(); }}
       />
 
-    </View>
+    </SafeAreaView>
   );
 }
 

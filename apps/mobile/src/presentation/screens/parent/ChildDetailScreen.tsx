@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   View,
   ScrollView,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -254,7 +255,8 @@ export function ChildDetailScreen() {
     .reduce((sum, f) => sum + f.amount + f.lateFee, 0);
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={
@@ -480,6 +482,7 @@ export function ChildDetailScreen() {
         )}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

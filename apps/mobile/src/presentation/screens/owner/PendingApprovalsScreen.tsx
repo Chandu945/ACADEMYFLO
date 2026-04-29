@@ -4,6 +4,7 @@ import {
   FlatList,
   TextInput,
   Text,
+  SafeAreaView,
   StyleSheet,
   RefreshControl,
   Alert,
@@ -207,7 +208,7 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Source filter tabs — only render when there's at least one PARENT
           request so existing staff-only academies don't see noisy tabs. */}
       {counts.PARENT > 0 && (
@@ -304,7 +305,7 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
         loading={acting}
         testID="approval-confirm"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

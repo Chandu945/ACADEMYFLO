@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable, Keyboard } from 'react-native';
+import { ScrollView, View, Text, SafeAreaView, StyleSheet, Pressable, Keyboard } from 'react-native';
 import type { TextInput } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import type { RouteProp } from '@react-navigation/native';
@@ -432,7 +432,8 @@ export function StudentFormScreen() {
   }, [mode, student?.id, isStaff, subscription, navigation, showToast]);
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -617,6 +618,7 @@ export function StudentFormScreen() {
         />
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

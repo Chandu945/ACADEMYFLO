@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ScrollView,
+  SafeAreaView,
   StyleSheet,
   RefreshControl,
   Linking,
@@ -211,7 +212,7 @@ export function StudentDetailScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
@@ -485,7 +486,7 @@ export function StudentDetailScreen() {
           onStatusChanged={refetchStudent}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

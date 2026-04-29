@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  SafeAreaView,
   StyleSheet,
   RefreshControl,
   useWindowDimensions,
@@ -411,7 +412,7 @@ export function EventGalleryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {uploading && (
         <View style={styles.uploadingBanner}>
           <LinearGradient
@@ -469,7 +470,7 @@ export function EventGalleryScreen() {
         loading={deleting}
         testID="delete-photo-confirm"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

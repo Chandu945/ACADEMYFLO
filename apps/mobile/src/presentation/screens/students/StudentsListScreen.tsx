@@ -12,6 +12,7 @@ import {
   Keyboard,
   Modal,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -244,7 +245,7 @@ export function StudentsListScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (
@@ -508,7 +509,7 @@ export function StudentsListScreen() {
           onStatusChanged={refetch}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

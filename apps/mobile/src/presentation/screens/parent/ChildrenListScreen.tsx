@@ -3,6 +3,7 @@ import {
   View,
   FlatList,
   RefreshControl,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -240,7 +241,8 @@ export function ChildrenListScreen() {
   }
 
   return (
-    <FlatList
+    <SafeAreaView style={{ flex: 1 }}>
+      <FlatList
       data={children}
       keyExtractor={keyExtractor}
       renderItem={renderChild}
@@ -257,6 +259,7 @@ export function ChildrenListScreen() {
         />
       }
     />
+    </SafeAreaView>
   );
 }
 

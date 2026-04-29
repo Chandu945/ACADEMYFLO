@@ -4,6 +4,7 @@ import {
   FlatList,
   TextInput,
   RefreshControl,
+  SafeAreaView,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
@@ -204,7 +205,7 @@ export function EventListScreen() {
   }, [loadingMore, colors, styles]);
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (
@@ -430,7 +431,7 @@ export function EventListScreen() {
         />
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -4,6 +4,7 @@ import {
   Text,
   FlatList,
   RefreshControl,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
@@ -166,7 +167,7 @@ export function OverdueStudentsScreen() {
   }
 
   return (
-    <View style={styles.screen} testID="overdue-students-screen">
+    <SafeAreaView style={styles.screen} testID="overdue-students-screen">
       {error && (
         <View style={styles.errorCard} testID="overdue-error">
           <View style={styles.errorIconCircle}>
@@ -200,7 +201,7 @@ export function OverdueStudentsScreen() {
         showsVerticalScrollIndicator={false}
         testID="overdue-list"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

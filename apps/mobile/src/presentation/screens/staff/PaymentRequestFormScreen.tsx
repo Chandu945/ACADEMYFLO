@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { ScrollView, View, Text, StyleSheet, Keyboard } from 'react-native';
+import { ScrollView, View, Text, SafeAreaView, StyleSheet, Keyboard } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { FeesStackParamList } from '../../navigation/FeesStack';
@@ -97,7 +97,8 @@ export function PaymentRequestFormScreen() {
   }, [staffNotes, studentId, monthKey, navigation, isEditMode, requestId, showToast]);
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -133,6 +134,7 @@ export function PaymentRequestFormScreen() {
         />
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

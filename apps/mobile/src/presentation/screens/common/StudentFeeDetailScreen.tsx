@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList, SafeAreaView, StyleSheet } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -168,7 +168,7 @@ export function StudentFeeDetailScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {items.length === 0 ? (
         <EmptyState message="No fee records found" />
       ) : (
@@ -193,7 +193,7 @@ export function StudentFeeDetailScreen() {
         }}
         loading={marking}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

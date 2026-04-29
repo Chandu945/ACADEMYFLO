@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   TextInput,
+  SafeAreaView,
   StyleSheet,
   ActivityIndicator,
   Platform,
@@ -217,7 +218,8 @@ export function ManualPaymentScreen() {
   const upiTabAvailable = hasUpi;
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -466,6 +468,7 @@ export function ManualPaymentScreen() {
         </Text>
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

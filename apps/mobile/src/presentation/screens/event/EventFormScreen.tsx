@@ -5,6 +5,7 @@ import {
   Text,
   Switch,
   TouchableOpacity,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
@@ -185,7 +186,8 @@ export function EventFormScreen(props: EventFormScreenProps) {
   const buttonLabel = mode === 'create' ? 'Save Event' : 'Save Changes';
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -368,6 +370,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
         </Text>
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

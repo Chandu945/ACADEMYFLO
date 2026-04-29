@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  SafeAreaView,
   StyleSheet,
   Modal,
   Pressable,
@@ -194,7 +195,7 @@ function AuditLogsContent() {
   }, [loadingMore, hasMore, items.length, fetchMore, colors, styles]);
 
   return (
-    <View style={styles.screen} testID="audit-logs-screen">
+    <SafeAreaView style={styles.screen} testID="audit-logs-screen">
       {/* ── Active filter pills (visible when filters are applied) ── */}
       {activeFilterPills.length > 0 && (
         <ActiveFilterBar filters={activeFilterPills} onClearAll={handleClear} />
@@ -313,7 +314,7 @@ function AuditLogsContent() {
           testID="audit-list"
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

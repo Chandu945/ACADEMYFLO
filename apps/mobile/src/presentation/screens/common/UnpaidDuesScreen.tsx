@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, RefreshControl, SafeAreaView, StyleSheet } from 'react-native';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import type { AppError } from '../../../domain/common/errors';
 import { ownerMarkPaidUseCase } from '../../../application/fees/use-cases/owner-mark-paid.usecase';
@@ -176,7 +176,7 @@ export function UnpaidDuesScreen({
   const allLoaded = shownCount >= headerTotal && headerTotal > 0;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {visibleItems.length === 0 ? (
         <EmptyState message="No unpaid dues for this month" />
       ) : (
@@ -243,7 +243,7 @@ export function UnpaidDuesScreen({
         loading={marking}
         testID="mark-paid-confirm"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

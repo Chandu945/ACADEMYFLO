@@ -5,6 +5,7 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -153,7 +154,8 @@ export function StaffDashboardScreen() {
     : 0;
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       refreshControl={
@@ -528,6 +530,7 @@ export function StaffDashboardScreen() {
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { ScrollView, View, StyleSheet, Keyboard } from 'react-native';
+import { SafeAreaView, ScrollView, View, StyleSheet, Keyboard } from 'react-native';
 import type { TextInput } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -153,7 +153,8 @@ export function BatchFormScreen() {
   }, [mode, batch?.id, navigation, showToast]);
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -228,6 +229,7 @@ export function BatchFormScreen() {
         />
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

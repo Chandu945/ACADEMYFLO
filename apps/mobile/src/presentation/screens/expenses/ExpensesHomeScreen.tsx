@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  SafeAreaView,
   StyleSheet,
   Keyboard,
   Modal,
@@ -432,13 +433,13 @@ export function ExpensesHomeScreen() {
   );
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={styles.screen}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (
           <View style={styles.searchBar}>
             <TouchableOpacity onPress={closeSearch} style={styles.navBtn} accessibilityLabel="Close search" accessibilityRole="button">
-              
+
               <AppIcon name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
             <TextInput
@@ -693,7 +694,7 @@ export function ExpensesHomeScreen() {
         />
         <AppIcon name="plus" size={28} color={colors.white} />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

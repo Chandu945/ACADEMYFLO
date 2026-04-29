@@ -7,6 +7,7 @@ import {
   Image,
 
   ActivityIndicator,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
@@ -223,7 +224,8 @@ export function InstituteInfoScreen() {
   }
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -251,6 +253,7 @@ export function InstituteInfoScreen() {
         </Text>
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

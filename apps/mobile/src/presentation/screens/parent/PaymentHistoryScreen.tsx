@@ -3,6 +3,7 @@ import {
   View,
   FlatList,
   RefreshControl,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -187,7 +188,8 @@ export function PaymentHistoryScreen() {
   }
 
   return (
-    <FlatList
+    <SafeAreaView style={{ flex: 1 }}>
+      <FlatList
       data={items}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
@@ -222,6 +224,7 @@ export function PaymentHistoryScreen() {
         </View>
       }
     />
+    </SafeAreaView>
   );
 }
 

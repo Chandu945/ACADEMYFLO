@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, FlatList, SafeAreaView, StyleSheet, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FeesStackParamList } from '../../navigation/FeesStack';
@@ -147,7 +147,7 @@ export function MyPaymentRequestsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {items.length === 0 ? (
         <EmptyState message="No payment requests" />
       ) : (
@@ -177,7 +177,7 @@ export function MyPaymentRequestsScreen() {
         loading={cancelling}
         testID="cancel-confirm"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

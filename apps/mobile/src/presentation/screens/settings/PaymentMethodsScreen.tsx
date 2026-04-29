@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -162,7 +163,8 @@ export function PaymentMethodsScreen() {
   }
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -291,6 +293,7 @@ export function PaymentMethodsScreen() {
         <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save'}</Text>
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

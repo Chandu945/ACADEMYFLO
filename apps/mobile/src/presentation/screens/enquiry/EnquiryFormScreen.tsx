@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  SafeAreaView,
   StyleSheet,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
@@ -173,7 +174,8 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
   const isSaveDisabled = isEdit ? saving || !hasChanges : saving;
 
   return (
-    <ScrollView
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -308,6 +310,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
         </Text>
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
