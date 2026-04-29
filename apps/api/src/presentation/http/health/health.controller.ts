@@ -128,7 +128,7 @@ export class HealthController {
       : this.config.minAppVersionIos;
 
     const storeUrl = isAndroid
-      ? 'https://play.google.com/store/apps/details?id=com.academyflo'
+      ? 'https://play.google.com/store/apps/details?id=com.academyflo.app'
       : 'https://apps.apple.com/app/academyflo/id000000000';
 
     const updateRequired = !compareVersions(version, minVersion);

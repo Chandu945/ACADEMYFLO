@@ -92,12 +92,12 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.academyflo"
+    namespace "com.academyflo.app"
     defaultConfig {
-        applicationId "com.academyflo"
+        applicationId "com.academyflo.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
+        versionCode 10
         versionName "1.1.6"
     }
     signingConfigs {

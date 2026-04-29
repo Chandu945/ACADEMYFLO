@@ -1,4 +1,4 @@
-package com.academyflo
+package com.academyflo.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

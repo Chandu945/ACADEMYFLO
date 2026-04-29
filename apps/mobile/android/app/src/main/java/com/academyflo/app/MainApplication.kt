@@ -1,4 +1,4 @@
-package com.academyflo
+package com.academyflo.app
 
 import android.app.Application
 import android.app.NotificationChannel
