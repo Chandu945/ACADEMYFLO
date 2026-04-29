@@ -186,7 +186,11 @@ export default function SignupForm() {
         }
 
         resetInitAuth();
-        router.push('/dashboard');
+        // Owner signup creates a USER but NOT an academy — every protected
+        // route returns "complete academy setup first" until /setup is done.
+        // Send the user straight there instead of bouncing through /dashboard
+        // and showing scary "Token revoked" / "academy setup" banners.
+        router.push('/setup');
       } catch (err) {
         if (err instanceof DOMException && err.name === 'TimeoutError') {
           showError('Request timed out. Please check your connection and try again.');

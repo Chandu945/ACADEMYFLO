@@ -192,6 +192,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetch('/api/auth/logout', { method: 'POST' });
     } finally {
       _initPromise = null;
+      // Reset the AcademySetupGuard's session-cache so the next login
+      // re-checks (otherwise an Owner who logs in after a Parent who used
+      // the same tab would skip the setup verification).
+      try {
+        const mod = await import('@/components/shell/AcademySetupGuard');
+        mod.resetAcademySetupGuard?.();
+      } catch {
+        // Module may not be loaded yet — fine, no cache to reset.
+      }
       // Manual logout — never flag as session-expired.
       setState({
         user: null,

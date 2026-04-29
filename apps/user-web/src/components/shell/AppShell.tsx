@@ -14,8 +14,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   if (isLoading) {
+    // suppressHydrationWarning: the SSR output renders this loading state with
+    // isLoading=true, but Next 15 + React 19 sometimes interleave HMR / webpack
+    // chunk scripts in the same position during dev SSR. Functionally harmless;
+    // the warning is just noise that scares devs.
     return (
-      <div className={styles.loadingContainer}>
+      <div className={styles.loadingContainer} suppressHydrationWarning>
         <Spinner size="lg" />
       </div>
     );
