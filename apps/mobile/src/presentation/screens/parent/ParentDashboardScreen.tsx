@@ -5,10 +5,10 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  StyleSheet,
-  Image} from 'react-native';
+  StyleSheet} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';
+import { AvatarImage } from '../../components/ui/AvatarImage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { ChildSummary, PaymentHistoryItem } from '../../../domain/parent/parent.types';
 import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-my-children.usecase';
@@ -144,7 +144,7 @@ export function ParentDashboardScreen() {
           activeOpacity={0.7}
         >
           {user?.profilePhotoUrl ? (
-            <Image source={{ uri: user.profilePhotoUrl }} style={styles.profileImage} />
+            <AvatarImage url={user.profilePhotoUrl} style={styles.profileImage} />
           ) : (
             <>
               <LinearGradient

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  Image,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AvatarImage } from '../../components/ui/AvatarImage';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
@@ -355,7 +355,7 @@ export function BatchDetailScreen() {
           {/* Avatar + name row */}
           <View style={styles.heroRow}>
             {batch.profilePhotoUrl ? (
-              <Image source={{ uri: batch.profilePhotoUrl }} style={styles.batchAvatar} />
+              <AvatarImage url={batch.profilePhotoUrl} style={styles.batchAvatar} />
             ) : (
               <View style={[styles.batchAvatar, styles.batchAvatarPlaceholder]}>
                 <Text style={styles.batchAvatarInitial}>

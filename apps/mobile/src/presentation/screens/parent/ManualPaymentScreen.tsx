@@ -53,12 +53,21 @@ export function ManualPaymentScreen() {
   const { showToast } = useToast();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { feeDueId, studentId, monthKey, amount } = route.params;
+  const { feeDueId, studentId, monthKey, amount: paramAmount } = route.params;
 
   const [methods, setMethods] = useState<AcademyPaymentMethods | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('UPI');
+
+  // The amount passed via route params is whatever the calling screen had at
+  // navigation time — but the dashboard summary or a parent's child detail
+  // can be a few seconds stale (late fee just changed, partial payment just
+  // posted, etc). Re-fetch the live FeeDue on mount and use that as the
+  // submission amount, so we never POST a stale value the backend will
+  // reject with "Amount cannot exceed the payable amount".
+  const [liveAmount, setLiveAmount] = useState<number | null>(null);
+  const amount = liveAmount ?? paramAmount;
 
   const [refNumber, setRefNumber] = useState('');
   const [note, setNote] = useState('');
@@ -88,6 +97,37 @@ export function ManualPaymentScreen() {
       active = false;
     };
   }, []);
+
+  // Pull the up-to-date fee details so the screen reflects the same amount
+  // the backend will validate against. We query a 24-month window centered
+  // on the fee's month to keep the response small while still covering any
+  // backlog the parent dashboard might have surfaced.
+  useEffect(() => {
+    let active = true;
+    const [y, m] = monthKey.split('-').map(Number) as [number, number];
+    const from = `${y - 1}-${String(m).padStart(2, '0')}`;
+    const to = `${y + 1}-${String(m).padStart(2, '0')}`;
+    parentApi
+      .getChildFees(studentId, from, to)
+      .then((r) => {
+        if (!active) return;
+        if (!r.ok) return;
+        const fresh = r.value.find((f) => f.id === feeDueId);
+        if (fresh) {
+          // Use totalPayable (server-computed amount + late fee), the same
+          // value the backend's validation compares against.
+          setLiveAmount(fresh.totalPayable);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        // Network failure — fall back to route-param amount; backend will
+        // reject if it's stale, and the user can retry.
+      });
+    return () => {
+      active = false;
+    };
+  }, [feeDueId, studentId, monthKey]);
 
   const pickProof = useCallback(async () => {
     try {

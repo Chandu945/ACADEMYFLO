@@ -1,8 +1,9 @@
 import React, { memo, useMemo } from 'react';
-import { Pressable, View, Text, Image, StyleSheet } from 'react-native';
+import { Pressable, View, Text, StyleSheet } from 'react-native';
 import type { StaffListItem } from '../../../domain/staff/staff.types';
 import { StaffStatusBadge } from './StaffStatusBadge';
 import { AppCard } from '../ui/AppCard';
+import { AvatarImage } from '../ui/AvatarImage';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
@@ -28,7 +29,7 @@ function StaffRowComponent({ staff, onPress, onToggleStatus }: StaffRowProps) {
   return (
     <AppCard style={styles.card} onPress={onPress} testID={`staff-row-${staff.id}`}>
       {staff.profilePhotoUrl ? (
-        <Image source={{ uri: staff.profilePhotoUrl }} style={styles.avatar} />
+        <AvatarImage url={staff.profilePhotoUrl} style={styles.avatar} />
       ) : (
         <InitialsAvatar
           name={staff.fullName}

@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Linking,
-  Image,
 } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import { AvatarImage } from '../ui/AvatarImage';
 import type { BirthdayStudent } from '../../../domain/dashboard/dashboard.types';
 import { getBirthdays } from '../../../infra/dashboard/dashboard-api';
 import LinearGradient from 'react-native-linear-gradient';
@@ -64,7 +64,7 @@ function BirthdayRow({ student, isToday, testID }: BirthdayRowProps) {
     <View style={styles.row} testID={testID}>
       <View style={[styles.avatar, isToday && styles.avatarToday]}>
         {hasPhoto ? (
-          <Image source={{ uri: student.profilePhotoUrl! }} style={styles.avatarImage} />
+          <AvatarImage url={student.profilePhotoUrl!} style={styles.avatarImage} />
         ) : (
           <Text style={[styles.initialText, isToday && styles.initialTextToday]}>
             {student.fullName[0]}

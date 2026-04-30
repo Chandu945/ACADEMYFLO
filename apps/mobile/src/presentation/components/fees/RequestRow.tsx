@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Platform } from 'react-native';
+import { AvatarImage } from '../ui/AvatarImage';
 import type { PaymentRequestItem } from '../../../domain/fees/payment-requests.types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -120,7 +121,7 @@ function RequestRowComponent({ item, onApprove, onReject, onCancel, onEdit }: Re
           onPress={() => setProofOpen(true)}
           testID={`proof-thumb-${item.id}`}
         >
-          <Image source={{ uri: item.proofImageUrl }} style={styles.proofThumb} resizeMode="cover" />
+          <AvatarImage url={item.proofImageUrl} style={styles.proofThumb} resizeMode="cover" />
           <View style={styles.proofMeta}>
             <Text style={styles.proofLabel}>Payment proof</Text>
             <Text style={styles.proofHint}>Tap to view full size</Text>

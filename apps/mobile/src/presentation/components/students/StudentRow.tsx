@@ -1,6 +1,7 @@
 import React, { memo, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import { AvatarImage } from '../ui/AvatarImage';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { Badge } from '../ui/Badge';
 import type { StudentListItem } from '../../../domain/student/student.types';
@@ -51,7 +52,7 @@ function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps)
       testID={`student-row-${student.id}`}
     >
       {student.profilePhotoUrl ? (
-        <Image source={{ uri: student.profilePhotoUrl }} style={styles.avatar} />
+        <AvatarImage url={student.profilePhotoUrl} style={styles.avatar} />
       ) : (
         <InitialsAvatar
           name={student.fullName}

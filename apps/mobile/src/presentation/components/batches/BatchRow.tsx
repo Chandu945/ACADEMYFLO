@@ -1,6 +1,7 @@
 import React, { memo, useMemo, useCallback } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { AppCard } from '../ui/AppCard';
+import { AvatarImage } from '../ui/AvatarImage';
 import { Badge } from '../ui/Badge';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { fontSizes, fontWeights, spacing, radius } from '../../theme';
@@ -52,7 +53,7 @@ function BatchRowComponent({ batch, onPress }: BatchRowProps) {
     <AppCard style={styles.container} onPress={handlePress} testID={`batch-row-${batch.id}`}>
       <View style={styles.row}>
         {batch.profilePhotoUrl ? (
-          <Image source={{ uri: batch.profilePhotoUrl }} style={styles.avatar} />
+          <AvatarImage url={batch.profilePhotoUrl} style={styles.avatar} />
         ) : (
           <InitialsAvatar
             name={batch.batchName}

@@ -30,7 +30,10 @@ import { RequestAccountDeletionDto } from './dto/request-account-deletion.dto';
 @ApiBearerAuth()
 @Controller('account/deletion')
 @UseGuards(JwtAuthGuard, RbacGuard)
-@Roles('OWNER')
+// Every signup-able role (OWNER, STAFF, PARENT) must be able to delete its
+// own account in-app — Play User Data policy requirement. The role-specific
+// teardown logic lives in DefaultDeletionStrategyRegistry.
+@Roles('OWNER', 'STAFF', 'PARENT')
 export class AccountDeletionController {
   constructor(
     private readonly requestUseCase: RequestAccountDeletionUseCase,
