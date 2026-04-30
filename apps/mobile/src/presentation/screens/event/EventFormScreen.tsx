@@ -5,9 +5,8 @@ import {
   Text,
   Switch,
   TouchableOpacity,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -186,7 +185,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
   const buttonLabel = mode === 'create' ? 'Save Event' : 'Save Changes';
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}

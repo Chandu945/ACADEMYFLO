@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { ScrollView, View, Text, Pressable, SafeAreaView, StyleSheet, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -191,7 +192,7 @@ export function EventDetailScreen() {
   const showActions = event.status !== 'COMPLETED' && event.status !== 'CANCELLED';
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero */}
       <View style={styles.hero}>

@@ -5,10 +5,9 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  SafeAreaView,
   StyleSheet,
-  Image,
-} from 'react-native';
+  Image} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { ChildSummary, PaymentHistoryItem } from '../../../domain/parent/parent.types';
@@ -123,7 +122,7 @@ export function ParentDashboardScreen() {
   const recentPayments = payments.slice(0, 3);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}

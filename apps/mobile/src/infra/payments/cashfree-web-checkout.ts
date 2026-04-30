@@ -55,15 +55,30 @@ async function openNativeCheckout(
 
   return new Promise<void>((resolve, reject) => {
     let settled = false;
+    // Always release the global SDK callback when this attempt completes —
+    // otherwise stale callbacks from prior attempts accumulate and hold
+    // captured promise references for the lifetime of the app session.
+    const release = () => {
+      try {
+        // Cashfree's SDK is happy with an empty noop callback object.
+        CFPaymentGatewayService.setCallback({
+          onVerify() {},
+          onError() {},
+        });
+      } catch {
+        /* SDK teardown errors are not actionable */
+      }
+    };
     const settle = (fn: () => void) => {
       if (settled) return;
       settled = true;
+      release();
       fn();
     };
 
     CFPaymentGatewayService.setCallback({
       onVerify(verifiedOrderId: string) {
-        console.warn('[Cashfree] onVerify', verifiedOrderId);
+        if (__DEV__) console.warn('[Cashfree] onVerify', verifiedOrderId);
         // Match orderId to ignore stale callbacks from a prior attempt.
         if (verifiedOrderId !== orderId) return;
         settle(resolve);
@@ -75,7 +90,7 @@ async function openNativeCheckout(
           (typeof error?.getMessage === 'function' && error.getMessage()) ||
           code ||
           String(error);
-        console.error('[Cashfree] onError', failedOrderId, code, msg);
+        if (__DEV__) console.error('[Cashfree] onError', failedOrderId, code, msg);
         if (failedOrderId !== orderId) return;
         settle(() => reject(new CashfreeCheckoutError(msg, code)));
       },
@@ -86,7 +101,7 @@ async function openNativeCheckout(
       const payment = new CFDropCheckoutPayment(session, null, null);
       CFPaymentGatewayService.doPayment(payment);
     } catch (err) {
-      console.error('[Cashfree] doPayment threw', err);
+      if (__DEV__) console.error('[Cashfree] doPayment threw', err);
       settle(() => reject(err instanceof Error ? err : new CashfreeCheckoutError(String(err))));
     }
   });

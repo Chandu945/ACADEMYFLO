@@ -2,13 +2,12 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   View,
   ScrollView,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
+  RefreshControl} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -255,7 +254,7 @@ export function ChildDetailScreen() {
     .reduce((sum, f) => sum + f.amount + f.lateFee, 0);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}

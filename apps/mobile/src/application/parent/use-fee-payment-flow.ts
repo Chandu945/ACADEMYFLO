@@ -23,6 +23,13 @@ function getPollDelay(attempt: number): number {
 export type UseFeePaymentFlowReturn = {
   status: FeePaymentFlowStatus;
   error: string | null;
+  /**
+   * Backend AppError.code captured on the most recent failure. UI uses this
+   * to distinguish "intentionally unavailable" (FEATURE_DISABLED, e.g. when
+   * the parent-online-payments kill-switch is off) from "something actually
+   * broke" (NETWORK, UNKNOWN, etc).
+   */
+  errorCode: string | null;
   orderId: string | null;
   paymentResult: FeePaymentStatusResponse | null;
   startPayment: (feeDueId: string) => Promise<void>;
@@ -40,6 +47,7 @@ export function useFeePaymentFlow(
 ): UseFeePaymentFlowReturn {
   const [status, setStatus] = useState<FeePaymentFlowStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<FeePaymentStatusResponse | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,6 +80,7 @@ export function useFeePaymentFlow(
       if (attempt >= MAX_POLL_ATTEMPTS) {
         setStatus('failed');
         setError('Payment verification timed out. Please check back later.');
+        setErrorCode('TIMEOUT');
         return;
       }
 
@@ -86,6 +95,7 @@ export function useFeePaymentFlow(
         if (code === 'FORBIDDEN' || code === 'NOT_FOUND' || code === 'VALIDATION') {
           setStatus('failed');
           setError(result.error.message);
+          setErrorCode(code);
           return;
         }
         pollRef.current = setTimeout(() => pollStatus(oid, attempt + 1), getPollDelay(attempt));
@@ -103,6 +113,7 @@ export function useFeePaymentFlow(
       if (data!.status === 'FAILED') {
         setStatus('failed');
         setError('Payment failed. Please try again.');
+        setErrorCode('PAYMENT_FAILED');
         return;
       }
 
@@ -121,6 +132,7 @@ export function useFeePaymentFlow(
       try {
         setStatus('initiating');
         setError(null);
+        setErrorCode(null);
         setPaymentResult(null);
 
         const result = await initiateFeePaymentUseCase(deps, feeDueId);
@@ -130,6 +142,7 @@ export function useFeePaymentFlow(
         if (!result.ok) {
           setStatus('failed');
           setError(result.error.message);
+          setErrorCode(result.error.code);
           return;
         }
 
@@ -158,6 +171,7 @@ export function useFeePaymentFlow(
     stopPolling();
     setStatus('idle');
     setError(null);
+    setErrorCode(null);
     setOrderId(null);
     setPaymentResult(null);
   }, [stopPolling]);
@@ -165,6 +179,7 @@ export function useFeePaymentFlow(
   return {
     status,
     error,
+    errorCode,
     orderId,
     paymentResult,
     startPayment,

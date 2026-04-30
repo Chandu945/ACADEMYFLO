@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, memo } from 'react';
-import { View, Text, FlatList, Pressable, RefreshControl, ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -340,7 +341,7 @@ export function StaffAttendanceScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <View style={styles.header}>
         <DatePickerRow
           date={selectedDate}

@@ -10,9 +10,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -180,7 +179,7 @@ export function EnquiryDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.headerRow}>

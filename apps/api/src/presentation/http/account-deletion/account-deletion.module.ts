@@ -41,6 +41,7 @@ import { CancelAccountDeletionUseCase } from '@application/account-deletion/use-
 import { ExecuteAccountDeletionUseCase } from '@application/account-deletion/use-cases/execute-account-deletion.usecase';
 import {
   OwnerDeletionStrategy,
+  SelfOnlyDeletionStrategy,
   DefaultDeletionStrategyRegistry,
 } from '@application/account-deletion/services/deletion-strategy';
 import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
@@ -86,6 +87,7 @@ import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-
     { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
     AcademyTeardownService,
     OwnerDeletionStrategy,
+    SelfOnlyDeletionStrategy,
     DefaultDeletionStrategyRegistry,
     RequestAccountDeletionUseCase,
     CancelAccountDeletionUseCase,

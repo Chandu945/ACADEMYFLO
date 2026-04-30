@@ -46,14 +46,7 @@ export class RequestAccountDeletionUseCase {
       return err(AppError.notFound('User', input.userId));
     }
 
-    if (user.role !== 'OWNER') {
-      return err(
-        AppError.forbidden(
-          'Only academy owners can delete their account. Staff and parents cannot self-delete.',
-        ),
-      );
-    }
-    if (!user.academyId) {
+    if (user.role === 'OWNER' && !user.academyId) {
       return err(AppError.validation('Owner is not linked to an academy.'));
     }
 

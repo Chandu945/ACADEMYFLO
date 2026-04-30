@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView, StyleSheet } from 'react-native';
+import { View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -138,7 +139,7 @@ export function StaffListScreen() {
   }, [loadingMore, colors, styles]);
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       {error && <InlineError message={error.message} onRetry={refetch} />}
 
       {loading && !refreshing ? (

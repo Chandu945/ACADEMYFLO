@@ -10,6 +10,12 @@ export type VersionCheckDeps = {
   platform: 'android' | 'ios' | 'web';
 };
 
+// In-memory cache of the last successful version-check response. Lets the
+// kill-switch keep enforcing the most-recently-seen minimum version when the
+// endpoint has a transient outage during a single session, instead of
+// silently failing open. Reset on app cold-start.
+let lastGoodResult: VersionCheckResult | null = null;
+
 export async function checkAppVersionUseCase(
   deps: VersionCheckDeps,
 ): Promise<VersionCheckResult | null> {
@@ -21,12 +27,14 @@ export async function checkAppVersionUseCase(
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
 
-    if (!res.ok) return null;
+    if (!res.ok) return lastGoodResult;
 
     const json = (await res.json()) as VersionCheckResult;
+    lastGoodResult = json;
     return json;
   } catch {
-    // Network error — don't block the user, skip version check
-    return null;
+    // Network/timeout error — return the last-known-good result so a flaky
+    // endpoint doesn't silently disable the kill-switch mid-session.
+    return lastGoodResult;
   }
 }

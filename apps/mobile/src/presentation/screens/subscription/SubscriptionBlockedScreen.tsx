@@ -43,7 +43,7 @@ export function SubscriptionBlockedScreen() {
       : "Your academy's subscription has expired. Ask the owner to renew to continue using the app.";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.body}>
         <View style={styles.iconTile}>
           <AppIcon name="lock-outline" size={36} color={colors.warningText} />

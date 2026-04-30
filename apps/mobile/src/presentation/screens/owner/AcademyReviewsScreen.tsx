@@ -90,7 +90,7 @@ export function AcademyReviewsScreen() {
 
   if (loading && !refreshing) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -100,7 +100,7 @@ export function AcademyReviewsScreen() {
 
   if (error) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <InlineError message={error} onRetry={load} />
       </Screen>
     );
@@ -118,7 +118,7 @@ export function AcademyReviewsScreen() {
     : 1;
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

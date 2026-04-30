@@ -215,7 +215,7 @@ export function SubscriptionScreen() {
 
   if (!subscription) {
     return (
-      <Screen scroll={false}>
+      <Screen scroll={false} edges={['bottom']}>
         <View style={styles.center}>
           <Text style={styles.loadingText}>Loading subscription...</Text>
         </View>
@@ -226,7 +226,7 @@ export function SubscriptionScreen() {
   const isBlocked = !subscription.canAccessApp;
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} edges={['bottom']}>
       <ScrollView
         refreshControl={
           <RefreshControl

@@ -4,15 +4,14 @@ import {
   FlatList,
   TextInput,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
   Text,
   Keyboard,
   Modal,
-  Platform,
-} from 'react-native';
+  Platform} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -205,7 +204,7 @@ export function EventListScreen() {
   }, [loadingMore, colors, styles]);
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { SafeAreaView, ScrollView, View, StyleSheet, Keyboard } from 'react-native';
+import { ScrollView, View, StyleSheet, Keyboard } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TextInput } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -153,7 +154,7 @@ export function BatchFormScreen() {
   }, [mode, batch?.id, navigation, showToast]);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}

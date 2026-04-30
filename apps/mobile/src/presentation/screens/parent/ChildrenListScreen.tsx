@@ -3,12 +3,11 @@ import {
   View,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -241,7 +240,7 @@ export function ChildrenListScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <FlatList
       data={children}
       keyExtractor={keyExtractor}

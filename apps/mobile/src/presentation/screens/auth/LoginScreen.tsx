@@ -164,7 +164,7 @@ export function LoginScreen() {
   }, []);
 
   return (
-    <Screen scroll={false} style={styles.screen}>
+    <Screen scroll={false} style={styles.screen} edges={['bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <Pressable style={styles.container} onPress={Platform.OS !== 'web' ? Keyboard.dismiss : undefined} accessible={false}>
         {/* Logo / Brand Section */}

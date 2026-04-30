@@ -6,12 +6,11 @@ import {
   ScrollView,
   Image,
   TextInput,
-  SafeAreaView,
   StyleSheet,
   ActivityIndicator,
   Platform,
-  Linking,
-} from 'react-native';
+  Linking} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -91,18 +90,25 @@ export function ManualPaymentScreen() {
   }, []);
 
   const pickProof = useCallback(async () => {
-    const result = await launchImageLibrary({
-      mediaType: 'photo',
-      quality: 0.9,
-      maxWidth: 2000,
-      maxHeight: 2000,
-    });
-    if (result.didCancel || !result.assets?.[0]) return;
-    const a = result.assets[0];
-    if (!a.uri) return;
-    setProofUri(a.uri);
-    setProofName(a.fileName ?? 'proof.jpg');
-    setProofMime(a.type ?? 'image/jpeg');
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+        maxWidth: 1280,
+        maxHeight: 1280,
+      });
+      if (result.didCancel || !result.assets?.[0]) return;
+      const a = result.assets[0];
+      if (!a.uri) return;
+      setProofUri(a.uri);
+      setProofName(a.fileName ?? 'proof.jpg');
+      setProofMime(a.type ?? 'image/jpeg');
+    } catch {
+      crossAlert(
+        'Could not open photo library',
+        'Please grant photo access in your device Settings and try again.',
+      );
+    }
   }, []);
 
   const openUpiIntent = useCallback(() => {
@@ -218,7 +224,7 @@ export function ManualPaymentScreen() {
   const upiTabAvailable = hasUpi;
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}

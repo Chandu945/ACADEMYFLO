@@ -4,12 +4,11 @@ import {
   FlatList,
   TextInput,
   Text,
-  SafeAreaView,
   StyleSheet,
   RefreshControl,
   Alert,
-  TouchableOpacity,
-} from 'react-native';
+  TouchableOpacity} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import type { AppError } from '../../../domain/common/errors';
@@ -208,7 +207,7 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Source filter tabs — only render when there's at least one PARENT
           request so existing staff-only academies don't see noisy tabs. */}
       {counts.PARENT > 0 && (

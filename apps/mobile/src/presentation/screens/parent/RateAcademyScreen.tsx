@@ -130,7 +130,7 @@ export function RateAcademyScreen() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -140,7 +140,7 @@ export function RateAcademyScreen() {
 
   if (loadError) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <InlineError message={loadError} onRetry={load} />
       </Screen>
     );
@@ -150,7 +150,7 @@ export function RateAcademyScreen() {
   const isBusy = submitting || deleting;
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.heroIcon}>

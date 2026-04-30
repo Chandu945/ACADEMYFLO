@@ -18,6 +18,7 @@ import { ThemeProvider, useTheme } from './presentation/context/ThemeContext';
 import { ToastProvider } from './presentation/context/ToastContext';
 import { AlertProvider } from './presentation/context/AlertContext';
 import { RootNavigator } from './presentation/navigation/RootNavigator';
+import { navigationRef } from './presentation/navigation/navigation-ref';
 import { AppErrorBoundary } from './presentation/components/system/AppErrorBoundary';
 import { OfflineBanner } from './presentation/components/global/OfflineBanner';
 // Sentry import kept ONLY for `Sentry.wrap(App)` below (automatic performance
@@ -70,7 +71,7 @@ function AppInner() {
     <AppErrorBoundary>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <OfflineBanner />
-      <NavigationContainer theme={navTheme} linking={linking}>
+      <NavigationContainer ref={navigationRef} theme={navTheme} linking={linking}>
         <RootNavigator />
       </NavigationContainer>
     </AppErrorBoundary>

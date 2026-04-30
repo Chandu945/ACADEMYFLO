@@ -8,9 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   StyleSheet,
-  Keyboard,
-  SafeAreaView,
-} from 'react-native';
+  Keyboard} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -278,7 +277,7 @@ export function AttendanceScreen() {
   const isToday = selectedDate === getTodayIST();
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       {/* ── Navbar ─────────────────────────────────────── */}
       <View style={styles.navbar}>
         {searchActive ? (

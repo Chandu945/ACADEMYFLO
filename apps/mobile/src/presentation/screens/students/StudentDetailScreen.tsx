@@ -3,12 +3,11 @@ import {
   View,
   Text,
   ScrollView,
-  SafeAreaView,
   StyleSheet,
   RefreshControl,
   Linking,
-  TouchableOpacity,
-} from 'react-native';
+  TouchableOpacity} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -212,7 +211,7 @@ export function StudentDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}

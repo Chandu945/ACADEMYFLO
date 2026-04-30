@@ -167,7 +167,7 @@ export function AcademySetupScreen() {
   }, [logout]);
 
   return (
-    <Screen style={styles.screen}>
+    <Screen style={styles.screen} edges={['bottom']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <Pressable style={styles.wrapper} onPress={Platform.OS !== 'web' ? Keyboard.dismiss : undefined} accessible={false}>
         {/* Header */}

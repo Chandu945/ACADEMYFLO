@@ -4,9 +4,8 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
@@ -174,7 +173,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
   const isSaveDisabled = isEdit ? saving || !hasChanges : saving;
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}

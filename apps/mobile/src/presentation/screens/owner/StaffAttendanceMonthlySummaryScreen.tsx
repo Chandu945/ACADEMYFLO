@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, SafeAreaView, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -252,7 +253,7 @@ export function StaffAttendanceMonthlySummaryScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       {error && (
         <View style={styles.errorPad}>
           <InlineError message={error.message} onRetry={() => load(1, false)} />

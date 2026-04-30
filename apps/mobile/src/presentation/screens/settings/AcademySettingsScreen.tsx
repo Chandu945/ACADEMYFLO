@@ -19,7 +19,7 @@ export function AcademySettingsScreen() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <View style={styles.center} testID="settings-loading">
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading settings...</Text>
@@ -30,7 +30,7 @@ export function AcademySettingsScreen() {
 
   if (error && !settings) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <View style={styles.center} testID="settings-error">
           <Text style={styles.errorText}>{error.message}</Text>
           <TouchableOpacity
@@ -49,7 +49,7 @@ export function AcademySettingsScreen() {
 
   if (!settings) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <EmptyState
           message="No settings available"
           subtitle="Settings could not be loaded. Please try again."
@@ -62,7 +62,7 @@ export function AcademySettingsScreen() {
   }
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       <SettingsForm
         settings={settings}
         editable={isOwner}

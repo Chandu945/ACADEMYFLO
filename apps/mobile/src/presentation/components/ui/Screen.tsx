@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, type ViewStyle } from 'react-native';
+import { ScrollView, KeyboardAvoidingView, Platform, StyleSheet, type ViewStyle } from 'react-native';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { spacing } from '../../theme';
 import type { Colors } from '../../theme';
@@ -9,9 +10,13 @@ type ScreenProps = {
   children: React.ReactNode;
   scroll?: boolean;
   style?: ViewStyle;
+  // Pass `['bottom']` (or similar) on screens rendered inside a navigator that
+  // already shows a system header — the navigator handles the top inset, so
+  // the inner SafeAreaView shouldn't apply it again.
+  edges?: readonly Edge[];
 };
 
-export function Screen({ children, scroll = true, style }: ScreenProps) {
+export function Screen({ children, scroll = true, style, edges }: ScreenProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const content = scroll ? (
@@ -23,7 +28,7 @@ export function Screen({ children, scroll = true, style }: ScreenProps) {
   );
 
   return (
-    <SafeAreaView style={[styles.container, style]}>
+    <SafeAreaView style={[styles.container, style]} edges={edges}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{flex: 1}}>
         {content}
       </KeyboardAvoidingView>

@@ -9,9 +9,8 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -242,7 +241,7 @@ export function ExpenseFormScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}

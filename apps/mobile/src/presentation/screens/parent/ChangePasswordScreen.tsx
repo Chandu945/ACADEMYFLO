@@ -61,7 +61,7 @@ export function ChangePasswordScreen() {
   }, [currentPassword, newPassword, confirmPassword, navigation]);
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       {/* Header Icon */}
       <View style={styles.headerSection}>
         <View style={styles.headerIcon}>

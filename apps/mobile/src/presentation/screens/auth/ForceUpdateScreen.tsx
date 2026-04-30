@@ -1,12 +1,21 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Linking, TouchableOpacity } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, Linking, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { APP_VERSION } from '../../../infra/app-version';
+import { crossAlert } from '../../utils/crossPlatformAlert';
 import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+
+// Hardcoded fallback so the user is never wedged on a blank update screen
+// even if the server forgets to send a storeUrl.
+const FALLBACK_STORE_URL = Platform.select({
+  android: 'https://play.google.com/store/apps/details?id=com.academyflo.app',
+  ios: 'https://apps.apple.com/app/academyflo/id0',
+  default: 'https://academyflo.com',
+})!;
 
 type Props = {
   storeUrl: string;
@@ -22,8 +31,23 @@ export function ForceUpdateScreen({ storeUrl, minVersion }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
+  const onUpdatePress = useCallback(() => {
+    const target =
+      typeof storeUrl === 'string' && /^https?:\/\//i.test(storeUrl.trim())
+        ? storeUrl.trim()
+        : FALLBACK_STORE_URL;
+    Linking.openURL(target).catch(() => {
+      crossAlert(
+        'Could not open the store',
+        Platform.OS === 'android'
+          ? 'Open the Play Store manually and search for "Academyflo" to update.'
+          : 'Open the App Store manually and search for "Academyflo" to update.',
+      );
+    });
+  }, [storeUrl]);
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.body}>
         <View style={styles.iconTile}>
           <AppIcon name="refresh" size={36} color="#A78BFA" />
@@ -40,7 +64,7 @@ export function ForceUpdateScreen({ storeUrl, minVersion }: Props) {
       <View style={styles.footer}>
         <TouchableOpacity
           activeOpacity={0.85}
-          onPress={() => Linking.openURL(storeUrl)}
+          onPress={onUpdatePress}
           testID="update-button"
           accessibilityRole="button"
           accessibilityLabel="Update now"

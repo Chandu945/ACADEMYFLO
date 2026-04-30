@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, SafeAreaView, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -173,7 +174,7 @@ export function ReceiptScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.card}>
         {/* Success Badge */}
         <View style={styles.successBadge}>

@@ -118,7 +118,7 @@ export function ParentProfileScreen() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading profile...</Text>
@@ -128,7 +128,7 @@ export function ParentProfileScreen() {
   }
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       {/* Avatar Header */}
       <View style={styles.avatarSection}>
         <ProfilePhotoUploader

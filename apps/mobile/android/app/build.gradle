@@ -3,9 +3,12 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply plugin: "com.google.gms.google-services"
 
-// Vector Icons — point to hoisted monorepo node_modules
+// Vector Icons — point to hoisted monorepo node_modules. We only use
+// MaterialCommunityIcons in the app (verified by grep), so restrict the
+// bundled font list. Saves ~1.4 MB of unused TTFs in the AAB.
 project.ext.vectoricons = [
-    iconFontsDir: "../../../../node_modules/react-native-vector-icons/Fonts"
+    iconFontsDir: "../../../../node_modules/react-native-vector-icons/Fonts",
+    iconFontNames: ['MaterialCommunityIcons.ttf']
 ]
 apply from: file("../../../../node_modules/react-native-vector-icons/fonts.gradle")
 
@@ -59,8 +62,12 @@ react {
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ *
+ * Enabled. Keep rules live in proguard-rules.pro. If you flip this to false,
+ * the AAB will still build but ship unobfuscated and ~5 MB larger; never do
+ * so for a production release.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -97,8 +104,8 @@ android {
         applicationId "com.academyflo.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
-        versionName "1.1.7"
+        versionCode 15
+        versionName "1.2.1"
     }
     signingConfigs {
         debug {
@@ -121,8 +128,21 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            // Fail loudly when the upload keystore is missing on release builds,
+            // so we never accidentally upload a debug-signed AAB to Play (it
+            // would be rejected, and the failure would be confusing).
+            // CI / fresh clones building debug variants are unaffected.
+            if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
+                if (!hasReleaseKeystore) {
+                    throw new GradleException(
+                        "Release keystore missing. Place keystore.properties at " +
+                        "apps/mobile/android/keystore.properties before running a release build."
+                    )
+                }
+            }
             signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }

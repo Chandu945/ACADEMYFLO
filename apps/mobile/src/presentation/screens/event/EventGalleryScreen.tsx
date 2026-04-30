@@ -3,13 +3,12 @@ import {
   View,
   Text,
   FlatList,
-  SafeAreaView,
   StyleSheet,
   RefreshControl,
   useWindowDimensions,
   ActivityIndicator,
-  Platform,
-} from 'react-native';
+  Platform} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -277,12 +276,19 @@ export function EventGalleryScreen() {
     launchImageLibrary(
       {
         mediaType: 'photo',
-        maxWidth: 1920,
-        maxHeight: 1920,
+        maxWidth: 1280,
+        maxHeight: 1280,
         quality: 0.8,
         selectionLimit: 5,
       },
       (response) => {
+        if (response.errorCode) {
+          crossAlert(
+            'Could not open photo library',
+            'Please grant photo access in your device Settings and try again.',
+          );
+          return;
+        }
         if (response.assets && response.assets.length > 0) {
           void handleBatchUpload(response.assets);
         }
@@ -302,8 +308,15 @@ export function EventGalleryScreen() {
         text: 'Camera',
         onPress: () => {
           launchCamera(
-            { mediaType: 'photo', maxWidth: 1920, maxHeight: 1920, quality: 0.8 },
+            { mediaType: 'photo', maxWidth: 1280, maxHeight: 1280, quality: 0.8 },
             (response) => {
+              if (response.errorCode) {
+                crossAlert(
+                  'Could not open camera',
+                  'Please grant camera access in your device Settings and try again.',
+                );
+                return;
+              }
               if (response.assets?.[0]) {
                 void handleUpload(response.assets[0]);
               }
@@ -412,7 +425,7 @@ export function EventGalleryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {uploading && (
         <View style={styles.uploadingBanner}>
           <LinearGradient

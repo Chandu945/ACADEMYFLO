@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, SafeAreaView, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -145,7 +146,7 @@ export function StaffAttendanceDailyReportScreen() {
   const percentage = totalCount > 0 ? Math.round((report.presentCount / totalCount) * 100) : 0;
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}

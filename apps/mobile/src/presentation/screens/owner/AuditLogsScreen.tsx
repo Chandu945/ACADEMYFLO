@@ -6,12 +6,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
-  SafeAreaView,
   StyleSheet,
   Modal,
   Pressable,
-  ScrollView,
-} from 'react-native';
+  ScrollView} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -195,7 +194,7 @@ function AuditLogsContent() {
   }, [loadingMore, hasMore, items.length, fetchMore, colors, styles]);
 
   return (
-    <SafeAreaView style={styles.screen} testID="audit-logs-screen">
+    <SafeAreaView style={styles.screen} testID="audit-logs-screen" edges={['bottom']}>
       {/* ── Active filter pills (visible when filters are applied) ── */}
       {activeFilterPills.length > 0 && (
         <ActiveFilterBar filters={activeFilterPills} onClearAll={handleClear} />

@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { Input } from '../../components/ui/Input';
@@ -45,6 +44,7 @@ export function DeleteAccountScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const isOwner = user?.role === 'OWNER';
+  const role = user?.role ?? 'OWNER';
 
   const refresh = useCallback(async () => {
     setLoadingStatus(true);
@@ -112,18 +112,8 @@ export function DeleteAccountScreen() {
     );
   }
 
-  if (!isOwner) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.notAllowed}>
-          Account deletion is only available to academy owners.
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {pending ? (
         <View style={styles.pendingCard}>
@@ -169,20 +159,36 @@ export function DeleteAccountScreen() {
             <View style={styles.warningIconCircle}>
               <AppIcon name="alert-octagon" size={26} color="#FFFFFF" />
             </View>
-            <Text style={styles.warningTitle}>Delete this academy</Text>
+            <Text style={styles.warningTitle}>
+              {isOwner ? 'Delete this academy' : 'Delete my account'}
+            </Text>
             <Text style={styles.warningBody}>
-              Everything below will be removed after a {COOLING_OFF_DAYS}-day
-              cooling-off period. After that, the deletion cannot be undone.
+              {isOwner
+                ? `Everything below will be removed after a ${COOLING_OFF_DAYS}-day cooling-off period. After that, the deletion cannot be undone.`
+                : `Your account will be permanently deleted after a ${COOLING_OFF_DAYS}-day cooling-off period. After that, the deletion cannot be undone.`}
             </Text>
 
             {/* What gets deleted — semantic icons, not plain dots */}
             <View style={styles.consequenceList}>
-              {[
-                { icon: 'account-multiple-remove-outline', text: 'All staff, students, parents and their logins' },
-                { icon: 'database-remove-outline', text: 'All attendance, fee and expense records' },
-                { icon: 'image-broken-variant', text: 'All batches, events, enquiries and gallery photos' },
-                { icon: 'credit-card-off-outline', text: 'Your active subscription is canceled' },
-              ].map((row) => (
+              {(isOwner
+                ? [
+                    { icon: 'account-multiple-remove-outline', text: 'All staff, students, parents and their logins' },
+                    { icon: 'database-remove-outline', text: 'All attendance, fee and expense records' },
+                    { icon: 'image-broken-variant', text: 'All batches, events, enquiries and gallery photos' },
+                    { icon: 'credit-card-off-outline', text: 'Your active subscription is canceled' },
+                  ]
+                : role === 'PARENT'
+                  ? [
+                      { icon: 'account-remove-outline', text: 'Your profile (name, email, phone, photo) is anonymized' },
+                      { icon: 'logout-variant', text: 'You are signed out from all devices' },
+                      { icon: 'school-outline', text: 'Your child\'s records remain with the academy and are managed by the academy owner' },
+                    ]
+                  : [
+                      { icon: 'account-remove-outline', text: 'Your profile (name, email, phone, photo) is anonymized' },
+                      { icon: 'logout-variant', text: 'You are signed out from all devices' },
+                      { icon: 'briefcase-outline', text: 'You lose access to the academy; the academy itself continues to operate' },
+                    ]
+              ).map((row) => (
                 <View key={row.text} style={styles.consequenceRow}>
                   <View style={styles.consequenceIconWrap}>
                     <AppIcon name={row.icon} size={14} color={colors.danger} />

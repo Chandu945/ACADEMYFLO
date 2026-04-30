@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, RefreshControl, SafeAreaView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import type { AttendanceStackParamList } from '../../navigation/AttendanceStack';
@@ -119,7 +120,7 @@ export function AttendanceDailyReportScreen() {
   const totalStudents = report.presentCount + report.absentCount;
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}

@@ -7,9 +7,8 @@ import {
   Image,
 
   ActivityIndicator,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -123,12 +122,21 @@ export function InstituteInfoScreen() {
 
   const handlePickImage = useCallback(
     async (imageType: 'signature' | 'qrcode') => {
-      const result = await launchImageLibrary({
-        mediaType: 'photo',
-        quality: 0.8,
-        maxWidth: 1024,
-        maxHeight: 1024,
-      });
+      let result;
+      try {
+        result = await launchImageLibrary({
+          mediaType: 'photo',
+          quality: 0.8,
+          maxWidth: 1024,
+          maxHeight: 1024,
+        });
+      } catch {
+        crossAlert(
+          'Could not open photo library',
+          'Please grant photo access in your device Settings and try again.',
+        );
+        return;
+      }
 
       if (result.didCancel || !result.assets?.[0]) return;
 
@@ -224,7 +232,7 @@ export function InstituteInfoScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}

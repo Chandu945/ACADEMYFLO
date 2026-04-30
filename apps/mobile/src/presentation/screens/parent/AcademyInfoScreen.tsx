@@ -102,7 +102,7 @@ export function AcademyInfoScreen() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading academy info...</Text>
@@ -113,7 +113,7 @@ export function AcademyInfoScreen() {
 
   if (error) {
     return (
-      <Screen>
+      <Screen edges={['bottom']}>
         <View style={styles.center}>
           
           <AppIcon name="alert-circle-outline" size={48} color={colors.danger} />
@@ -139,7 +139,7 @@ export function AcademyInfoScreen() {
     .join('\n');
 
   return (
-    <Screen>
+    <Screen edges={['bottom']}>
       {/* Header */}
       <View style={styles.headerCard}>
         <View style={styles.headerIcon}>

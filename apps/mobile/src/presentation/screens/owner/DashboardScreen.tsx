@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, RefreshControl, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -61,7 +62,7 @@ export function DashboardScreen() {
   const isEmpty = data && data.totalActiveStudents === 0 && data.newAdmissions === 0 && data.inactiveStudents === 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

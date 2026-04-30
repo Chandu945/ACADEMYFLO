@@ -89,6 +89,45 @@ export class OwnerDeletionStrategy implements DeletionStrategy {
   }
 }
 
+/**
+ * Self-only deletion for STAFF and PARENT roles. Anonymizes the requesting
+ * user's PII and bumps tokenVersion (invalidates all sessions). The academy
+ * itself and other users remain untouched. Audit logs and payment receipts
+ * referencing the user are retained for legal compliance — only the user's
+ * own profile fields are scrubbed.
+ *
+ * Required for Play Store User Data policy: every signup-able role must have
+ * an in-app self-deletion path.
+ */
+@Injectable()
+export class SelfOnlyDeletionStrategy implements DeletionStrategy {
+  private readonly logger = new Logger(SelfOnlyDeletionStrategy.name);
+
+  constructor(@Inject(USER_REPOSITORY) private readonly users: UserRepository) {}
+
+  async execute(request: AccountDeletionRequest): Promise<Result<void>> {
+    const user = await this.users.findById(request.userId);
+    if (!user) return err(AppError.notFound('User', request.userId));
+    if (user.role === 'OWNER') {
+      return err(
+        AppError.forbidden('Owner deletions must use the OwnerDeletionStrategy.'),
+      );
+    }
+    const uid = user.id.toString();
+    await this.users.anonymizeAndSoftDelete({
+      userId: uid,
+      anonymizedEmail: `deleted-${uid}@anonymized.local`,
+      anonymizedPhoneE164: anonymizedPhoneFor(uid),
+      anonymizedFullName: 'Deleted User',
+      deletedBy: request.userId,
+    });
+    this.logger.log(
+      `Self deletion complete for role=${user.role} user=${request.userId}`,
+    );
+    return ok(undefined);
+  }
+}
+
 export const DELETION_STRATEGY_REGISTRY = Symbol('DELETION_STRATEGY_REGISTRY');
 
 export interface DeletionStrategyRegistry {
@@ -97,13 +136,16 @@ export interface DeletionStrategyRegistry {
 
 @Injectable()
 export class DefaultDeletionStrategyRegistry implements DeletionStrategyRegistry {
-  constructor(private readonly owner: OwnerDeletionStrategy) {}
+  constructor(
+    private readonly owner: OwnerDeletionStrategy,
+    private readonly selfOnly: SelfOnlyDeletionStrategy,
+  ) {}
 
   for(role: UserRole): DeletionStrategy {
     if (role === 'OWNER') return this.owner;
+    if (role === 'STAFF' || role === 'PARENT') return this.selfOnly;
     throw new Error(
-      `Account deletion is restricted to OWNER role; received '${role}'. ` +
-        'Staff and parents cannot self-delete.',
+      `Account deletion is not supported for role '${role}'.`,
     );
   }
 }

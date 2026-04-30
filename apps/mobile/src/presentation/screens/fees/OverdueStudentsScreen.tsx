@@ -4,9 +4,8 @@ import {
   Text,
   FlatList,
   RefreshControl,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
@@ -167,7 +166,7 @@ export function OverdueStudentsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} testID="overdue-students-screen">
+    <SafeAreaView style={styles.screen} testID="overdue-students-screen" edges={['bottom']}>
       {error && (
         <View style={styles.errorCard} testID="overdue-error">
           <View style={styles.errorIconCircle}>

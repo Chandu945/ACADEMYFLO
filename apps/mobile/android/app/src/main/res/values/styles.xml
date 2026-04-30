@@ -2,8 +2,16 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <!--
+          Android 15 (API 35) enforces edge-to-edge by default for apps targeting
+          targetSdk=35, which causes content to draw under the status bar even when
+          the JS layer uses SafeAreaView. We opt out so the system status bar
+          reserves its own space and screen content starts below it.
+          The flag is honoured on API 35+ and ignored on older OS versions, so it's
+          safe to ship for all devices.
+        -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 
 </resources>

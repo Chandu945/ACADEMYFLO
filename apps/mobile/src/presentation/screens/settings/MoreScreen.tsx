@@ -73,6 +73,12 @@ const STAFF_SECTIONS: MenuSection[] = [
       { key: 'events', icon: 'calendar-plus', label: 'Events', screen: 'EventList' },
     ],
   },
+  {
+    title: 'Account',
+    items: [
+      { key: 'delete-account', icon: 'trash-can-outline', label: 'Delete Account', screen: 'DeleteAccount' },
+    ],
+  },
 ];
 
 const PARENT_SECTIONS: MenuSection[] = [
@@ -83,6 +89,7 @@ const PARENT_SECTIONS: MenuSection[] = [
       { key: 'academy-info', icon: 'school-outline', label: 'Academy Info', screen: 'AcademyInfo' },
       { key: 'payment-history', icon: 'history', label: 'Payment History', screen: 'PaymentHistory' },
       { key: 'rate-academy', icon: 'star-outline', label: 'Rate Academy', screen: 'RateAcademy' },
+      { key: 'delete-account', icon: 'trash-can-outline', label: 'Delete Account', screen: 'DeleteAccount' },
     ],
   },
 ];
@@ -116,7 +123,7 @@ export function MoreScreen() {
       : STAFF_SECTIONS;
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.screenTitle} testID="more-title">More</Text>
         <SubscriptionBanner />

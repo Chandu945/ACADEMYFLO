@@ -1,12 +1,11 @@
 import React, { useMemo, useEffect } from 'react';
 import {
   View,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp, NavigationProp } from '@react-navigation/native';
@@ -109,10 +108,12 @@ export function FeePaymentScreen() {
   const convenienceFee = Math.round(baseAmount * CONVENIENCE_FEE_RATE);
   const totalAmount = baseAmount + convenienceFee;
 
-  const { status, error, startPayment, reset } = useFeePaymentFlow(feePaymentDeps, () => {
+  const { status, error, errorCode, startPayment, reset } = useFeePaymentFlow(feePaymentDeps, () => {
     // Don't navigate away — let user see success state and receipt button.
     // User taps "Done" to dismiss.
   });
+
+  const isFeatureDisabled = errorCode === 'FEATURE_DISABLED';
 
   const isProcessing = status === 'initiating' || status === 'checkout' || status === 'polling';
 
@@ -140,7 +141,7 @@ export function FeePaymentScreen() {
     status === 'initiating' ? 1 : status === 'checkout' ? 2 : status === 'polling' ? 3 : 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Summary Card */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryIcon}>
@@ -224,9 +225,19 @@ export function FeePaymentScreen() {
       {/* Error */}
       {error && (
         <View style={styles.statusCard}>
-          
-          <AppIcon name="close-circle" size={48} color={colors.danger} />
-          <Text style={styles.statusTitle}>Payment Failed</Text>
+          <AppIcon
+            name={isFeatureDisabled ? 'information-outline' : 'close-circle'}
+            size={48}
+            color={isFeatureDisabled ? colors.warning : colors.danger}
+          />
+          <Text
+            style={[
+              styles.statusTitle,
+              isFeatureDisabled && { color: colors.warning },
+            ]}
+          >
+            {isFeatureDisabled ? 'Online Payment Unavailable' : 'Payment Failed'}
+          </Text>
           <Text style={styles.statusMessage}>{error}</Text>
         </View>
       )}
@@ -247,7 +258,7 @@ export function FeePaymentScreen() {
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        {!isProcessing && status !== 'success' && (
+        {!isProcessing && status !== 'success' && !isFeatureDisabled && (
           <TouchableOpacity
             style={[styles.payButton, isProcessing && { opacity: 0.5 }]}
             activeOpacity={0.8}

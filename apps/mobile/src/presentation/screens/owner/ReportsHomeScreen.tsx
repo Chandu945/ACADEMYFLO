@@ -6,9 +6,8 @@ import {
   FlatList,
   Text,
   ActivityIndicator,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+  StyleSheet} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useReports } from '../../../application/reports/use-reports';
 import { usePendingDues } from '../../../application/reports/use-pending-dues';
@@ -167,7 +166,7 @@ export function ReportsHomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <View style={styles.header}>
         <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
         <SegmentedControl

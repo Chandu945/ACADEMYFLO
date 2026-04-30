@@ -3,11 +3,10 @@ import {
   View,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
-  TouchableOpacity,
-} from 'react-native';
+  TouchableOpacity} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -188,7 +187,7 @@ export function PaymentHistoryScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <FlatList
       data={items}
       keyExtractor={keyExtractor}

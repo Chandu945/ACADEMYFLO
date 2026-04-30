@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
+import { navigateFromOutside } from '../navigation/navigation-ref';
 import {
   requestNotificationPermission,
   getFcmToken,
@@ -11,7 +12,57 @@ import {
 } from '../../infra/notification/firebase-messaging';
 import { pushTokenApi } from '../../infra/notification/push-token-api';
 import { registerPushTokenUseCase } from '../../application/notification/use-cases/register-push-token.usecase';
-import type { RemoteNotification } from '../../domain/notification/notification.types';
+import type { RemoteNotification, NotificationType } from '../../domain/notification/notification.types';
+import type { UserRole } from '@academyflo/contracts';
+
+// Map notification type → top-level tab route name per role. The backend may
+// also include data.route to override this (string route name plus optional
+// data.* params); when present that takes precedence. This keeps the
+// frontend resilient to backend route changes without a coordinated release.
+const ROUTE_BY_TYPE: Record<NotificationType, Partial<Record<UserRole, string>>> = {
+  FEE_REMINDER: {
+    PARENT: 'Children',
+    OWNER: 'Fees',
+    STAFF: 'Fees',
+  },
+  PAYMENT_UPDATE: {
+    PARENT: 'Payments',
+    OWNER: 'Fees',
+    STAFF: 'Fees',
+  },
+  ATTENDANCE_ALERT: {
+    PARENT: 'Children',
+    OWNER: 'Attendance',
+    STAFF: 'Attendance',
+  },
+  ANNOUNCEMENT: {
+    PARENT: 'More',
+    OWNER: 'More',
+    STAFF: 'More',
+  },
+  SYSTEM: {
+    PARENT: 'More',
+    OWNER: 'More',
+    STAFF: 'More',
+  },
+};
+
+function resolveNotificationRoute(
+  notification: RemoteNotification,
+  role: UserRole | undefined,
+): { name: string; params?: Record<string, string> } | null {
+  if (!role) return null;
+  const data = notification.data ?? {};
+  const dataRoute = data['route'];
+  // Backend-supplied route wins. We only accept it if it's a string — never a
+  // user-controlled URL or arbitrary object — to keep the surface small.
+  if (typeof dataRoute === 'string' && dataRoute.length > 0 && dataRoute.length < 64) {
+    const { route: _omit, ...rest } = data;
+    return { name: dataRoute, params: rest };
+  }
+  const fallback = ROUTE_BY_TYPE[notification.type]?.[role];
+  return fallback ? { name: fallback, params: data } : null;
+}
 
 type NotificationContextValue = {
   requestPermission: () => Promise<boolean>;
@@ -83,13 +134,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     showToast(text, 'info');
   }, [showToast]);
 
-  const handleNotificationTap = useCallback((notification: RemoteNotification) => {
-    // Provide user feedback that the notification tap was received.
-    // Full deep-link routing requires the linking config in App.tsx.
-    if (notification.title) {
-      showToast(notification.title, 'info');
-    }
-  }, [showToast]);
+  const handleNotificationTap = useCallback(
+    (notification: RemoteNotification) => {
+      const target = resolveNotificationRoute(notification, user?.role);
+      if (target) {
+        navigateFromOutside(target.name, target.params);
+        return;
+      }
+      // No route resolved — fall back to a toast so the user at least sees
+      // confirmation that the tap registered.
+      if (notification.title) {
+        showToast(notification.title, 'info');
+      }
+    },
+    [showToast, user?.role],
+  );
 
   // Register FCM token when user is authenticated
   useEffect(() => {
