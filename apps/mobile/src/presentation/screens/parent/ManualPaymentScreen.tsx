@@ -202,6 +202,27 @@ export function ManualPaymentScreen() {
     setSubmitting(false);
 
     if (!res.ok) {
+      // Backend rejects when our local amount drifts from the live FeeDue
+      // (e.g. owner just lowered the late fee). Parse the maxPayable out of
+      // the error message and auto-correct so the user just taps Submit
+      // again instead of being stuck. The validation message format is
+      // defined in apps/api/.../create-parent-payment-request.usecase.ts:118
+      //    `Amount cannot exceed the payable amount of ₹{maxPayable}`
+      const match = res.error.message.match(
+        /Amount cannot exceed the payable amount of ₹?\s*([0-9,]+)/i,
+      );
+      if (match) {
+        const corrected = Number(match[1]!.replace(/,/g, ''));
+        if (Number.isFinite(corrected) && corrected > 0 && corrected !== amount) {
+          setLiveAmount(corrected);
+          crossAlert(
+            'Amount updated',
+            `The payable amount has changed to ₹${corrected.toLocaleString('en-IN')}. ` +
+              'Tap Submit again to pay this updated amount.',
+          );
+          return;
+        }
+      }
       crossAlert('Could not submit', res.error.message);
       return;
     }
