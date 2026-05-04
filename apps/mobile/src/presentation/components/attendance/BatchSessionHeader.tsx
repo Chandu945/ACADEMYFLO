@@ -2,14 +2,12 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { AppIcon } from '../ui/AppIcon';
-import type { Weekday } from '../../../domain/batch/batch.types';
 import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
 type Props = {
   batchName: string;
-  days: readonly Weekday[];
   startTime?: string | null;
   endTime?: string | null;
   onChange: () => void;
@@ -22,7 +20,6 @@ type Props = {
  */
 export function BatchSessionHeader({
   batchName,
-  days,
   startTime,
   endTime,
   onChange,
@@ -30,7 +27,6 @@ export function BatchSessionHeader({
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const daysText = days.length > 0 ? days.join(' · ') : 'No days set';
   const timeText =
     startTime && endTime ? `${startTime} – ${endTime}` : startTime ? startTime : null;
 
@@ -47,17 +43,14 @@ export function BatchSessionHeader({
       </View>
 
       <View style={styles.body}>
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>Marking</Text>
-          <View style={styles.dot} />
-          <Text style={styles.daysInline}>{daysText}</Text>
-        </View>
-        <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>
-            {batchName}
+        <Text style={styles.name} numberOfLines={1}>
+          {batchName}
+        </Text>
+        {timeText && (
+          <Text style={styles.time} numberOfLines={1}>
+            {timeText}
           </Text>
-          {timeText && <Text style={styles.time}>{timeText}</Text>}
-        </View>
+        )}
       </View>
 
       <TouchableOpacity
@@ -69,7 +62,7 @@ export function BatchSessionHeader({
         activeOpacity={0.7}
       >
         <Text style={styles.changeText}>Change</Text>
-        <AppIcon name="chevron-down" size={16} color={colors.text} />
+        <AppIcon name="chevron-down" size={14} color={colors.textSecondary} />
       </TouchableOpacity>
     </View>
   );
@@ -101,47 +94,20 @@ const makeStyles = (colors: Colors) =>
     body: {
       flex: 1,
       minWidth: 0,
-    },
-    labelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginBottom: 2,
-    },
-    label: {
-      fontSize: 10,
-      fontWeight: fontWeights.bold,
-      color: colors.textSecondary,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-    },
-    dot: {
-      width: 3,
-      height: 3,
-      borderRadius: 2,
-      backgroundColor: colors.textDisabled,
-    },
-    daysInline: {
-      fontSize: fontSizes.xs,
-      color: colors.textSecondary,
-      flex: 1,
-    },
-    nameRow: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: spacing.sm,
-      minWidth: 0,
+      gap: 2,
     },
     name: {
-      fontSize: fontSizes.base,
+      fontSize: fontSizes.md,
       fontWeight: fontWeights.bold,
       color: colors.text,
-      flexShrink: 1,
+      letterSpacing: -0.1,
     },
     time: {
       fontSize: fontSizes.xs,
       fontWeight: fontWeights.medium,
       color: colors.textSecondary,
+      // tabular-nums keeps "16:30" and "18:00" digits aligned at the same width.
+      fontVariant: ['tabular-nums'],
     },
     changeBtn: {
       flexDirection: 'row',
@@ -156,8 +122,8 @@ const makeStyles = (colors: Colors) =>
     },
     changeText: {
       fontSize: fontSizes.xs,
-      fontWeight: fontWeights.bold,
-      color: colors.text,
-      letterSpacing: 0.3,
+      fontWeight: fontWeights.semibold,
+      color: colors.textSecondary,
+      letterSpacing: 0.2,
     },
   });

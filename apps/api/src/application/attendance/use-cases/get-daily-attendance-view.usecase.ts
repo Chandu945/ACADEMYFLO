@@ -99,10 +99,16 @@ export class GetDailyAttendanceViewUseCase {
       );
 
       if (input.search) {
-        const searchLower = input.search.trim().toLowerCase();
-        activeStudents = activeStudents.filter((s) =>
-          s.fullName.toLowerCase().startsWith(searchLower),
-        );
+        // Tokenised substring match (see list-batch-students.usecase.ts for
+        // the same rationale). startsWith was silently dropping any search
+        // that wasn't a first-name prefix — e.g. surname searches.
+        const tokens = input.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (tokens.length > 0) {
+          activeStudents = activeStudents.filter((s) => {
+            const name = s.fullName.toLowerCase();
+            return tokens.every((t) => name.includes(t));
+          });
+        }
       }
 
       // Manual pagination

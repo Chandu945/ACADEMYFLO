@@ -8,6 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
+import { popToOrReplaceList } from '../../navigation/nav-helpers';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
@@ -156,7 +157,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
             crossAlert('Note', data.warning);
           }
           showToast('Enquiry created successfully');
-          (navigation as any).navigate('EnquiryList');
+          popToOrReplaceList(navigation, 'EnquiryList');
           return;
         } else {
           crossAlert('Error', result.error.message);

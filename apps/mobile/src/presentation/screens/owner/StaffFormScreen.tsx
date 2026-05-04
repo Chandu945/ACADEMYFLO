@@ -3,6 +3,7 @@ import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { popToOrReplaceList } from '../../navigation/nav-helpers';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
 import { Input } from '../../components/ui/Input';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
@@ -213,7 +214,7 @@ export function StaffFormScreen() {
     if (result.ok) {
       submittedRef.current = true;
       showToast(mode === 'create' ? 'Staff created' : 'Staff updated');
-      (navigation as any).navigate('StaffList');
+      popToOrReplaceList(navigation, 'StaffList');
       return;
     }
 

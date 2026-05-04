@@ -25,6 +25,7 @@ module.exports = {
       'react-native-reanimated': path.resolve(appDirectory, 'web/stubs/react-native-reanimated.js'),
       '@react-native-firebase/messaging': path.resolve(appDirectory, 'web/stubs/react-native-firebase-messaging.js'),
       '@react-native-firebase/app': path.resolve(appDirectory, 'web/stubs/react-native-firebase-app.js'),
+      'react-native-cashfree-pg-sdk': path.resolve(appDirectory, 'web/stubs/react-native-cashfree-pg-sdk.js'),
     },
     modules: [
       path.resolve(appDirectory, 'node_modules'),
@@ -82,8 +83,9 @@ module.exports = {
     proxy: [
       {
         context: ['/api'],
-        target: 'http://localhost:3001',
+        target: 'https://academyflo.onrender.com',
         changeOrigin: true,
+        secure: true,
       },
     ],
   },

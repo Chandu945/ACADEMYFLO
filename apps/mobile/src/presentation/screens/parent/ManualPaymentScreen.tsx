@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 
 type Nav = NativeStackNavigationProp<ParentFeesStackParamList, 'ManualPayment'>;
 type Route = RouteProp<ParentFeesStackParamList, 'ManualPayment'>;
@@ -75,6 +76,11 @@ export function ManualPaymentScreen() {
   const [proofName, setProofName] = useState<string | null>(null);
   const [proofMime, setProofMime] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittedRef = useRef(false);
+
+  // Tab is a view selector, not user-typed input — only typed/uploaded fields count.
+  const isDirty = refNumber !== '' || note !== '' || proofUri !== null;
+  useUnsavedChangesWarning(isDirty && !submitting && !submittedRef.current);
 
   useEffect(() => {
     let active = true;
@@ -227,6 +233,7 @@ export function ManualPaymentScreen() {
       return;
     }
     showToast('Payment request submitted');
+    submittedRef.current = true;
     navigation.goBack();
   }, [
     tab,

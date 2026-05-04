@@ -31,13 +31,18 @@ export const INDEX_SPEC: IndexDefinition[] = [
   { collection: 'students', keys: { academyId: 1, status: 1, joiningDate: 1 } },
   { collection: 'students', keys: { academyId: 1, fullNameNormalized: 1 } },
 
-  // ── studentattendances ──
+  // ── studentAttendance ──
+  // Collection name matches the explicit `collection: 'studentAttendance'`
+  // in the Mongoose schema (NOT the auto-pluralised default).
+  // Unique key includes batchId so a student in two batches on the same day
+  // can have two PRESENT records — see student-attendance.schema.ts for why.
   {
-    collection: 'studentattendances',
-    keys: { academyId: 1, studentId: 1, date: 1 },
+    collection: 'studentAttendance',
+    keys: { academyId: 1, studentId: 1, batchId: 1, date: 1 },
     unique: true,
   },
-  { collection: 'studentattendances', keys: { academyId: 1, date: 1 } },
+  { collection: 'studentAttendance', keys: { academyId: 1, date: 1 } },
+  { collection: 'studentAttendance', keys: { academyId: 1, batchId: 1, date: 1 } },
 
   // ── holidays ──
   { collection: 'holidays', keys: { academyId: 1, date: 1 }, unique: true },

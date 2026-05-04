@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { Text, TouchableOpacity, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import { changePasswordUseCase } from '../../../application/parent/use-cases/change-password.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
 import LinearGradient from 'react-native-linear-gradient';
@@ -21,6 +22,10 @@ export function ChangePasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittedRef = useRef(false);
+
+  const isDirty = currentPassword !== '' || newPassword !== '' || confirmPassword !== '';
+  useUnsavedChangesWarning(isDirty && !saving && !submittedRef.current);
 
   const handleSubmit = useCallback(async () => {
     setError(null);
@@ -46,6 +51,7 @@ export function ChangePasswordScreen() {
       );
 
       if (result.ok) {
+        submittedRef.current = true;
         crossAlert('Success', 'Password changed successfully', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);

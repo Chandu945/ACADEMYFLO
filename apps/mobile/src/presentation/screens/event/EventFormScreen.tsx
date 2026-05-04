@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useNavigation } from '@react-navigation/native';
+import { popToOrReplaceList } from '../../navigation/nav-helpers';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { Input } from '../../components/ui/Input';
 import { TextArea } from '../../components/ui/TextArea';
@@ -168,7 +169,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
         if (mode === 'edit' && event) {
           (navigation as any).replace('EventDetail', { eventId: event.id });
         } else {
-          (navigation as any).navigate('EventList');
+          popToOrReplaceList(navigation, 'EventList');
         }
         return;
       } else {

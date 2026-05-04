@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TextInput } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { popToOrReplaceList } from '../../navigation/nav-helpers';
 import type { BatchesStackParamList } from '../../navigation/BatchesStack';
 import { Input } from '../../components/ui/Input';
 import { TextArea } from '../../components/ui/TextArea';
@@ -135,7 +136,7 @@ export function BatchFormScreen() {
         if (mode === 'edit' && result.value) {
           (navigation as any).replace('BatchDetail', { batch: result.value });
         } else {
-          (navigation as any).navigate('BatchesList');
+          popToOrReplaceList(navigation, 'BatchesList');
         }
         return;
       } else {

@@ -380,7 +380,6 @@ export function AttendanceScreen() {
       {selectedBatch && (
         <BatchSessionHeader
           batchName={selectedBatch.batchName}
-          days={selectedBatch.days}
           startTime={selectedBatch.startTime}
           endTime={selectedBatch.endTime}
           onChange={() => setShowBatchPicker(true)}

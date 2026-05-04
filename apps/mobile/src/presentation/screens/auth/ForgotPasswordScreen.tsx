@@ -19,6 +19,7 @@ import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { usePasswordReset } from '../../hooks/usePasswordReset';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import { useToast } from '../../context/ToastContext';
 import LinearGradient from 'react-native-linear-gradient';
 import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
@@ -193,6 +194,17 @@ export function ForgotPasswordScreen() {
 
   const confirmPasswordRef = useRef<TextInput>(null);
   const submittingRef = useRef(false);
+  const submittedRef = useRef(false);
+
+  // Only the new-password step is worth guarding — the email and OTP steps are
+  // single-field and the OTP itself is server-revoked on timeout, so losing
+  // them costs the user a 30-second redo at most. A typed new password,
+  // confirmed once, is the entry that actually deserves a "Discard?" prompt.
+  const isDirtyNewPassword =
+    step === 'newPassword' && (newPassword !== '' || confirmPassword !== '');
+  useUnsavedChangesWarning(
+    isDirtyNewPassword && !loading && !submittedRef.current,
+  );
 
   /** Mask email for display: "user@example.com" → "u***@example.com" */
   const maskedEmail = useMemo(() => {
@@ -320,6 +332,7 @@ export function ForgotPasswordScreen() {
         newPassword,
       );
       if (success) {
+        submittedRef.current = true;
         reset();
         setEmail('');
         setOtp('');

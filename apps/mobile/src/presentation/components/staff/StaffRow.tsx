@@ -46,7 +46,9 @@ function StaffRowComponent({ staff, onPress, onToggleStatus }: StaffRowProps) {
         </Text>
         <View style={styles.metaRow}>
           <StaffStatusBadge status={staff.status} />
-          <Text style={styles.phone}>{staff.phoneNumber}</Text>
+          <Text style={styles.phone} numberOfLines={1} ellipsizeMode="middle">
+            {staff.phoneNumber}
+          </Text>
         </View>
         {staff.qualificationInfo?.position ? (
           <Text style={styles.position} numberOfLines={1}>{staff.qualificationInfo.position}</Text>
@@ -118,6 +120,11 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     gap: spacing.sm,
   },
   phone: {
+    // flexShrink lets the phone give up width to keep the Deactivate button on
+    // its own; numberOfLines + ellipsizeMode='middle' truncates a too-long
+    // international number while preserving the country-code prefix and the
+    // last digits, both of which the user typically needs at a glance.
+    flexShrink: 1,
     fontSize: fontSizes.sm,
     color: colors.textDisabled,
   },

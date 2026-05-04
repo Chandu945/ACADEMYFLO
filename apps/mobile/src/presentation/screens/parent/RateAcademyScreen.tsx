@@ -17,6 +17,7 @@ import { reviewApi } from '../../../infra/review/review-api';
 import type { AcademyReview } from '../../../domain/review/review.types';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useToast } from '../../context/ToastContext';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import { useTheme } from '../../context/ThemeContext';
 import type { Colors } from '../../theme';
 import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
@@ -45,6 +46,13 @@ export function RateAcademyScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const mountedRef = useRef(true);
+  const submittedRef = useRef(false);
+
+  // Compare against the loaded review (no review = blank rating + empty comment).
+  const initialRating = existing?.rating ?? 0;
+  const initialComment = existing?.comment ?? '';
+  const isDirty = !loading && (rating !== initialRating || comment !== initialComment);
+  useUnsavedChangesWarning(isDirty && !submitting && !deleting && !submittedRef.current);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -91,6 +99,7 @@ export function RateAcademyScreen() {
       if (result.ok) {
         setExisting(result.value);
         showToast(existing ? 'Review updated' : 'Thanks for your review!', 'success');
+        submittedRef.current = true;
         navigation.goBack();
       } else {
         showToast(result.error.message, 'error');
@@ -116,6 +125,7 @@ export function RateAcademyScreen() {
               setRating(0);
               setComment('');
               showToast('Review deleted', 'success');
+              submittedRef.current = true;
               navigation.goBack();
             } else {
               showToast(result.error.message, 'error');

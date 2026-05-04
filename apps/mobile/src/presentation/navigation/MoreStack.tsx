@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { popToOrReplaceList } from './nav-helpers';
 import { useTheme } from '../context/ThemeContext';
 import { MoreScreen } from '../screens/settings/MoreScreen';
 import { AcademySettingsScreen } from '../screens/settings/AcademySettingsScreen';
@@ -165,7 +166,7 @@ export function MoreStack() {
           headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('EnquiryList')}
+              onPress={() => popToOrReplaceList(navigation, 'EnquiryList')}
             />
           ),
         })}
@@ -215,7 +216,7 @@ export function MoreStack() {
           headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('EventList')}
+              onPress={() => popToOrReplaceList(navigation, 'EventList')}
             />
           ),
         })}
@@ -349,9 +350,11 @@ export function MoreStack() {
             <HeaderBackButton
               onPress={() => {
                 if (route.params.mode === 'edit' && route.params.batch) {
+                  // Edit mode: user reached BatchForm via BatchDetail, so
+                  // BatchDetail is in history — navigate pops back to it.
                   navigation.navigate('BatchDetail', { batch: route.params.batch });
                 } else {
-                  navigation.navigate('BatchesList');
+                  popToOrReplaceList(navigation, 'BatchesList');
                 }
               }}
             />
@@ -393,7 +396,7 @@ export function MoreStack() {
           headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => navigation.navigate('StaffList')}
+              onPress={() => popToOrReplaceList(navigation, 'StaffList')}
             />
           ),
         })}

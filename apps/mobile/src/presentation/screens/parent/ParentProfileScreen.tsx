@@ -8,6 +8,7 @@ import type { MoreStackParamList } from '../../navigation/MoreStack';
 import { Screen } from '../../components/ui/Screen';
 import { Input } from '../../components/ui/Input';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import { getParentProfileUseCase } from '../../../application/parent/use-cases/get-parent-profile.usecase';
 import { updateParentProfileUseCase } from '../../../application/parent/use-cases/update-parent-profile.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
@@ -47,6 +48,17 @@ export function ParentProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  // Snapshot of the last persisted values; updated on load and on save success
+  // so dirty-checking goes back to false after Save without leaving the screen.
+  const initialRef = useRef({ fullName: '', phoneNumber: '' });
+
+  // Email is read-only; profile photo is uploaded immediately (not draft state).
+  // Only the editable fields participate in the dirty check.
+  const isDirty =
+    !loading &&
+    (fullName !== initialRef.current.fullName ||
+      phoneNumber !== initialRef.current.phoneNumber);
+  useUnsavedChangesWarning(isDirty && !saving);
 
   const load = useCallback(async () => {
     setError(null);
@@ -54,10 +66,12 @@ export function ParentProfileScreen() {
       const result = await getParentProfileUseCase({ parentApi });
       if (!mountedRef.current) return;
       if (result.ok) {
+        const loadedPhone = stripCountryCode(result.value.phoneNumber);
         setFullName(result.value.fullName);
         setEmail(result.value.email);
-        setPhoneNumber(stripCountryCode(result.value.phoneNumber));
+        setPhoneNumber(loadedPhone);
         setProfilePhotoUrl(result.value.profilePhotoUrl ?? null);
+        initialRef.current = { fullName: result.value.fullName, phoneNumber: loadedPhone };
       } else {
         setError(result.error.message);
       }
@@ -104,6 +118,8 @@ export function ParentProfileScreen() {
         { parentApi },
       );
       if (result.ok) {
+        // Sync the dirty baseline so the screen stops being "dirty" after save.
+        initialRef.current = { fullName: fullName.trim(), phoneNumber: phoneNumber.trim() };
         crossAlert('Success', 'Profile updated successfully');
       } else {
         setError(result.error.message);
@@ -243,6 +259,25 @@ export function ParentProfileScreen() {
       <TouchableOpacity
         style={styles.logoutButton}
         onPress={() => {
+          // Logout switches the RootNavigator phase rather than dispatching a
+          // nav action, so the screen-level beforeRemove guard never fires.
+          // Inline the dirty-check here so unsaved profile edits aren't
+          // discarded silently when the user taps Logout.
+          if (isDirty) {
+            crossAlert(
+              'Discard changes?',
+              'You have unsaved profile changes. Logging out will discard them.',
+              [
+                { text: 'Stay', style: 'cancel' },
+                {
+                  text: 'Discard & Logout',
+                  style: 'destructive',
+                  onPress: () => logout(),
+                },
+              ],
+            );
+            return;
+          }
           crossAlert('Logout', 'Are you sure you want to logout?', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Logout', style: 'destructive', onPress: () => logout() },

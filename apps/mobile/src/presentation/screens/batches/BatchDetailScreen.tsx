@@ -450,34 +450,53 @@ export function BatchDetailScreen() {
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       {error && <InlineError message={error} onRetry={loadInitial} />}
 
-      {loading && !refreshing ? (
-        <View style={styles.content}>
-          {renderHeader()}
-          <View style={styles.skeletons}>
-            <SkeletonTile />
-            <SkeletonTile />
-            <SkeletonTile />
-          </View>
-        </View>
-      ) : (
-        <FlatList
-          data={students}
-          renderItem={renderStudentItem}
-          keyExtractor={keyExtractor}
-          ListHeaderComponent={renderHeader}
-          ListEmptyComponent={<EmptyState message="No students in this batch" />}
-          ListFooterComponent={renderFooter}
-          onEndReached={fetchMore}
-          onEndReachedThreshold={0.3}
-          removeClippedSubviews
-          windowSize={11}
-          maxToRenderPerBatch={5}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          testID="batch-students-list"
-        />
-      )}
+      {/* Single FlatList instance — never swap to a different parent component
+       * on loading transitions. If we conditionally render a different tree
+       * while loading is true, the FlatList unmounts and the TextInput inside
+       * its header remounts on every search keystroke (debounce flips loading
+       * → re-render → branch swap → unmount/remount), making the input
+       * unusable past one character. Show the skeleton state via
+       * ListEmptyComponent so the FlatList structure (and its header) stays
+       * mounted across loading state changes. */}
+      <FlatList
+        data={students}
+        renderItem={renderStudentItem}
+        keyExtractor={keyExtractor}
+        // Pass an element (renderHeader()), not the function reference, so
+        // RN reconciles by element type+key rather than treating it as a
+        // changing component type — see useCallback deps for why the ref
+        // changes every keystroke.
+        ListHeaderComponent={renderHeader()}
+        ListEmptyComponent={
+          loading && !refreshing ? (
+            <View style={styles.skeletons}>
+              <SkeletonTile />
+              <SkeletonTile />
+              <SkeletonTile />
+            </View>
+          ) : (
+            <EmptyState message="No students in this batch" />
+          )
+        }
+        ListFooterComponent={renderFooter}
+        onEndReached={fetchMore}
+        onEndReachedThreshold={0.3}
+        removeClippedSubviews
+        windowSize={11}
+        maxToRenderPerBatch={5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        testID="batch-students-list"
+      />
     </SafeAreaView>
   );
 }

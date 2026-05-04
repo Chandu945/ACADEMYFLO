@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { ScrollView, View, Text, StyleSheet, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import { createPaymentRequest, editPaymentRequest } from '../../../infra/fees/pa
 import { TextArea } from '../../components/ui/TextArea';
 import { Button } from '../../components/ui/Button';
 import { InlineError } from '../../components/ui/InlineError';
+import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -43,6 +44,11 @@ export function PaymentRequestFormScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittedRef = useRef(false);
+  const initialNotes = existingNotes ?? '';
+
+  const isDirty = staffNotes !== initialNotes;
+  useUnsavedChangesWarning(isDirty && !submitting && !submittedRef.current);
 
   const handleNotesChange = useCallback((text: string) => {
     setStaffNotes(text);
@@ -81,6 +87,7 @@ export function PaymentRequestFormScreen() {
 
       if (result.ok) {
         showToast(isEditMode ? 'Request updated successfully' : 'Request submitted successfully');
+        submittedRef.current = true;
         (navigation as any).navigate('FeesHome');
         return;
       } else {

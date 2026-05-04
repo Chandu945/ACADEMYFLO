@@ -47,6 +47,29 @@ const ROUTE_BY_TYPE: Record<NotificationType, Partial<Record<UserRole, string>>>
   },
 };
 
+// Whitelist of route names the backend may target via `data.route`. Limited
+// to top-level tab names so any landing has a sensible "back" target — every
+// tab has a stack root that's always present in history. Deep routes
+// (StaffForm, EnquiryDetail, ChildDetail, etc.) are deliberately excluded
+// because they assume specific stack ancestors and a missing-ancestor entry
+// produces ghost-screen bugs in the form/back-button handlers.
+//
+// To add a new override target: ensure landing on it from a fresh state
+// leaves a sensible stack — i.e. its stack root is always reachable via
+// `goBack`/`navigate('XList')` — then add the name here.
+const SAFE_OVERRIDE_ROUTES: ReadonlySet<string> = new Set([
+  // Owner / Staff tabs
+  'Dashboard',
+  'Students',
+  'Attendance',
+  'Fees',
+  // Parent tabs
+  'Children',
+  'Payments',
+  // Shared
+  'More',
+]);
+
 function resolveNotificationRoute(
   notification: RemoteNotification,
   role: UserRole | undefined,
@@ -54,9 +77,10 @@ function resolveNotificationRoute(
   if (!role) return null;
   const data = notification.data ?? {};
   const dataRoute = data['route'];
-  // Backend-supplied route wins. We only accept it if it's a string — never a
-  // user-controlled URL or arbitrary object — to keep the surface small.
-  if (typeof dataRoute === 'string' && dataRoute.length > 0 && dataRoute.length < 64) {
+  // Backend-supplied route wins, but only if it's in the whitelist above.
+  // Falling through to the type-default route for anything else guarantees
+  // the user lands on a screen whose stack ancestors are correctly set up.
+  if (typeof dataRoute === 'string' && SAFE_OVERRIDE_ROUTES.has(dataRoute)) {
     const { route: _omit, ...rest } = data;
     return { name: dataRoute, params: rest };
   }

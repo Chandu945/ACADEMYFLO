@@ -75,8 +75,18 @@ export class ListBatchStudentsUseCase {
     );
 
     if (input.search) {
-      const searchLower = input.search.trim().toLowerCase();
-      filtered = filtered.filter((s) => s.fullName.toLowerCase().startsWith(searchLower));
+      // Match every whitespace-separated token as a substring against the
+      // lowercased full name. Tokens are AND'd, so "ghosh divya" and
+      // "divya ghosh" return the same students. Substring (not prefix)
+      // matching means searching by surname or any middle word works as
+      // users expect — startsWith was silently dropping surname searches.
+      const tokens = input.search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if (tokens.length > 0) {
+        filtered = filtered.filter((s) => {
+          const name = s.fullName.toLowerCase();
+          return tokens.every((t) => name.includes(t));
+        });
+      }
     }
 
     // Sort by name for consistent ordering
