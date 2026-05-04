@@ -42,14 +42,19 @@ export class IndexVerifierService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    // Legacy-index cleanup runs UNCONDITIONALLY (i.e. independent of
+    // INDEX_ASSERTION_ENABLED). Each entry in LEGACY_INDEXES_TO_DROP is a
+    // schema-migration step that must converge regardless of env config —
+    // gating it behind a flag means a stale unique constraint can keep
+    // blocking writes after the fix is deployed (which is exactly what
+    // happened with the multi-batch attendance bug). The cleanup is
+    // idempotent and only acts on indexes whose keys exactly match the
+    // hardcoded list.
+    await this.dropLegacyIndexes();
+
     if (!this.config.indexAssertionEnabled) {
       return;
     }
-
-    // Drop stale legacy indexes BEFORE verifying the current ones, so a
-    // legacy-vs-current conflict (same prefix, different uniqueness) doesn't
-    // mask the post-cleanup truth.
-    await this.dropLegacyIndexes();
 
     this.logger.log('Verifying database indexes...');
     const missing = await this.verify();
