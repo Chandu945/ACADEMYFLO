@@ -27,7 +27,13 @@ import {
   InMemoryStudentRepository,
   InMemoryFeeDueRepository,
   InMemoryTransactionLogRepository,
+  InMemoryAcademyRepository,
 } from './helpers/in-memory-repos';
+import { ACADEMY_REPOSITORY } from '../src/domain/academy/ports/academy.repository';
+import type { AcademyRepository } from '../src/domain/academy/ports/academy.repository';
+import { CLOCK_PORT } from '../src/application/common/clock.port';
+import { SystemClock } from '../src/application/common/system-clock';
+import type { ClockPort } from '../src/application/common/clock.port';
 import { createTestTokenService } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Student } from '../src/domain/student/entities/student.entity';
@@ -80,6 +86,8 @@ describe('Reports (e2e)', () => {
         { provide: STUDENT_REPOSITORY, useValue: studentRepo },
         { provide: FEE_DUE_REPOSITORY, useValue: feeDueRepo },
         { provide: TRANSACTION_LOG_REPOSITORY, useValue: tlRepo },
+        { provide: ACADEMY_REPOSITORY, useValue: new InMemoryAcademyRepository() },
+        { provide: CLOCK_PORT, useClass: SystemClock },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'GET_STUDENT_WISE_DUES_REPORT_USE_CASE',
@@ -89,9 +97,14 @@ describe('Reports (e2e)', () => {
         },
         {
           provide: 'GET_MONTH_WISE_DUES_REPORT_USE_CASE',
-          useFactory: (ur: UserRepository, sr: StudentRepository, fdr: FeeDueRepository) =>
-            new GetMonthWiseDuesReportUseCase(ur, sr, fdr),
-          inject: [USER_REPOSITORY, STUDENT_REPOSITORY, FEE_DUE_REPOSITORY],
+          useFactory: (
+            ur: UserRepository,
+            sr: StudentRepository,
+            fdr: FeeDueRepository,
+            ar: AcademyRepository,
+            clock: ClockPort,
+          ) => new GetMonthWiseDuesReportUseCase(ur, sr, fdr, ar, clock),
+          inject: [USER_REPOSITORY, STUDENT_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, CLOCK_PORT],
         },
         {
           provide: 'GET_MONTHLY_REVENUE_REPORT_USE_CASE',
@@ -286,6 +299,8 @@ describe('Reports (e2e)', () => {
         studentId: 's1',
         monthKey,
         amount: 500,
+        baseAmount: 500,
+        lateFeeAmount: 0,
         source: 'OWNER_DIRECT',
         collectedByUserId: 'owner-1',
         approvedByUserId: 'owner-1',
@@ -301,6 +316,8 @@ describe('Reports (e2e)', () => {
         studentId: 's2',
         monthKey,
         amount: 300,
+        baseAmount: 300,
+        lateFeeAmount: 0,
         source: 'STAFF_APPROVED',
         collectedByUserId: 'staff-1',
         approvedByUserId: 'owner-1',
@@ -348,6 +365,8 @@ describe('Reports (e2e)', () => {
         studentId: 's1',
         monthKey,
         amount: 500,
+        baseAmount: 500,
+        lateFeeAmount: 0,
         source: 'OWNER_DIRECT',
         collectedByUserId: 'owner-1',
         approvedByUserId: 'owner-1',

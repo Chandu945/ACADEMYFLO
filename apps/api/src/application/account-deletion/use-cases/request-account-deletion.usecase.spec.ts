@@ -1,5 +1,5 @@
 import { RequestAccountDeletionUseCase } from './request-account-deletion.usecase';
-import { User } from '@domain/identity/entities/user.entity';
+import type { User } from '@domain/identity/entities/user.entity';
 
 function makeOwner() {
   // create() doesn't accept academyId (defaults null); use a stub that satisfies

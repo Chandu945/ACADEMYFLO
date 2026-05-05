@@ -6,6 +6,7 @@ import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { formatCurrency as formatAmount } from '../../utils/format';
 
 type FeeDueRowProps = {
   item: FeeDueItem;
@@ -46,10 +47,6 @@ function formatMonthKey(monthKey: string): string {
   const [y, m] = monthKey.split('-').map(Number) as [number, number];
   const d = new Date(y, m - 1, 1);
   return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-}
-
-function formatAmount(amount: number): string {
-  return `\u20B9${amount.toLocaleString('en-IN')}`;
 }
 
 function daysBetween(iso: string): number {

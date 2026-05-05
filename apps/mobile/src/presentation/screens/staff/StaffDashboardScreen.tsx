@@ -34,6 +34,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../.
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { getTodayIST } from '../../../domain/common/date-utils';
+import { formatCurrency } from '../../utils/format';
 
 type Nav = CompositeNavigationProp<
   BottomTabNavigationProp<StaffTabParamList, 'Dashboard'>,
@@ -47,10 +48,6 @@ type DashboardData = {
   enquirySummary: EnquirySummary | null;
   birthdayStudents: BirthdayStudent[];
 };
-
-function formatCurrency(n: number): string {
-  return `\u20B9${n.toLocaleString('en-IN')}`;
-}
 
 export function StaffDashboardScreen() {
   const { colors } = useTheme();

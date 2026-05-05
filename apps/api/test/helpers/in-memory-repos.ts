@@ -729,6 +729,49 @@ export class InMemoryStudentAttendanceRepository implements StudentAttendanceRep
     return count;
   }
 
+  // Batch-aware variants — added to satisfy the StudentAttendanceRepository
+  // interface. The in-memory implementation is keyed by (academy, student,
+  // date) without batchId, so the batch-scoped methods just narrow on
+  // whatever batch field exists on the StudentAttendance entity (or fall
+  // back to the unscoped list). Tests that specifically need batch-aware
+  // semantics should use the real Mongo repo or extend this helper.
+  async deleteByAcademyStudentBatchDate(
+    academyId: string,
+    studentId: string,
+    _batchId: string,
+    date: string,
+  ): Promise<void> {
+    return this.deleteByAcademyStudentDate(academyId, studentId, date);
+  }
+
+  async findByAcademyStudentBatchDate(
+    academyId: string,
+    studentId: string,
+    _batchId: string,
+    date: string,
+  ): Promise<StudentAttendance | null> {
+    return this.findByAcademyStudentDate(academyId, studentId, date);
+  }
+
+  async findPresentByAcademyBatchAndDate(
+    academyId: string,
+    _batchId: string,
+    date: string,
+  ): Promise<StudentAttendance[]> {
+    return this.findPresentByAcademyAndDate(academyId, date);
+  }
+
+  async countDistinctStudentsPresentByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number> {
+    const ids = new Set<string>();
+    for (const r of this.records.values()) {
+      if (r.academyId === academyId && r.date === date) ids.add(r.studentId);
+    }
+    return ids.size;
+  }
+
   clear(): void {
     this.records.clear();
   }
@@ -913,6 +956,42 @@ export class InMemoryFeeDueRepository implements FeeDueRepository {
     for (const d of this.dues.values()) {
       if (d.academyId === academyId && d.monthKey === monthKey && d.status === 'PAID' && d.lateFeeApplied && d.lateFeeApplied > 0) {
         total += d.lateFeeApplied;
+      }
+    }
+    return total;
+  }
+
+  async sumLateFeeCollectedByAcademyAndDateRange(
+    academyId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
+    let total = 0;
+    for (const d of this.dues.values()) {
+      if (
+        d.academyId === academyId &&
+        d.status === 'PAID' &&
+        d.lateFeeApplied &&
+        d.lateFeeApplied > 0 &&
+        d.paidAt &&
+        d.paidAt >= from &&
+        d.paidAt <= to
+      ) {
+        total += d.lateFeeApplied;
+      }
+    }
+    return total;
+  }
+
+  async sumUnpaidAmountByAcademyAndMonth(academyId: string, monthKey: string): Promise<number> {
+    let total = 0;
+    for (const d of this.dues.values()) {
+      if (
+        d.academyId === academyId &&
+        d.monthKey === monthKey &&
+        (d.status === 'UPCOMING' || d.status === 'DUE')
+      ) {
+        total += d.amount;
       }
     }
     return total;

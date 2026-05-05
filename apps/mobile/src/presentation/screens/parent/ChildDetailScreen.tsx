@@ -23,10 +23,11 @@ import { getChildFeesUseCase } from '../../../application/parent/use-cases/get-c
 import { parentApi } from '../../../infra/parent/parent-api';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
-import { formatMonthKey, formatMonthShort, formatCurrency } from '../../utils/format';
+import { formatMonthShort, formatCurrency } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
 import { getCurrentMonthIST, nowIST } from '../../../domain/common/date-utils';
 import { AttendanceCalendar } from '../../components/attendance/AttendanceCalendar';
+import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
 
 type Route = RouteProp<ParentHomeStackParamList, 'ChildDetail'>;
 type Nav = NativeStackNavigationProp<ParentHomeStackParamList, 'ChildDetail'>;
@@ -293,18 +294,24 @@ export function ChildDetailScreen() {
           <Text style={styles.sectionTitle}>Attendance</Text>
         </View>
 
-        {/* Month Navigator */}
-        <View style={styles.monthNav}>
-          <TouchableOpacity onPress={() => navigateMonth(-1)} style={styles.monthNavBtn}>
-            <AppIcon name="chevron-left" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.monthLabel}>{formatMonthKey(attMonth)}</Text>
-          <TouchableOpacity onPress={() => navigateMonth(1)} style={styles.monthNavBtn} disabled={attMonth >= currentMonth}>
-            <AppIcon name="chevron-right" size={22} color={attMonth >= currentMonth ? colors.textDisabled : colors.text} />
-          </TouchableOpacity>
+        {/* Month Navigator — same gradient pill picker used across the app
+            (Fees, Reports, Events, Expenses) so the parent sees consistent
+            chrome wherever month navigation appears. */}
+        <View style={styles.monthNavWrap}>
+          <MonthPickerRow
+            month={attMonth}
+            onPrevious={() => navigateMonth(-1)}
+            onNext={() => navigateMonth(1)}
+            disableNext={attMonth >= currentMonth}
+          />
           {attMonth !== currentMonth && (
-            <TouchableOpacity onPress={() => setAttMonth(currentMonth)} style={styles.monthResetBtn}>
-              <Text style={{ color: colors.text, fontSize: fontSizes.xs, fontWeight: fontWeights.medium }}>This Month</Text>
+            <TouchableOpacity
+              onPress={() => setAttMonth(currentMonth)}
+              style={styles.thisMonthChip}
+              testID="att-this-month"
+            >
+              <AppIcon name="calendar-today" size={14} color={colors.primary} />
+              <Text style={styles.thisMonthChipText}>This Month</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -377,102 +384,136 @@ export function ChildDetailScreen() {
           <AppIcon name="receipt" size={20} color={colors.text} />
           <Text style={styles.sectionTitle}>Fee History</Text>
         </View>
-        {fees.map((fee) => (
-          <View key={fee.id} style={styles.feeCard}>
-            <View style={styles.feeRow}>
-              <FeeStatusIcon status={fee.status} />
-              <View style={styles.feeInfo}>
-                <Text style={styles.feeMonth}>{formatMonthShort(fee.monthKey)}</Text>
-                <View style={styles.feeStatusRow}>
-                  <View
+        {[...fees]
+          .sort((a, b) => b.monthKey.localeCompare(a.monthKey))
+          .map((fee) => {
+          const isPaid = fee.status === 'PAID';
+          const isOverdue =
+            fee.status === 'DUE' &&
+            fee.lateFee === 0 &&
+            todayMs > new Date(fee.dueDate + 'T00:00:00').getTime();
+          const payable =
+            fee.status === 'DUE' && fee.lateFee > 0
+              ? fee.amount + fee.lateFee
+              : fee.amount;
+
+          // Render PAID rows as a single tappable strip — the whole card
+          // navigates to the receipt. Drops the redundant "View Receipt"
+          // full-width button and PAID pill (the green check + green amount
+          // already convey "paid"); shrinks each row to ~half its old height.
+          const Wrapper: typeof TouchableOpacity | typeof View = isPaid
+            ? TouchableOpacity
+            : View;
+          const wrapperProps = isPaid
+            ? {
+                activeOpacity: 0.7,
+                onPress: () => navigation.navigate('Receipt', { feeDueId: fee.id }),
+                testID: `paid-fee-${fee.id}`,
+              }
+            : {};
+
+          return (
+            <Wrapper key={fee.id} style={styles.feeCard} {...wrapperProps}>
+              <View style={styles.feeRow}>
+                <FeeStatusIcon status={fee.status} />
+                <View style={styles.feeInfo}>
+                  <Text style={styles.feeMonth}>{formatMonthShort(fee.monthKey)}</Text>
+                  {fee.status !== 'PAID' && (
+                    <View style={styles.feeStatusRow}>
+                      <View
+                        style={[
+                          styles.feeBadge,
+                          {
+                            backgroundColor:
+                              fee.status === 'DUE' ? colors.warningLightBg : colors.bgSubtle,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.feeBadgeText,
+                            {
+                              color:
+                                fee.status === 'DUE' ? colors.warningText : colors.textSecondary,
+                            },
+                          ]}
+                        >
+                          {fee.status}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.feeAmountWrap}>
+                  <Text
                     style={[
-                      styles.feeBadge,
-                      {
-                        backgroundColor:
-                          fee.status === 'PAID'
-                            ? colors.successBg
-                            : fee.status === 'DUE'
-                              ? colors.warningLightBg
-                              : colors.bgSubtle,
-                      },
+                      styles.feeAmount,
+                      isPaid && { color: colors.successText },
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.feeBadgeText,
-                        {
-                          color:
-                            fee.status === 'PAID'
-                              ? colors.successText
-                              : fee.status === 'DUE'
-                                ? colors.warningText
-                                : colors.textSecondary,
-                        },
-                      ]}
-                    >
-                      {fee.status}
+                    {formatCurrency(payable)}
+                  </Text>
+                  {isPaid && fee.paidAt ? (
+                    <Text style={styles.feePaidDate}>
+                      Paid {new Date(fee.paidAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
                     </Text>
-                  </View>
+                  ) : null}
                 </View>
+                {isPaid ? (
+                  <AppIcon
+                    name="chevron-right"
+                    size={18}
+                    color={colors.textDisabled}
+                    style={{ marginLeft: spacing.xs }}
+                  />
+                ) : null}
               </View>
-              <Text style={styles.feeAmount}>
-                {formatCurrency(fee.status === 'DUE' && fee.lateFee > 0 ? fee.amount + fee.lateFee : fee.amount)}
-              </Text>
-            </View>
-            {fee.status === 'PAID' && (
-              <TouchableOpacity
-                style={styles.receiptButton}
-                onPress={() => navigation.navigate('Receipt', { feeDueId: fee.id })}
-              >
-                
-                <AppIcon name="file-document-outline" size={16} color={colors.successText} />
-                <Text style={styles.receiptButtonText}>View Receipt</Text>
-              </TouchableOpacity>
-            )}
-            {fee.status === 'DUE' && fee.lateFee > 0 && (
-              <View style={styles.lateFeeNotice}>
-                <AppIcon name="clock-alert-outline" size={14} color={colors.warningAccent} />
-                <Text style={styles.lateFeeNoticeText}>
-                  Late fee of {formatCurrency(fee.lateFee)} applied
-                </Text>
-              </View>
-            )}
-            {fee.status === 'DUE' && fee.lateFee === 0 &&
-              todayMs > new Date(fee.dueDate + 'T00:00:00').getTime() && (
+              {fee.status === 'DUE' && fee.lateFee > 0 && (
+                <View style={styles.lateFeeNotice}>
+                  <AppIcon name="clock-alert-outline" size={14} color={colors.warningAccent} />
+                  <Text style={styles.lateFeeNoticeText}>
+                    Late fee of {formatCurrency(fee.lateFee)} applied
+                  </Text>
+                </View>
+              )}
+              {isOverdue && (
                 <View style={styles.graceNotice}>
-
                   <AppIcon name="clock-alert-outline" size={14} color={colors.warning} />
                   <Text style={styles.graceNoticeText}>
                     Pay soon to avoid late fees
                   </Text>
                 </View>
-            )}
-            {fee.status === 'DUE' && fee.pendingRequest ? (
-              <View style={styles.pendingBadge} testID={`pending-fee-${fee.id}`}>
-                <AppIcon name="clock-outline" size={14} color={colors.warningAccent} />
-                <Text style={styles.pendingBadgeText}>
-                  Payment of {formatCurrency(fee.pendingRequest.amount)} pending owner approval
-                </Text>
-              </View>
-            ) : fee.status === 'DUE' && paymentMethods?.manualPaymentsEnabled ? (
-              <TouchableOpacity
-                style={styles.payButton}
-                onPress={() =>
-                  navigation.navigate('ManualPayment', {
-                    feeDueId: fee.id,
-                    studentId: fee.studentId,
-                    monthKey: fee.monthKey,
-                    amount: fee.amount + (fee.lateFee ?? 0),
-                  })
-                }
-                testID={`pay-fee-${fee.id}`}
-              >
-                <AppIcon name="cash-fast" size={16} color={colors.white} />
-                <Text style={styles.payButtonText}>Pay now</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ))}
+              )}
+              {fee.status === 'DUE' && fee.pendingRequest ? (
+                <View style={styles.pendingBadge} testID={`pending-fee-${fee.id}`}>
+                  <AppIcon name="clock-outline" size={14} color={colors.warningAccent} />
+                  <Text style={styles.pendingBadgeText}>
+                    Payment of {formatCurrency(fee.pendingRequest.amount)} pending owner approval
+                  </Text>
+                </View>
+              ) : fee.status === 'DUE' && paymentMethods?.manualPaymentsEnabled ? (
+                <TouchableOpacity
+                  style={styles.payButton}
+                  onPress={() =>
+                    navigation.navigate('ManualPayment', {
+                      feeDueId: fee.id,
+                      studentId: fee.studentId,
+                      monthKey: fee.monthKey,
+                      amount: fee.amount + (fee.lateFee ?? 0),
+                    })
+                  }
+                  testID={`pay-fee-${fee.id}`}
+                >
+                  <AppIcon name="cash-fast" size={16} color={colors.white} />
+                  <Text style={styles.payButtonText}>Pay now</Text>
+                </TouchableOpacity>
+              ) : null}
+            </Wrapper>
+          );
+        })}
         {fees.length === 0 && (
           <View style={styles.sectionCard}>
             <Text style={styles.noData}>No fee records found</Text>
@@ -592,10 +633,18 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.xs,
     fontWeight: fontWeights.semibold,
   },
+  feeAmountWrap: {
+    alignItems: 'flex-end',
+  },
   feeAmount: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
+  },
+  feePaidDate: {
+    fontSize: fontSizes.xs,
+    color: colors.textDisabled,
+    marginTop: 2,
   },
   receiptButton: {
     flexDirection: 'row',
@@ -698,26 +747,25 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
 
   /* Month Navigation */
-  monthNav: {
+  monthNavWrap: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  thisMonthChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
+    gap: 4,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    marginTop: spacing.xs,
   },
-  monthNavBtn: {
-    padding: spacing.xs,
-  },
-  monthLabel: {
-    fontSize: fontSizes.md,
+  thisMonthChipText: {
+    fontSize: fontSizes.xs,
     fontWeight: fontWeights.semibold,
-    color: colors.text,
-    minWidth: 100,
-    textAlign: 'center',
-  },
-  monthResetBtn: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    color: colors.primary,
+    letterSpacing: 0.2,
   },
 
   /* Summary chips */

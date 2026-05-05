@@ -16,10 +16,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../.
 import type { Colors } from '../../theme';
 import { getOverdueStudents } from '../../../infra/fees/fees-api';
 import type { OverdueStudentItem, OverdueStudentsResult } from '../../../domain/fees/overdue.types';
-
-function formatCurrency(amount: number): string {
-  return `\u20B9${amount.toLocaleString('en-IN')}`;
-}
+import { formatCurrency } from '../../utils/format';
 
 export function OverdueStudentsScreen() {
   const { colors } = useTheme();

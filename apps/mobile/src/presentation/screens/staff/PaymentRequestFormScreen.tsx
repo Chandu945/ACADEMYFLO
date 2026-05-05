@@ -18,14 +18,11 @@ import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { formatCurrency } from '../../utils/format';
 
 type Route = RouteProp<FeesStackParamList, 'PaymentRequestForm'>;
 
 const requestsApi = { createPaymentRequest, editPaymentRequest };
-
-function formatCurrency(n: number): string {
-  return `\u20B9${n.toLocaleString('en-IN')}`;
-}
 
 export function PaymentRequestFormScreen() {
   const { colors } = useTheme();

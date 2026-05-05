@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import type {
+  OwnerDeletionStrategy} from './deletion-strategy';
 import {
   anonymizedPhoneFor,
   DefaultDeletionStrategyRegistry,
-  OwnerDeletionStrategy,
   SelfOnlyDeletionStrategy,
 } from './deletion-strategy';
 import { AccountDeletionRequest } from '@domain/account-deletion/entities/account-deletion-request.entity';

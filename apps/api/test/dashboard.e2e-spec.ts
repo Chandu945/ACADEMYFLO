@@ -29,7 +29,10 @@ import {
   InMemoryStudentAttendanceRepository,
   InMemoryExpenseRepository,
   InMemoryHolidayRepository,
+  InMemoryAcademyRepository,
 } from './helpers/in-memory-repos';
+import { ACADEMY_REPOSITORY } from '../src/domain/academy/ports/academy.repository';
+import type { AcademyRepository } from '../src/domain/academy/ports/academy.repository';
 import { createTestTokenService } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Student } from '../src/domain/student/entities/student.entity';
@@ -91,6 +94,7 @@ describe('Dashboard (e2e)', () => {
         { provide: STUDENT_ATTENDANCE_REPOSITORY, useValue: attRepo },
         { provide: EXPENSE_REPOSITORY, useValue: expenseRepo },
         { provide: HOLIDAY_REPOSITORY, useValue: new InMemoryHolidayRepository() },
+        { provide: ACADEMY_REPOSITORY, useValue: new InMemoryAcademyRepository() },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'GET_OWNER_DASHBOARD_KPIS_USE_CASE',
@@ -100,16 +104,18 @@ describe('Dashboard (e2e)', () => {
             prr: PaymentRequestRepository,
             tlr: TransactionLogRepository,
             fdr: FeeDueRepository,
+            ar: AcademyRepository,
             attr: StudentAttendanceRepository,
             expr: ExpenseRepository,
             holr: HolidayRepository,
-          ) => new GetOwnerDashboardKpisUseCase(ur, sr, prr, tlr, fdr, attr, expr, holr),
+          ) => new GetOwnerDashboardKpisUseCase(ur, sr, prr, tlr, fdr, ar, attr, expr, holr),
           inject: [
             USER_REPOSITORY,
             STUDENT_REPOSITORY,
             PAYMENT_REQUEST_REPOSITORY,
             TRANSACTION_LOG_REPOSITORY,
             FEE_DUE_REPOSITORY,
+            ACADEMY_REPOSITORY,
             STUDENT_ATTENDANCE_REPOSITORY,
             EXPENSE_REPOSITORY,
             HOLIDAY_REPOSITORY,
@@ -198,6 +204,8 @@ describe('Dashboard (e2e)', () => {
         studentId: 's1',
         monthKey,
         amount: 300,
+        baseAmount: 300,
+        lateFeeAmount: 0,
         source: 'OWNER_DIRECT',
         collectedByUserId: 'owner-1',
         approvedByUserId: 'owner-1',

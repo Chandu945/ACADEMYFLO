@@ -98,6 +98,8 @@ function buildDeps() {
     findDueWithoutSnapshot: jest.fn(),
     deleteUpcomingByStudent: jest.fn(),
     sumLateFeeCollectedByAcademyAndMonth: jest.fn(),
+    sumLateFeeCollectedByAcademyAndDateRange: jest.fn(),
+    sumUnpaidAmountByAcademyAndMonth: jest.fn(),
     countOverdueByAcademy: jest.fn(),
     listOverdueByAcademy: jest.fn(),
   };

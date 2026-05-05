@@ -20,6 +20,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../.
 import type { Colors } from '../../theme';
 import { formatMonthShort, formatCurrency, formatDate } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 
 function getSourceConfig(source: string, colors: Colors) {
   switch (source) {
@@ -108,7 +109,6 @@ export function PaymentHistoryScreen() {
 
   const renderItem = useCallback(({ item }: { item: PaymentHistoryItem }) => {
     const src = getSourceConfig(item.source, colors);
-    const isPrimary = item.source === 'PARENT_ONLINE';
 
     return (
       <TouchableOpacity
@@ -116,49 +116,33 @@ export function PaymentHistoryScreen() {
         activeOpacity={0.7}
         onPress={() => handleViewReceipt(item.feeDueId)}
       >
-        <View style={styles.cardTop}>
-          <View style={styles.cardLeft}>
-            <View style={[styles.sourceIcon, isPrimary ? { overflow: 'hidden' } : { backgroundColor: src.bg }]}>
-              {isPrimary && (
-                <LinearGradient
-                  colors={[gradient.start, gradient.end]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              )}
-              <AppIcon name={src.icon} size={18} color={isPrimary ? '#FFFFFF' : src.color} />
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={styles.studentName} numberOfLines={1}>
-                {item.studentName}
-              </Text>
-              <Text style={styles.monthText}>{formatMonthShort(item.monthKey)}</Text>
-            </View>
-          </View>
-          <View style={styles.cardRight}>
-            <Text style={styles.amount}>{formatCurrency(item.amount)}</Text>
+        <InitialsAvatar name={item.studentName} size={40} />
+        <View style={styles.cardInfo}>
+          <View style={styles.cardTopRow}>
+            <Text style={styles.studentName} numberOfLines={1}>
+              {item.studentName}
+            </Text>
             <View style={[styles.sourceBadge, { backgroundColor: src.bg }]}>
+              <AppIcon name={src.icon} size={10} color={src.color} />
               <Text style={[styles.sourceText, { color: src.color }]}>{src.label}</Text>
             </View>
           </View>
+          <Text style={styles.metaLine} numberOfLines={1}>
+            {formatMonthShort(item.monthKey)}
+            <Text style={styles.metaDot}> {'·'} </Text>
+            {item.receiptNumber}
+          </Text>
         </View>
-        <View style={styles.cardBottom}>
-          <View style={styles.detailItem}>
-            
-            <AppIcon name="pound" size={12} color={colors.textDisabled} />
-            <Text style={styles.detailText}>{item.receiptNumber}</Text>
-          </View>
-          <View style={styles.cardBottomRight}>
-            <View style={styles.detailItem}>
-              
-              <AppIcon name="calendar-outline" size={12} color={colors.textDisabled} />
-              <Text style={styles.detailText}>{formatDate(item.paidAt)}</Text>
-            </View>
-            
-            <AppIcon name="chevron-right" size={16} color={colors.textDisabled} />
-          </View>
+        <View style={styles.cardRight}>
+          <Text style={styles.amount}>{formatCurrency(item.amount)}</Text>
+          <Text style={styles.dateText}>{formatDate(item.paidAt)}</Text>
         </View>
+        <AppIcon
+          name="chevron-right"
+          size={18}
+          color={colors.textDisabled}
+          style={styles.chevron}
+        />
       </TouchableOpacity>
     );
   }, [colors, styles, handleViewReceipt]);
@@ -199,15 +183,21 @@ export function PaymentHistoryScreen() {
       ListHeaderComponent={
         items.length > 0 ? (
           <View style={styles.summaryCard}>
-            
-            <AppIcon name="check-decagram" size={24} color={colors.success} />
-            <View style={styles.summaryInfo}>
-              <Text style={styles.summaryLabel}>Total Paid</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(totalPaid)}</Text>
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.summaryIconCircle}>
+              <AppIcon name="check-decagram" size={22} color="#FFFFFF" />
             </View>
-            <View style={styles.summaryCount}>
-              <Text style={styles.summaryCountValue}>{items.length}</Text>
-              <Text style={styles.summaryCountLabel}>payments</Text>
+            <View style={styles.summaryInfo}>
+              <Text style={styles.summaryLabel}>Total paid</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(totalPaid)}</Text>
+              <Text style={styles.summarySubtitle}>
+                across {items.length} {items.length === 1 ? 'receipt' : 'receipts'}
+              </Text>
             </View>
           </View>
         ) : null
@@ -233,117 +223,109 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.successBg,
-    borderRadius: radius.lg,
-    padding: spacing.base,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.successBorder,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  summaryIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginRight: spacing.md,
   },
   summaryInfo: {
     flex: 1,
-    marginLeft: spacing.md,
   },
   summaryLabel: {
-    fontSize: fontSizes.sm,
-    color: colors.successText,
+    fontSize: fontSizes.xs,
+    color: 'rgba(255,255,255,0.78)',
+    fontWeight: fontWeights.medium,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   summaryValue: {
-    fontSize: fontSizes.xl,
+    fontSize: fontSizes['3xl'],
     fontWeight: fontWeights.bold,
-    color: colors.successText,
+    color: '#FFFFFF',
+    marginTop: 2,
+    lineHeight: fontSizes['3xl'] + 4,
   },
-  summaryCount: {
-    alignItems: 'center',
-  },
-  summaryCountValue: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.bold,
-    color: colors.successText,
-  },
-  summaryCountLabel: {
+  summarySubtitle: {
     fontSize: fontSizes.xs,
-    color: colors.successText,
+    color: 'rgba(255,255,255,0.78)',
+    marginTop: 2,
   },
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.base,
     marginBottom: spacing.sm,
     ...shadows.sm,
-    overflow: 'hidden',
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.base,
-  },
-  cardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  sourceIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
   },
   cardInfo: {
     flex: 1,
+    marginLeft: spacing.md,
+    minWidth: 0,
   },
-  studentName: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.semibold,
-    color: colors.text,
-  },
-  monthText: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  cardRight: {
-    alignItems: 'flex-end',
-  },
-  amount: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-  },
-  sourceBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 1,
-    borderRadius: radius.full,
-    marginTop: 2,
-  },
-  sourceText: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.semibold,
-  },
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  cardBottomRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  detailItem: {
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
   },
-  detailText: {
+  studentName: {
+    flexShrink: 1,
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
+  metaLine: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  metaDot: {
+    color: colors.textDisabled,
+  },
+  cardRight: {
+    alignItems: 'flex-end',
+    marginLeft: spacing.sm,
+  },
+  amount: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    fontVariant: ['tabular-nums'] as const,
+  },
+  dateText: {
     fontSize: fontSizes.xs,
     color: colors.textDisabled,
+    marginTop: 2,
+  },
+  sourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  sourceText: {
+    fontSize: 10,
+    fontWeight: fontWeights.semibold,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  chevron: {
+    marginLeft: spacing.xs,
   },
   center: {
     flex: 1,

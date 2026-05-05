@@ -23,24 +23,18 @@ import { InlineError } from '../../components/ui/InlineError';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import type { ParentFeesStackParamList } from '../../navigation/ParentFeesStack';
 import { parentApi } from '../../../infra/parent/parent-api';
-import type {
-  AcademyPaymentMethods,
-  ParentPaymentMethod,
-} from '../../../domain/parent/parent.types';
+import type { AcademyPaymentMethods } from '../../../domain/parent/parent.types';
 import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
+import { formatCurrency as formatAmount } from '../../utils/format';
 
 type Nav = NativeStackNavigationProp<ParentFeesStackParamList, 'ManualPayment'>;
 type Route = RouteProp<ParentFeesStackParamList, 'ManualPayment'>;
 
 type Tab = 'UPI' | 'BANK';
-
-function formatAmount(n: number): string {
-  return `\u20B9${n.toLocaleString('en-IN')}`;
-}
 
 function formatMonthKey(monthKey: string): string {
   const [y, m] = monthKey.split('-').map(Number) as [number, number];

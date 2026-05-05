@@ -4,6 +4,7 @@ import { View, Text, Modal, Keyboard, StyleSheet, Pressable } from 'react-native
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { Button } from './Button';
+import { AppIcon } from './AppIcon';
 import { useTheme } from '../../context/ThemeContext';
 
 type ConfirmSheetProps = {
@@ -15,6 +16,24 @@ type ConfirmSheetProps = {
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
+  /**
+   * Whether the confirm button is disabled. Used by callers that need extra
+   * input (e.g. a rejection reason) to gate confirmation until valid.
+   */
+  confirmDisabled?: boolean;
+  /**
+   * Optional icon shown in a tinted circle above the title. The tint follows
+   * `iconVariant` so danger actions read at-a-glance without forcing the
+   * caller to know the colour tokens.
+   */
+  icon?: string;
+  iconVariant?: 'primary' | 'danger' | 'warning';
+  /**
+   * Slot rendered between message and action buttons. Used to put a textarea
+   * or supporting context inside the same modal that gates confirmation —
+   * keeps everything the user needs in one focused dialog.
+   */
+  children?: React.ReactNode;
   testID?: string;
 };
 
@@ -27,10 +46,20 @@ export function ConfirmSheet({
   onConfirm,
   onCancel,
   loading,
+  confirmDisabled,
+  icon,
+  iconVariant = 'primary',
+  children,
   testID,
 }: ConfirmSheetProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const iconTint =
+    iconVariant === 'danger'
+      ? { bg: colors.dangerBg, fg: colors.danger }
+      : iconVariant === 'warning'
+        ? { bg: colors.warningLightBg, fg: colors.warningText }
+        : { bg: colors.primarySoft, fg: colors.primary };
   return (
     <Modal
       visible={visible}
@@ -57,8 +86,21 @@ export function ConfirmSheet({
           importantForAccessibility="no-hide-descendants"
         />
         <View style={styles.dialog}>
-          <Text style={styles.title} accessibilityRole="header">{title}</Text>
+          <View style={styles.header}>
+            {icon ? (
+              <View style={[styles.iconCircle, { backgroundColor: iconTint.bg }]}>
+                <AppIcon name={icon} size={20} color={iconTint.fg} />
+              </View>
+            ) : null}
+            <Text style={styles.title} accessibilityRole="header" numberOfLines={2}>{title}</Text>
+          </View>
           <Text style={styles.message}>{message}</Text>
+          {children ? (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.childrenSlot}>{children}</View>
+            </>
+          ) : null}
           <View style={styles.actions}>
             <View style={styles.button}>
               <Button
@@ -76,6 +118,7 @@ export function ConfirmSheet({
                 variant={confirmVariant}
                 onPress={onConfirm}
                 loading={loading}
+                disabled={confirmDisabled}
                 testID="confirm-ok"
                 accessibilityLabel={`${confirmLabel}: ${title}`}
               />
@@ -100,24 +143,45 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     maxWidth: 420,
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    padding: spacing.xl,
+    padding: spacing.lg,
     ...shadows.sm,
   },
-  title: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.semibold,
-    color: colors.text,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    flex: 1,
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
   message: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.sm,
     color: colors.textSecondary,
-    marginBottom: spacing.xl,
-    lineHeight: 22,
+    lineHeight: 20,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  childrenSlot: {
+    marginBottom: 0,
   },
   actions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
   },
   button: {
     flex: 1,

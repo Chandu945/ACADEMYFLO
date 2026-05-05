@@ -349,24 +349,44 @@ export function ParentDashboardScreen() {
                       <View style={styles.childInfo}>
                         <View style={styles.childNameRow}>
                           <Text style={styles.childName} numberOfLines={1}>{child.fullName}</Text>
-                          <View
-                            style={[
-                              styles.statusDot,
-                              { backgroundColor: child.status === 'ACTIVE' ? colors.success : colors.textDisabled },
-                            ]}
-                          />
+                          {/* Only render the status dot when the child is *not*
+                              active. Always-on green dots for active children
+                              were ambient noise that visually competed with
+                              the attendance column to the right. */}
+                          {child.status !== 'ACTIVE' && (
+                            <View
+                              style={[
+                                styles.statusDot,
+                                { backgroundColor: colors.warning },
+                              ]}
+                            />
+                          )}
                         </View>
                         <Text style={styles.childFee}>
                           {formatCurrency(child.monthlyFee)}
                           <Text style={styles.childFeeLabel}> / month</Text>
                         </Text>
                       </View>
-                      <View style={styles.childAttendance}>
-                        <Text style={[styles.childAttendanceValue, { color: attendColor }]}>
-                          {attendPct != null ? `${attendPct}%` : '--'}
-                        </Text>
-                        <Text style={styles.childAttendanceLabel}>Attendance</Text>
-                      </View>
+                      {attendPct != null ? (
+                        <View style={styles.childAttendance}>
+                          <Text style={[styles.childAttendanceValue, { color: attendColor }]}>
+                            {attendPct}%
+                          </Text>
+                          <Text style={styles.childAttendanceLabel}>Attendance</Text>
+                        </View>
+                      ) : (
+                        // No attendance data this month yet — render a softer
+                        // "No data yet" pill instead of an empty "--/Attendance"
+                        // pair which read as broken UI on the dashboard.
+                        <View style={styles.childAttendanceEmpty}>
+                          <AppIcon
+                            name="calendar-blank-outline"
+                            size={14}
+                            color={colors.textDisabled}
+                          />
+                          <Text style={styles.childAttendanceEmptyText}>No data yet</Text>
+                        </View>
+                      )}
                       <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
                     </TouchableOpacity>
 
@@ -459,7 +479,7 @@ export function ParentDashboardScreen() {
                             </Text>
                           </View>
                           <View style={styles.monthCardTrailing}>
-                            <AppIcon name="receipt-text-outline" size={18} color={colors.textDisabled} />
+                            <AppIcon name="file-document-outline" size={18} color={colors.textDisabled} />
                           </View>
                         </TouchableOpacity>
                       ) : null}
@@ -789,6 +809,21 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   childAttendance: {
     alignItems: 'center',
     marginRight: spacing.sm,
+  },
+  childAttendanceEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgSubtle,
+    marginRight: spacing.sm,
+  },
+  childAttendanceEmptyText: {
+    fontSize: fontSizes.xs,
+    color: colors.textDisabled,
+    fontWeight: fontWeights.medium,
   },
   childAttendanceValue: {
     fontSize: fontSizes.lg,

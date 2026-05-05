@@ -55,6 +55,7 @@ import type { ExpenseSummary } from '../../../domain/expense/expense.types';
 import { useTheme } from '../../context/ThemeContext';
 import { getCurrentMonthIST } from '../../../domain/common/date-utils';
 import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
+import { formatCurrency } from '../../utils/format';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ExpensesHome'>;
 
@@ -85,10 +86,6 @@ function shiftMonth(month: string, delta: number): string {
 
 function currentMonth(): string {
   return getCurrentMonthIST();
-}
-
-function formatCurrency(amount: number): string {
-  return `\u20B9${amount.toLocaleString('en-IN')}`;
 }
 
 function formatDate(dateStr: string): string {

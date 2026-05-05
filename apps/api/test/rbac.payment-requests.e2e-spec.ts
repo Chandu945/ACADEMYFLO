@@ -108,13 +108,17 @@ describe('Payment Requests RBAC (e2e)', () => {
             ur: UserRepository,
             sr: StudentRepository,
             fdr: FeeDueRepository,
+            ar: AcademyRepository,
             prr: PaymentRequestRepository,
-          ) => new CreatePaymentRequestUseCase(ur, sr, fdr, prr, auditRecorder),
+            clock: ClockPort,
+          ) => new CreatePaymentRequestUseCase(ur, sr, fdr, ar, prr, auditRecorder, clock),
           inject: [
             USER_REPOSITORY,
             STUDENT_REPOSITORY,
             FEE_DUE_REPOSITORY,
+            ACADEMY_REPOSITORY,
             PAYMENT_REQUEST_REPOSITORY,
+            CLOCK_PORT,
           ],
         },
         {

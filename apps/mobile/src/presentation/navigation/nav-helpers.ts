@@ -35,7 +35,7 @@ import { CommonActions, StackActions } from '@react-navigation/native';
  * because callers receive `useNavigation()` results with a refined type
  * that doesn't structurally satisfy `NavigationProp<ParamListBase>`.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function popToOrReplaceList(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   navigation: any,

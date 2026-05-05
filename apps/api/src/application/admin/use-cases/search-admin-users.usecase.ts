@@ -1,5 +1,5 @@
-import type { Result } from '@shared/kernel';
-import { ok, err, AppError } from '@shared/kernel';
+import type { Result , AppError } from '@shared/kernel';
+import { ok, err } from '@shared/kernel';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { Paginated, UserRole } from '@academyflo/contracts';
 import { AdminErrors } from '../../common/errors';

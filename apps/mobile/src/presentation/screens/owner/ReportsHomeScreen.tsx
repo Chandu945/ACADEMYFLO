@@ -32,6 +32,7 @@ import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, avatarC
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { getCurrentMonthIST } from '../../../domain/common/date-utils';
+import { formatCurrency } from '../../utils/format';
 
 const revenueApiRef = { getMonthlyRevenue };
 const duesApiRef = { getStudentWiseDues };
@@ -42,10 +43,6 @@ function addMonths(monthStr: string, delta: number): string {
   const ny = d.getFullYear();
   const nm = String(d.getMonth() + 1).padStart(2, '0');
   return `${ny}-${nm}`;
-}
-
-function formatCurrency(amount: number): string {
-  return `\u20B9${amount.toLocaleString('en-IN')}`;
 }
 
 function getSourceLabel(source: string): string {

@@ -133,8 +133,21 @@ export class CreateParentPaymentRequestUseCase {
       if (Number.isFinite(computed)) computedLateFee = computed;
     }
     const maxPayable = due.amount + computedLateFee;
-    if (input.amount > maxPayable) {
-      return err(AppError.validation(`Amount cannot exceed the payable amount of \u20B9${maxPayable}`));
+    // Require an exact match. Mobile UI doesn't expose an editable amount \u2014
+    // it submits whatever it just fetched as totalPayable \u2014 so anything else
+    // is either stale data or a hand-crafted request. Partial payments aren't
+    // supported (and silently allowing them would trap the parent: the
+    // duplicate-pending check below would then block a follow-up payment for
+    // the remainder until the owner manually intervened).
+    if (input.amount !== maxPayable) {
+      if (input.amount > maxPayable) {
+        return err(AppError.validation(`Amount cannot exceed the payable amount of \u20B9${maxPayable}`));
+      }
+      return err(
+        AppError.validation(
+          `Partial payments aren't supported. Please pay the full amount of \u20B9${maxPayable}.`,
+        ),
+      );
     }
 
     // Don't allow stacking requests for the same fee.

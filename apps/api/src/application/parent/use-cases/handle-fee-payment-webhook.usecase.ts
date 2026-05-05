@@ -258,8 +258,25 @@ export class HandleFeePaymentWebhookUseCase {
     return ok(undefined);
   }
 
-  private async loadFeeDueById(feeDueId: string, _academyId: string, _studentId: string) {
-    return this.feeDueRepo.findById(feeDueId);
+  private async loadFeeDueById(feeDueId: string, academyId: string, studentId: string) {
+    // Defense-in-depth: the linked FeePayment was already validated against
+    // the parent's academy at initiate time, so a tenant-mismatch here would
+    // only happen if the FeePayment record itself were corrupted. Still
+    // worth catching — a stray cross-academy lookup that gets here would
+    // otherwise mark the wrong FeeDue paid.
+    const due = await this.feeDueRepo.findById(feeDueId);
+    if (!due) return null;
+    if (due.academyId !== academyId || due.studentId !== studentId) {
+      this.logger.error('Webhook fee-due tenant mismatch — refusing to use', {
+        feeDueId,
+        expectedAcademy: academyId,
+        actualAcademy: due.academyId,
+        expectedStudent: studentId,
+        actualStudent: due.studentId,
+      });
+      return null;
+    }
+    return due;
   }
 }
 

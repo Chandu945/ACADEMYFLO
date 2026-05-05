@@ -18,26 +18,33 @@ import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-
 import { parentApi } from '../../../infra/parent/parent-api';
 import { useAuth } from '../../context/AuthContext';
 import LinearGradient from 'react-native-linear-gradient';
-import { spacing, fontSizes, fontWeights, radius, shadows, avatarColors, gradient } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
-import { getGreeting, getInitials, formatCurrency } from '../../utils/format';
+import { getGreeting, formatCurrency } from '../../utils/format';
 import { useTheme } from '../../context/ThemeContext';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 type Nav = NativeStackNavigationProp<ParentHomeStackParamList, 'ChildrenList'>;
 
-function getAvatarColor(index: number, isDark: boolean): string {
-  const palette = isDark ? avatarColors.dark : avatarColors.light;
-  return palette[index % palette.length]!;
-}
-
 function AttendanceRing({ percent }: { percent: number | null }) {
   const { colors } = useTheme();
   const rStyles = useMemo(() => makeRingStyles(colors), [colors]);
-  const value = percent ?? 0;
+
+  // Empty-state branch: no attendance data this month yet (early in the
+  // month, child not enrolled in any batch with attendance, or batch hasn't
+  // met yet). Render a soft "No data yet" pill instead of an empty ring with
+  // "--" inside, which read as broken UI rather than an empty state.
+  if (percent == null) {
+    return (
+      <View style={rStyles.emptyPill}>
+        <AppIcon name="calendar-blank-outline" size={14} color={colors.textDisabled} />
+        <Text style={rStyles.emptyText}>No data yet</Text>
+      </View>
+    );
+  }
+
   const color =
-    value >= 75 ? colors.success : value >= 50 ? colors.warning : colors.danger;
-  const label = percent != null ? `${percent}%` : '--';
+    percent >= 75 ? colors.success : percent >= 50 ? colors.warning : colors.danger;
 
   return (
     <View style={rStyles.container}>
@@ -47,12 +54,12 @@ function AttendanceRing({ percent }: { percent: number | null }) {
             rStyles.fill,
             {
               borderColor: color,
-              transform: [{ rotate: `${(value / 100) * 360}deg` }],
+              transform: [{ rotate: `${(percent / 100) * 360}deg` }],
             },
           ]}
         />
         <View style={rStyles.inner}>
-          <Text style={[rStyles.value, { color }]}>{label}</Text>
+          <Text style={[rStyles.value, { color }]}>{percent}%</Text>
         </View>
       </View>
       <Text style={rStyles.label}>Attendance</Text>
@@ -82,6 +89,20 @@ const makeRingStyles = (colors: Colors) => StyleSheet.create({
   inner: { alignItems: 'center', justifyContent: 'center' },
   value: { fontSize: fontSizes.sm, fontWeight: fontWeights.bold },
   label: { fontSize: fontSizes.xs, color: colors.textSecondary, marginTop: 2 },
+  emptyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgSubtle,
+  },
+  emptyText: {
+    fontSize: fontSizes.xs,
+    color: colors.textDisabled,
+    fontWeight: fontWeights.medium,
+  },
 });
 
 export function ChildrenListScreen() {
@@ -168,7 +189,7 @@ export function ChildrenListScreen() {
   const keyExtractor = useCallback((item: ChildSummary) => item.studentId, []);
 
   const renderChild = useCallback(
-    ({ item, index }: { item: ChildSummary; index: number }) => (
+    ({ item }: { item: ChildSummary }) => (
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.7}
@@ -186,15 +207,18 @@ export function ChildrenListScreen() {
               <Text style={styles.childName} numberOfLines={1}>
                 {item.fullName}
               </Text>
-              <View
-                style={[
-                  styles.statusDot,
-                  {
-                    backgroundColor:
-                      item.status === 'ACTIVE' ? colors.success : colors.textDisabled,
-                  },
-                ]}
-              />
+              {/* Show the status dot only when the child is *not* active — an
+                  always-on green dot for an active child is ambient noise that
+                  also visually competed with the attendance ring on the right
+                  (it looked like the dot belonged to the attendance column). */}
+              {item.status !== 'ACTIVE' && (
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: colors.warning },
+                  ]}
+                />
+              )}
             </View>
             <View style={styles.detailRow}>
               

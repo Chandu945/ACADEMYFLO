@@ -8,6 +8,7 @@ import {
   InMemoryStudentAttendanceRepository,
   InMemoryExpenseRepository,
   InMemoryHolidayRepository,
+  InMemoryAcademyRepository,
 } from '../../../../test/helpers/in-memory-repos';
 import { User } from '@domain/identity/entities/user.entity';
 import { Student } from '@domain/student/entities/student.entity';
@@ -36,6 +37,7 @@ describe('GetOwnerDashboardKpisUseCase', () => {
     fdRepo = new InMemoryFeeDueRepository();
     attRepo = new InMemoryStudentAttendanceRepository();
     expenseRepo = new InMemoryExpenseRepository();
+    const academyRepoForKpi = new InMemoryAcademyRepository();
 
     useCase = new GetOwnerDashboardKpisUseCase(
       userRepo,
@@ -43,6 +45,7 @@ describe('GetOwnerDashboardKpisUseCase', () => {
       prRepo,
       tlRepo,
       fdRepo,
+      academyRepoForKpi,
       attRepo,
       expenseRepo,
       new InMemoryHolidayRepository(),
@@ -107,6 +110,8 @@ describe('GetOwnerDashboardKpisUseCase', () => {
       studentId: 'student-other',
       monthKey,
       amount: 500,
+      baseAmount: 500,
+      lateFeeAmount: 0,
       source: 'OWNER_DIRECT',
       collectedByUserId: ownerId,
       approvedByUserId: ownerId,

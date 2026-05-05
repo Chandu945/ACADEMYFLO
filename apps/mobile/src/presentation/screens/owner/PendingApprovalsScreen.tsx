@@ -6,7 +6,6 @@ import {
   Text,
   StyleSheet,
   RefreshControl,
-  Alert,
   TouchableOpacity} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -30,6 +29,7 @@ import { spacing, fontSizes, fontWeights, radius, listDefaults, gradient } from 
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { formatMonthKey, formatCurrency } from '../../utils/format';
 
 type SourceFilter = 'ALL' | 'STAFF' | 'PARENT';
 
@@ -117,8 +117,10 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
           actionTarget.item.id,
         );
       } else {
+        // Inline guard — confirm button is disabled until reason is valid,
+        // but defend against direct calls just in case.
         if (rejectionReason.trim().length < 3) {
-          Alert.alert('Rejection Reason Required', 'Please provide a rejection reason (at least 3 characters).');
+          setActionError('Please provide a reason (at least 3 characters).');
           setActing(false);
           return;
         }
@@ -265,36 +267,25 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
         />
       )}
 
-      {actionTarget?.action === 'reject' && (
-        <View style={styles.reasonContainer}>
-          <Text style={styles.reasonLabel}>Rejection Reason</Text>
-          <TextInput
-            style={styles.reasonInput}
-            value={rejectionReason}
-            onChangeText={setRejectionReason}
-            placeholder="Enter reason for rejection..."
-            multiline
-            numberOfLines={3}
-            maxLength={300}
-            accessibilityLabel="Reason for rejecting this payment request"
-            placeholderTextColor={colors.textDisabled}
-            testID="rejection-reason-input"
-          />
-        </View>
-      )}
-
       <ConfirmSheet
         visible={actionTarget !== null}
-        title={actionTarget?.action === 'approve' ? 'Approve Request' : 'Reject Request'}
+        title={actionTarget?.action === 'approve' ? 'Approve Payment' : 'Reject Payment'}
         message={
           actionError
             ? actionError
-            : actionTarget?.action === 'approve'
-              ? `Approve payment request for ${actionTarget?.item.monthKey}?`
-              : `Reject payment request for ${actionTarget?.item.monthKey}?`
+            : actionTarget
+              ? actionTarget.action === 'approve'
+                ? `Mark ${formatCurrency(actionTarget.item.amount)} for ${formatMonthKey(actionTarget.item.monthKey)} as paid? A receipt will be issued.`
+                : `Reject ${formatCurrency(actionTarget.item.amount)} for ${formatMonthKey(actionTarget.item.monthKey)}? The parent will see your reason and can resubmit.`
+              : ''
         }
+        icon={actionTarget?.action === 'approve' ? 'check-circle-outline' : 'close-octagon-outline'}
+        iconVariant={actionTarget?.action === 'approve' ? 'primary' : 'danger'}
         confirmLabel={actionTarget?.action === 'approve' ? 'Approve' : 'Reject'}
         confirmVariant={actionTarget?.action === 'approve' ? 'primary' : 'danger'}
+        confirmDisabled={
+          actionTarget?.action === 'reject' && rejectionReason.trim().length < 3
+        }
         onConfirm={handleAction}
         onCancel={() => {
           setActionTarget(null);
@@ -303,7 +294,31 @@ export function PendingApprovalsScreen({ onActionComplete }: PendingApprovalsScr
         }}
         loading={acting}
         testID="approval-confirm"
-      />
+      >
+        {actionTarget?.action === 'reject' ? (
+          <View>
+            <View style={styles.reasonLabelRow}>
+              <Text style={styles.reasonLabel}>Reason for parent</Text>
+              <Text style={styles.reasonCounter}>
+                {rejectionReason.trim().length}/300
+              </Text>
+            </View>
+            <TextInput
+              style={styles.reasonInput}
+              value={rejectionReason}
+              onChangeText={setRejectionReason}
+              placeholder="e.g. Proof image is unclear"
+              multiline
+              numberOfLines={2}
+              maxLength={300}
+              autoFocus
+              accessibilityLabel="Reason for rejecting this payment request"
+              placeholderTextColor={colors.textDisabled}
+              testID="rejection-reason-input"
+            />
+          </View>
+        ) : null}
+      </ConfirmSheet>
     </SafeAreaView>
   );
 }
@@ -319,26 +334,33 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingBottom: listDefaults.contentPaddingBottomNoFab,
   },
-  reasonContainer: {
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
+  reasonLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
   },
   reasonLabel: {
-    fontSize: fontSizes.base,
-    fontWeight: fontWeights.semibold,
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.medium,
     color: colors.text,
-    marginBottom: spacing.xs,
+  },
+  reasonCounter: {
+    fontSize: fontSizes.xs,
+    color: colors.textDisabled,
+    fontVariant: ['tabular-nums'] as const,
   },
   reasonInput: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    minHeight: 80,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    minHeight: 64,
     textAlignVertical: 'top' as const,
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.sm,
     color: colors.text,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bgSubtle,
   },
 
   /* Source filter tabs */

@@ -14,6 +14,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { formatCurrency as formatCurrencyFull } from '../../utils/format';
 
 // Client-side cache for past years (data won't change)
 const chartCache = new Map<number, MonthlyChartPoint[]>();
@@ -36,10 +37,6 @@ function formatCurrency(n: number): string {
   if (n >= 100000) return `\u20B9${(n / 100000).toFixed(1)}L`;
   if (n >= 1000) return `\u20B9${(n / 1000).toFixed(1)}K`;
   return `\u20B9${n}`;
-}
-
-function formatCurrencyFull(n: number): string {
-  return `\u20B9${n.toLocaleString('en-IN')}`;
 }
 
 type MonthlyChartWidgetProps = {

@@ -29,7 +29,13 @@ import {
   InMemoryStudentRepository,
   InMemoryStudentAttendanceRepository,
   InMemoryHolidayRepository,
+  InMemoryBatchRepository,
+  InMemoryStudentBatchRepository,
 } from './helpers/in-memory-repos';
+import { BATCH_REPOSITORY } from '../src/domain/batch/ports/batch.repository';
+import { STUDENT_BATCH_REPOSITORY } from '../src/domain/batch/ports/student-batch.repository';
+import type { BatchRepository } from '../src/domain/batch/ports/batch.repository';
+import type { StudentBatchRepository } from '../src/domain/batch/ports/student-batch.repository';
 import { createTestTokenService, createInMemoryAuditRecorder } from './helpers/test-services';
 import { User } from '../src/domain/identity/entities/user.entity';
 import { Student } from '../src/domain/student/entities/student.entity';
@@ -60,6 +66,8 @@ describe('Attendance Endpoints (e2e)', () => {
     studentRepo = new InMemoryStudentRepository();
     attendanceRepo = new InMemoryStudentAttendanceRepository();
     holidayRepo = new InMemoryHolidayRepository();
+    const batchRepo = new InMemoryBatchRepository();
+    const studentBatchRepo = new InMemoryStudentBatchRepository();
     jwtService = new JwtService({});
     const tokenService = createTestTokenService(jwtService);
     const auditRecorder = createInMemoryAuditRecorder();
@@ -69,6 +77,22 @@ describe('Attendance Endpoints (e2e)', () => {
       STUDENT_REPOSITORY,
       STUDENT_ATTENDANCE_REPOSITORY,
       HOLIDAY_REPOSITORY,
+    ];
+    const markDeps = [
+      USER_REPOSITORY,
+      STUDENT_REPOSITORY,
+      STUDENT_ATTENDANCE_REPOSITORY,
+      HOLIDAY_REPOSITORY,
+      BATCH_REPOSITORY,
+      STUDENT_BATCH_REPOSITORY,
+    ];
+    const monthlyDeps = [
+      USER_REPOSITORY,
+      STUDENT_REPOSITORY,
+      STUDENT_ATTENDANCE_REPOSITORY,
+      HOLIDAY_REPOSITORY,
+      STUDENT_BATCH_REPOSITORY,
+      BATCH_REPOSITORY,
     ];
 
     const moduleFixture = await Test.createTestingModule({
@@ -84,6 +108,8 @@ describe('Attendance Endpoints (e2e)', () => {
         { provide: STUDENT_REPOSITORY, useValue: studentRepo },
         { provide: STUDENT_ATTENDANCE_REPOSITORY, useValue: attendanceRepo },
         { provide: HOLIDAY_REPOSITORY, useValue: holidayRepo },
+        { provide: BATCH_REPOSITORY, useValue: batchRepo },
+        { provide: STUDENT_BATCH_REPOSITORY, useValue: studentBatchRepo },
         { provide: TOKEN_SERVICE, useValue: tokenService },
         {
           provide: 'GET_DAILY_ATTENDANCE_VIEW_USE_CASE',
@@ -102,8 +128,10 @@ describe('Attendance Endpoints (e2e)', () => {
             sr: StudentRepository,
             ar: StudentAttendanceRepository,
             hr: HolidayRepository,
-          ) => new MarkStudentAttendanceUseCase(ur, sr, ar, hr, auditRecorder),
-          inject: deps,
+            br: BatchRepository,
+            sbr: StudentBatchRepository,
+          ) => new MarkStudentAttendanceUseCase(ur, sr, ar, hr, br, sbr, auditRecorder),
+          inject: markDeps,
         },
         {
           provide: 'BULK_SET_ABSENCES_USE_CASE',
@@ -112,8 +140,10 @@ describe('Attendance Endpoints (e2e)', () => {
             sr: StudentRepository,
             ar: StudentAttendanceRepository,
             hr: HolidayRepository,
-          ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, auditRecorder),
-          inject: deps,
+            br: BatchRepository,
+            sbr: StudentBatchRepository,
+          ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, br, sbr, auditRecorder),
+          inject: markDeps,
         },
         {
           provide: 'DECLARE_HOLIDAY_USE_CASE',
@@ -153,8 +183,10 @@ describe('Attendance Endpoints (e2e)', () => {
             sr: StudentRepository,
             ar: StudentAttendanceRepository,
             hr: HolidayRepository,
-          ) => new GetStudentMonthlyAttendanceUseCase(ur, sr, ar, hr),
-          inject: deps,
+            sbr: StudentBatchRepository,
+            br: BatchRepository,
+          ) => new GetStudentMonthlyAttendanceUseCase(ur, sr, ar, hr, sbr, br),
+          inject: monthlyDeps,
         },
         {
           provide: 'GET_MONTHLY_ATTENDANCE_SUMMARY_USE_CASE',
@@ -163,8 +195,10 @@ describe('Attendance Endpoints (e2e)', () => {
             sr: StudentRepository,
             ar: StudentAttendanceRepository,
             hr: HolidayRepository,
-          ) => new GetMonthlyAttendanceSummaryUseCase(ur, sr, ar, hr),
-          inject: deps,
+            sbr: StudentBatchRepository,
+            br: BatchRepository,
+          ) => new GetMonthlyAttendanceSummaryUseCase(ur, sr, ar, hr, sbr, br),
+          inject: monthlyDeps,
         },
         {
           provide: 'GET_MONTH_DAILY_COUNTS_USE_CASE',
