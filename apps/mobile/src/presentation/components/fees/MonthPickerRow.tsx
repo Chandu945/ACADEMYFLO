@@ -10,6 +10,11 @@ type MonthPickerRowProps = {
   month: string;
   onPrevious: () => void;
   onNext: () => void;
+  /** When true, the right chevron is greyed out and not pressable. Used by
+   *  the fees and reports screens to cap navigation at the current month —
+   *  future months expose only empty/UPCOMING data with no actionable
+   *  workflow. */
+  disableNext?: boolean;
 };
 
 function formatMonth(monthStr: string): string {
@@ -18,7 +23,7 @@ function formatMonth(monthStr: string): string {
   return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
-function MonthPickerRowComponent({ month, onPrevious, onNext }: MonthPickerRowProps) {
+function MonthPickerRowComponent({ month, onPrevious, onNext, disableNext }: MonthPickerRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
@@ -33,13 +38,19 @@ function MonthPickerRowComponent({ month, onPrevious, onNext }: MonthPickerRowPr
         <AppIcon name="chevron-left" size={20} color="#FFFFFF" />
       </Pressable>
       <View style={styles.monthContainer}>
-        
+
         <AppIcon name="calendar-month" size={16} color={colors.textSecondary} />
         <Text style={styles.monthText} testID="month-display">
           {formatMonth(month)}
         </Text>
       </View>
-      <Pressable onPress={onNext} style={styles.arrow} testID="month-next">
+      <Pressable
+        onPress={disableNext ? undefined : onNext}
+        disabled={disableNext}
+        style={[styles.arrow, disableNext && styles.arrowDisabled]}
+        testID="month-next"
+        accessibilityState={{ disabled: !!disableNext }}
+      >
         <LinearGradient
           colors={[gradient.start, gradient.end]}
           start={{ x: 0, y: 0 }}
@@ -69,6 +80,9 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  arrowDisabled: {
+    opacity: 0.35,
   },
   monthContainer: {
     flexDirection: 'row',

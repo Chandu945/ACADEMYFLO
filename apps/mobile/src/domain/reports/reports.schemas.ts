@@ -12,10 +12,17 @@ export const monthlyRevenueItemSchema = z.object({
   createdAt: z.string(),
 });
 
+export const dueMonthBreakdownSchema = z.object({
+  monthKey: z.string(),
+  amount: z.number(),
+  count: z.number(),
+});
+
 export const monthlyRevenueSummarySchema = z.object({
   totalAmount: z.number(),
   transactionCount: z.number(),
   transactions: z.array(monthlyRevenueItemSchema),
+  byDueMonth: z.array(dueMonthBreakdownSchema),
 });
 
 export const studentWiseDueItemSchema = z.object({

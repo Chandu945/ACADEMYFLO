@@ -72,3 +72,13 @@ PaymentRequestSchema.index({ staffUserId: 1, academyId: 1 });
 PaymentRequestSchema.index({ academyId: 1, createdAt: -1 });
 // Parent-scoped queries: "my pending requests" by a specific parent.
 PaymentRequestSchema.index({ source: 1, staffUserId: 1, academyId: 1 });
+// At most one PENDING request per fee due — closes the race window where two
+// concurrent submissions both pass the in-app duplicate-pending check (the
+// JS check + save isn't atomic, so back-to-back parent retries can leak a
+// second pending row). The partialFilterExpression scopes uniqueness to
+// PENDING rows only; APPROVED/REJECTED/CANCELLED rows for the same fee
+// remain unconstrained, so historical attempts and final states all coexist.
+PaymentRequestSchema.index(
+  { feeDueId: 1 },
+  { unique: true, partialFilterExpression: { status: 'PENDING' }, name: 'pending_per_fee_due_unique' },
+);

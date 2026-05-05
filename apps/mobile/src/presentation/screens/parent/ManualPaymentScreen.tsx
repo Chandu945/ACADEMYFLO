@@ -67,7 +67,12 @@ export function ManualPaymentScreen() {
   // posted, etc). Re-fetch the live FeeDue on mount and use that as the
   // submission amount, so we never POST a stale value the backend will
   // reject with "Amount cannot exceed the payable amount".
+  // `liveAmountLoading` blocks Submit until the fresh fetch resolves so the
+  // user can't accidentally submit the route-param amount before we've
+  // verified it. On fetch failure we fall back to paramAmount; the backend
+  // will still reject if it's stale, but the user can retry.
   const [liveAmount, setLiveAmount] = useState<number | null>(null);
+  const [liveAmountLoading, setLiveAmountLoading] = useState(true);
   const amount = liveAmount ?? paramAmount;
 
   const [refNumber, setRefNumber] = useState('');
@@ -129,6 +134,9 @@ export function ManualPaymentScreen() {
         if (!active) return;
         // Network failure — fall back to route-param amount; backend will
         // reject if it's stale, and the user can retry.
+      })
+      .finally(() => {
+        if (active) setLiveAmountLoading(false);
       });
     return () => {
       active = false;
@@ -208,27 +216,6 @@ export function ManualPaymentScreen() {
     setSubmitting(false);
 
     if (!res.ok) {
-      // Backend rejects when our local amount drifts from the live FeeDue
-      // (e.g. owner just lowered the late fee). Parse the maxPayable out of
-      // the error message and auto-correct so the user just taps Submit
-      // again instead of being stuck. The validation message format is
-      // defined in apps/api/.../create-parent-payment-request.usecase.ts:118
-      //    `Amount cannot exceed the payable amount of ₹{maxPayable}`
-      const match = res.error.message.match(
-        /Amount cannot exceed the payable amount of ₹?\s*([0-9,]+)/i,
-      );
-      if (match) {
-        const corrected = Number(match[1]!.replace(/,/g, ''));
-        if (Number.isFinite(corrected) && corrected > 0 && corrected !== amount) {
-          setLiveAmount(corrected);
-          crossAlert(
-            'Amount updated',
-            `The payable amount has changed to ₹${corrected.toLocaleString('en-IN')}. ` +
-              'Tap Submit again to pay this updated amount.',
-          );
-          return;
-        }
-      }
       crossAlert('Could not submit', res.error.message);
       return;
     }
@@ -523,11 +510,12 @@ export function ManualPaymentScreen() {
         </Text>
       </View>
 
-      {/* Submit */}
+      {/* Submit \u2014 blocked until live fee fetch resolves so we never POST a
+          stale route-param amount. */}
       <TouchableOpacity
-        style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
+        style={[styles.submitBtn, (submitting || liveAmountLoading) && { opacity: 0.6 }]}
         onPress={submit}
-        disabled={submitting}
+        disabled={submitting || liveAmountLoading}
         testID="submit-manual-payment"
       >
         <LinearGradient
@@ -536,9 +524,13 @@ export function ManualPaymentScreen() {
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        {!submitting && <AppIcon name="send" size={18} color="#FFFFFF" />}
+        {!submitting && !liveAmountLoading && <AppIcon name="send" size={18} color="#FFFFFF" />}
         <Text style={styles.submitBtnText}>
-          {submitting ? 'Submitting...' : `Submit \u2022 ${formatAmount(amount)}`}
+          {submitting
+            ? 'Submitting...'
+            : liveAmountLoading
+              ? 'Loading amount...'
+              : `Submit \u2022 ${formatAmount(amount)}`}
         </Text>
       </TouchableOpacity>
     </ScrollView>

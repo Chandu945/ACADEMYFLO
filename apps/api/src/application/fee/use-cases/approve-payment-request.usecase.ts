@@ -19,9 +19,7 @@ import { PaymentRequestErrors } from '../../common/errors';
 import type { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { toPaymentRequestDto } from '../dtos/payment-request.dto';
 import type { UserRole } from '@academyflo/contracts';
-import { DEFAULT_RECEIPT_PREFIX, computeLateFee } from '@academyflo/contracts';
-import { formatLocalDate } from '../../../shared/date-utils';
-import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
+import { DEFAULT_RECEIPT_PREFIX } from '@academyflo/contracts';
 import { randomUUID } from 'crypto';
 
 export interface ApprovePaymentRequestInput {
@@ -83,15 +81,14 @@ export class ApprovePaymentRequestUseCase {
     const academy = await this.academyRepo.findById(request.academyId);
     const prefix = academy?.receiptPrefix ?? DEFAULT_RECEIPT_PREFIX;
 
-    // Compute late fee snapshot — prefer snapshotted config, fall back to live academy config
-    // Use IST-local date (TZ=Asia/Kolkata) to avoid off-by-one around midnight IST.
-    const todayStr = formatLocalDate(now);
-    let lateFeeApplied = 0;
-    const liveConfig = buildLateFeeConfigFromAcademy(academy);
-    const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
-    if (effectiveConfig) {
-      lateFeeApplied = computeLateFee(due.dueDate, todayStr, effectiveConfig);
-    }
+    // Late fee is derived from the parent's actual payment, not recomputed.
+    // The parent paid `request.amount`; the principal is capped at `due.amount`,
+    // and anything above is treated as late-fee remitted. This keeps three
+    // numbers consistent: TransactionLog.amount (cash), FeeDue.amount (base),
+    // FeeDue.lateFeeApplied (late fee actually paid). Recomputing at approval
+    // would let computeLateFee drift past the parent's submission window and
+    // produce reports where (amount + lateFeeApplied) ≠ what the parent paid.
+    const lateFeeApplied = Math.max(0, request.amount - due.amount);
 
     // Atomic: approve request + mark due paid + create transaction log
     const approved = request.approve(input.actorUserId, now);
@@ -127,6 +124,13 @@ export class ApprovePaymentRequestUseCase {
         const txLogSource =
           request.source === 'PARENT' ? 'MANUAL' : 'STAFF_APPROVED';
 
+        // Persist the principal/late-fee split alongside the gross amount.
+        // baseAmount is whatever the parent paid toward base (capped at
+        // due.amount); the rest is late fee. Same derivation as
+        // FeeDue.lateFeeApplied above so the two records stay reconcilable.
+        const baseAmount = Math.min(request.amount, due.amount);
+        const lateFeeAmount = lateFeeApplied;
+
         const txLog = TransactionLog.create({
           id: randomUUID(),
           academyId: request.academyId,
@@ -135,6 +139,8 @@ export class ApprovePaymentRequestUseCase {
           studentId: request.studentId,
           monthKey: request.monthKey,
           amount: request.amount,
+          baseAmount,
+          lateFeeAmount,
           source: txLogSource,
           collectedByUserId: request.staffUserId,
           approvedByUserId: input.actorUserId,

@@ -79,13 +79,20 @@ describe('CreatePaymentRequestUseCase', () => {
     } as jest.Mocked<PaymentRequestRepository>;
 
     const auditRecorder = { record: jest.fn() };
+    const academyRepo = {
+      findById: jest.fn().mockResolvedValue({ lateFeeEnabled: false }),
+    };
+    const clock = { now: () => new Date('2026-05-05T12:00:00Z') };
 
     useCase = new CreatePaymentRequestUseCase(
       userRepo,
       studentRepo,
       feeDueRepo,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      academyRepo as any,
       prRepo,
       auditRecorder,
+      clock,
     );
   });
 

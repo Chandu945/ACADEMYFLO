@@ -57,6 +57,14 @@ export interface FeeDueRepository {
    */
   sumLateFeeCollectedByAcademyAndMonth(academyId: string, monthKey: string): Promise<number>;
   /**
+   * DB-side SUM of lateFeeApplied for PAID fee dues whose paidAt falls in the
+   * given range (cash-bucketed). Used by the dashboard's Late Fees tile so the
+   * value tracks "cash collected this month" rather than "late fee accrued on
+   * this month's dues" — keeps the tile consistent with Total Collected, which
+   * also buckets by transaction date.
+   */
+  sumLateFeeCollectedByAcademyAndDateRange(academyId: string, from: Date, to: Date): Promise<number>;
+  /**
    * DB-side COUNT of fee dues with status='DUE' and dueDate <= today.
    */
   countOverdueByAcademy(academyId: string, today: string): Promise<number>;

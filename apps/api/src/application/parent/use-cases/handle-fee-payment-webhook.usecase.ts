@@ -158,6 +158,12 @@ export class HandleFeePaymentWebhookUseCase {
         const next = await this.transactionLogRepo.incrementReceiptCounter(payment.academyId, prefix);
         receiptNumber = generateReceiptNumber(prefix, next);
 
+        // Online payment captures base + late-fee snapshot at initiate time.
+        // Previously this used `payment.baseAmount` for TxLog.amount which
+        // dropped the late-fee from the cash record; now we record the full
+        // total and split it across baseAmount/lateFeeAmount for parity with
+        // approve-payment-request and mark-fee-paid.
+        const lateFeeAmount = payment.lateFeeSnapshot ?? 0;
         const txLog = TransactionLog.create({
           id: randomUUID(),
           academyId: payment.academyId,
@@ -165,7 +171,9 @@ export class HandleFeePaymentWebhookUseCase {
           paymentRequestId: null,
           studentId: payment.studentId,
           monthKey: payment.monthKey,
-          amount: payment.baseAmount,
+          amount: payment.baseAmount + lateFeeAmount,
+          baseAmount: payment.baseAmount,
+          lateFeeAmount,
           source: 'PARENT_ONLINE',
           collectedByUserId: payment.parentUserId,
           approvedByUserId: payment.parentUserId,

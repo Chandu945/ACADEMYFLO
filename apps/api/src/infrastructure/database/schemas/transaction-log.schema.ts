@@ -33,6 +33,16 @@ export class TransactionLogModel {
   @Prop({ required: true })
   amount!: number;
 
+  // Optional principal / late-fee split. Null on rows created before the
+  // split was introduced; together they sum to `amount` for new rows.
+  // Readers fall back to the linked FeeDue's `amount`/`lateFeeApplied` when
+  // null, so old rows still render reconcilably.
+  @Prop({ type: Number, default: null })
+  baseAmount!: number | null;
+
+  @Prop({ type: Number, default: null })
+  lateFeeAmount!: number | null;
+
   @Prop({ required: true })
   collectedByUserId!: string;
 

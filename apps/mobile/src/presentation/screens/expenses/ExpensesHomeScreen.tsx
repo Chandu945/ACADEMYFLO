@@ -54,6 +54,7 @@ import type { Colors } from '../../theme';
 import type { ExpenseSummary } from '../../../domain/expense/expense.types';
 import { useTheme } from '../../context/ThemeContext';
 import { getCurrentMonthIST } from '../../../domain/common/date-utils';
+import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ExpensesHome'>;
 
@@ -364,27 +365,12 @@ export function ExpensesHomeScreen() {
   const ListHeader = (
     <View>
       {/* Month Picker */}
-      <View style={styles.monthPicker}>
-        <TouchableOpacity
-          onPress={() => setMonth(shiftMonth(month, -1))}
-          style={styles.monthBtn}
-          testID="prev-month"
-        >
-          
-          <AppIcon name="chevron-left" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <View style={styles.monthCenter}>
-          <Text style={styles.monthLabel}>{formatMonth(month)}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => setMonth(shiftMonth(month, 1))}
-          style={styles.monthBtn}
-          testID="next-month"
-        >
-          
-          <AppIcon name="chevron-right" size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
+      <MonthPickerRow
+        month={month}
+        onPrevious={() => setMonth(shiftMonth(month, -1))}
+        onNext={() => setMonth(shiftMonth(month, 1))}
+        disableNext={month >= currentMonth()}
+      />
 
       {/* Summary */}
       {summary && !summaryLoading && (
@@ -759,36 +745,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
     paddingBottom: listDefaults.contentPaddingBottom,
-  },
-
-  /* ── Month Picker ────────────────────────────────── */
-  monthPicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    marginBottom: spacing.base,
-    ...shadows.sm,
-  },
-  monthBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.bgSubtle,
-  },
-  monthCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  monthLabel: {
-    fontSize: fontSizes.xl,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
   },
 
   /* ── Summary Card ────────────────────────────────── */

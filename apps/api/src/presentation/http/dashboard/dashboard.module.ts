@@ -33,6 +33,8 @@ import { STUDENT_ATTENDANCE_REPOSITORY } from '@domain/attendance/ports/student-
 import { EXPENSE_REPOSITORY } from '@domain/expense/ports/expense.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { HOLIDAY_REPOSITORY } from '@domain/attendance/ports/holiday.repository';
+import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { HolidayModel, HolidaySchema } from '@infrastructure/database/schemas/holiday.schema';
 import { MongoHolidayRepository } from '@infrastructure/repositories/mongo-holiday.repository';
@@ -79,16 +81,18 @@ import type { ExpenseRepository } from '@domain/expense/ports/expense.repository
         prRepo: PaymentRequestRepository,
         tlRepo: TransactionLogRepository,
         fdRepo: FeeDueRepository,
+        academyRepo: AcademyRepository,
         attRepo: StudentAttendanceRepository,
         expRepo: ExpenseRepository,
         holRepo: HolidayRepository,
-      ) => new GetOwnerDashboardKpisUseCase(userRepo, studentRepo, prRepo, tlRepo, fdRepo, attRepo, expRepo, holRepo),
+      ) => new GetOwnerDashboardKpisUseCase(userRepo, studentRepo, prRepo, tlRepo, fdRepo, academyRepo, attRepo, expRepo, holRepo),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
         PAYMENT_REQUEST_REPOSITORY,
         TRANSACTION_LOG_REPOSITORY,
         FEE_DUE_REPOSITORY,
+        ACADEMY_REPOSITORY,
         STUDENT_ATTENDANCE_REPOSITORY,
         EXPENSE_REPOSITORY,
         HOLIDAY_REPOSITORY,

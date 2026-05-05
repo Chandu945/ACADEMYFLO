@@ -176,7 +176,17 @@ export class CreateParentPaymentRequestUseCase {
       paymentRefNumber: input.paymentRefNumber?.trim() || null,
     });
 
-    await this.paymentRequestRepo.save(pr);
+    try {
+      await this.paymentRequestRepo.save(pr);
+    } catch (e) {
+      // The partial unique index on (feeDueId, status='PENDING') catches the
+      // race where two concurrent submissions both pass the in-memory
+      // duplicate check above. Surface the same error the JS check returns.
+      if ((e as { code?: number })?.code === 11000) {
+        return err(PaymentRequestErrors.duplicatePending());
+      }
+      throw e;
+    }
 
     await this.auditRecorder.record({
       academyId: user.academyId,

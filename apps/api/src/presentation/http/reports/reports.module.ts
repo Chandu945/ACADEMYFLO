@@ -15,8 +15,11 @@ import { MongoFeeDueRepository } from '@infrastructure/repositories/mongo-fee-du
 import { MongoTransactionLogRepository } from '@infrastructure/repositories/mongo-transaction-log.repository';
 import { STUDENT_REPOSITORY } from '@domain/student/ports/student.repository';
 import { FEE_DUE_REPOSITORY } from '@domain/fee/ports/fee-due.repository';
+import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
 import { TRANSACTION_LOG_REPOSITORY } from '@domain/fee/ports/transaction-log.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import { CLOCK_PORT } from '@application/common/clock.port';
+import { SystemClock } from '@application/common/system-clock';
 import { GetStudentWiseDuesReportUseCase } from '@application/reports/use-cases/get-student-wise-dues-report.usecase';
 import { GetMonthWiseDuesReportUseCase } from '@application/reports/use-cases/get-month-wise-dues-report.usecase';
 import { GetMonthlyRevenueReportUseCase } from '@application/reports/use-cases/get-monthly-revenue-report.usecase';
@@ -28,7 +31,9 @@ import type { PdfRenderer } from '@application/reports/ports/pdf-renderer.port';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log.repository';
+import type { ClockPort } from '@application/common/clock.port';
 
 @Module({
   imports: [
@@ -46,6 +51,7 @@ import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log
     { provide: STUDENT_REPOSITORY, useClass: MongoStudentRepository },
     { provide: FEE_DUE_REPOSITORY, useClass: MongoFeeDueRepository },
     { provide: TRANSACTION_LOG_REPOSITORY, useClass: MongoTransactionLogRepository },
+    { provide: CLOCK_PORT, useClass: SystemClock },
     { provide: PDF_RENDERER, useClass: PdfkitRenderer },
     {
       provide: 'GET_STUDENT_WISE_DUES_REPORT_USE_CASE',
@@ -62,8 +68,10 @@ import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log
         userRepo: UserRepository,
         studentRepo: StudentRepository,
         fdRepo: FeeDueRepository,
-      ) => new GetMonthWiseDuesReportUseCase(userRepo, studentRepo, fdRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, FEE_DUE_REPOSITORY],
+        academyRepo: AcademyRepository,
+        clock: ClockPort,
+      ) => new GetMonthWiseDuesReportUseCase(userRepo, studentRepo, fdRepo, academyRepo, clock),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, CLOCK_PORT],
     },
     {
       provide: 'GET_MONTHLY_REVENUE_REPORT_USE_CASE',

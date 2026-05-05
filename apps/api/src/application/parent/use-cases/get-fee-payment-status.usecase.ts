@@ -83,6 +83,9 @@ export class GetFeePaymentStatusUseCase {
             const next = await this.transactionLogRepo.incrementReceiptCounter(payment.academyId, prefix);
             const receiptNumber = generateReceiptNumber(prefix, next);
 
+            // Mirrors the webhook handler — record the gross cash collected
+            // (base + late-fee snapshot) and split for downstream reports.
+            const lateFeeAmount = payment.lateFeeSnapshot ?? 0;
             const txLog = TransactionLog.create({
               id: randomUUID(),
               academyId: payment.academyId,
@@ -90,7 +93,9 @@ export class GetFeePaymentStatusUseCase {
               paymentRequestId: null,
               studentId: payment.studentId,
               monthKey: payment.monthKey,
-              amount: payment.baseAmount,
+              amount: payment.baseAmount + lateFeeAmount,
+              baseAmount: payment.baseAmount,
+              lateFeeAmount,
               source: 'PARENT_ONLINE',
               collectedByUserId: payment.parentUserId,
               approvedByUserId: payment.parentUserId,

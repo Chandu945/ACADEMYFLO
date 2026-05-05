@@ -84,6 +84,11 @@ export class MarkFeePaidUseCase {
       const next = await this.transactionLogRepo.incrementReceiptCounter(academyId, prefix);
       const receiptNumber = generateReceiptNumber(prefix, next);
 
+      // Owner-direct mark-paid records the full cash they collected: base
+      // plus any late fee that applied on the date they marked it. Previously
+      // this stored only `due.amount`, which under-reported revenue by the
+      // late-fee amount and made TransactionLog.amount disagree with what
+      // FeeDue says was paid.
       const txLog = TransactionLog.create({
         id: randomUUID(),
         academyId,
@@ -91,7 +96,9 @@ export class MarkFeePaidUseCase {
         paymentRequestId: null,
         studentId: input.studentId,
         monthKey: input.monthKey,
-        amount: due.amount,
+        amount: due.amount + lateFeeApplied,
+        baseAmount: due.amount,
+        lateFeeAmount: lateFeeApplied,
         source: 'OWNER_DIRECT',
         collectedByUserId: input.actorUserId,
         approvedByUserId: input.actorUserId,

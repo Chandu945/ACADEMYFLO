@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 import { PaymentRequest } from '@domain/fee/entities/payment-request.entity';
 import {
@@ -14,7 +15,11 @@ import { PaymentRequestErrors } from '../../common/errors';
 import type { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { toPaymentRequestDto } from '../dtos/payment-request.dto';
 import type { UserRole } from '@academyflo/contracts';
+import { computeLateFee } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { ClockPort } from '../../common/clock.port';
+import { formatLocalDate } from '../../../shared/date-utils';
+import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
 import { randomUUID } from 'crypto';
 
 export interface CreatePaymentRequestInput {
@@ -30,8 +35,10 @@ export class CreatePaymentRequestUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly feeDueRepo: FeeDueRepository,
+    private readonly academyRepo: AcademyRepository,
     private readonly paymentRequestRepo: PaymentRequestRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly clock: ClockPort,
   ) {}
 
   async execute(input: CreatePaymentRequestInput): Promise<Result<PaymentRequestDto, AppError>> {
@@ -60,18 +67,42 @@ export class CreatePaymentRequestUseCase {
     const existingPending = await this.paymentRequestRepo.findPendingByFeeDue(due.id.toString());
     if (existingPending) return err(PaymentRequestErrors.duplicatePending());
 
+    // Staff cash collection records the full amount the parent handed over —
+    // base + current late fee. Previously this captured only `due.amount`,
+    // leaving the late fee uncollected even though the parent had paid it.
+    // Computed dynamically from the same config the parent's screen uses, so
+    // staff and parent see the same total.
+    const academy = await this.academyRepo.findById(user.academyId);
+    if (!academy) return err(PaymentRequestErrors.academyRequired());
+    const liveConfig = buildLateFeeConfigFromAcademy(academy);
+    const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+    let lateFee = 0;
+    if (effectiveConfig) {
+      const todayStr = formatLocalDate(this.clock.now());
+      const computed = computeLateFee(due.dueDate, todayStr, effectiveConfig);
+      if (Number.isFinite(computed)) lateFee = computed;
+    }
+    const totalPayable = due.amount + lateFee;
+
     const pr = PaymentRequest.create({
       id: randomUUID(),
       academyId: user.academyId,
       studentId: input.studentId,
       feeDueId: due.id.toString(),
       monthKey: input.monthKey,
-      amount: due.amount,
+      amount: totalPayable,
       staffUserId: input.actorUserId,
       staffNotes: input.staffNotes.trim(),
     });
 
-    await this.paymentRequestRepo.save(pr);
+    try {
+      await this.paymentRequestRepo.save(pr);
+    } catch (e) {
+      if ((e as { code?: number })?.code === 11000) {
+        return err(PaymentRequestErrors.duplicatePending());
+      }
+      throw e;
+    }
 
     await this.auditRecorder.record({
       academyId: user.academyId,
@@ -79,7 +110,7 @@ export class CreatePaymentRequestUseCase {
       action: 'PAYMENT_REQUEST_CREATED',
       entityType: 'PAYMENT_REQUEST',
       entityId: pr.id.toString(),
-      context: { studentId: input.studentId, monthKey: input.monthKey, amount: String(due.amount) },
+      context: { studentId: input.studentId, monthKey: input.monthKey, amount: String(totalPayable) },
     });
 
     return ok(toPaymentRequestDto(pr, {

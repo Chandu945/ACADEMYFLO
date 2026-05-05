@@ -55,10 +55,24 @@ export class ExportMonthlyRevenuePdfUseCase {
 
     const totalAmount = logs.reduce((sum, l) => sum + l.amount, 0);
 
+    // Mirror the breakdown the on-screen report shows so the exported PDF
+    // tells the same cash-vs-accrual story.
+    const byDueMonthMap = new Map<string, { amount: number; count: number }>();
+    for (const l of logs) {
+      const cur = byDueMonthMap.get(l.monthKey) ?? { amount: 0, count: 0 };
+      cur.amount += l.amount;
+      cur.count += 1;
+      byDueMonthMap.set(l.monthKey, cur);
+    }
+    const byDueMonth = Array.from(byDueMonthMap.entries())
+      .map(([monthKey, v]) => ({ monthKey, amount: v.amount, count: v.count }))
+      .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+
     const pdf = await this.pdfRenderer.renderMonthlyRevenue(input.month, {
       totalAmount,
       transactionCount: logs.length,
       transactions,
+      byDueMonth,
     });
 
     return ok(pdf);

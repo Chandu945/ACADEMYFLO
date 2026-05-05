@@ -56,20 +56,19 @@ function DatePickerRowComponent({ date, onPrevious, onNext, onToday, isToday }: 
       </Pressable>
 
       <Pressable
-        onPress={onNext}
+        onPress={isToday ? undefined : onNext}
         style={[styles.arrow, isToday && styles.arrowDisabled]}
         disabled={isToday}
         testID="date-next"
+        accessibilityState={{ disabled: isToday }}
       >
-        {!isToday && (
-          <LinearGradient
-            colors={[gradient.start, gradient.end]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
-        <AppIcon name="chevron-right" size={20} color={isToday ? colors.textDisabled : '#FFFFFF'} />
+        <LinearGradient
+          colors={[gradient.start, gradient.end]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AppIcon name="chevron-right" size={20} color="#FFFFFF" />
       </Pressable>
     </View>
   );
@@ -94,8 +93,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   arrowDisabled: {
-    backgroundColor: colors.border,
-    opacity: 0.5,
+    opacity: 0.35,
   },
   dateContainer: {
     flexDirection: 'row',

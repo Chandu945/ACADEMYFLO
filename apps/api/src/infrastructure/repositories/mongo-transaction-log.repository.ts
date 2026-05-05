@@ -25,6 +25,8 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
       source: log.source,
       monthKey: log.monthKey,
       amount: log.amount,
+      baseAmount: log.baseAmount,
+      lateFeeAmount: log.lateFeeAmount,
       collectedByUserId: log.collectedByUserId,
       approvedByUserId: log.approvedByUserId,
       receiptNumber: log.receiptNumber,
@@ -202,6 +204,8 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
       source: PaidSource;
       monthKey: string;
       amount: number;
+      baseAmount: number | null;
+      lateFeeAmount: number | null;
       collectedByUserId: string;
       approvedByUserId: string;
       receiptNumber: string;
@@ -218,6 +222,8 @@ export class MongoTransactionLogRepository implements TransactionLogRepository {
       source: d.source,
       monthKey: d.monthKey,
       amount: d.amount,
+      baseAmount: d.baseAmount ?? null,
+      lateFeeAmount: d.lateFeeAmount ?? null,
       collectedByUserId: d.collectedByUserId,
       approvedByUserId: d.approvedByUserId,
       receiptNumber: d.receiptNumber,

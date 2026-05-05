@@ -27,6 +27,7 @@ import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { getCurrentMonthIST } from '../../../domain/common/date-utils';
+import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'EventList'>;
 
@@ -355,21 +356,13 @@ export function EventListScreen() {
       )}
 
       {/* ── Month Navigation ──────────────────────── */}
-      <View style={styles.monthNav}>
-        <TouchableOpacity onPress={() => navigateMonth(-1)} style={styles.monthNavBtn} accessibilityLabel="Previous month">
-          <AppIcon name="chevron-left" size={22} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.monthLabel}>
-          {(() => { const [y, m] = month.split('-'); const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${names[Number(m) - 1]} ${y}`; })()}
-        </Text>
-        <TouchableOpacity onPress={() => navigateMonth(1)} style={styles.monthNavBtn} disabled={month >= currentMonth} accessibilityLabel="Next month">
-          <AppIcon name="chevron-right" size={22} color={month >= currentMonth ? colors.textDisabled : colors.text} />
-        </TouchableOpacity>
-        {month !== currentMonth && (
-          <TouchableOpacity onPress={() => { setMonth(currentMonth); setPage(1); setItems([]); }} style={styles.monthResetBtn}>
-            <Text style={[styles.monthResetText, { color: colors.text }]}>This Month</Text>
-          </TouchableOpacity>
-        )}
+      <View style={styles.monthNavWrap}>
+        <MonthPickerRow
+          month={month}
+          onPrevious={() => navigateMonth(-1)}
+          onNext={() => navigateMonth(1)}
+          disableNext={month >= currentMonth}
+        />
       </View>
 
       {error && <InlineError message={error} onRetry={() => fetchEvents(1)} />}
@@ -691,30 +684,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
 
   /* ── Month Navigation ─────────────────────────── */
-  monthNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
+  monthNavWrap: {
     paddingHorizontal: spacing.base,
-    gap: spacing.sm,
-  },
-  monthNavBtn: {
-    padding: spacing.xs,
-  },
-  monthLabel: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.semibold,
-    color: colors.text,
-    minWidth: 90,
-    textAlign: 'center',
-  },
-  monthResetBtn: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  monthResetText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.medium,
   },
 });

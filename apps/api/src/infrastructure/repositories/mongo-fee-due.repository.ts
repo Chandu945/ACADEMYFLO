@@ -257,6 +257,27 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     return result[0]?.total ?? 0;
   }
 
+  async sumLateFeeCollectedByAcademyAndDateRange(
+    academyId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
+    const result = await this.model
+      .aggregate<{ total: number }>([
+        {
+          $match: {
+            academyId,
+            status: 'PAID',
+            lateFeeApplied: { $gt: 0 },
+            paidAt: { $gte: from, $lte: to },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$lateFeeApplied' } } },
+      ])
+      .exec();
+    return result[0]?.total ?? 0;
+  }
+
   async countOverdueByAcademy(academyId: string, today: string): Promise<number> {
     return this.model.countDocuments({ academyId, status: 'DUE', dueDate: { $lte: today } }).exec();
   }

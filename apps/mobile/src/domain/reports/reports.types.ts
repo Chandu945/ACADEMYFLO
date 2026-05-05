@@ -17,10 +17,17 @@ export type MonthlyRevenueItem = {
   createdAt: string;
 };
 
+export type DueMonthBreakdown = {
+  monthKey: string;
+  amount: number;
+  count: number;
+};
+
 export type MonthlyRevenueSummary = {
   totalAmount: number;
   transactionCount: number;
   transactions: MonthlyRevenueItem[];
+  byDueMonth: DueMonthBreakdown[];
 };
 
 export type StudentWiseDueItem = {

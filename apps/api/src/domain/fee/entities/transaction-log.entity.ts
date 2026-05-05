@@ -8,7 +8,19 @@ export interface TransactionLogProps {
   paymentRequestId: string | null;
   studentId: string;
   monthKey: string;
+  /** Total cash collected = baseAmount + lateFeeAmount (when split is set). */
   amount: number;
+  /**
+   * Principal portion of `amount`. Null on rows created before the split was
+   * introduced — readers should fall back to the linked FeeDue.amount.
+   */
+  baseAmount: number | null;
+  /**
+   * Late-fee portion of `amount`. Null on legacy rows — fall back to the
+   * linked FeeDue.lateFeeApplied. Together baseAmount + lateFeeAmount must
+   * equal amount; the approve use-case enforces this invariant at write time.
+   */
+  lateFeeAmount: number | null;
   source: PaidSource;
   collectedByUserId: string;
   approvedByUserId: string;
@@ -29,6 +41,8 @@ export class TransactionLog extends Entity<TransactionLogProps> {
     studentId: string;
     monthKey: string;
     amount: number;
+    baseAmount: number;
+    lateFeeAmount: number;
     source: PaidSource;
     collectedByUserId: string;
     approvedByUserId: string;
@@ -41,6 +55,8 @@ export class TransactionLog extends Entity<TransactionLogProps> {
       studentId: params.studentId,
       monthKey: params.monthKey,
       amount: params.amount,
+      baseAmount: params.baseAmount,
+      lateFeeAmount: params.lateFeeAmount,
       source: params.source,
       collectedByUserId: params.collectedByUserId,
       approvedByUserId: params.approvedByUserId,
@@ -79,6 +95,14 @@ export class TransactionLog extends Entity<TransactionLogProps> {
 
   get amount(): number {
     return this.props.amount;
+  }
+
+  get baseAmount(): number | null {
+    return this.props.baseAmount;
+  }
+
+  get lateFeeAmount(): number | null {
+    return this.props.lateFeeAmount;
   }
 
   get collectedByUserId(): string {

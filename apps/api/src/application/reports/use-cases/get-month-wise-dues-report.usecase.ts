@@ -4,11 +4,16 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import { canViewReports } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
 import type { MonthWiseDuesSummaryDto, MonthWiseDueItemDto } from '../dtos/month-wise-dues.dto';
 import type { UserRole } from '@academyflo/contracts';
+import { computeLateFee } from '@academyflo/contracts';
+import type { ClockPort } from '../../common/clock.port';
+import { formatLocalDate } from '../../../shared/date-utils';
+import { buildLateFeeConfigFromAcademy } from '../../fee/common/late-fee';
 
 export interface GetMonthWiseDuesReportInput {
   actorUserId: string;
@@ -21,6 +26,8 @@ export class GetMonthWiseDuesReportUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly feeDueRepo: FeeDueRepository,
+    private readonly academyRepo: AcademyRepository,
+    private readonly clock: ClockPort,
   ) {}
 
   async execute(
@@ -35,7 +42,10 @@ export class GetMonthWiseDuesReportUseCase {
     if (!user || !user.academyId) return err(FeeErrors.academyRequired());
 
     const academyId = user.academyId;
-    const allDues = await this.feeDueRepo.listByAcademyAndMonth(academyId, input.month);
+    const [allDues, academy] = await Promise.all([
+      this.feeDueRepo.listByAcademyAndMonth(academyId, input.month),
+      this.academyRepo.findById(academyId),
+    ]);
 
     // Load student names
     const studentIds = [...new Set(allDues.map((d) => d.studentId))];
@@ -47,18 +57,34 @@ export class GetMonthWiseDuesReportUseCase {
       }
     }
 
+    const liveConfig = buildLateFeeConfigFromAcademy(academy);
+    const todayStr = formatLocalDate(this.clock.now());
+
     let paidCount = 0;
     let unpaidCount = 0;
     let paidAmount = 0;
     let unpaidAmount = 0;
 
     const dues: MonthWiseDueItemDto[] = allDues.map((due) => {
+      let lateFee = 0;
+      if (due.status === 'PAID') {
+        // Snapshotted at approval — same value the parent paid.
+        lateFee = due.lateFeeApplied ?? 0;
+      } else {
+        const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+        if (effectiveConfig) {
+          const computed = computeLateFee(due.dueDate, todayStr, effectiveConfig);
+          if (Number.isFinite(computed)) lateFee = computed;
+        }
+      }
+      const totalPayable = due.amount + lateFee;
+
       if (due.status === 'PAID') {
         paidCount++;
-        paidAmount += due.amount;
+        paidAmount += totalPayable;
       } else {
         unpaidCount++;
-        unpaidAmount += due.amount;
+        unpaidAmount += totalPayable;
       }
 
       return {
@@ -68,6 +94,8 @@ export class GetMonthWiseDuesReportUseCase {
         monthKey: due.monthKey,
         dueDate: due.dueDate,
         amount: due.amount,
+        lateFee,
+        totalPayable,
         status: due.status,
         paidAt: due.paidAt ? due.paidAt.toISOString() : null,
         paidSource: due.paidSource,

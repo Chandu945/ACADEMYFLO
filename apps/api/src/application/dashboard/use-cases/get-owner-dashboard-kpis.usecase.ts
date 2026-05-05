@@ -6,6 +6,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 import type { TransactionLogRepository } from '@domain/fee/ports/transaction-log.repository';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
 import type { ExpenseRepository } from '@domain/expense/ports/expense.repository';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
@@ -14,6 +15,8 @@ import { FeeErrors } from '../../common/errors';
 import { formatLocalDate, toMonthKeyFromDate } from '@shared/date-utils';
 import type { OwnerDashboardKpisDto } from '../dtos/owner-dashboard.dto';
 import type { UserRole } from '@academyflo/contracts';
+import { computeLateFee } from '@academyflo/contracts';
+import { buildLateFeeConfigFromAcademy } from '../../fee/common/late-fee';
 
 export interface GetOwnerDashboardKpisInput {
   actorUserId: string;
@@ -29,6 +32,7 @@ export class GetOwnerDashboardKpisUseCase {
     private readonly paymentRequestRepo: PaymentRequestRepository,
     private readonly transactionLogRepo: TransactionLogRepository,
     private readonly feeDueRepo: FeeDueRepository,
+    private readonly academyRepo: AcademyRepository,
     private readonly attendanceRepo: StudentAttendanceRepository,
     private readonly expenseRepo: ExpenseRepository,
     private readonly holidayRepo: HolidayRepository,
@@ -54,7 +58,8 @@ export class GetOwnerDashboardKpisUseCase {
       pendingPaymentRequests,
       totalCollected,
       dueStudentsCount,
-      totalPendingAmount,
+      unpaidDuesForMonth,
+      academy,
       todayPresentCount,
       totalExpenses,
       lateFeeCollected,
@@ -67,18 +72,38 @@ export class GetOwnerDashboardKpisUseCase {
       this.paymentRequestRepo.countPendingByAcademy(academyId),
       this.transactionLogRepo.sumRevenueByAcademyAndDateRange(academyId, input.from, input.to),
       this.feeDueRepo.countDistinctUnpaidStudentsByAcademyAndMonth(academyId, currentMonthKey),
-      // Scoped to the picked month so past months without fee dues read ₹0
-      // instead of the academy-wide cumulative pending — keeps the Pending
-      // tile consistent with Collected/Expenses/Late Fees, which all filter
-      // by the same month.
-      this.feeDueRepo.sumUnpaidAmountByAcademyAndMonth(academyId, currentMonthKey),
+      // Pull the actual unpaid dues so we can compute total payable (base +
+      // current late fee) per due. The previous `sumUnpaidAmountByAcademyAndMonth`
+      // returned base only, leaving the dashboard tile inconsistent with the
+      // parent-facing total and the overdue-students report. Per-month list is
+      // small (low hundreds even at scale) so JS-side iteration is fine.
+      this.feeDueRepo.listByAcademyMonthAndStatuses(academyId, currentMonthKey, ['UPCOMING', 'DUE']),
+      this.academyRepo.findById(academyId),
       // Distinct students — a two-batch student is one human, not two presences.
       this.attendanceRepo.countDistinctStudentsPresentByAcademyAndDate(academyId, today),
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
-      this.feeDueRepo.sumLateFeeCollectedByAcademyAndMonth(academyId, currentMonthKey),
+      // Cash bucketing: late fee collected during the picked range, regardless
+      // of which due-month it was for. Mirrors `totalCollected` (transaction
+      // log createdAt) so both tiles answer "what came in this month?"
+      this.feeDueRepo.sumLateFeeCollectedByAcademyAndDateRange(academyId, input.from, input.to),
       this.feeDueRepo.countOverdueByAcademy(academyId, today),
       this.holidayRepo.findByAcademyAndDate(academyId, today).then((h) => h !== null),
     ]);
+
+    // Compute total pending = base + current late fee per due. Snapshotted
+    // config wins for dues that have crossed grace; live config is the
+    // fallback for not-yet-overdue UPCOMING rows.
+    const liveConfig = buildLateFeeConfigFromAcademy(academy);
+    let totalPendingAmount = 0;
+    for (const due of unpaidDuesForMonth) {
+      const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+      let lateFee = 0;
+      if (effectiveConfig) {
+        const computed = computeLateFee(due.dueDate, today, effectiveConfig);
+        if (Number.isFinite(computed)) lateFee = computed;
+      }
+      totalPendingAmount += due.amount + lateFee;
+    }
 
     const todayAbsentCount = Math.max(0, totalStudents - todayPresentCount);
 

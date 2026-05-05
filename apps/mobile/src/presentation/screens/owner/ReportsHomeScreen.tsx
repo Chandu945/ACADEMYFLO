@@ -31,6 +31,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, avatarColors, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
+import { getCurrentMonthIST } from '../../../domain/common/date-utils';
 
 const revenueApiRef = { getMonthlyRevenue };
 const duesApiRef = { getStudentWiseDues };
@@ -168,7 +169,12 @@ export function ReportsHomeScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <View style={styles.header}>
-        <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
+        <MonthPickerRow
+          month={month}
+          onPrevious={goToPrev}
+          onNext={goToNext}
+          disableNext={month >= getCurrentMonthIST()}
+        />
         <SegmentedControl
           segments={SEGMENTS}
           selectedIndex={selectedSegment}
@@ -223,10 +229,41 @@ export function ReportsHomeScreen() {
                 </View>
               </View>
 
+              {/* ── Cash-vs-Accrual Breakdown ─────────────
+                  This is the bit that resolves the "why is May revenue higher
+                  than May expected?" confusion: the picked-month total above
+                  is cash-bucketed (when it hit the bank), and this card splits
+                  that cash by which due-month each rupee was actually for. */}
+              {revenue.byDueMonth && revenue.byDueMonth.length > 0 && (
+                <View style={styles.breakdownCard} testID="revenue-breakdown">
+                  <Text style={styles.breakdownTitle}>Of {formatCurrency(revenue.totalAmount)} collected:</Text>
+                  {revenue.byDueMonth.map((b) => {
+                    const isCurrent = b.monthKey === month;
+                    return (
+                      <View key={b.monthKey} style={styles.breakdownRow}>
+                        <View style={styles.breakdownLabelWrap}>
+                          <View
+                            style={[
+                              styles.breakdownDot,
+                              { backgroundColor: isCurrent ? colors.success : colors.warning },
+                            ]}
+                          />
+                          <Text style={styles.breakdownLabel}>
+                            {(() => { const [y, m] = b.monthKey.split('-').map(Number) as [number, number]; return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }); })()}
+                            {isCurrent ? ' dues' : ' (back-dated)'}
+                          </Text>
+                        </View>
+                        <Text style={styles.breakdownAmount}>{formatCurrency(b.amount)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
               {/* ── Transactions Header ────────────────── */}
               {revenue.transactions.length > 0 && (
                 <View style={styles.listSectionHeader}>
-                  
+
                   <AppIcon name="format-list-bulleted" size={18} color={colors.textSecondary} />
                   <Text style={styles.listSectionTitle}>Transactions</Text>
                   <Text style={styles.listSectionCount}>{revenue.transactions.length}</Text>
@@ -362,6 +399,48 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.medium,
     color: colors.textSecondary,
+  },
+
+  /* ── Cash-vs-Accrual Breakdown ───────────────────── */
+  breakdownCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  breakdownTitle: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  breakdownLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.sm,
+  },
+  breakdownDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  breakdownLabel: {
+    fontSize: fontSizes.sm,
+    color: colors.text,
+    fontWeight: fontWeights.medium,
+  },
+  breakdownAmount: {
+    fontSize: fontSizes.sm,
+    color: colors.text,
+    fontWeight: fontWeights.semibold,
   },
 
   /* ── List Section Header ─────────────────────────── */

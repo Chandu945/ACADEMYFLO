@@ -33,6 +33,7 @@ import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { animateLayout } from '../../utils/layout-animation';
+import { getCurrentMonthIST } from '../../../domain/common/date-utils';
 
 type Nav = NativeStackNavigationProp<FeesStackParamList, 'FeesHome'>;
 
@@ -503,7 +504,26 @@ export function FeesHomeScreen() {
           content, so hiding the date/segment row would just create awkward
           empty space behind the dialog. */}
       <View style={styles.controlsSection}>
-        <MonthPickerRow month={month} onPrevious={goToPrev} onNext={goToNext} />
+        {/* Approvals / My Requests don't filter by month — they show all
+            pending requests regardless of which due-month each is for. Hide
+            the picker on those tabs and surface a small caption so the
+            owner doesn't read the previous tab's month label and assume
+            it's filtering. Each card already shows the due-month. */}
+        {selectedSegment === 2 ? (
+          <View style={styles.allPendingCaption}>
+            <AppIcon name="clock-outline" size={14} color={colors.textSecondary} />
+            <Text style={styles.allPendingCaptionText}>
+              Showing all pending requests
+            </Text>
+          </View>
+        ) : (
+          <MonthPickerRow
+            month={month}
+            onPrevious={goToPrev}
+            onNext={goToNext}
+            disableNext={month >= getCurrentMonthIST()}
+          />
+        )}
         <SegmentedControl
           segments={segments}
           selectedIndex={selectedSegment}
@@ -747,5 +767,17 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   controlsSection: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.sm,
+  },
+  allPendingCaption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+  },
+  allPendingCaptionText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.medium,
   },
 });

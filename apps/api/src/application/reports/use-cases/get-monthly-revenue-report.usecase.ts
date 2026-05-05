@@ -56,10 +56,26 @@ export class GetMonthlyRevenueReportUseCase {
 
     const totalAmount = logs.reduce((sum, l) => sum + l.amount, 0);
 
+    // Group cash-collected revenue by the due-month each transaction was for.
+    // The picked-month subset (logs where monthKey === input.month) tells the
+    // owner "how much of May's revenue was actually for May dues" — the rest
+    // is back-dated collections (parents catching up on past months).
+    const byDueMonthMap = new Map<string, { amount: number; count: number }>();
+    for (const l of logs) {
+      const cur = byDueMonthMap.get(l.monthKey) ?? { amount: 0, count: 0 };
+      cur.amount += l.amount;
+      cur.count += 1;
+      byDueMonthMap.set(l.monthKey, cur);
+    }
+    const byDueMonth = Array.from(byDueMonthMap.entries())
+      .map(([monthKey, v]) => ({ monthKey, amount: v.amount, count: v.count }))
+      .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+
     return ok({
       totalAmount,
       transactionCount: logs.length,
       transactions,
+      byDueMonth,
     });
   }
 }
