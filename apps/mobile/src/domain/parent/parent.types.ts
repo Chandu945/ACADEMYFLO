@@ -48,6 +48,7 @@ export type ChildFeeDue = {
   paidAt: string | null;
   paidSource: PaidSource | null;
   paymentLabel: PaymentLabel | null;
+  pendingRequest: { id: string; amount: number; createdAt: string } | null;
 };
 
 export type FeePaymentFlowStatus =

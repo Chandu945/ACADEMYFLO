@@ -447,7 +447,14 @@ export function ChildDetailScreen() {
                   </Text>
                 </View>
             )}
-            {fee.status === 'DUE' && paymentMethods?.manualPaymentsEnabled ? (
+            {fee.status === 'DUE' && fee.pendingRequest ? (
+              <View style={styles.pendingBadge} testID={`pending-fee-${fee.id}`}>
+                <AppIcon name="clock-outline" size={14} color={colors.warningAccent} />
+                <Text style={styles.pendingBadgeText}>
+                  Payment of {formatCurrency(fee.pendingRequest.amount)} pending owner approval
+                </Text>
+              </View>
+            ) : fee.status === 'DUE' && paymentMethods?.manualPaymentsEnabled ? (
               <TouchableOpacity
                 style={styles.payButton}
                 onPress={() =>
@@ -644,6 +651,23 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     backgroundColor: colors.primary,
     borderRadius: radius.md,
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.warningLightBg,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.warningBorder,
+  },
+  pendingBadgeText: {
+    fontSize: fontSizes.xs,
+    color: colors.warningText,
+    fontWeight: fontWeights.semibold,
+    flex: 1,
   },
   payButtonText: {
     color: colors.white,

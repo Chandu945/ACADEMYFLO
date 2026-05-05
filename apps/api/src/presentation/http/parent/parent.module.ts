@@ -269,9 +269,20 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     },
     {
       provide: 'GET_CHILD_FEES_USE_CASE',
-      useFactory: (linkRepo: ParentStudentLinkRepository, feeDueRepo: FeeDueRepository, academyRepo: AcademyRepository, clock: ClockPort) =>
-        new GetChildFeesUseCase(linkRepo, feeDueRepo, academyRepo, clock),
-      inject: [PARENT_STUDENT_LINK_REPOSITORY, FEE_DUE_REPOSITORY, ACADEMY_REPOSITORY, CLOCK_PORT],
+      useFactory: (
+        linkRepo: ParentStudentLinkRepository,
+        feeDueRepo: FeeDueRepository,
+        academyRepo: AcademyRepository,
+        prRepo: PaymentRequestRepository,
+        clock: ClockPort,
+      ) => new GetChildFeesUseCase(linkRepo, feeDueRepo, academyRepo, prRepo, clock),
+      inject: [
+        PARENT_STUDENT_LINK_REPOSITORY,
+        FEE_DUE_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        PAYMENT_REQUEST_REPOSITORY,
+        CLOCK_PORT,
+      ],
     },
     {
       provide: 'INITIATE_FEE_PAYMENT_USE_CASE',

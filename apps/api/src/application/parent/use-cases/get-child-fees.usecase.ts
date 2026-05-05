@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
+import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { ParentErrors } from '../../common/errors';
 import type { ChildFeeDueDto } from '../dtos/parent.dto';
@@ -25,6 +26,7 @@ export class GetChildFeesUseCase {
     private readonly linkRepo: ParentStudentLinkRepository,
     private readonly feeDueRepo: FeeDueRepository,
     private readonly academyRepo: AcademyRepository,
+    private readonly paymentRequestRepo: PaymentRequestRepository,
     private readonly clock: ClockPort,
   ) {}
 
@@ -35,7 +37,7 @@ export class GetChildFeesUseCase {
     const link = await this.linkRepo.findByParentAndStudent(input.parentUserId, input.studentId);
     if (!link) return err(ParentErrors.childNotLinked());
 
-    const [dues, academy] = await Promise.all([
+    const [dues, academy, parentRequests] = await Promise.all([
       this.feeDueRepo.listByStudentAndRange(
         link.academyId,
         input.studentId,
@@ -43,7 +45,23 @@ export class GetChildFeesUseCase {
         input.to,
       ),
       this.academyRepo.findById(link.academyId),
+      // For PARENT-sourced payment requests the entity stores the parent's
+      // userId in `staffUserId`. Fetch all of this parent's requests in the
+      // academy and filter in-memory; per-parent count is tiny so this is
+      // cheaper than adding a dedicated index/query.
+      this.paymentRequestRepo.listByStaffAndAcademy(input.parentUserId, link.academyId),
     ]);
+
+    const pendingByFeeDueId = new Map<string, { id: string; amount: number; createdAt: string }>();
+    for (const pr of parentRequests) {
+      if (pr.status !== 'PENDING') continue;
+      if (pr.studentId !== input.studentId) continue;
+      pendingByFeeDueId.set(pr.feeDueId, {
+        id: pr.id.toString(),
+        amount: pr.amount,
+        createdAt: pr.audit.createdAt.toISOString(),
+      });
+    }
 
     const today = formatLocalDate(this.clock.now());
     const config: LateFeeConfig | undefined = academy?.lateFeeEnabled
@@ -84,6 +102,7 @@ export class GetChildFeesUseCase {
         paidAt: d.paidAt ? d.paidAt.toISOString() : null,
         paidSource: d.paidSource,
         paymentLabel: d.paymentLabel,
+        pendingRequest: pendingByFeeDueId.get(d.id.toString()) ?? null,
       };
     });
 

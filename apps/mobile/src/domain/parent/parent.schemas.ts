@@ -60,6 +60,13 @@ export const childFeeDueSchema = z.object({
   paidAt: z.string().nullable(),
   paidSource: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL']).nullable(),
   paymentLabel: z.enum(['CASH', 'UPI', 'CARD', 'NET_BANKING', 'ONLINE']).nullable(),
+  // Optional + default-null so older API responses (pre-deploy) still parse
+  // cleanly while the mobile app rolls out alongside the backend change.
+  pendingRequest: z
+    .object({ id: z.string(), amount: z.number(), createdAt: z.string() })
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
 });
 
 export const childFeesListSchema = z.array(childFeeDueSchema);

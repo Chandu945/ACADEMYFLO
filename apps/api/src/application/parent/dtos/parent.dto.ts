@@ -88,6 +88,13 @@ export interface ChildFeeDueDto {
   paidAt: string | null;
   paidSource: PaidSource | null;
   paymentLabel: PaymentLabel | null;
+  /**
+   * Set when the parent has an open manual-payment request for this due
+   * still awaiting owner approval. The UI uses this to swap the "Pay now"
+   * button for a pending-approval state instead of letting the parent
+   * re-submit and hit the duplicate-pending error at submit time.
+   */
+  pendingRequest: { id: string; amount: number; createdAt: string } | null;
 }
 
 export interface InitiateFeePaymentOutput {
