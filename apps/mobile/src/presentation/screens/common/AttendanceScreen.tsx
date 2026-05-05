@@ -35,7 +35,6 @@ import { SelectBatchPrompt } from '../../components/attendance/SelectBatchPrompt
 import { OffScheduleDayPrompt } from '../../components/attendance/OffScheduleDayPrompt';
 import { getBatchesCached } from '../../../infra/batch/batch-cache';
 import type { BatchListItem, Weekday } from '../../../domain/batch/batch.types';
-import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import LinearGradient from 'react-native-linear-gradient';
 import { spacing, fontSizes, fontWeights, radius, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
@@ -446,7 +445,6 @@ export function AttendanceScreen() {
           removeClippedSubviews
           windowSize={11}
           maxToRenderPerBatch={5}
-          ListHeaderComponent={<SubscriptionBanner />}
           ListFooterComponent={renderFooter}
           refreshControl={
             <RefreshControl

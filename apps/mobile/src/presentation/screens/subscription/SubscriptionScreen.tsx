@@ -225,6 +225,32 @@ export function SubscriptionScreen() {
 
   const isBlocked = !subscription.canAccessApp;
 
+  // The Trial Ends row is only relevant while the user is actually in
+  // trial — once they've paid, `trialEndAt` is just historical metadata
+  // the backend keeps for audit. Hide it post-trial (status moved off
+  // TRIAL or the trial date is already in the past).
+  const showTrialEnd = (() => {
+    if (!subscription.trialEndAt) return false;
+    if (subscription.status === 'TRIAL') return true;
+    // Defensive: still in the future even if status changed unexpectedly.
+    const trialMs = Date.parse(subscription.trialEndAt);
+    return Number.isFinite(trialMs) && trialMs > Date.now();
+  })();
+
+  // Pay/renew CTA visibility:
+  //  - Always for non-ACTIVE_PAID statuses that allow self-renewal
+  //    (TRIAL / EXPIRED_GRACE / BLOCKED).
+  //  - Also for ACTIVE_PAID when within the renewal window
+  //    (≤ 7 days remaining) — that's exactly when the dashboard banner
+  //    nudges the user to renew, so the action must be available here.
+  //  - Never for DISABLED (admin-disabled, can't self-renew).
+  const RENEWAL_WINDOW_DAYS = 7;
+  const showPayButton =
+    user?.role === 'OWNER' &&
+    subscription.status !== 'DISABLED' &&
+    (subscription.status !== 'ACTIVE_PAID' ||
+      (subscription.daysRemaining ?? Infinity) <= RENEWAL_WINDOW_DAYS);
+
   return (
     <Screen scroll={false} edges={['bottom']}>
       <ScrollView
@@ -273,11 +299,11 @@ export function SubscriptionScreen() {
             <Text style={styles.sectionTitle}>Details</Text>
           </View>
 
-          {subscription.trialEndAt ? (
+          {showTrialEnd ? (
             <InfoRow
               icon="clock-outline"
               label="Trial Ends"
-              value={formatDate(subscription.trialEndAt)}
+              value={formatDate(subscription.trialEndAt!)}
               colors={colors}
             />
           ) : null}
@@ -345,20 +371,18 @@ export function SubscriptionScreen() {
           onDismiss={paymentFlow.reset}
         />
 
-        {user?.role === 'OWNER' &&
-          subscription.status !== 'ACTIVE_PAID' &&
-          subscription.status !== 'DISABLED' && (
-            <PayWithCashfreeButton
-              status={paymentFlow.status}
-              tierLabel={tierLabel(subscription.requiredTierKey)}
-              amountInr={
-                subscription.tiers.find((t) => t.tierKey === subscription.requiredTierKey)
-                  ?.priceInr ?? 299
-              }
-              onPress={paymentFlow.startPayment}
-              onRetry={paymentFlow.reset}
-            />
-          )}
+        {showPayButton && (
+          <PayWithCashfreeButton
+            status={paymentFlow.status}
+            tierLabel={tierLabel(subscription.requiredTierKey)}
+            amountInr={
+              subscription.tiers.find((t) => t.tierKey === subscription.requiredTierKey)
+                ?.priceInr ?? 299
+            }
+            onPress={paymentFlow.startPayment}
+            onRetry={paymentFlow.reset}
+          />
+        )}
 
         {/* ── Pricing table ───────────────────────────────────────────── */}
         <View style={styles.card}>

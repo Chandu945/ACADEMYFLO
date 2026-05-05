@@ -5,6 +5,7 @@ import { StudentsListScreen } from '../screens/students/StudentsListScreen';
 import { StudentFormScreen } from '../screens/students/StudentFormScreen';
 import { StudentDetailScreen } from '../screens/students/StudentDetailScreen';
 import { HeaderBackButton } from '../components/ui/HeaderBackButton';
+import { popToOrReplaceList } from './nav-helpers';
 import { useTheme } from '../context/ThemeContext';
 
 export type StudentsStackParamList = {
@@ -40,10 +41,28 @@ export function StudentsStack() {
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => {
-                if (route.params.mode === 'edit' && route.params.student) {
-                  navigation.navigate('StudentDetail', { student: route.params.student });
+                if (route.params.mode === 'edit') {
+                  // Edit mode can be reached via two paths:
+                  //   1. StudentsList → row → StudentDetail → tap Edit
+                  //   2. StudentsList → row action menu → Edit  (skips Detail)
+                  // Path 2 means StudentDetail isn't always in history, so
+                  // `navigate('StudentDetail', ...)` would PUSH a new Detail
+                  // on top of the form instead of popping the form. Since
+                  // the form wouldn't be removed, `beforeRemove` would never
+                  // fire and the unsaved-changes hook's Discard prompt would
+                  // be silently skipped.
+                  //
+                  // goBack() pops exactly one screen — Detail (via path 1)
+                  // or StudentsList (via path 2) — and reliably triggers
+                  // beforeRemove on the form regardless of entry path.
+                  if (navigation.canGoBack()) navigation.goBack();
                 } else {
-                  navigation.navigate('StudentsList');
+                  // Create mode can be entered via Global FAB → StudentForm
+                  // directly, in which case StudentsList may not be in the
+                  // stack history. popToOrReplaceList handles both cases
+                  // (popTo if list is in history, else replace), and always
+                  // removes the current screen so beforeRemove fires.
+                  popToOrReplaceList(navigation, 'StudentsList');
                 }
               }}
             />

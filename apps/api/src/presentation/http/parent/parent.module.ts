@@ -449,6 +449,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         prRepo: PaymentRequestRepository,
         linkRepo: ParentStudentLinkRepository,
         auditRecorder: AuditRecorderPort,
+        clock: ClockPort,
       ) =>
         new CreateParentPaymentRequestUseCase(
           userRepo,
@@ -458,6 +459,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
           prRepo,
           linkRepo,
           auditRecorder,
+          clock,
         ),
       inject: [
         USER_REPOSITORY,
@@ -467,6 +469,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         PAYMENT_REQUEST_REPOSITORY,
         PARENT_STUDENT_LINK_REPOSITORY,
         AUDIT_RECORDER_PORT,
+        CLOCK_PORT,
       ],
     },
   ],

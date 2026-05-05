@@ -14,6 +14,7 @@ import { InlineError } from '../../components/ui/InlineError';
 import { useToast } from '../../context/ToastContext';
 import { BatchMultiSelect } from '../../components/batches/BatchMultiSelect';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
+import { popToOrReplaceList } from '../../navigation/nav-helpers';
 import {
   validateStudentForm,
   saveStudentUseCase,
@@ -408,7 +409,14 @@ export function StudentFormScreen() {
           // Replace so the edit form is removed from stack — back from Detail goes to List
           (navigation as unknown as { replace: (name: string, params?: unknown) => void }).replace('StudentDetail', { student: result.value });
         } else {
-          (navigation as unknown as { navigate: (name: string) => void }).navigate('StudentsList');
+          // popToOrReplaceList rather than plain navigate('StudentsList') because
+          // when the user opened StudentForm via the global '+' FAB, StudentsList
+          // may not be in the stack history. A plain navigate would push a fresh
+          // list ON TOP of the form (form stays in the stack with its state and
+          // beforeRemove never fires). popToOrReplaceList always removes the
+          // form — popTo if the list is in history, else replace — so the
+          // discard-changes prompt fires reliably and there's no ghost form.
+          popToOrReplaceList(navigation, 'StudentsList');
         }
         return;
       } else {

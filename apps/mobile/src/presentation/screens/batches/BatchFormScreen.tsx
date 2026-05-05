@@ -136,7 +136,7 @@ export function BatchFormScreen() {
         if (mode === 'edit' && result.value) {
           (navigation as any).replace('BatchDetail', { batch: result.value });
         } else {
-          popToOrReplaceList(navigation, 'BatchesList');
+          popToOrReplaceList(navigation, 'BatchesList', 'MoreHome');
         }
         return;
       } else {

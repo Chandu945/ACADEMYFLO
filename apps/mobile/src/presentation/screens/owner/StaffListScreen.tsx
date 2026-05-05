@@ -14,7 +14,6 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { StaffRow } from '../../components/staff/StaffRow';
-import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import LinearGradient from 'react-native-linear-gradient';
 import { spacing, radius, shadows, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
@@ -163,7 +162,6 @@ export function StaffListScreen() {
           removeClippedSubviews
           windowSize={11}
           maxToRenderPerBatch={5}
-          ListHeaderComponent={<SubscriptionBanner />}
           ListFooterComponent={renderFooter}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />}
           contentContainerStyle={styles.listContent}
@@ -240,10 +238,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     right: spacing.xl,
     width: 56,
     height: 56,
-    borderRadius: radius.full,
+    // Matches the StudentsList FAB look — rounded square + primary glow.
+    borderRadius: radius.xl,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.lg,
+    elevation: 6,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });

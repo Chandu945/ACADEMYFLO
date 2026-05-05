@@ -169,7 +169,7 @@ export function EventFormScreen(props: EventFormScreenProps) {
         if (mode === 'edit' && event) {
           (navigation as any).replace('EventDetail', { eventId: event.id });
         } else {
-          popToOrReplaceList(navigation, 'EventList');
+          popToOrReplaceList(navigation, 'EventList', 'MoreHome');
         }
         return;
       } else {

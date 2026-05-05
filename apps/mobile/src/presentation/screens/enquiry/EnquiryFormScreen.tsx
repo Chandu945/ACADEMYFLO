@@ -157,7 +157,7 @@ export function EnquiryFormScreen({ mode, enquiry }: EnquiryFormProps) {
             crossAlert('Note', data.warning);
           }
           showToast('Enquiry created successfully');
-          popToOrReplaceList(navigation, 'EnquiryList');
+          popToOrReplaceList(navigation, 'EnquiryList', 'MoreHome');
           return;
         } else {
           crossAlert('Error', result.error.message);

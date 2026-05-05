@@ -166,7 +166,7 @@ export function MoreStack() {
           headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => popToOrReplaceList(navigation, 'EnquiryList')}
+              onPress={() => popToOrReplaceList(navigation, 'EnquiryList', 'MoreHome')}
             />
           ),
         })}
@@ -216,7 +216,7 @@ export function MoreStack() {
           headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => popToOrReplaceList(navigation, 'EventList')}
+              onPress={() => popToOrReplaceList(navigation, 'EventList', 'MoreHome')}
             />
           ),
         })}
@@ -354,7 +354,7 @@ export function MoreStack() {
                   // BatchDetail is in history — navigate pops back to it.
                   navigation.navigate('BatchDetail', { batch: route.params.batch });
                 } else {
-                  popToOrReplaceList(navigation, 'BatchesList');
+                  popToOrReplaceList(navigation, 'BatchesList', 'MoreHome');
                 }
               }}
             />
@@ -396,7 +396,7 @@ export function MoreStack() {
           headerBackVisible: false,
           headerLeft: () => (
             <HeaderBackButton
-              onPress={() => popToOrReplaceList(navigation, 'StaffList')}
+              onPress={() => popToOrReplaceList(navigation, 'StaffList', 'MoreHome')}
             />
           ),
         })}

@@ -18,7 +18,11 @@ import {
   type PaymentRequestDto,
 } from '../../fee/dtos/payment-request.dto';
 import type { UserRole } from '@academyflo/contracts';
+import { computeLateFee } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { ClockPort } from '../../common/clock.port';
+import { formatLocalDate } from '../../../shared/date-utils';
+import { buildLateFeeConfigFromAcademy } from '../../fee/common/late-fee';
 
 export interface CreateParentPaymentRequestInput {
   actorUserId: string;
@@ -49,6 +53,7 @@ export class CreateParentPaymentRequestUseCase {
     private readonly paymentRequestRepo: PaymentRequestRepository,
     private readonly linkRepo: ParentStudentLinkRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    private readonly clock: ClockPort,
   ) {}
 
   async execute(
@@ -113,7 +118,21 @@ export class CreateParentPaymentRequestUseCase {
     if (due.status === 'PAID') return err(PaymentRequestErrors.alreadyPaid());
 
     // Amount sanity — must not exceed base + late fee.
-    const maxPayable = due.amount + (due.lateFeeApplied ?? 0);
+    // The late fee is computed dynamically (same as the GET /child-fees
+    // endpoint) so that the payable shown to the parent in the UI matches
+    // what the backend will accept. Reading `due.lateFeeApplied` here is
+    // wrong: that field is only persisted at approval time and is therefore
+    // 0 for unpaid dues \u2014 which caused parents who'd been told to pay
+    // base+late-fee to fail validation against just the base amount.
+    const liveConfig = buildLateFeeConfigFromAcademy(academy);
+    const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+    let computedLateFee = 0;
+    if (effectiveConfig) {
+      const todayStr = formatLocalDate(this.clock.now());
+      const computed = computeLateFee(due.dueDate, todayStr, effectiveConfig);
+      if (Number.isFinite(computed)) computedLateFee = computed;
+    }
+    const maxPayable = due.amount + computedLateFee;
     if (input.amount > maxPayable) {
       return err(AppError.validation(`Amount cannot exceed the payable amount of \u20B9${maxPayable}`));
     }

@@ -258,15 +258,18 @@ const makeStyles = (colors: Colors) =>
       right: 16,
       width: 56,
       height: 56,
-      borderRadius: radius.full,
+      // Rounded-square shape with a primary-tinted glow — matches the
+      // StudentsList FAB so every "+" entry point in the app reads the
+      // same visual.
+      borderRadius: radius.xl,
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
       elevation: 6,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.27,
-      shadowRadius: 4.65,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
       zIndex: 100,
     },
     fabOpen: {

@@ -120,6 +120,14 @@ export function StaffFormScreen() {
     photoUrl !== initialRef.current.photoUrl;
   useUnsavedChangesWarning(isDirty && !submitting && !submittedRef.current);
 
+  // Strip non-digits — `keyboardType="numeric"` is only an OS-keyboard hint
+  // and lets pasted letters / hardware-keyboard letters through, which
+  // would otherwise reach the API as NaN via `Number(salaryAmount)`.
+  const handleSalaryAmountChange = useCallback((text: string) => {
+    const digits = text.replace(/\D/g, '').slice(0, 10);
+    setSalaryAmount(digits);
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     const fields = { fullName, email, phoneNumber, password };
     const errors =
@@ -214,7 +222,7 @@ export function StaffFormScreen() {
     if (result.ok) {
       submittedRef.current = true;
       showToast(mode === 'create' ? 'Staff created' : 'Staff updated');
-      popToOrReplaceList(navigation, 'StaffList');
+      popToOrReplaceList(navigation, 'StaffList', 'MoreHome');
       return;
     }
 
@@ -416,7 +424,7 @@ export function StaffFormScreen() {
         <Input
           label="Salary Amount"
           value={salaryAmount}
-          onChangeText={setSalaryAmount}
+          onChangeText={handleSalaryAmountChange}
           placeholder="e.g. 25000"
           keyboardType="numeric"
           maxLength={10}

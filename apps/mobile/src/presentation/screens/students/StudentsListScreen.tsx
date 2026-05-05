@@ -30,7 +30,6 @@ import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StudentRow } from '../../components/students/StudentRow';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
-import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import { BatchFilterBar } from '../../components/attendance/BatchFilterBar';
 import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
 import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
@@ -452,7 +451,6 @@ export function StudentsListScreen() {
           removeClippedSubviews
           windowSize={11}
           maxToRenderPerBatch={5}
-          ListHeaderComponent={<SubscriptionBanner />}
           ListFooterComponent={renderFooter}
           refreshControl={
             <RefreshControl

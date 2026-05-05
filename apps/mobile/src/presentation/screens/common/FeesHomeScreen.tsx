@@ -22,7 +22,6 @@ import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
 import { getBatchesCached } from '../../../infra/batch/batch-cache';
 import type { BatchListItem } from '../../../domain/batch/batch.types';
 import { ActiveFilterBar } from '../../components/ui/ActiveFilterBar';
-import { SubscriptionBanner } from '../../components/dashboard/SubscriptionBanner';
 import type { ActiveFilter } from '../../components/ui/ActiveFilterBar';
 import { listBatchStudents } from '../../../infra/batch/batch-api';
 import { UnpaidDuesScreen } from './UnpaidDuesScreen';
@@ -393,7 +392,6 @@ export function FeesHomeScreen() {
         )}
       </View>
 
-      <SubscriptionBanner />
       {/* ── Active Filter Pills (visible when panel closed) ── */}
       {!showFilters && showSearchAndFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />}
 

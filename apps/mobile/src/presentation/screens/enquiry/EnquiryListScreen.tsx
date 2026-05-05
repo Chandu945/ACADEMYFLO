@@ -689,10 +689,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     right: spacing.xl,
     width: 56,
     height: 56,
-    borderRadius: radius.full,
+    // Matches the StudentsList FAB look — rounded square + primary glow.
+    borderRadius: radius.xl,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.lg,
+    elevation: 6,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });
