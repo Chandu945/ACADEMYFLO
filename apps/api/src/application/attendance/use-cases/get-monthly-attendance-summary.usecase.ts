@@ -96,33 +96,46 @@ export class GetMonthlyAttendanceSummaryUseCase {
       allBatchIds.size > 0 ? await this.batchRepo.findByIds([...allBatchIds]) : [];
     const batchById = new Map(batches.map((b) => [b.id.toString(), b]));
 
-    // Cache scheduledDatesInMonth per batch to avoid recomputing per student.
-    const expectedDaysCountByBatch = new Map<string, number>();
+    // Cache scheduled DATES per batch (not just count) so we can compute the
+    // union of distinct expected days across a student's batches. A student
+    // enrolled in two batches that both meet on Monday should count as one
+    // expected day, not two — humans count days, not session-records.
+    const expectedDatesByBatch = new Map<string, string[]>();
     for (const batch of batches) {
-      expectedDaysCountByBatch.set(
+      expectedDatesByBatch.set(
         batch.id.toString(),
-        scheduledDatesInMonth(input.month, batch.days, holidayDates, today).length,
+        scheduledDatesInMonth(input.month, batch.days, holidayDates, today),
       );
     }
 
-    // Count present sessions per student (each record = one session-attendance).
-    const presentCountByStudent = new Map<string, number>();
+    // Distinct present DATES per student. One record per (student, batch, day)
+    // collapses into one present day for the student.
+    const presentDatesByStudent = new Map<string, Set<string>>();
     for (const record of allPresent) {
-      presentCountByStudent.set(
-        record.studentId,
-        (presentCountByStudent.get(record.studentId) ?? 0) + 1,
-      );
+      let set = presentDatesByStudent.get(record.studentId);
+      if (!set) {
+        set = new Set();
+        presentDatesByStudent.set(record.studentId, set);
+      }
+      set.add(record.date);
     }
 
     const data: MonthlyAttendanceSummaryItem[] = students.map((s) => {
       const sid = s.id.toString();
       const batchIds = enrollmentsByStudent.get(sid) ?? [];
-      const expectedSessions = batchIds.reduce(
-        (sum, bid) => sum + (batchById.has(bid) ? expectedDaysCountByBatch.get(bid) ?? 0 : 0),
-        0,
-      );
-      const presentCount = presentCountByStudent.get(sid) ?? 0;
-      const absentCount = Math.max(0, expectedSessions - presentCount);
+      const expectedDates = new Set<string>();
+      for (const bid of batchIds) {
+        const dates = expectedDatesByBatch.get(bid);
+        if (!dates) continue;
+        for (const d of dates) expectedDates.add(d);
+      }
+      const presentDates = presentDatesByStudent.get(sid) ?? new Set<string>();
+      let presentCount = 0;
+      let absentCount = 0;
+      for (const d of expectedDates) {
+        if (presentDates.has(d)) presentCount++;
+        else absentCount++;
+      }
       return {
         studentId: sid,
         fullName: s.fullName,
