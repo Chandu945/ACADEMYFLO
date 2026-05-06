@@ -2,10 +2,19 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
+import { avatarColors } from '../../theme';
 
 /** Accent gradient used for default (no-photo) profile avatars. */
 const GRADIENT_START = '#7C3AED';
 const GRADIENT_END = '#3B82F6';
+
+function pickPaletteColor(name: string, palette: readonly string[]): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return palette[hash % palette.length] ?? palette[0] ?? '#7C3AED';
+}
 
 type InitialsAvatarProps = {
   /** Full name or any string — first letters of the first two words are used. */
@@ -25,8 +34,10 @@ type InitialsAvatarProps = {
    * 'solid' renders a neutral `bgSubtle` circle with muted text — quieter look
    * for profile / header avatars where the gradient competes with surrounding
    * accents.
+   * 'palette' picks a deterministic color from the theme `avatarColors` palette
+   * keyed by the name — useful for lists where uniform avatars hurt scannability.
    */
-  variant?: 'gradient' | 'solid';
+  variant?: 'gradient' | 'solid' | 'palette';
   testID?: string;
 };
 
@@ -55,6 +66,36 @@ export function InitialsAvatar({
   const initials = useMemo(() => getInitials(name), [name]);
   const borderRadius = shape === 'circle' ? size / 2 : Math.round(size * 0.28);
   const autoFontSize = Math.max(12, Math.round(size * 0.42));
+
+  if (variant === 'palette') {
+    const bg = pickPaletteColor(name || '?', avatarColors.dark);
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            width: size,
+            height: size,
+            borderRadius,
+            backgroundColor: bg,
+          },
+          style,
+        ]}
+        testID={testID}
+      >
+        <Text
+          style={[
+            styles.text,
+            { fontSize: autoFontSize, letterSpacing: size >= 56 ? 0.5 : 0.2 },
+            textStyle,
+          ]}
+          accessibilityLabel={name}
+        >
+          {initials}
+        </Text>
+      </View>
+    );
+  }
 
   if (variant === 'solid') {
     return (

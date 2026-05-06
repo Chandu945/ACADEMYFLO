@@ -128,6 +128,7 @@ export function UnpaidDuesScreen({
           onPress={() => onRowPress(item.studentId)}
           showStudentName
           studentName={name}
+          showMonth={false}
         />
       );
     },

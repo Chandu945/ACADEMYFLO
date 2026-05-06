@@ -41,6 +41,7 @@ export function PaidFeesScreen({
         onPress={() => onRowPress(item.studentId)}
         showStudentName
         studentName={studentNameMap[item.studentId]}
+        showMonth={false}
       />
     ),
     [onRowPress, studentNameMap],

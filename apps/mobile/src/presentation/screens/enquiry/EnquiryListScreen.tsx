@@ -24,8 +24,9 @@ import { getTodayIST } from '../../../domain/common/date-utils';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
+import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import LinearGradient from 'react-native-linear-gradient';
-import { spacing, fontSizes, fontWeights, radius, shadows, listDefaults, gradient } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, listDefaults, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -135,59 +136,85 @@ export function EnquiryListScreen() {
 
   const keyExtractor = useCallback((item: EnquiryListItem) => item.id, []);
 
-  const renderItem = useCallback(({ item }: { item: EnquiryListItem }) => (
+  const getSourceTone = useCallback((c: Colors, source: string | null | undefined) => {
+    switch (source) {
+      case 'WALK_IN':
+        return { bg: c.primarySoft, border: c.primaryLight, fg: c.primary };
+      case 'PHONE':
+        return { bg: c.infoBg, border: c.border, fg: c.text };
+      case 'SOCIAL_MEDIA':
+        return { bg: c.warningBg, border: c.warningBorder, fg: c.warningText };
+      case 'REFERRAL':
+        return { bg: c.successBg, border: c.successBorder, fg: c.successText };
+      default:
+        return { bg: c.bgSubtle, border: c.border, fg: c.textSecondary };
+    }
+  }, []);
+
+  const renderItem = useCallback(({ item }: { item: EnquiryListItem }) => {
+    const overdue = item.nextFollowUpDate ? isOverdue(item.nextFollowUpDate) : false;
+    const isClosed = item.status !== 'ACTIVE';
+    const sourceTone = getSourceTone(colors, item.source);
+    return (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        overdue && styles.cardOverdue,
+        isClosed && styles.cardClosed,
+      ]}
       onPress={() => navigation.navigate('EnquiryDetail', { enquiryId: item.id })}
       testID={`enquiry-item-${item.id}`}
     >
-      <View style={styles.cardTopRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.prospectName.charAt(0).toUpperCase()}</Text>
+      <InitialsAvatar
+        name={item.prospectName}
+        size={44}
+        variant="palette"
+        style={styles.avatar}
+      />
+      <View style={styles.cardInfo}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.prospectName} numberOfLines={1}>{item.prospectName}</Text>
+          {isClosed && (
+            <Badge label="Closed" variant="neutral" dot uppercase />
+          )}
         </View>
-        <View style={styles.cardInfo}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.prospectName} numberOfLines={1}>{item.prospectName}</Text>
-            <Badge
-              label={item.status}
-              variant={item.status === 'ACTIVE' ? 'success' : 'neutral'}
-              dot
-              uppercase
-            />
-          </View>
-          <View style={styles.phoneRow}>
-            
-            <AppIcon name="phone-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.mobileNumber}>{item.mobileNumber}</Text>
-          </View>
-          {item.interestedIn && (
-            <View style={styles.interestRow}>
-              
-              <AppIcon name="target" size={14} color={colors.textLight} />
-              <Text style={styles.interestedIn}>{item.interestedIn}</Text>
+        <View style={styles.phoneRow}>
+          <AppIcon name="phone-outline" size={12} color={colors.textDisabled} />
+          <Text style={styles.mobileNumber} numberOfLines={1}>{item.mobileNumber}</Text>
+        </View>
+        <View style={styles.metaRow}>
+          {item.source && (
+            <View style={[styles.sourceBadge, { backgroundColor: sourceTone.bg, borderColor: sourceTone.border }]}>
+              <Text style={[styles.sourceText, { color: sourceTone.fg }]}>
+                {item.source.replace(/_/g, ' ')}
+              </Text>
             </View>
+          )}
+          {item.interestedIn && (
+            <Text style={styles.interestedIn} numberOfLines={1}>
+              {item.interestedIn}
+            </Text>
           )}
         </View>
       </View>
-      <View style={styles.cardFooter}>
-        {item.source && (
-          <View style={styles.sourceBadge}>
-            <Text style={styles.sourceText}>{item.source.replace(/_/g, ' ')}</Text>
-          </View>
-        )}
-        {item.nextFollowUpDate && (
-          <View style={styles.followUpRow}>
-            
-            <AppIcon name="calendar-clock" size={14} color={isOverdue(item.nextFollowUpDate) ? colors.danger : colors.textSecondary} />
-            <Text style={[styles.followUpDate, isOverdue(item.nextFollowUpDate) && styles.overdueText]}>
-              {formatDate(item.nextFollowUpDate)}
-              {isOverdue(item.nextFollowUpDate) ? ' (Overdue)' : ''}
-            </Text>
-          </View>
-        )}
-      </View>
+      {!isClosed && item.nextFollowUpDate && (
+        <View style={styles.followUpCol}>
+          <AppIcon
+            name="calendar-clock"
+            size={14}
+            color={overdue ? colors.danger : colors.textSecondary}
+          />
+          <Text style={[styles.followUpDate, overdue && styles.overdueText]}>
+            {formatDate(item.nextFollowUpDate)}
+          </Text>
+          {overdue && (
+            <Text style={styles.overdueLabel}>Overdue</Text>
+          )}
+        </View>
+      )}
     </TouchableOpacity>
-  ), [styles, colors, navigation, isOverdue, formatDate]);
+    );
+  }, [styles, colors, navigation, isOverdue, formatDate, getSourceTone]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
@@ -585,99 +612,101 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingBottom: listDefaults.contentPaddingBottom,
   },
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.xl,
-    padding: spacing.base,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs + 2,
+    gap: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
   },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  cardOverdue: {
+    borderLeftColor: colors.danger,
+  },
+  cardClosed: {
+    opacity: 0.7,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: colors.bgSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-    marginTop: 2,
-  },
-  avatarText: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
+    flexShrink: 0,
   },
   cardInfo: {
     flex: 1,
+    minWidth: 0,
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: spacing.sm,
+    marginBottom: 2,
   },
   prospectName: {
     fontSize: fontSizes.md,
-    fontWeight: fontWeights.semibold,
+    fontWeight: fontWeights.bold,
     color: colors.text,
-    flex: 1,
-    marginRight: spacing.sm,
+    letterSpacing: -0.2,
+    flexShrink: 1,
   },
   phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
+    marginBottom: 6,
   },
   mobileNumber: {
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.xs,
     color: colors.textSecondary,
+    flexShrink: 1,
+    minWidth: 0,
   },
-  interestRow: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: 3,
-  },
-  interestedIn: {
-    fontSize: fontSizes.sm,
-    color: colors.textLight,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    flexWrap: 'wrap',
+    gap: spacing.xs + 2,
+    rowGap: 4,
   },
   sourceBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: radius.full,
+    borderWidth: 1,
   },
   sourceText: {
-    fontSize: fontSizes.xs,
-    color: colors.text,
-    fontWeight: fontWeights.medium,
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
-  followUpRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+  interestedIn: {
+    fontSize: fontSizes.xs,
+    color: colors.textLight,
+    flexShrink: 1,
+  },
+  followUpCol: {
+    alignItems: 'flex-end',
+    gap: 2,
+    flexShrink: 0,
+    minWidth: 80,
   },
   followUpDate: {
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.xs,
     color: colors.textSecondary,
+    fontWeight: fontWeights.semibold,
   },
   overdueText: {
     color: colors.danger,
-    fontWeight: fontWeights.medium,
+  },
+  overdueLabel: {
+    fontSize: 9,
+    fontWeight: fontWeights.bold,
+    color: colors.danger,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   loader: {

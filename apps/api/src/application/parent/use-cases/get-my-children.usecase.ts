@@ -10,6 +10,7 @@ import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.r
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
+import { getTodayLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import { ParentErrors } from '../../common/errors';
 import type { ChildSummaryDto } from '../dtos/parent.dto';
 import type { UserRole } from '@academyflo/contracts';
@@ -84,8 +85,9 @@ export class GetMyChildrenUseCase {
 
           if (enrollments.length > 0) {
             const batches = await this.batchRepo.findByIds(enrollments.map((e) => e.batchId));
+            const today = getTodayLocalDate();
             const expectedSessions = batches.reduce(
-              (sum, b) => sum + scheduledDatesInMonth(currentMonth, b.days, holidayDates).length,
+              (sum, b) => sum + scheduledDatesInMonth(currentMonth, b.days, holidayDates, today).length,
               0,
             );
             if (expectedSessions > 0) {

@@ -9,7 +9,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
-import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
+import { isValidMonthKey, getTodayLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
 import { AttendanceErrors } from '../../common/errors';
 import type { MonthlyAttendanceSummaryItem } from '../dtos/attendance.dto';
@@ -74,7 +74,12 @@ export class GetMonthlyAttendanceSummaryUseCase {
     ]);
 
     const holidayDates = holidays.map((h) => h.date);
-    const holidayCount = holidayDates.length;
+    // Cap "elapsed" date and holiday count to today (IST). Past months: today
+    // > monthEnd, so the cap is a no-op. Current month: only past + today
+    // count as expected sessions, and only past holidays are counted. Future
+    // months: nothing is expected and absent stays at 0.
+    const today = getTodayLocalDate();
+    const holidayCount = holidayDates.filter((d) => d <= today).length;
 
     // Per-page enrollments + the matching batches, batched to avoid N+1.
     const enrollmentsByStudent = new Map<string, string[]>();
@@ -96,7 +101,7 @@ export class GetMonthlyAttendanceSummaryUseCase {
     for (const batch of batches) {
       expectedDaysCountByBatch.set(
         batch.id.toString(),
-        scheduledDatesInMonth(input.month, batch.days, holidayDates).length,
+        scheduledDatesInMonth(input.month, batch.days, holidayDates, today).length,
       );
     }
 

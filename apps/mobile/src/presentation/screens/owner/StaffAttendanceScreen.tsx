@@ -42,16 +42,6 @@ function getMonthFromDate(dateStr: string): string {
   return dateStr.substring(0, 7);
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    const first = parts[0] ?? '';
-    const last = parts[parts.length - 1] ?? '';
-    return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-}
-
 type StaffAttendanceRowProps = {
   item: DailyStaffAttendanceItem;
   onToggle: () => void;
@@ -62,16 +52,27 @@ function StaffAttendanceRowComponent({ item, onToggle, isHoliday }: StaffAttenda
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPresent = item.status === 'PRESENT';
+  const isAbsent = !isPresent;
 
   // Holiday is a visual banner, not a block: API policy explicitly allows
   // staff attendance on holidays (unlike student attendance). Show the actual
   // present/absent status and keep the toggle interactive; rowCardHoliday
   // tint conveys the holiday context.
+  const stripeColor = isHoliday
+    ? colors.warning
+    : isAbsent
+      ? colors.danger
+      : 'transparent';
+
   return (
-    <View style={[styles.rowCard, isHoliday && styles.rowCardHoliday]} testID={`staff-attendance-row-${item.staffUserId}`}>
+    <View
+      style={[styles.rowCard, { borderLeftColor: stripeColor }]}
+      testID={`staff-attendance-row-${item.staffUserId}`}
+    >
       <InitialsAvatar
         name={item.fullName}
         size={40}
+        variant="palette"
         style={styles.avatar}
       />
 
@@ -79,13 +80,16 @@ function StaffAttendanceRowComponent({ item, onToggle, isHoliday }: StaffAttenda
         <Text style={styles.rowName} numberOfLines={1}>
           {item.fullName}
         </Text>
-        <View style={styles.statusRow}>
-          <Badge
-            label={isPresent ? 'Present' : 'Absent'}
-            variant={isPresent ? 'success' : 'danger'}
-            dot
-          />
-        </View>
+        {isAbsent && (
+          <View style={styles.statusRow}>
+            <Badge label="Absent" variant="danger" dot />
+          </View>
+        )}
+        {isHoliday && isPresent && (
+          <View style={styles.statusRow}>
+            <Badge label="Holiday" variant="warning" dot />
+          </View>
+        )}
       </View>
 
       <Toggle
@@ -148,11 +152,15 @@ function SummaryBarComponent({ items }: SummaryBarProps) {
             styles.summaryPctBadge,
             {
               backgroundColor:
-                percentage >= 75
-                  ? colors.successBg
-                  : percentage >= 50
-                    ? colors.warningBg
-                    : colors.dangerBg,
+                percentage === 0
+                  ? colors.bgSubtle
+                  : percentage >= 75
+                    ? colors.successBg
+                    : percentage >= 50
+                      ? colors.warningBg
+                      : colors.dangerBg,
+              borderWidth: percentage === 0 ? 1 : 0,
+              borderColor: colors.border,
             },
           ]}
         >
@@ -161,15 +169,17 @@ function SummaryBarComponent({ items }: SummaryBarProps) {
               styles.summaryPctText,
               {
                 color:
-                  percentage >= 75
-                    ? colors.success
-                    : percentage >= 50
-                      ? colors.warning
-                      : colors.danger,
+                  percentage === 0
+                    ? colors.textSecondary
+                    : percentage >= 75
+                      ? colors.success
+                      : percentage >= 50
+                        ? colors.warning
+                        : colors.danger,
               },
             ]}
           >
-            {percentage}%
+            {percentage === 0 ? 'Not marked' : `${percentage}%`}
           </Text>
         </View>
       </View>
@@ -305,9 +315,14 @@ export function StaffAttendanceScreen() {
             accessibilityLabel="View daily report"
             testID="staff-daily-report-button"
           >
-            <View style={[styles.actionIconCircle, { backgroundColor: colors.infoBg }]}>
-              
-              <AppIcon name="file-chart-outline" size={20} color={colors.info} />
+            <View style={[styles.actionIconCircle, { overflow: 'hidden' }]}>
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <AppIcon name="file-chart-outline" size={20} color="#FFFFFF" />
             </View>
             <Text style={styles.actionCardLabel}>Daily Report</Text>
             
@@ -536,56 +551,30 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs + 2,
     borderWidth: 1,
     borderColor: colors.border,
+    borderLeftWidth: 3,
+    gap: spacing.md,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  avatarPresent: {
-    backgroundColor: colors.successBg,
-  },
-  avatarAbsent: {
-    backgroundColor: colors.dangerBg,
-  },
-  avatarHoliday: {
-    backgroundColor: colors.warningBg,
-  },
-  avatarText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
-  },
-  avatarTextPresent: {
-    color: colors.success,
-  },
-  avatarTextAbsent: {
-    color: colors.danger,
-  },
-  avatarTextHoliday: {
-    color: colors.warning,
+    flexShrink: 0,
   },
   rowInfo: {
     flex: 1,
+    minWidth: 0,
   },
   rowName: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginBottom: 2,
+    letterSpacing: -0.2,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-  },
-  rowCardHoliday: {
-    borderColor: colors.warningBorder,
+    marginTop: 4,
   },
 });

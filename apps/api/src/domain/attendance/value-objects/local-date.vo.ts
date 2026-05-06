@@ -31,3 +31,20 @@ export function getAllDatesInMonth(monthKey: string): string[] {
   }
   return dates;
 }
+
+/** Today's date as YYYY-MM-DD in IST. The academy operates in Asia/Kolkata
+ *  regardless of where the API process runs. */
+export function getTodayLocalDate(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
+/** Number of elapsed calendar days in `monthKey` as of today (IST).
+ *  Past months: full month. Current month: 1..today's day-of-month.
+ *  Future months: 0. Used to avoid counting future days as absences. */
+export function daysElapsedInMonth(monthKey: string): number {
+  const today = getTodayLocalDate();
+  const todayMonth = today.slice(0, 7);
+  if (monthKey < todayMonth) return getDaysInMonth(monthKey);
+  if (monthKey > todayMonth) return 0;
+  return Number(today.slice(8, 10));
+}

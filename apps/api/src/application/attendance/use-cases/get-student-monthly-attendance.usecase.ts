@@ -9,7 +9,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
-import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
+import { isValidMonthKey, getTodayLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
 import { AttendanceErrors } from '../../common/errors';
 import type {
@@ -88,12 +88,13 @@ export class GetStudentMonthlyAttendanceUseCase {
       set.add(record.date);
     }
 
+    const today = getTodayLocalDate();
     let totalExpected = 0;
     let totalPresent = 0;
     const allMissedDates = new Set<string>();
     const perBatch: StudentBatchAttendanceBreakdown[] = batches.map((batch) => {
       const batchId = batch.id.toString();
-      const expectedDates = scheduledDatesInMonth(input.month, batch.days, holidayDates);
+      const expectedDates = scheduledDatesInMonth(input.month, batch.days, holidayDates, today);
       const presentSet = presentByBatch.get(batchId) ?? new Set<string>();
       const presentDates = expectedDates.filter((d) => presentSet.has(d));
       const absentDates = expectedDates.filter((d) => !presentSet.has(d));

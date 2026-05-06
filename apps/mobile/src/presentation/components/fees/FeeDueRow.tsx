@@ -13,6 +13,9 @@ type FeeDueRowProps = {
   onPress: () => void;
   showStudentName?: boolean;
   studentName?: string;
+  /** When false, omit the month prefix from the subtitle. Use when the screen
+   * already states the month (e.g., a single-month list). Default true. */
+  showMonth?: boolean;
 };
 
 function getStatusTone(
@@ -58,29 +61,36 @@ function daysBetween(iso: string): number {
   return Math.round((today.getTime() - d.getTime()) / 86_400_000);
 }
 
-function subtitleFor(item: FeeDueItem): string {
+function subtitleFor(item: FeeDueItem, showMonth: boolean): string {
   const month = formatMonthKey(item.monthKey);
+  const prefix = showMonth ? `${month} · ` : '';
   if (item.status === 'PAID' && item.paidAt) {
     const paid = new Date(item.paidAt);
     if (!isNaN(paid.getTime())) {
-      return `${month} · Paid ${paid.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+      return `${prefix}Paid ${paid.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
     }
-    return month;
+    return showMonth ? month : 'Paid';
   }
   if (item.status === 'DUE') {
     const days = daysBetween(item.dueDate);
-    if (days > 0) return `${month} · ${days} ${days === 1 ? 'day' : 'days'} overdue`;
-    return month;
+    if (days > 0) return `${prefix}${days} ${days === 1 ? 'day' : 'days'} overdue`;
+    return showMonth ? month : 'Due today';
   }
   if (item.status === 'UPCOMING') {
     const days = -daysBetween(item.dueDate);
-    if (days > 0) return `${month} · Due in ${days} ${days === 1 ? 'day' : 'days'}`;
-    return month;
+    if (days > 0) return `${prefix}Due in ${days} ${days === 1 ? 'day' : 'days'}`;
+    return showMonth ? month : 'Upcoming';
   }
-  return month;
+  return showMonth ? month : '';
 }
 
-function FeeDueRowComponent({ item, onPress, showStudentName = true, studentName }: FeeDueRowProps) {
+function FeeDueRowComponent({
+  item,
+  onPress,
+  showStudentName = true,
+  studentName,
+  showMonth = true,
+}: FeeDueRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const TONES = useMemo(() => getStatusTone(colors), [colors]);
@@ -89,17 +99,31 @@ function FeeDueRowComponent({ item, onPress, showStudentName = true, studentName
   const hasName = showStudentName && resolvedName;
 
   const payable = item.status !== 'PAID' && item.lateFee > 0 ? item.totalPayable : item.amount;
-  const subtitle = subtitleFor(item);
+  const subtitle = subtitleFor(item, showMonth);
+
+  const stripeColor =
+    item.status === 'DUE'
+      ? colors.danger
+      : item.status === 'UPCOMING'
+        ? colors.warning
+        : item.status === 'PAID'
+          ? colors.success
+          : colors.border;
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { borderLeftColor: stripeColor }]}
       onPress={onPress}
       activeOpacity={0.7}
       testID={`fee-row-${item.id}`}
     >
       {hasName ? (
-        <InitialsAvatar name={resolvedName!} size={38} style={styles.avatarSpacing} />
+        <InitialsAvatar
+          name={resolvedName!}
+          size={38}
+          variant="palette"
+          style={styles.avatarSpacing}
+        />
       ) : (
         <View
           style={[styles.iconCircle, { backgroundColor: tone.bg, borderColor: tone.border }]}
@@ -153,9 +177,10 @@ const makeStyles = (colors: Colors) =>
       paddingVertical: spacing.sm + 2,
       paddingRight: spacing.md,
       paddingLeft: spacing.md,
-      marginBottom: spacing.sm,
+      marginBottom: spacing.xs + 2,
       borderWidth: 1,
       borderColor: colors.border,
+      borderLeftWidth: 3,
     },
     avatarSpacing: {
       marginRight: spacing.md,

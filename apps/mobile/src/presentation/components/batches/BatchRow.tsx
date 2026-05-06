@@ -49,8 +49,28 @@ function BatchRowComponent({ batch, onPress }: BatchRowProps) {
     ? `${batch.studentCount}/${batch.maxStudents}`
     : `${batch.studentCount}`;
 
+  const capacityPct =
+    batch.maxStudents && batch.maxStudents > 0
+      ? Math.min(100, Math.round((batch.studentCount / batch.maxStudents) * 100))
+      : null;
+
+  const capacityColor =
+    capacityPct == null
+      ? colors.primary
+      : capacityPct >= 90
+        ? colors.danger
+        : capacityPct >= 70
+          ? colors.warning
+          : colors.success;
+
+  const isInactive = batch.status === 'INACTIVE';
+
   return (
-    <AppCard style={styles.container} onPress={handlePress} testID={`batch-row-${batch.id}`}>
+    <AppCard
+      style={isInactive ? styles.containerInactive : styles.container}
+      onPress={handlePress}
+      testID={`batch-row-${batch.id}`}
+    >
       <View style={styles.row}>
         {batch.profilePhotoUrl ? (
           <AvatarImage url={batch.profilePhotoUrl} style={styles.avatar} />
@@ -59,6 +79,7 @@ function BatchRowComponent({ batch, onPress }: BatchRowProps) {
             name={batch.batchName}
             size={48}
             shape="rounded"
+            variant="palette"
             style={styles.avatar}
           />
         )}
@@ -68,7 +89,7 @@ function BatchRowComponent({ batch, onPress }: BatchRowProps) {
             <Text style={styles.name} numberOfLines={1}>
               {batch.batchName}
             </Text>
-            {batch.status === 'INACTIVE' && (
+            {isInactive && (
               <Badge label="Inactive" variant="neutral" />
             )}
           </View>
@@ -81,6 +102,16 @@ function BatchRowComponent({ batch, onPress }: BatchRowProps) {
         <View style={styles.countBadge}>
           <Text style={styles.countNumber}>{studentCountText}</Text>
           <Text style={styles.countLabel}>students</Text>
+          {capacityPct != null && (
+            <View style={styles.capacityTrack}>
+              <View
+                style={[
+                  styles.capacityFill,
+                  { width: `${capacityPct}%`, backgroundColor: capacityColor },
+                ]}
+              />
+            </View>
+          )}
         </View>
       </View>
     </AppCard>
@@ -91,31 +122,29 @@ export const BatchRow = memo(BatchRowComponent);
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
   container: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs + 2,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
+  },
+  containerInactive: {
+    marginBottom: spacing.xs + 2,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.borderStrong,
+    opacity: 0.7,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
   },
   avatar: {
     width: 42,
     height: 42,
     borderRadius: radius.lg,
-    marginRight: spacing.md,
-  },
-  avatarPlaceholder: {
-    backgroundColor: colors.bgSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
   },
   info: {
     flex: 1,
-    marginRight: spacing.sm,
+    minWidth: 0,
   },
   topRow: {
     flexDirection: 'row',
@@ -127,6 +156,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
+    letterSpacing: -0.2,
     flexShrink: 1,
   },
   schedule: {
@@ -140,16 +170,33 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.sm + 2,
-    minWidth: 48,
+    minWidth: 56,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   countNumber: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    letterSpacing: -0.2,
   },
   countLabel: {
     fontSize: 9,
     color: colors.textSecondary,
     marginTop: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  capacityTrack: {
+    marginTop: 6,
+    height: 3,
+    width: '100%',
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  capacityFill: {
+    height: '100%',
+    borderRadius: 2,
   },
 });

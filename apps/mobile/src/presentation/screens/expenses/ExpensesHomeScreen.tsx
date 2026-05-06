@@ -629,21 +629,55 @@ export function ExpensesHomeScreen() {
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconCircle}>
-                <LinearGradient
-                  colors={[gradient.start, gradient.end]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <AppIcon name="cash-remove" size={48} color="#FFFFFF" />
+            debouncedSearch ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircleMuted}>
+                  <AppIcon name="magnify" size={36} color={colors.textSecondary} />
+                </View>
+                <Text style={styles.emptyTitle}>No matches</Text>
+                <Text style={styles.emptySubtitle}>
+                  Try different keywords or clear filters.
+                </Text>
               </View>
-              <Text style={styles.emptyTitle}>No expenses found</Text>
-              <Text style={styles.emptySubtitle}>
-                {debouncedSearch ? 'Try a different search term.' : 'Add your first expense to get started.'}
-              </Text>
-            </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircle}>
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name="wallet-plus-outline" size={44} color="#FFFFFF" />
+                </View>
+                <Text style={styles.emptyTitle}>Track your first expense</Text>
+                <Text style={styles.emptySubtitle}>
+                  Log coaching costs, equipment, utilities and other expenses to see where your money goes.
+                </Text>
+                <TouchableOpacity
+                  style={styles.emptyCta}
+                  onPress={() => navigation.navigate('ExpenseForm', { mode: 'create' })}
+                  activeOpacity={0.85}
+                  testID="empty-add-expense"
+                >
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <AppIcon name="plus" size={18} color="#FFFFFF" />
+                  <Text style={styles.emptyCtaText}>Add Expense</Text>
+                </TouchableOpacity>
+                <View style={styles.emptyExamples}>
+                  {['Salaries', 'Equipment', 'Utilities', 'Maintenance'].map((label) => (
+                    <View key={label} style={styles.emptyExampleChip}>
+                      <Text style={styles.emptyExampleText}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )
           ) : null
         }
         ListFooterComponent={
@@ -1027,30 +1061,81 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: spacing['3xl'],
-    paddingHorizontal: spacing['3xl'],
+    paddingTop: spacing['2xl'],
+    paddingHorizontal: spacing.xl,
   },
   emptyIconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  emptyIconCircleMuted: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.bgSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
     textAlign: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs + 2,
+    letterSpacing: -0.2,
   },
   emptySubtitle: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.sm,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  emptyCtaText: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.bold,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  emptyExamples: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.xs + 2,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  emptyExampleChip: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.bgSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyExampleText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: fontWeights.medium,
+    letterSpacing: 0.2,
   },
   loader: {
     padding: spacing.base,

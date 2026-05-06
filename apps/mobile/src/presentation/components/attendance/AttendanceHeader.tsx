@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
-import LinearGradient from 'react-native-linear-gradient';
-import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -50,13 +49,7 @@ export function AttendanceHeader({
           accessibilityRole="button"
           testID="monthly-summary-button"
         >
-          <View style={styles.actionIconWrap}>
-            <LinearGradient
-              colors={[gradient.start, gradient.end]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+          <View style={[styles.actionIconWrap, { backgroundColor: colors.primary }]}>
             <AppIcon name="calendar-text-outline" size={18} color="#FFFFFF" />
           </View>
           <Text style={styles.actionLabel}>Monthly Summary</Text>

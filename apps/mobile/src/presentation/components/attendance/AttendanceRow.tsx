@@ -19,30 +19,40 @@ function AttendanceRowComponent({ item, onToggle, disabled }: AttendanceRowProps
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPresent = item.status === 'PRESENT';
   const isHoliday = item.status === 'HOLIDAY';
+  const isAbsent = !isPresent && !isHoliday;
 
   const handleToggle = useCallback(() => {
     onToggle(item.studentId);
   }, [onToggle, item.studentId]);
 
-  const badge = isHoliday
-    ? { label: 'Holiday', variant: 'warning' as const }
-    : isPresent
-      ? { label: 'Present', variant: 'success' as const }
-      : { label: 'Absent', variant: 'danger' as const };
-
   return (
-    <View style={styles.card} testID={`attendance-row-${item.studentId}`}>
+    <View
+      style={[
+        styles.card,
+        isAbsent && styles.cardAbsent,
+        isHoliday && styles.cardHoliday,
+      ]}
+      testID={`attendance-row-${item.studentId}`}
+    >
       <InitialsAvatar
         name={item.fullName}
         size={40}
-        style={{ marginRight: spacing.md }}
+        variant="palette"
+        style={styles.avatar}
       />
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{item.fullName}</Text>
-        <View style={styles.statusRow}>
-          <Badge label={badge.label} variant={badge.variant} dot />
-        </View>
+        {isAbsent && (
+          <View style={styles.statusRow}>
+            <Badge label="Absent" variant="danger" dot />
+          </View>
+        )}
+        {isHoliday && (
+          <View style={styles.statusRow}>
+            <Badge label="Holiday" variant="warning" dot />
+          </View>
+        )}
       </View>
 
       <Toggle
@@ -64,22 +74,37 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs + 2,
     borderWidth: 1,
     borderColor: colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.border,
+    gap: spacing.md,
+  },
+  cardAbsent: {
+    borderLeftColor: colors.danger,
+  },
+  cardHoliday: {
+    borderLeftColor: colors.warning,
+  },
+  avatar: {
+    flexShrink: 0,
   },
   info: {
     flex: 1,
+    minWidth: 0,
   },
   name: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    marginBottom: spacing.xs,
+    letterSpacing: -0.2,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 4,
   },
 });

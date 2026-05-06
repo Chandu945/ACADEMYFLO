@@ -6,7 +6,11 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StaffAttendanceRepository } from '@domain/staff-attendance/ports/staff-attendance.repository';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-attendance.rules';
-import { isValidMonthKey, getDaysInMonth } from '@domain/attendance/value-objects/local-date.vo';
+import {
+  isValidMonthKey,
+  daysElapsedInMonth,
+  getTodayLocalDate,
+} from '@domain/attendance/value-objects/local-date.vo';
 import { StaffAttendanceErrors } from '../../common/errors';
 import type { MonthlyStaffAttendanceSummaryItem } from '../dtos/staff-attendance.dto';
 import type { UserRole } from '@academyflo/contracts';
@@ -67,9 +71,15 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
       this.holidayRepo.findByAcademyAndMonth(actor.academyId, input.month),
     ]);
 
-    const daysInMonth = getDaysInMonth(input.month);
-    const holidayCount = holidays.length;
-    const holidayDateSet = new Set(holidays.map((h) => h.date));
+    // Cap "elapsed days" to today (IST) so future calendar days aren't counted
+    // as absences. Cap holidayCount the same way so future holidays don't
+    // shrink past absences.
+    const today = getTodayLocalDate();
+    const elapsedDays = daysElapsedInMonth(input.month);
+    const holidayCount = holidays.filter((h) => h.date <= today).length;
+    const holidayDateSet = new Set(
+      holidays.filter((h) => h.date <= today).map((h) => h.date),
+    );
 
     // Build present dates per staff (to compute overlap with holidays)
     const presentDatesMap = new Map<string, string[]>();
@@ -83,7 +93,7 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
       const presentDatesForStaff = presentDatesMap.get(s.id.toString()) ?? [];
       const presentCount = presentDatesForStaff.length;
       const overlapCount = presentDatesForStaff.filter((d) => holidayDateSet.has(d)).length;
-      const absentCount = Math.max(0, daysInMonth - presentCount - holidayCount + overlapCount);
+      const absentCount = Math.max(0, elapsedDays - presentCount - holidayCount + overlapCount);
       return {
         staffUserId: s.id.toString(),
         fullName: s.fullName,

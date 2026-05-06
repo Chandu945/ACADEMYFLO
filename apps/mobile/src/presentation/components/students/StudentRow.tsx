@@ -20,7 +20,6 @@ type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'pri
 
 function getStatusVariant(status: string): BadgeVariant {
   switch (status) {
-    case 'ACTIVE': return 'success';
     case 'INACTIVE': return 'warning';
     case 'LEFT': return 'danger';
     default: return 'neutral';
@@ -30,9 +29,9 @@ function getStatusVariant(status: string): BadgeVariant {
 function formatFee(amount: number): string {
   if (amount >= 100000) {
     const lakhs = amount / 100000;
-    return `\u20B9${lakhs.toFixed(lakhs >= 10 ? 1 : 2)}L`;
+    return `₹${lakhs.toFixed(lakhs >= 10 ? 1 : 2)}L`;
   }
-  return `\u20B9${amount.toLocaleString('en-IN')}`;
+  return `₹${amount.toLocaleString('en-IN')}`;
 }
 
 function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps) {
@@ -43,6 +42,7 @@ function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps)
   const handleLongPress = useCallback(() => onLongPress?.(student), [onLongPress, student]);
 
   const contactNumber = student.guardian?.mobile ?? student.mobileNumber ?? null;
+  const isActive = student.status === 'ACTIVE';
 
   return (
     <AppCard
@@ -51,21 +51,26 @@ function StudentRowComponent({ student, onPress, onLongPress }: StudentRowProps)
       onLongPress={handleLongPress}
       testID={`student-row-${student.id}`}
     >
-      {student.profilePhotoUrl ? (
-        <AvatarImage url={student.profilePhotoUrl} style={styles.avatar} />
-      ) : (
-        <InitialsAvatar
-          name={student.fullName}
-          size={44}
-          style={styles.avatarSpacing}
-        />
-      )}
+      <View style={styles.avatarWrap}>
+        {student.profilePhotoUrl ? (
+          <AvatarImage url={student.profilePhotoUrl} style={styles.avatar} />
+        ) : (
+          <InitialsAvatar
+            name={student.fullName}
+            size={44}
+            variant="palette"
+          />
+        )}
+        {isActive && <View style={styles.statusDot} />}
+      </View>
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>
           {student.fullName}
         </Text>
         <View style={styles.metaRow}>
-          <Badge label={student.status} variant={getStatusVariant(student.status)} dot uppercase />
+          {!isActive && (
+            <Badge label={student.status} variant={getStatusVariant(student.status)} dot uppercase />
+          )}
           {contactNumber && (
             <View style={styles.phoneMeta}>
               <AppIcon name="phone-outline" size={12} color={colors.textDisabled} />
@@ -98,29 +103,42 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-    padding: spacing.md,
+    marginBottom: spacing.xs + 2,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    gap: spacing.md,
+  },
+  avatarWrap: {
+    width: 44,
+    height: 44,
+    position: 'relative',
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    marginRight: spacing.md,
   },
-  avatarSpacing: {
-    marginRight: spacing.md,
+  statusDot: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.surface,
   },
   info: {
     flex: 1,
     minWidth: 0,
-    marginRight: spacing.sm,
   },
   name: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
     letterSpacing: -0.2,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   metaRow: {
     flexDirection: 'row',
