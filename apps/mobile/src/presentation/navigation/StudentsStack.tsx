@@ -11,7 +11,11 @@ import { useTheme } from '../context/ThemeContext';
 export type StudentsStackParamList = {
   StudentsList: undefined;
   StudentForm: { mode: 'create' | 'edit'; student?: StudentListItem };
-  StudentDetail: { student: StudentListItem };
+  /** `studentId` is the URL-safe primary param. `student` is an optional
+   *  pre-fetched payload passed when navigating from the list (lets the
+   *  detail screen render instantly). On web refresh / deep link the
+   *  payload is absent and the screen fetches by ID. */
+  StudentDetail: { studentId: string; student?: StudentListItem };
 };
 
 const Stack = createNativeStackNavigator<StudentsStackParamList>();

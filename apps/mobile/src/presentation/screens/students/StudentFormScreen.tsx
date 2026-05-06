@@ -346,7 +346,11 @@ export function StudentFormScreen() {
           try {
             const batchResult = await setStudentBatches(studentId, f.selectedBatchIds);
             if (batchResult && !batchResult.ok) {
-              showToast('Student saved but batch assignment failed.', 'error');
+              // Surface the actual reason (capacity full, batch not active,
+              // etc.) so the user can fix the input — generic "failed" was
+              // unhelpful and made the screen feel broken.
+              const reason = batchResult.error?.message ?? 'Batch assignment failed.';
+              showToast(`Student saved. ${reason}`, 'error');
             }
           } catch {
             showToast('Student saved but batch assignment failed.', 'error');
@@ -616,7 +620,11 @@ export function StudentFormScreen() {
         />
       )}
 
-      <BatchMultiSelect selectedIds={selectedBatchIds} onChange={setSelectedBatchIds} />
+      <BatchMultiSelect
+        selectedIds={selectedBatchIds}
+        onChange={setSelectedBatchIds}
+        initiallyEnrolledIds={initialRef.current.selectedBatchIds}
+      />
 
       <View style={styles.submitContainer}>
         <Button

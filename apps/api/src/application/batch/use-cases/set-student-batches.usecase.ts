@@ -66,8 +66,8 @@ export class SetStudentBatchesUseCase {
 
     // Check capacity for newly added batches
     const currentAssignments = await this.studentBatchRepo.findByStudentId(input.studentId);
-    const currentBatchIds = new Set(currentAssignments.map((a) => a.batchId));
-    const newlyAddedBatchIds = uniqueBatchIds.filter((id) => !currentBatchIds.has(id));
+    const currentByBatchId = new Map(currentAssignments.map((a) => [a.batchId, a]));
+    const newlyAddedBatchIds = uniqueBatchIds.filter((id) => !currentByBatchId.has(id));
 
     for (const batchId of newlyAddedBatchIds) {
       const batch = batchById.get(batchId)!;
@@ -79,19 +79,30 @@ export class SetStudentBatchesUseCase {
       }
     }
 
-    // Build new assignments
+    // Build the resulting assignment list. CRITICAL: for batches that the
+    // student is ALREADY in, reuse the existing record (id + assignedAt) —
+    // do NOT create a new StudentBatch with `assignedAt = now`, because the
+    // attendance summary use cases use `assignedAt` to cap a student's
+    // expected days in a month. Bumping `assignedAt` to today on every
+    // form-save would silently wipe out the student's earlier attendance
+    // from those summaries. Only newly-added batches get fresh records.
     const academyId = actor.academyId;
-    const assignments = uniqueBatchIds.map((batchId) =>
-      StudentBatch.create({
+    const assignments = uniqueBatchIds.map((batchId) => {
+      const existing = currentByBatchId.get(batchId);
+      if (existing) return existing;
+      return StudentBatch.create({
         id: randomUUID(),
         studentId: input.studentId,
         batchId,
         academyId,
-      }),
-    );
+      });
+    });
 
     // Wrap replace (delete-all + insert-all) in a transaction so a mid-way
     // failure can't leave the student with an empty or partial batch set.
+    // Existing assignments are re-inserted with their original ids and
+    // assignedAt values (no-op semantically) so the unique studentId+batchId
+    // index stays stable across saves.
     await this.transaction.run(async () => {
       await this.studentBatchRepo.replaceForStudent(input.studentId, assignments);
     });

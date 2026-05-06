@@ -11,9 +11,17 @@ import { useTheme } from '../../context/ThemeContext';
 type BatchMultiSelectProps = {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  /** Batch IDs the student was already enrolled in BEFORE this edit session
+   *  began. Used to distinguish "currently enrolled" from "newly selected"
+   *  and to label the remove affordance correctly. */
+  initiallyEnrolledIds?: string[];
 };
 
-export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProps) {
+export function BatchMultiSelect({
+  selectedIds,
+  onChange,
+  initiallyEnrolledIds,
+}: BatchMultiSelectProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [batches, setBatches] = useState<BatchListItem[]>([]);
@@ -122,11 +130,16 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
     );
   }
 
+  const initiallyEnrolledSet = useMemo(
+    () => new Set(initiallyEnrolledIds ?? []),
+    [initiallyEnrolledIds],
+  );
+
   return (
     <View style={styles.section}>
       {header}
       <Text style={styles.helperText}>
-        Tap to enrol the student. Full batches are hidden.
+        Selected batches are enrolled. Tap a selected batch to remove it.
       </Text>
       <View
         style={styles.list}
@@ -135,12 +148,18 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
       >
         {visibleBatches.map((batch) => {
           const isSelected = selectedIds.includes(batch.id);
+          const wasInitiallyEnrolled = initiallyEnrolledSet.has(batch.id);
           const daysSummary = formatDays(batch.days);
           const capacitySummary =
             batch.maxStudents != null
               ? `${batch.studentCount}/${batch.maxStudents}`
               : null;
-          const accessibilityHint = [daysSummary, capacitySummary]
+          const accessibilityHint = [
+            wasInitiallyEnrolled ? 'currently enrolled' : null,
+            daysSummary,
+            capacitySummary,
+            isSelected ? 'tap to remove' : 'tap to enrol',
+          ]
             .filter(Boolean)
             .join(', ');
           return (
@@ -173,6 +192,11 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
                   >
                     {batch.batchName}
                   </Text>
+                  {wasInitiallyEnrolled && isSelected ? (
+                    <View style={styles.enrolledTag}>
+                      <Text style={styles.enrolledTagText}>ENROLLED</Text>
+                    </View>
+                  ) : null}
                 </View>
                 {daysSummary ? (
                   <Text
@@ -183,21 +207,13 @@ export function BatchMultiSelect({ selectedIds, onChange }: BatchMultiSelectProp
                   </Text>
                 ) : null}
               </View>
-              {capacitySummary ? (
-                <View
-                  style={[
-                    styles.capacityBadge,
-                    isSelected && styles.capacityBadgeSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.capacityBadgeText,
-                      isSelected && styles.capacityBadgeTextSelected,
-                    ]}
-                  >
-                    {capacitySummary}
-                  </Text>
+              {isSelected ? (
+                <View style={styles.removeBadge}>
+                  <AppIcon name="close" size={14} color="#FFFFFF" />
+                </View>
+              ) : capacitySummary ? (
+                <View style={styles.capacityBadge}>
+                  <Text style={styles.capacityBadgeText}>{capacitySummary}</Text>
                 </View>
               ) : null}
             </Pressable>
@@ -354,6 +370,34 @@ const makeStyles = (colors: Colors) =>
     },
     capacityBadgeTextSelected: {
       color: '#FFFFFF',
+    },
+    // Explicit "remove" affordance shown on the right of selected chips.
+    // The whole chip is still tappable, but a clear × icon makes the action
+    // obvious — no more "do I tap to confirm or to remove?" ambiguity.
+    removeBadge: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: 'rgba(255, 255, 255, 0.22)',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.32)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // "ENROLLED" tag — only shown for batches the student was already in
+    // BEFORE this edit session. Distinguishes "currently enrolled (will
+    // stay)" from "newly added in this session (will be added on save)".
+    enrolledTag: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: radius.full,
+      backgroundColor: 'rgba(255, 255, 255, 0.20)',
+    },
+    enrolledTagText: {
+      fontSize: 9,
+      fontWeight: fontWeights.bold,
+      color: '#FFFFFF',
+      letterSpacing: 0.5,
     },
     loadingContainer: {
       paddingVertical: spacing.base,

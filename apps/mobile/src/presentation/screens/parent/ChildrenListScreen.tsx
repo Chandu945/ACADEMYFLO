@@ -26,87 +26,17 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 type Nav = NativeStackNavigationProp<ParentHomeStackParamList, 'ChildrenList'>;
 
-function AttendanceRing({ percent }: { percent: number | null }) {
-  const { colors } = useTheme();
-  const rStyles = useMemo(() => makeRingStyles(colors), [colors]);
+type AttendanceTone = 'success' | 'warning' | 'danger' | 'neutral';
 
-  // Empty-state branch: no attendance data this month yet (early in the
-  // month, child not enrolled in any batch with attendance, or batch hasn't
-  // met yet). Render a soft "No data yet" pill instead of an empty ring with
-  // "--" inside, which read as broken UI rather than an empty state.
-  if (percent == null) {
-    return (
-      <View style={rStyles.emptyPill}>
-        <AppIcon name="calendar-blank-outline" size={14} color={colors.textDisabled} />
-        <Text style={rStyles.emptyText}>No data yet</Text>
-      </View>
-    );
-  }
-
-  const color =
-    percent >= 75 ? colors.success : percent >= 50 ? colors.warning : colors.danger;
-
-  return (
-    <View style={rStyles.container}>
-      <View style={[rStyles.ring, { borderColor: colors.border }]}>
-        <View
-          style={[
-            rStyles.fill,
-            {
-              borderColor: color,
-              transform: [{ rotate: `${(percent / 100) * 360}deg` }],
-            },
-          ]}
-        />
-        <View style={rStyles.inner}>
-          <Text style={[rStyles.value, { color }]}>{percent}%</Text>
-        </View>
-      </View>
-      <Text style={rStyles.label}>Attendance</Text>
-    </View>
-  );
+function getAttendanceTone(percent: number | null): AttendanceTone {
+  if (percent == null) return 'neutral';
+  if (percent >= 90) return 'success';
+  if (percent >= 75) return 'warning';
+  return 'danger';
 }
 
-const makeRingStyles = (colors: Colors) => StyleSheet.create({
-  container: { alignItems: 'center' },
-  ring: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fill: {
-    position: 'absolute',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 4,
-    borderLeftColor: 'transparent',
-    borderBottomColor: 'transparent',
-  },
-  inner: { alignItems: 'center', justifyContent: 'center' },
-  value: { fontSize: fontSizes.sm, fontWeight: fontWeights.bold },
-  label: { fontSize: fontSizes.xs, color: colors.textSecondary, marginTop: 2 },
-  emptyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.bgSubtle,
-  },
-  emptyText: {
-    fontSize: fontSizes.xs,
-    color: colors.textDisabled,
-    fontWeight: fontWeights.medium,
-  },
-});
-
 export function ChildrenListScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const { user } = useAuth();
@@ -189,56 +119,53 @@ export function ChildrenListScreen() {
   const keyExtractor = useCallback((item: ChildSummary) => item.studentId, []);
 
   const renderChild = useCallback(
-    ({ item }: { item: ChildSummary }) => (
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.7}
-        onPress={() =>
-          navigation.navigate('ChildDetail', {
-            studentId: item.studentId,
-            fullName: item.fullName,
-          })
-        }
-      >
-        <View style={styles.cardBody}>
-          <InitialsAvatar name={item.fullName} size={56} style={styles.avatar} />
+    ({ item }: { item: ChildSummary }) => {
+      const pct = item.currentMonthAttendancePercent;
+      const tone = getAttendanceTone(pct);
+      return (
+        <TouchableOpacity
+          style={[styles.card, styles[`cardStripe_${tone}`]]}
+          activeOpacity={0.7}
+          onPress={() =>
+            navigation.navigate('ChildDetail', {
+              studentId: item.studentId,
+              fullName: item.fullName,
+            })
+          }
+        >
+          <InitialsAvatar
+            name={item.fullName}
+            size={48}
+            variant="palette"
+            style={styles.avatar}
+          />
           <View style={styles.cardInfo}>
             <View style={styles.nameRow}>
               <Text style={styles.childName} numberOfLines={1}>
                 {item.fullName}
               </Text>
-              {/* Show the status dot only when the child is *not* active — an
-                  always-on green dot for an active child is ambient noise that
-                  also visually competed with the attendance ring on the right
-                  (it looked like the dot belonged to the attendance column). */}
               {item.status !== 'ACTIVE' && (
-                <View
-                  style={[
-                    styles.statusDot,
-                    { backgroundColor: colors.warning },
-                  ]}
-                />
+                <View style={[styles.statusDot, { backgroundColor: colors.warning }]} />
               )}
             </View>
-            <View style={styles.detailRow}>
-              
-              <AppIcon name="currency-inr" size={14} color={colors.textSecondary} />
-              <Text style={styles.feeText}>
-                {formatCurrency(item.monthlyFee)}
-                <Text style={styles.feeLabel}> / month</Text>
+            <Text style={styles.feeText} numberOfLines={1}>
+              {formatCurrency(item.monthlyFee)}
+              <Text style={styles.feeLabel}> / month</Text>
+            </Text>
+          </View>
+          <View style={styles.rightCol}>
+            <View style={[styles.pctBadge, styles[`pctBadge_${tone}`]]}>
+              <Text style={[styles.pctText, styles[`pctText_${tone}`]]}>
+                {pct == null ? '—' : `${pct}%`}
               </Text>
             </View>
+            <Text style={styles.pctLabel}>Attendance</Text>
           </View>
-          <AttendanceRing percent={item.currentMonthAttendancePercent} />
-        </View>
-        <View style={styles.cardAction}>
-          <Text style={styles.cardActionText}>View Details</Text>
-          
-          <AppIcon name="chevron-right" size={18} color={colors.textSecondary} />
-        </View>
-      </TouchableOpacity>
-    ),
-    [navigation, styles, colors, isDark],
+          <AppIcon name="chevron-right" size={18} color={colors.textDisabled} />
+        </TouchableOpacity>
+      );
+    },
+    [navigation, styles, colors],
   );
 
   if (loading) {
@@ -314,44 +241,41 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    marginBottom: spacing.md,
-    ...shadows.md,
-    overflow: 'hidden',
-  },
-  cardBody: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.base,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+    marginBottom: spacing.sm + 2,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    ...shadows.sm,
   },
+  cardStripe_success: { borderLeftColor: colors.success },
+  cardStripe_warning: { borderLeftColor: colors.warning },
+  cardStripe_danger: { borderLeftColor: colors.danger },
+  cardStripe_neutral: { borderLeftColor: colors.border },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  avatarText: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.white,
+    flexShrink: 0,
   },
   cardInfo: {
     flex: 1,
-    marginRight: spacing.sm,
+    minWidth: 0,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   childName: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.semibold,
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
     color: colors.text,
-    flex: 1,
+    letterSpacing: -0.2,
+    flexShrink: 1,
   },
   statusDot: {
     width: 8,
@@ -359,34 +283,61 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: 4,
     marginLeft: spacing.sm,
   },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
   feeText: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.sm,
     fontWeight: fontWeights.medium,
     color: colors.textSecondary,
   },
   feeLabel: {
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.xs,
     fontWeight: fontWeights.normal,
     color: colors.textDisabled,
   },
-  cardAction: {
-    flexDirection: 'row',
+  rightCol: {
+    alignItems: 'center',
+    gap: 2,
+    flexShrink: 0,
+  },
+  pctBadge: {
+    minWidth: 56,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.xs,
+    borderWidth: 1,
   },
-  cardActionText: {
+  pctBadge_success: {
+    backgroundColor: colors.successBg,
+    borderColor: colors.successBorder,
+  },
+  pctBadge_warning: {
+    backgroundColor: colors.warningBg,
+    borderColor: colors.warningBorder,
+  },
+  pctBadge_danger: {
+    backgroundColor: colors.dangerBg,
+    borderColor: colors.dangerBorder,
+  },
+  pctBadge_neutral: {
+    backgroundColor: colors.bgSubtle,
+    borderColor: colors.border,
+  },
+  pctText: {
     fontSize: fontSizes.sm,
-    fontWeight: fontWeights.medium,
-    color: colors.text,
+    fontWeight: fontWeights.bold,
+    letterSpacing: -0.2,
+  },
+  pctText_success: { color: colors.successText },
+  pctText_warning: { color: colors.warningText },
+  pctText_danger: { color: colors.dangerText },
+  pctText_neutral: { color: colors.textSecondary },
+  pctLabel: {
+    fontSize: 9,
+    color: colors.textDisabled,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: fontWeights.semibold,
   },
   center: {
     flex: 1,

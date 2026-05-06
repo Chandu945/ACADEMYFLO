@@ -82,11 +82,18 @@ export function StudentDetailScreen() {
   const { showToast } = useToast();
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
-  const paramStudent = route.params?.student;
-  const studentId = paramStudent?.id;
+  // Prefer the URL-safe `studentId` (always present); fall back to
+  // `paramStudent.id` for legacy navigation that still passes the object.
+  // On web refresh, paramStudent serializes to "[object Object]" and is
+  // unusable — the studentId param is what we trust.
+  const paramStudent =
+    route.params?.student && typeof route.params.student === 'object'
+      ? route.params.student
+      : undefined;
+  const studentId = route.params?.studentId ?? paramStudent?.id;
 
   const [student, setStudent] = useState<StudentListItem>(
-    paramStudent ?? ({ id: '', fullName: '', status: 'ACTIVE' } as StudentListItem),
+    paramStudent ?? ({ id: studentId ?? '', fullName: '', status: 'ACTIVE' } as StudentListItem),
   );
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);

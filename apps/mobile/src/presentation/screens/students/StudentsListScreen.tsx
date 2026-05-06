@@ -187,7 +187,10 @@ export function StudentsListScreen() {
 
   const handleRowPress = useCallback(
     (student: StudentListItem) => {
-      navigation.navigate('StudentDetail', { student });
+      // Pass `studentId` (URL-safe) plus the full `student` so native paths
+      // can render instantly. On web refresh, only the URL survives, so the
+      // detail screen falls back to fetching by id.
+      navigation.navigate('StudentDetail', { studentId: student.id, student });
     },
     [navigation],
   );

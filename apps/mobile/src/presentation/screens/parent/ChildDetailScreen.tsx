@@ -350,23 +350,71 @@ export function ChildDetailScreen() {
               />
             </View>
 
-            {/* Per-batch breakdown — only rendered for multi-batch students */}
-            {attendance.perBatch.length > 1 && (
-              <View style={[styles.sectionCard, { marginTop: spacing.sm }]}>
-                <Text style={[styles.sectionTitle, { marginBottom: spacing.sm, fontSize: fontSizes.sm }]}>
-                  By Session
-                </Text>
+            {/* Per-batch breakdown — same polished pattern as the owner's
+                Student Detail "By Batch" card. Shown whenever the student is
+                in at least one batch; for single-batch the per-batch row
+                still adds context (sessions vs the headline's days). */}
+            {attendance.perBatch.length > 0 && (
+              <View style={styles.batchCard}>
+                <Text style={styles.batchCardTitle}>By Session</Text>
                 {attendance.perBatch.map((b) => {
-                  const pct = b.expectedCount > 0
-                    ? Math.round((b.presentCount / b.expectedCount) * 100)
-                    : 0;
+                  const pct =
+                    b.expectedCount > 0
+                      ? Math.round((b.presentCount / b.expectedCount) * 100)
+                      : null;
+                  const tone =
+                    pct == null
+                      ? 'neutral'
+                      : pct >= 90
+                        ? 'success'
+                        : pct >= 75
+                          ? 'warning'
+                          : 'danger';
                   return (
                     <View key={b.batchId} style={styles.batchRow}>
-                      <Text style={styles.batchName} numberOfLines={1}>{b.batchName}</Text>
-                      <Text style={styles.batchCount}>
-                        {b.presentCount}/{b.expectedCount}
-                      </Text>
-                      <Text style={styles.batchPct}>{pct}%</Text>
+                      <View style={styles.batchInfo}>
+                        <Text style={styles.batchName} numberOfLines={1}>
+                          {b.batchName}
+                        </Text>
+                        <Text style={styles.batchSub}>
+                          {b.expectedCount > 0
+                            ? `${b.presentCount} of ${b.expectedCount} sessions`
+                            : 'No scheduled sessions yet'}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.batchPctBadge,
+                          tone === 'success' && {
+                            backgroundColor: colors.successBg,
+                            borderColor: colors.successBorder,
+                          },
+                          tone === 'warning' && {
+                            backgroundColor: colors.warningBg,
+                            borderColor: colors.warningBorder,
+                          },
+                          tone === 'danger' && {
+                            backgroundColor: colors.dangerBg,
+                            borderColor: colors.dangerBorder,
+                          },
+                          tone === 'neutral' && {
+                            backgroundColor: colors.bgSubtle,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.batchPctText,
+                            tone === 'success' && { color: colors.successText },
+                            tone === 'warning' && { color: colors.warningText },
+                            tone === 'danger' && { color: colors.dangerText },
+                            tone === 'neutral' && { color: colors.textSecondary },
+                          ]}
+                        >
+                          {pct == null ? '—' : `${pct}%`}
+                        </Text>
+                      </View>
                     </View>
                   );
                 })}
@@ -792,28 +840,53 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+  batchCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  batchCardTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    letterSpacing: -0.2,
+    marginBottom: spacing.sm,
+  },
   batchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
-    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  batchInfo: {
+    flex: 1,
+    minWidth: 0,
   },
   batchName: {
-    flex: 1,
-    fontSize: fontSizes.sm,
-    color: colors.text,
-  },
-  batchCount: {
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-    minWidth: 40,
-    textAlign: 'right',
-  },
-  batchPct: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    minWidth: 38,
-    textAlign: 'right',
+  },
+  batchSub: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  batchPctBadge: {
+    minWidth: 52,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  batchPctText: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.bold,
   },
 });
