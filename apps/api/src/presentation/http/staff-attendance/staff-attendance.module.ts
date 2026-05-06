@@ -17,6 +17,7 @@ import { GetDailyStaffAttendanceViewUseCase } from '@application/staff-attendanc
 import { MarkStaffAttendanceUseCase } from '@application/staff-attendance/use-cases/mark-staff-attendance.usecase';
 import { GetDailyStaffAttendanceReportUseCase } from '@application/staff-attendance/use-cases/get-daily-staff-attendance-report.usecase';
 import { GetMonthlyStaffAttendanceSummaryUseCase } from '@application/staff-attendance/use-cases/get-monthly-staff-attendance-summary.usecase';
+import { GetStaffMonthlyAttendanceUseCase } from '@application/staff-attendance/use-cases/get-staff-monthly-attendance.usecase';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
@@ -61,6 +62,12 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
       provide: 'GET_MONTHLY_STAFF_ATTENDANCE_SUMMARY_USE_CASE',
       useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
         new GetMonthlyStaffAttendanceSummaryUseCase(ur, sar, hr),
+      inject: [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY],
+    },
+    {
+      provide: 'GET_STAFF_MONTHLY_ATTENDANCE_USE_CASE',
+      useFactory: (ur: UserRepository, sar: StaffAttendanceRepository, hr: HolidayRepository) =>
+        new GetStaffMonthlyAttendanceUseCase(ur, sar, hr),
       inject: [USER_REPOSITORY, STAFF_ATTENDANCE_REPOSITORY, HOLIDAY_REPOSITORY],
     },
   ],

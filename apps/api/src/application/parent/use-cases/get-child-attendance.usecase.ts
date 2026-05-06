@@ -25,6 +25,10 @@ export interface GetChildAttendanceInput {
   month: string;
 }
 
+function toLocalDateKey(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
 export class GetChildAttendanceUseCase {
   constructor(
     private readonly linkRepo: ParentStudentLinkRepository,
@@ -48,7 +52,7 @@ export class GetChildAttendanceUseCase {
     const link = await this.linkRepo.findByParentAndStudent(input.parentUserId, input.studentId);
     if (!link) return err(ParentErrors.childNotLinked());
 
-    const [presentRecords, holidays, _student, enrollments] = await Promise.all([
+    const [presentRecords, holidays, student, enrollments] = await Promise.all([
       this.attendanceRepo.findPresentByAcademyStudentAndMonth(
         link.academyId,
         input.studentId,
@@ -59,12 +63,14 @@ export class GetChildAttendanceUseCase {
       this.studentBatchRepo.findByStudentId(input.studentId),
     ]);
 
+    if (!student) return err(ParentErrors.childNotLinked());
+
     const holidayDates = holidays.map((h) => h.date);
     const enrolledBatchIds = enrollments.map((e) => e.batchId);
     const batches =
       enrolledBatchIds.length > 0 ? await this.batchRepo.findByIds(enrolledBatchIds) : [];
 
-    // Group present records by batch.
+    // Group present records by batch (used by per-batch breakdown).
     const presentByBatch = new Map<string, Set<string>>();
     for (const record of presentRecords) {
       let set = presentByBatch.get(record.batchId);
@@ -75,17 +81,54 @@ export class GetChildAttendanceUseCase {
       set.add(record.date);
     }
 
+    // Joining-date and per-batch enrollment-date caps — must mirror the
+    // owner/staff use case so a parent and an owner see identical numbers
+    // for the same student.
     const today = getTodayLocalDate();
+    const monthStart = `${input.month}-01`;
+    const studentJoinKey = toLocalDateKey(student.joiningDate);
+    const studentEffectiveStart = studentJoinKey > monthStart ? studentJoinKey : monthStart;
+    const enrolStartByBatch = new Map<string, string>();
+    for (const enrol of enrollments) {
+      const enrolKey = toLocalDateKey(enrol.assignedAt);
+      enrolStartByBatch.set(
+        enrol.batchId,
+        enrolKey > studentEffectiveStart ? enrolKey : studentEffectiveStart,
+      );
+    }
+
     let totalExpected = 0;
     let totalPresent = 0;
-    const allMissedDates = new Set<string>();
+    const expectedBatchesByDate = new Map<string, Set<string>>();
+    const presentBatchesByDate = new Map<string, Set<string>>();
     const perBatch: ChildBatchAttendanceBreakdown[] = batches.map((batch) => {
       const batchId = batch.id.toString();
-      const expectedDates = scheduledDatesInMonth(input.month, batch.days, holidayDates, today);
+      const enrolStart = enrolStartByBatch.get(batchId) ?? studentEffectiveStart;
+      const expectedDates = scheduledDatesInMonth(
+        input.month,
+        batch.days,
+        holidayDates,
+        today,
+      ).filter((d) => d >= enrolStart);
       const presentSet = presentByBatch.get(batchId) ?? new Set<string>();
       const presentDates = expectedDates.filter((d) => presentSet.has(d));
       const absentDates = expectedDates.filter((d) => !presentSet.has(d));
-      for (const d of absentDates) allMissedDates.add(d);
+      for (const d of expectedDates) {
+        let set = expectedBatchesByDate.get(d);
+        if (!set) {
+          set = new Set();
+          expectedBatchesByDate.set(d, set);
+        }
+        set.add(batchId);
+      }
+      for (const d of presentDates) {
+        let set = presentBatchesByDate.get(d);
+        if (!set) {
+          set = new Set();
+          presentBatchesByDate.set(d, set);
+        }
+        set.add(batchId);
+      }
       totalExpected += expectedDates.length;
       totalPresent += presentDates.length;
       return {
@@ -98,15 +141,38 @@ export class GetChildAttendanceUseCase {
       };
     });
 
+    // Day-level aggregates (lax: present in ANY batch on a day = present day).
+    let presentDays = 0;
+    let absentDays = 0;
+    let partialDays = 0;
+    const dayAbsentDates: string[] = [];
+    for (const [date, expectedBatches] of expectedBatchesByDate) {
+      const presentBatches = presentBatchesByDate.get(date);
+      if (!presentBatches || presentBatches.size === 0) {
+        absentDays++;
+        dayAbsentDates.push(date);
+      } else {
+        presentDays++;
+        if (presentBatches.size < expectedBatches.size) partialDays++;
+      }
+    }
+    const expectedDays = expectedBatchesByDate.size;
+
     return ok({
       studentId: input.studentId,
       month: input.month,
-      absentDates: [...allMissedDates].sort(),
+      absentDates: dayAbsentDates.sort(),
       holidayDates,
+      // Session-level (kept for backward compat).
       presentCount: totalPresent,
       absentCount: Math.max(0, totalExpected - totalPresent),
       expectedCount: totalExpected,
       holidayCount: holidayDates.length,
+      // Day-level — the actionable numbers, identical to owner/staff views.
+      expectedDays,
+      presentDays,
+      absentDays,
+      partialDays,
       perBatch,
     });
   }

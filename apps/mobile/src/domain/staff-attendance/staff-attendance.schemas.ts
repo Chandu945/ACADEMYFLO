@@ -55,7 +55,21 @@ export const monthlyStaffSummaryResponseSchema = z.object({
   }),
 });
 
+export const staffMonthlyDetailResponseSchema = z.object({
+  staffUserId: z.string(),
+  fullName: z.string(),
+  month: z.string(),
+  expectedDays: z.number().int(),
+  presentDays: z.number().int(),
+  absentDays: z.number().int(),
+  holidayCount: z.number().int(),
+  presentDates: z.array(z.string()).default([]),
+  absentDates: z.array(z.string()).default([]),
+  holidayDates: z.array(z.string()).default([]),
+});
+
 export type DailyStaffAttendanceApiResponse = z.infer<typeof dailyStaffAttendanceResponseSchema>;
 export type MarkStaffAttendanceApiResponse = z.infer<typeof markStaffAttendanceResponseSchema>;
 export type StaffDailyReportApiResponse = z.infer<typeof staffDailyReportResponseSchema>;
 export type MonthlyStaffSummaryApiResponse = z.infer<typeof monthlyStaffSummaryResponseSchema>;
+export type StaffMonthlyDetailApiResponse = z.infer<typeof staffMonthlyDetailResponseSchema>;

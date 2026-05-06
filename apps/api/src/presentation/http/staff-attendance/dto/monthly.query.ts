@@ -10,3 +10,10 @@ export class StaffAttendanceMonthlyQueryDto extends PaginationQueryDto {
 
   override pageSize: number = 50;
 }
+
+export class StaffAttendanceMonthOnlyQueryDto {
+  @ApiProperty({ example: '2024-03', description: 'YYYY-MM' })
+  @IsString()
+  @Matches(/^\d{4}-\d{2}$/, { message: 'month must be YYYY-MM format' })
+  month!: string;
+}

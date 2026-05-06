@@ -30,6 +30,10 @@ function monthKeyOffset(monthKey: string, delta: number): string {
   return `${ny}-${String(nm + 1).padStart(2, '0')}`;
 }
 
+function toLocalDateKey(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
 export class GetMyChildrenUseCase {
   constructor(
     private readonly linkRepo: ParentStudentLinkRepository,
@@ -84,15 +88,41 @@ export class GetMyChildrenUseCase {
           ]);
 
           if (enrollments.length > 0) {
+            // Day-based percent so it matches what the owner/staff and the
+            // child-detail screens show. Apply the same joining-date and
+            // per-batch enrollment-date caps to avoid charging absences for
+            // time before the student or the batch enrollment started.
             const batches = await this.batchRepo.findByIds(enrollments.map((e) => e.batchId));
             const today = getTodayLocalDate();
-            const expectedSessions = batches.reduce(
-              (sum, b) => sum + scheduledDatesInMonth(currentMonth, b.days, holidayDates, today).length,
-              0,
-            );
-            if (expectedSessions > 0) {
+            const monthStart = `${currentMonth}-01`;
+            const studentJoinKey = toLocalDateKey(s.joiningDate);
+            const studentEffectiveStart =
+              studentJoinKey > monthStart ? studentJoinKey : monthStart;
+            const enrolStartByBatch = new Map<string, string>();
+            for (const enrol of enrollments) {
+              const enrolKey = toLocalDateKey(enrol.assignedAt);
+              enrolStartByBatch.set(
+                enrol.batchId,
+                enrolKey > studentEffectiveStart ? enrolKey : studentEffectiveStart,
+              );
+            }
+            const expectedDates = new Set<string>();
+            for (const b of batches) {
+              const enrolStart =
+                enrolStartByBatch.get(b.id.toString()) ?? studentEffectiveStart;
+              const dates = scheduledDatesInMonth(currentMonth, b.days, holidayDates, today);
+              for (const d of dates) {
+                if (d >= enrolStart) expectedDates.add(d);
+              }
+            }
+            const presentDates = new Set(presentRecords.map((r) => r.date));
+            let presentDayCount = 0;
+            for (const d of expectedDates) {
+              if (presentDates.has(d)) presentDayCount++;
+            }
+            if (expectedDates.size > 0) {
               currentMonthAttendancePercent = Math.round(
-                (presentRecords.length / expectedSessions) * 100,
+                (presentDayCount / expectedDates.size) * 100,
               );
             } else {
               currentMonthAttendancePercent = null;

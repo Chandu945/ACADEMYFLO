@@ -6,6 +6,7 @@ import { StaffFormScreen } from '../screens/owner/StaffFormScreen';
 import { StaffAttendanceScreen } from '../screens/owner/StaffAttendanceScreen';
 import { StaffAttendanceDailyReportScreen } from '../screens/owner/StaffAttendanceDailyReportScreen';
 import { StaffAttendanceMonthlySummaryScreen } from '../screens/owner/StaffAttendanceMonthlySummaryScreen';
+import { StaffMonthlyAttendanceScreen } from '../screens/owner/StaffMonthlyAttendanceScreen';
 import { HeaderBackButton } from '../components/ui/HeaderBackButton';
 import { useTheme } from '../context/ThemeContext';
 
@@ -15,6 +16,7 @@ export type StaffStackParamList = {
   StaffAttendance: undefined;
   StaffAttendanceDailyReport: { date: string };
   StaffAttendanceMonthlySummary: { month: string };
+  StaffMonthlyAttendance: { staffUserId: string; fullName: string; month: string };
 };
 
 const Stack = createNativeStackNavigator<StaffStackParamList>();
@@ -58,6 +60,11 @@ export function StaffStack() {
         name="StaffAttendanceMonthlySummary"
         component={StaffAttendanceMonthlySummaryScreen}
         options={{ title: 'Staff Monthly Summary' }}
+      />
+      <Stack.Screen
+        name="StaffMonthlyAttendance"
+        component={StaffMonthlyAttendanceScreen}
+        options={{ title: 'Staff Detail' }}
       />
     </Stack.Navigator>
   );

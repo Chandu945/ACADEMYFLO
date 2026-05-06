@@ -41,6 +41,19 @@ export type MonthlyStaffSummaryItem = {
   holidayCount: number;
 };
 
+export type StaffMonthlyDetail = {
+  staffUserId: string;
+  fullName: string;
+  month: string;
+  expectedDays: number;
+  presentDays: number;
+  absentDays: number;
+  holidayCount: number;
+  presentDates: string[];
+  absentDates: string[];
+  holidayDates: string[];
+};
+
 export type MonthlyStaffSummaryPage = {
   items: MonthlyStaffSummaryItem[];
   meta: {

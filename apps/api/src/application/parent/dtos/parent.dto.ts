@@ -63,16 +63,19 @@ export interface ChildBatchAttendanceBreakdown {
 export interface ChildAttendanceSummaryDto {
   studentId: string;
   month: string;
-  /** Dates the child missed at least one scheduled session. */
+  /** Day-level absent dates: dates the child was scheduled but present in no batch. */
   absentDates: string[];
   holidayDates: string[];
-  /** Total session-attendances across all of the child's batches. */
+  /** Session-level (kept for backward compat). */
   presentCount: number;
-  /** expectedCount minus presentCount. Session-level. */
   absentCount: number;
-  /** Sum across batches of scheduled-days-in-month minus holidays-on-scheduled-days. */
   expectedCount: number;
   holidayCount: number;
+  /** Day-level metrics — match what the owner/staff views show. */
+  expectedDays: number;
+  presentDays: number;
+  absentDays: number;
+  partialDays: number;
   perBatch: ChildBatchAttendanceBreakdown[];
 }
 

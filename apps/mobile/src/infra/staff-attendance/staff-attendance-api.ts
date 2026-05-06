@@ -4,6 +4,7 @@ import type {
   MarkStaffAttendanceApiResponse,
   StaffDailyReportApiResponse,
   MonthlyStaffSummaryApiResponse,
+  StaffMonthlyDetailApiResponse,
 } from '../../domain/staff-attendance/staff-attendance.schemas';
 import type { AppError } from '../../domain/common/errors';
 import type { Result } from '../../domain/common/result';
@@ -54,9 +55,21 @@ export function getStaffMonthlySummary(
   );
 }
 
+export function getStaffMonthlyDetail(
+  staffUserId: string,
+  month: string,
+): Promise<Result<StaffMonthlyDetailApiResponse, AppError>> {
+  return apiGet<StaffMonthlyDetailApiResponse>(
+    `/api/v1/staff-attendance/reports/monthly/staff/${encodeURIComponent(
+      staffUserId,
+    )}?month=${encodeURIComponent(month)}`,
+  );
+}
+
 export const staffAttendanceApi = {
   getDailyStaffAttendance,
   markStaffAttendance,
   getStaffDailyReport,
   getStaffMonthlySummary,
+  getStaffMonthlyDetail,
 };

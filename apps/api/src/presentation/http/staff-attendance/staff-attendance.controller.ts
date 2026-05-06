@@ -9,12 +9,16 @@ import type { GetDailyStaffAttendanceViewUseCase } from '@application/staff-atte
 import type { MarkStaffAttendanceUseCase } from '@application/staff-attendance/use-cases/mark-staff-attendance.usecase';
 import type { GetDailyStaffAttendanceReportUseCase } from '@application/staff-attendance/use-cases/get-daily-staff-attendance-report.usecase';
 import type { GetMonthlyStaffAttendanceSummaryUseCase } from '@application/staff-attendance/use-cases/get-monthly-staff-attendance-summary.usecase';
+import type { GetStaffMonthlyAttendanceUseCase } from '@application/staff-attendance/use-cases/get-staff-monthly-attendance.usecase';
 import {
   StaffAttendanceQueryDto,
   StaffAttendanceDateOnlyQueryDto,
 } from './dto/staff-attendance.query';
 import { MarkStaffAttendanceDto } from './dto/mark-staff-attendance.dto';
-import { StaffAttendanceMonthlyQueryDto } from './dto/monthly.query';
+import {
+  StaffAttendanceMonthlyQueryDto,
+  StaffAttendanceMonthOnlyQueryDto,
+} from './dto/monthly.query';
 import { mapResultToResponse } from '../common/result-mapper';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { LOGGER_PORT } from '@shared/logging/logger.port';
@@ -36,6 +40,8 @@ export class StaffAttendanceController {
     private readonly getDailyReport: GetDailyStaffAttendanceReportUseCase,
     @Inject('GET_MONTHLY_STAFF_ATTENDANCE_SUMMARY_USE_CASE')
     private readonly getMonthlySummary: GetMonthlyStaffAttendanceSummaryUseCase,
+    @Inject('GET_STAFF_MONTHLY_ATTENDANCE_USE_CASE')
+    private readonly getStaffMonthlyAttendance: GetStaffMonthlyAttendanceUseCase,
     @Inject(LOGGER_PORT) private readonly logger: LoggerPort,
   ) {}
 
@@ -115,6 +121,24 @@ export class StaffAttendanceController {
       month: query.month,
       page: query.page,
       pageSize: query.pageSize,
+    });
+
+    return mapResultToResponse(result, req);
+  }
+
+  @Get('reports/monthly/staff/:staffUserId')
+  @ApiOperation({ summary: 'Get monthly attendance detail for a specific staff' })
+  async monthlyStaff(
+    @Param('staffUserId', ParseObjectIdPipe) staffUserId: string,
+    @Query() query: StaffAttendanceMonthOnlyQueryDto,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    const result = await this.getStaffMonthlyAttendance.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      staffUserId,
+      month: query.month,
     });
 
     return mapResultToResponse(result, req);

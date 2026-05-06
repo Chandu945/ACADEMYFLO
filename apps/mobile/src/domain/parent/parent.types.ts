@@ -29,10 +29,16 @@ export type ChildAttendanceSummary = {
   month: string;
   absentDates: string[];
   holidayDates: string[];
+  /** Session-level (kept for backward compat). */
   presentCount: number;
   absentCount: number;
   holidayCount: number;
   expectedCount: number;
+  /** Day-level metrics — optional because deployed API may not yet return them. */
+  expectedDays?: number;
+  presentDays?: number;
+  absentDays?: number;
+  partialDays?: number;
   perBatch: ChildBatchAttendanceBreakdown[];
 };
 

@@ -45,6 +45,12 @@ export const childAttendanceSummarySchema = z.object({
   // default strip-unknown behavior dropped fields not declared here. The
   // ChildDetailScreen then crashed on `attendance.perBatch.length`.
   expectedCount: z.number().default(0),
+  // Day-level metrics — optional so the screen still parses against an
+  // un-redeployed API.
+  expectedDays: z.number().int().optional(),
+  presentDays: z.number().int().optional(),
+  absentDays: z.number().int().optional(),
+  partialDays: z.number().int().optional(),
   perBatch: z.array(childBatchAttendanceBreakdownSchema).default([]),
 });
 

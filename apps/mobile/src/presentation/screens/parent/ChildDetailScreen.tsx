@@ -244,11 +244,14 @@ export function ChildDetailScreen() {
     );
   }
 
-  // Session-level: % of expected sessions actually attended across all batches.
+  // Day-level metrics — match what owner/staff see for the same student.
+  // Falls back to session-level when running against an un-redeployed API
+  // that hasn't yet returned the day-level fields.
+  const expectedDays = attendance?.expectedDays ?? attendance?.expectedCount ?? 0;
+  const presentDays = attendance?.presentDays ?? attendance?.presentCount ?? 0;
+  const absentDays = attendance?.absentDays ?? attendance?.absentCount ?? 0;
   const attendancePct =
-    attendance && attendance.expectedCount > 0
-      ? Math.round((attendance.presentCount / attendance.expectedCount) * 100)
-      : 0;
+    expectedDays > 0 ? Math.round((presentDays / expectedDays) * 100) : 0;
 
   const totalDue = fees
     .filter((f) => f.status === 'DUE')
@@ -322,14 +325,14 @@ export function ChildDetailScreen() {
           </View>
         ) : attendance ? (
           <>
-            {/* Summary row */}
+            {/* Summary row — day counts (same as owner/staff views) */}
             <View style={styles.summaryRow}>
               <View style={[styles.summaryChip, { backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.25)', borderWidth: 1 }]}>
-                <Text style={[styles.summaryCount, { color: '#4ade80' }]}>{attendance.presentCount}</Text>
+                <Text style={[styles.summaryCount, { color: '#4ade80' }]}>{presentDays}</Text>
                 <Text style={styles.summaryLabel}>Present</Text>
               </View>
               <View style={[styles.summaryChip, { backgroundColor: 'rgba(248, 113, 113, 0.1)', borderColor: 'rgba(248, 113, 113, 0.25)', borderWidth: 1 }]}>
-                <Text style={[styles.summaryCount, { color: '#f87171' }]}>{attendance.absentCount}</Text>
+                <Text style={[styles.summaryCount, { color: '#f87171' }]}>{absentDays}</Text>
                 <Text style={styles.summaryLabel}>Absent</Text>
               </View>
               <View style={[styles.summaryChip, { backgroundColor: 'rgba(251, 191, 36, 0.1)', borderColor: 'rgba(251, 191, 36, 0.25)', borderWidth: 1 }]}>

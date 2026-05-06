@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import type { StaffStackParamList } from '../../navigation/StaffStack';
@@ -28,68 +29,79 @@ function formatMonth(monthStr: string): string {
   return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    const first = parts[0] ?? '';
-    const last = parts[parts.length - 1] ?? '';
-    return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-}
-
 type SummaryRowProps = {
   item: MonthlyStaffSummaryItem;
+  onPress: (item: MonthlyStaffSummaryItem) => void;
 };
 
-function SummaryRowComponent({ item }: SummaryRowProps) {
+function SummaryRowComponent({ item, onPress }: SummaryRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const totalDays = item.presentCount + item.absentCount;
-  const percentage = totalDays > 0 ? Math.round((item.presentCount / totalDays) * 100) : 0;
-  const barWidth = totalDays > 0 ? (item.presentCount / totalDays) * 100 : 0;
+  const expected = item.presentCount + item.absentCount;
+  const hasData = expected > 0;
+  const pct = hasData ? Math.round((item.presentCount / expected) * 100) : null;
+  const tone =
+    pct == null ? 'neutral' : pct >= 90 ? 'success' : pct >= 75 ? 'warning' : 'danger';
 
   return (
-    <View style={styles.row} testID={`staff-summary-row-${item.staffUserId}`}>
-      <View style={styles.rowTop}>
-        <InitialsAvatar name={item.fullName} size={40} style={styles.avatar} />
-        <View style={styles.rowNameSection}>
-          <Text style={styles.name} numberOfLines={1}>{item.fullName}</Text>
-          <Text style={styles.rowSubtitle}>{percentage}% attendance</Text>
-        </View>
-        <View style={styles.rowCounts}>
-          <View style={[styles.countChip, { backgroundColor: colors.successBg }]}>
-            <Text style={[styles.countChipText, { color: colors.success }]}>{item.presentCount}P</Text>
-          </View>
-          <View style={[styles.countChip, { backgroundColor: colors.dangerBg }]}>
-            <Text style={[styles.countChipText, { color: colors.danger }]}>{item.absentCount}A</Text>
-          </View>
-        </View>
+    <Pressable
+      style={({ pressed }) => [
+        styles.row,
+        styles[`rowStripe_${tone}`],
+        pressed && { opacity: 0.7 },
+      ]}
+      onPress={() => onPress(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.fullName}, ${pct ?? 0} percent attendance. Tap for details.`}
+      testID={`staff-summary-row-${item.staffUserId}`}
+    >
+      <InitialsAvatar
+        name={item.fullName}
+        size={40}
+        variant="palette"
+        style={styles.avatar}
+      />
+      <View style={styles.rowInfo}>
+        <Text style={styles.name} numberOfLines={1}>{item.fullName}</Text>
+        <Text style={styles.rowSubtitle} numberOfLines={1}>
+          {hasData
+            ? `${item.presentCount} of ${expected} days · ${item.holidayCount} holidays`
+            : 'No scheduled days yet'}
+        </Text>
       </View>
-      {/* Progress bar */}
-      <View style={styles.progressTrack}>
-        <View
-          style={[
-            styles.progressFill,
-            {
-              width: `${barWidth}%`,
-              backgroundColor: percentage >= 75 ? colors.success : colors.warning,
-            },
-          ]}
-        />
+      <View style={[styles.pctBadge, styles[`pctBadge_${tone}`]]}>
+        <Text style={[styles.pctText, styles[`pctText_${tone}`]]}>
+          {hasData ? `${pct}%` : '—'}
+        </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const SummaryRow = memo(SummaryRowComponent);
 
+// Same screen is registered in both StaffStack and MoreStack; both stacks
+// declare `StaffMonthlyAttendance` so this navigation type covers either.
+type Nav = NativeStackNavigationProp<StaffStackParamList, 'StaffAttendanceMonthlySummary'>;
+
 export function StaffAttendanceMonthlySummaryScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const route = useRoute<Route>();
+  const navigation = useNavigation<Nav>();
   const month = route.params?.month ?? '';
+
+  const handleRowPress = useCallback(
+    (item: MonthlyStaffSummaryItem) => {
+      navigation.navigate('StaffMonthlyAttendance', {
+        staffUserId: item.staffUserId,
+        fullName: item.fullName,
+        month,
+      });
+    },
+    [navigation, month],
+  );
 
   const [items, setItems] = useState<MonthlyStaffSummaryItem[]>([]);
   const [page, setPage] = useState(1);
@@ -174,9 +186,9 @@ export function StaffAttendanceMonthlySummaryScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: MonthlyStaffSummaryItem }) => (
-      <SummaryRow item={item} />
+      <SummaryRow item={item} onPress={handleRowPress} />
     ),
-    [],
+    [handleRowPress],
   );
 
   const keyExtractor = useCallback(
@@ -193,64 +205,104 @@ export function StaffAttendanceMonthlySummaryScreen() {
     );
   }, [loadingMore, colors, styles]);
 
-  // Compute aggregate stats for header
+  // Compute aggregate stats for header.
+  // Headline numbers: average attendance % across staff, plus total marked
+  // sessions out of expected. We deliberately don't surface "Total Absent"
+  // as a big red number — when no one is marked yet, that reads as 60 person-
+  // days absent (10 staff × 6 elapsed days), which is alarming but uninformative.
   const stats = useMemo(() => {
     if (items.length === 0) return null;
     let totalPresent = 0;
     let totalAbsent = 0;
+    let pctSum = 0;
+    let staffWithData = 0;
     for (const item of items) {
       totalPresent += item.presentCount;
       totalAbsent += item.absentCount;
+      const expected = item.presentCount + item.absentCount;
+      if (expected > 0) {
+        pctSum += (item.presentCount / expected) * 100;
+        staffWithData++;
+      }
     }
-    const totalDays = totalPresent + totalAbsent;
-    const avgPercentage = totalDays > 0 ? Math.round((totalPresent / totalDays) * 100) : 0;
-    return { totalPresent, totalAbsent, avgPercentage, staffCount: items.length };
+    const expectedSessions = totalPresent + totalAbsent;
+    // Use unweighted average of per-staff percentages — matches the
+    // intuition "average staff is at X%". A weighted (totalPresent /
+    // expectedSessions) version is biased by staff with more scheduled days.
+    const avgPercentage = staffWithData > 0 ? Math.round(pctSum / staffWithData) : null;
+    return {
+      totalPresent,
+      expectedSessions,
+      avgPercentage,
+      staffCount: items.length,
+    };
   }, [items]);
 
-  const listHeader = useMemo(
-    () => (
+  const listHeader = useMemo(() => {
+    if (!stats) {
+      return (
+        <View style={styles.monthHeader}>
+          <AppIcon name="calendar-month" size={20} color={colors.textSecondary} />
+          <Text style={styles.monthLabel}>{formatMonth(month)}</Text>
+        </View>
+      );
+    }
+    const tone =
+      stats.avgPercentage == null
+        ? 'neutral'
+        : stats.avgPercentage >= 90
+          ? 'success'
+          : stats.avgPercentage >= 75
+            ? 'warning'
+            : 'danger';
+    return (
       <>
         {/* Month Header */}
         <View style={styles.monthHeader}>
-          
           <AppIcon name="calendar-month" size={20} color={colors.textSecondary} />
           <Text style={styles.monthLabel}>{formatMonth(month)}</Text>
         </View>
 
         {/* Aggregate Stats Card */}
-        {stats && (
-          <View style={styles.statsCard}>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.text }]}>{stats.avgPercentage}%</Text>
-                <Text style={styles.statLabel}>Avg Attendance</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.success }]}>{stats.totalPresent}</Text>
-                <Text style={styles.statLabel}>Total Present</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.danger }]}>{stats.totalAbsent}</Text>
-                <Text style={styles.statLabel}>Total Absent</Text>
-              </View>
+        <View style={[styles.statsCard, styles[`statsCard_${tone}`]]}>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text
+                style={[
+                  styles.statValue,
+                  { color: tone === 'neutral' ? colors.textSecondary : colors[tone === 'success' ? 'successText' : tone === 'warning' ? 'warningText' : 'dangerText'] },
+                ]}
+              >
+                {stats.avgPercentage == null ? '—' : `${stats.avgPercentage}%`}
+              </Text>
+              <Text style={styles.statLabel}>Avg attendance</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.text }]}>
+                {stats.totalPresent}
+                <Text style={styles.statValueSubtle}> / {stats.expectedSessions}</Text>
+              </Text>
+              <Text style={styles.statLabel}>Days marked</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.staffCount}</Text>
+              <Text style={styles.statLabel}>Staff</Text>
             </View>
           </View>
-        )}
+        </View>
 
         {/* Section Title */}
         {items.length > 0 && (
           <View style={styles.sectionHeader}>
-            
             <AppIcon name="account-multiple-outline" size={18} color={colors.text} />
             <Text style={styles.sectionTitle}>Staff Members ({items.length})</Text>
           </View>
         )}
       </>
-    ),
-    [month, stats, items.length, colors, styles],
-  );
+    );
+  }, [month, stats, items.length, colors, styles]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
@@ -329,8 +381,15 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.base,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
     ...shadows.md,
   },
+  statsCard_success: { borderLeftColor: colors.success },
+  statsCard_warning: { borderLeftColor: colors.warning },
+  statsCard_danger: { borderLeftColor: colors.danger },
+  statsCard_neutral: { borderLeftColor: colors.border },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -342,12 +401,22 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   statValue: {
     fontSize: fontSizes['2xl'],
     fontWeight: fontWeights.bold,
+    letterSpacing: -0.5,
+  },
+  statValueSubtle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.medium,
+    color: colors.textSecondary,
+    letterSpacing: 0,
   },
   statLabel: {
-    fontSize: fontSizes.xs,
+    fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 4,
     textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    fontWeight: fontWeights.semibold,
   },
   statDivider: {
     width: 1,
@@ -371,77 +440,61 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
 
   // ── Summary Row ──
   row: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.sm,
-  },
-  rowTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs + 2,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
+    ...shadows.sm,
   },
+  rowStripe_success: { borderLeftColor: colors.success },
+  rowStripe_warning: { borderLeftColor: colors.warning },
+  rowStripe_danger: { borderLeftColor: colors.danger },
+  rowStripe_neutral: { borderLeftColor: colors.border },
   avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
+    flexShrink: 0,
   },
-  avatarGood: {
-    backgroundColor: colors.successBg,
-  },
-  avatarWarn: {
-    backgroundColor: colors.warningBg,
-  },
-  avatarText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
-  },
-  avatarTextGood: {
-    color: colors.success,
-  },
-  avatarTextWarn: {
-    color: colors.warning,
-  },
-  rowNameSection: {
+  rowInfo: {
     flex: 1,
+    minWidth: 0,
   },
   name: {
     fontSize: fontSizes.base,
     fontWeight: fontWeights.semibold,
     color: colors.text,
+    letterSpacing: -0.2,
+    marginBottom: 2,
   },
   rowSubtitle: {
     fontSize: fontSizes.xs,
     color: colors.textSecondary,
-    marginTop: 1,
   },
-  rowCounts: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  countChip: {
+  pctBadge: {
+    minWidth: 56,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: 6,
     borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
-  countChipText: {
-    fontSize: fontSizes.xs,
+  pctBadge_success: { backgroundColor: colors.successBg, borderColor: colors.successBorder },
+  pctBadge_warning: { backgroundColor: colors.warningBg, borderColor: colors.warningBorder },
+  pctBadge_danger: { backgroundColor: colors.dangerBg, borderColor: colors.dangerBorder },
+  pctBadge_neutral: { backgroundColor: colors.bgSubtle, borderColor: colors.border },
+  pctText: {
+    fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
+    letterSpacing: -0.2,
   },
-
-  // ── Progress Bar ──
-  progressTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: 4,
-    borderRadius: 2,
-  },
+  pctText_success: { color: colors.successText },
+  pctText_warning: { color: colors.warningText },
+  pctText_danger: { color: colors.dangerText },
+  pctText_neutral: { color: colors.textSecondary },
 });

@@ -33,6 +33,7 @@ import { StaffFormScreen } from '../screens/owner/StaffFormScreen';
 import { StaffAttendanceScreen } from '../screens/owner/StaffAttendanceScreen';
 import { StaffAttendanceDailyReportScreen } from '../screens/owner/StaffAttendanceDailyReportScreen';
 import { StaffAttendanceMonthlySummaryScreen } from '../screens/owner/StaffAttendanceMonthlySummaryScreen';
+import { StaffMonthlyAttendanceScreen } from '../screens/owner/StaffMonthlyAttendanceScreen';
 import { ReportsHomeScreen } from '../screens/owner/ReportsHomeScreen';
 import { DeleteAccountScreen } from '../screens/account/DeleteAccountScreen';
 import { OverdueStudentsScreen } from '../screens/fees/OverdueStudentsScreen';
@@ -78,6 +79,7 @@ export type MoreStackParamList = {
   StaffAttendance: undefined;
   StaffAttendanceDailyReport: { date: string };
   StaffAttendanceMonthlySummary: { month: string };
+  StaffMonthlyAttendance: { staffUserId: string; fullName: string; month: string };
   ReportsHome: undefined;
   OverdueStudents: undefined;
   RateAcademy: undefined;
@@ -430,6 +432,11 @@ export function MoreStack() {
             <HeaderBackButton onPress={() => navigation.navigate('StaffAttendance')} />
           ),
         })}
+      />
+      <Stack.Screen
+        name="StaffMonthlyAttendance"
+        component={StaffMonthlyAttendanceScreen}
+        options={{ title: 'Staff Detail' }}
       />
       <Stack.Screen
         name="ReportsHome"
