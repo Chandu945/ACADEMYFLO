@@ -289,7 +289,15 @@ export function ParentDashboardScreen() {
                   <View style={[styles.sectionHeaderIcon, { backgroundColor: colors.warningBg }]}>
                     <AppIcon name="heart-outline" size={18} color={colors.warning} />
                   </View>
-                  <Text style={styles.sectionTitle}>My Children</Text>
+                  <Text
+                    style={styles.sectionTitle}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    maxFontSizeMultiplier={1.2}
+                  >
+                    My Children
+                  </Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('Children')}
@@ -529,7 +537,15 @@ export function ParentDashboardScreen() {
                     
                     <AppIcon name="credit-card-check-outline" size={18} color={colors.success} />
                   </View>
-                  <Text style={styles.sectionTitle}>Recent Payments</Text>
+                  <Text
+                    style={styles.sectionTitle}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    maxFontSizeMultiplier={1.2}
+                  >
+                    Recent Payments
+                  </Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('Payments')}
@@ -731,6 +747,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     flex: 1,
+    flexShrink: 1,
   },
   sectionHeaderIcon: {
     width: 32,
@@ -738,16 +755,20 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   sectionTitle: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    flex: 1,
+    flexShrink: 1,
   },
   viewAllLink: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.semibold,
     color: colors.text,
+    flexShrink: 0,
   },
 
   /* ── Children Rows ──────────────────────────────── */

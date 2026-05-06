@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import { CardHeader } from '../ui/CardHeader';
 import LinearGradient from 'react-native-linear-gradient';
 import { getOwnerDashboard } from '../../../infra/dashboard/dashboard-api';
 import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
@@ -200,37 +201,40 @@ export function FinancialOverviewWidget({ onCollectedPress, onPendingPress, onEx
 
   return (
     <View style={styles.container} testID="financial-overview-widget">
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          
-          <AppIcon name="currency-inr" size={20} color={colors.text} />
-          <Text style={styles.title}>Financial Overview</Text>
-        </View>
-        <View style={styles.monthNav}>
-          <TouchableOpacity
-            onPress={goBack}
-            style={styles.navBtn}
-            accessibilityLabel="Previous month"
-            accessibilityRole="button"
-            testID="financial-month-back"
-          >
-            
-            <AppIcon name="chevron-left" size={20} color={colors.textLight} />
-          </TouchableOpacity>
-          <Text style={styles.monthLabel}>{getMonthLabel(year, month)}</Text>
-          <TouchableOpacity
-            onPress={goForward}
-            style={styles.navBtn}
-            accessibilityLabel="Next month"
-            accessibilityRole="button"
-            testID="financial-month-forward"
-          >
-            
-            <AppIcon name="chevron-right" size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <CardHeader
+        icon={<AppIcon name="currency-inr" size={18} color={colors.success} />}
+        iconTint="success"
+        title="Financial Overview"
+        action={
+          <View style={styles.monthNav}>
+            <TouchableOpacity
+              onPress={goBack}
+              style={styles.navBtn}
+              accessibilityLabel="Previous month"
+              accessibilityRole="button"
+              testID="financial-month-back"
+            >
+              <AppIcon name="chevron-left" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+            <Text
+              style={styles.monthLabel}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}
+            >
+              {getMonthLabel(year, month)}
+            </Text>
+            <TouchableOpacity
+              onPress={goForward}
+              style={styles.navBtn}
+              accessibilityLabel="Next month"
+              accessibilityRole="button"
+              testID="financial-month-forward"
+            >
+              <AppIcon name="chevron-right" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       {loading ? (
         <View style={styles.placeholder}>
@@ -318,45 +322,29 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.base,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  title: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-  },
   monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.full,
-    paddingVertical: 3,
-    paddingHorizontal: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   navBtn: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
   },
   monthLabel: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
     color: colors.text,
     marginHorizontal: spacing.md,
+    letterSpacing: 0.2,
   },
   placeholder: {
     height: 120,

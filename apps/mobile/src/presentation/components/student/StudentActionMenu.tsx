@@ -282,7 +282,6 @@ export function StudentActionMenu({
       subtitle: 'Create a guardian login for this student',
       iconColor: colors.success,
       iconName: 'account-plus-outline',
-      ownerOnly: true,
       onPress: handleInviteParent,
     },
     {

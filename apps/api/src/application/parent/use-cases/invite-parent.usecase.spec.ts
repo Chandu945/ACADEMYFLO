@@ -223,11 +223,29 @@ describe('InviteParentUseCase', () => {
     expect(deps.linkRepo.save).not.toHaveBeenCalled();
   });
 
-  it('rejects non-OWNER actors', async () => {
+  it('allows STAFF to invite a parent', async () => {
+    const deps = buildDeps();
+    deps.userRepo.findById.mockResolvedValue(createOwner());
+    deps.studentRepo.findById.mockResolvedValue(createStudent());
+    deps.userRepo.findByEmail.mockResolvedValue(null);
+    deps.userRepo.findByPhone.mockResolvedValue(null);
+
+    const result = await makeUc(deps).execute({
+      ownerUserId: 'staff-1',
+      ownerRole: 'STAFF',
+      studentId: 'student-1',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(deps.userRepo.save).toHaveBeenCalledTimes(1);
+    expect(deps.linkRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects PARENT actors', async () => {
     const deps = buildDeps();
     const result = await makeUc(deps).execute({
-      ownerUserId: 'owner-1',
-      ownerRole: 'STAFF',
+      ownerUserId: 'parent-1',
+      ownerRole: 'PARENT',
       studentId: 'student-1',
     });
     expect(result.ok).toBe(false);

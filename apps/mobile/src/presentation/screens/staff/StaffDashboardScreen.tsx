@@ -349,7 +349,15 @@ export function StaffDashboardScreen() {
                   <View style={[styles.cardHeaderIcon, { backgroundColor: colors.successBg }]}>
                     <AppIcon name="calendar-check-outline" size={18} color={colors.success} />
                   </View>
-                  <Text style={styles.cardTitle}>Today's Attendance</Text>
+                  <Text
+                    style={styles.cardTitle}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    maxFontSizeMultiplier={1.2}
+                  >
+                    Today's Attendance
+                  </Text>
                 </View>
                 <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
               </View>
@@ -433,7 +441,15 @@ export function StaffDashboardScreen() {
                     />
                     <AppIcon name="file-document-outline" size={18} color="#FFFFFF" />
                   </View>
-                  <Text style={styles.cardTitle}>My Pending Requests</Text>
+                  <Text
+                    style={styles.cardTitle}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    maxFontSizeMultiplier={1.2}
+                  >
+                    My Pending Requests
+                  </Text>
                 </View>
                 <View style={styles.requestsBadge}>
                   <LinearGradient
@@ -490,7 +506,15 @@ export function StaffDashboardScreen() {
                     
                     <AppIcon name="account-question-outline" size={18} color={colors.warning} />
                   </View>
-                  <Text style={styles.cardTitle}>Enquiries</Text>
+                  <Text
+                    style={styles.cardTitle}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    maxFontSizeMultiplier={1.2}
+                  >
+                    Enquiries
+                  </Text>
                 </View>
                 
                 <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
@@ -641,6 +665,8 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flex: 1,
+    flexShrink: 1,
   },
   cardHeaderIcon: {
     width: 32,
@@ -648,11 +674,14 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   cardTitle: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    flex: 1,
+    flexShrink: 1,
   },
 
   /* ── Attendance Card ────────────────────────────── */

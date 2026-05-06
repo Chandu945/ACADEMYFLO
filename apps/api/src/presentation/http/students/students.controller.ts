@@ -338,9 +338,9 @@ export class StudentsController {
   }
 
   @Post(':studentId/invite-parent')
-  @Roles('OWNER')
+  @Roles('OWNER', 'STAFF')
   @Throttle({ short: { limit: 5, ttl: 60_000 }, medium: { limit: 20, ttl: 3_600_000 }, long: { limit: 50, ttl: 86_400_000 } })
-  @ApiOperation({ summary: 'Invite a parent for a student (owner only)' })
+  @ApiOperation({ summary: 'Invite a parent for a student' })
   async inviteParentForStudent(
     @Param('studentId', ParseObjectIdPipe) studentId: string,
     @CurrentUser() user: CurrentUserType,

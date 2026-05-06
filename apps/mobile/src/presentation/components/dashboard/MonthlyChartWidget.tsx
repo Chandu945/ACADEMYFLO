@@ -8,6 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import { CardHeader } from '../ui/CardHeader';
 import type { MonthlyChartPoint } from '../../../domain/dashboard/dashboard.types';
 import { getMonthlyChart } from '../../../infra/dashboard/dashboard-api';
 import LinearGradient from 'react-native-linear-gradient';
@@ -100,8 +101,8 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
   if (error) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Monthly chart</Text>
-        <Text style={[styles.title, { color: colors.danger, fontSize: fontSizes.sm, marginTop: spacing.sm }]}>
+        <Text style={styles.errorTitle}>Monthly chart</Text>
+        <Text style={[styles.errorTitle, { color: colors.danger, fontSize: fontSizes.sm, marginTop: spacing.sm }]}>
           {error}
         </Text>
         <TouchableOpacity onPress={load} style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}>
@@ -128,9 +129,8 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
 
   return (
     <View style={styles.container} testID="monthly-chart-widget">
-      {/* ── Header with year navigation ── */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
+      <CardHeader
+        icon={
           <View style={styles.iconCircle}>
             <LinearGradient
               colors={[gradient.start, gradient.end]}
@@ -140,39 +140,38 @@ export function MonthlyChartWidget({ onPress }: MonthlyChartWidgetProps) {
             />
             <AppIcon name="chart-bar" size={18} color="#FFFFFF" />
           </View>
-          <Text style={styles.title}>Monthly Summary</Text>
-          {onPress && (
-            
-            <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
-          )}
-        </TouchableOpacity>
-        <View style={styles.yearNav}>
-          <TouchableOpacity
-            onPress={() => setYear((y) => y - 1)}
-            style={styles.yearArrow}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="Previous year"
-          >
-            
-            <AppIcon name="chevron-left" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <Text style={styles.yearText}>{year}</Text>
-          <TouchableOpacity
-            onPress={() => setYear((y) => y + 1)}
-            style={styles.yearArrow}
-            disabled={year >= currentYear}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="Next year"
-          >
-            
-            <AppIcon
-              name="chevron-right"
-              size={20}
-              color={year >= currentYear ? colors.textDisabled : colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+        }
+        title="Monthly Summary"
+        onPress={onPress}
+        action={
+          <View style={styles.yearNav}>
+            <TouchableOpacity
+              onPress={() => setYear((y) => y - 1)}
+              style={styles.yearArrow}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Previous year"
+            >
+              <AppIcon name="chevron-left" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <Text style={styles.yearText} maxFontSizeMultiplier={1.2}>
+              {year}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setYear((y) => y + 1)}
+              style={styles.yearArrow}
+              disabled={year >= currentYear}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Next year"
+            >
+              <AppIcon
+                name="chevron-right"
+                size={20}
+                color={year >= currentYear ? colors.textDisabled : colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       {/* ── Summary Tiles ── */}
       <View style={styles.summaryRow}>
@@ -356,17 +355,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   },
 
   /* ── Header ─────────────────────────────────────── */
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
   iconCircle: {
     width: 32,
     height: 32,
@@ -375,7 +363,7 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
+  errorTitle: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.bold,
     color: colors.text,
@@ -385,8 +373,10 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.full,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
   },
   yearArrow: {
     width: 28,
@@ -396,11 +386,13 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     justifyContent: 'center',
   },
   yearText: {
-    fontSize: fontSizes.base,
+    fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
     color: colors.text,
+    marginHorizontal: spacing.md,
     minWidth: 44,
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
 
   /* ── Summary ────────────────────────────────────── */

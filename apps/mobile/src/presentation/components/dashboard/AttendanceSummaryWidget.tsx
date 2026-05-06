@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
+import { CardHeader } from '../ui/CardHeader';
+import LinearGradient from 'react-native-linear-gradient';
 import { getMonthDailyCounts } from '../../../infra/attendance/attendance-api';
-import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
+import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -153,29 +155,50 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
 
   return (
     <View style={styles.container} testID="attendance-summary-widget">
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerLeft} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} disabled={!onPress}>
-          
-          <AppIcon name="calendar-check-outline" size={20} color={colors.text} />
-          <Text style={styles.title}>Attendance Summary</Text>
-          {onPress && (
-            
-            <AppIcon name="chevron-right" size={20} color={colors.textSecondary} />
-          )}
-        </TouchableOpacity>
-        <View style={styles.monthNav}>
-          <TouchableOpacity onPress={goBack} style={styles.navBtn} accessibilityLabel="Previous month" accessibilityRole="button" testID="attendance-month-back">
-            
-            <AppIcon name="chevron-left" size={20} color={colors.textLight} />
-          </TouchableOpacity>
-          <Text style={styles.monthLabel}>{getMonthLabel(year, month)}</Text>
-          <TouchableOpacity onPress={goForward} style={styles.navBtn} accessibilityLabel="Next month" accessibilityRole="button" testID="attendance-month-forward">
-            
-            <AppIcon name="chevron-right" size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <CardHeader
+        icon={
+          <View style={styles.iconCircle}>
+            <LinearGradient
+              colors={[gradient.start, gradient.end]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <AppIcon name="calendar-check-outline" size={18} color="#FFFFFF" />
+          </View>
+        }
+        title="Attendance Summary"
+        onPress={onPress}
+        action={
+          <View style={styles.monthNav}>
+            <TouchableOpacity
+              onPress={goBack}
+              style={styles.navBtn}
+              accessibilityLabel="Previous month"
+              accessibilityRole="button"
+              testID="attendance-month-back"
+            >
+              <AppIcon name="chevron-left" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+            <Text
+              style={styles.monthLabel}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}
+            >
+              {getMonthLabel(year, month)}
+            </Text>
+            <TouchableOpacity
+              onPress={goForward}
+              style={styles.navBtn}
+              accessibilityLabel="Next month"
+              accessibilityRole="button"
+              testID="attendance-month-forward"
+            >
+              <AppIcon name="chevron-right" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       {/* Chart */}
       {loading ? (
@@ -255,50 +278,39 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     marginTop: spacing.sm,
     ...shadows.md,
   },
-  header: {
-    flexDirection: 'row',
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    overflow: 'hidden',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.base,
-    gap: spacing.sm,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-    flexShrink: 1,
-  },
-  title: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-    flexShrink: 1,
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.bgSubtle,
     borderRadius: radius.full,
-    paddingVertical: 3,
-    paddingHorizontal: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     flexShrink: 0,
   },
   navBtn: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
   },
   monthLabel: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
     color: colors.text,
     marginHorizontal: spacing.md,
+    letterSpacing: 0.2,
   },
   chartPlaceholder: {
     height: BAR_MAX_HEIGHT + 30,

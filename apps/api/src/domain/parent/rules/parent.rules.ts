@@ -2,8 +2,8 @@ import type { UserRole } from '@academyflo/contracts';
 import { randomUUID } from 'node:crypto';
 
 export function canInviteParent(role: UserRole): { allowed: boolean; reason?: string } {
-  if (role !== 'OWNER') {
-    return { allowed: false, reason: 'Only owners can invite parents' };
+  if (role !== 'OWNER' && role !== 'STAFF') {
+    return { allowed: false, reason: 'Only owners and staff can invite parents' };
   }
   return { allowed: true };
 }
