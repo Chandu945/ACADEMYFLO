@@ -298,7 +298,7 @@ export function EnquiryDetailScreen() {
           <View style={styles.actionsContainer}>
             <TouchableOpacity
               style={styles.editButton}
-              onPress={() => navigation.navigate('EditEnquiry', { enquiry })}
+              onPress={() => navigation.navigate('EditEnquiry', { enquiryId: enquiry.id, enquiry })}
               testID="edit-enquiry-btn"
             >
               

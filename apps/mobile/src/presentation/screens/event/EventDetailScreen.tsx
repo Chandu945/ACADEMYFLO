@@ -157,7 +157,7 @@ export function EventDetailScreen() {
 
   const handleEdit = useCallback(() => {
     if (!event) return;
-    navigation.navigate('EditEvent', { event });
+    navigation.navigate('EditEvent', { eventId: event.id, event });
   }, [event, navigation]);
 
   if (loading) {

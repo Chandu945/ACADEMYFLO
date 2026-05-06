@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { ScrollView, View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -16,9 +16,9 @@ import {
   createStaffUseCase,
 } from '../../../application/staff/use-cases/create-staff.usecase';
 import { updateStaffUseCase } from '../../../application/staff/use-cases/update-staff.usecase';
-import { createStaff, updateStaff, getStaffPhotoUploadPath } from '../../../infra/staff/staff-api';
+import { createStaff, updateStaff, listStaff, getStaffPhotoUploadPath } from '../../../infra/staff/staff-api';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
-import type { CreateStaffInput, UpdateStaffInput } from '../../../domain/staff/staff.types';
+import type { CreateStaffInput, UpdateStaffInput, StaffListItem } from '../../../domain/staff/staff.types';
 import type { SalaryFrequency } from '../../../domain/staff/staff.types';
 import { AppIcon } from '../../components/ui/AppIcon';
 import LinearGradient from 'react-native-linear-gradient';
@@ -61,13 +61,97 @@ const SALARY_FREQ_OPTIONS: { label: string; value: SalaryFrequency }[] = [
 const createApi = { createStaff };
 const updateApi = { updateStaff };
 
+type StaffFormBodyProps = {
+  mode: 'create' | 'edit';
+  staff: StaffListItem | undefined;
+};
+
+/** Wrapper that resolves the route params before mounting the form. On
+ *  web URL refresh, an object route param gets toString'd to
+ *  "[object Object]" — reject it and look the staff up by ID instead. */
 export function StaffFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation();
+  const route = useRoute<FormRoute>();
+  const mode: 'create' | 'edit' = route.params?.mode === 'edit' ? 'edit' : 'create';
+
+  const paramStaffRaw = route.params?.staff as unknown;
+  const paramStaff =
+    paramStaffRaw &&
+    typeof paramStaffRaw === 'object' &&
+    !Array.isArray(paramStaffRaw) &&
+    typeof (paramStaffRaw as { id?: unknown }).id === 'string'
+      ? (paramStaffRaw as StaffListItem)
+      : undefined;
+  const staffUserId = route.params?.staffUserId ?? paramStaff?.id;
+
+  const [fetched, setFetched] = useState<StaffListItem | null>(null);
+  const [resolving, setResolving] = useState(
+    mode === 'edit' && !paramStaff && !!staffUserId,
+  );
+
+  useEffect(() => {
+    if (mode !== 'edit' || paramStaff || !staffUserId) return;
+    let cancelled = false;
+    setResolving(true);
+    // No dedicated GET-by-id endpoint for staff; pull a generous page
+    // and filter. Covers academies up to ~200 staff. Past that, the
+    // user should reopen the form from the staff list.
+    listStaff(1, 200)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          const found = result.value.data.find((s) => s.id === staffUserId);
+          setFetched(found ?? null);
+        } else {
+          setFetched(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFetched(null);
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, paramStaff, staffUserId]);
+
+  const staffForForm = paramStaff ?? fetched ?? undefined;
+
+  if (mode === 'edit' && resolving) {
+    return (
+      <SafeAreaView style={[styles.scroll, styles.center]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.resolveText}>Loading staff…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (mode === 'edit' && !staffForForm) {
+    return (
+      <SafeAreaView style={[styles.scroll, styles.center]}>
+        <Text style={styles.resolveTitle}>Couldn't load this staff</Text>
+        <Text style={styles.resolveText}>
+          Open the form again from the staff list.
+        </Text>
+        <Pressable style={styles.resolveBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.resolveBtnText}>Go back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  return <StaffFormBody key={staffForForm?.id ?? 'create'} mode={mode} staff={staffForForm} />;
+}
+
+function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { showToast } = useToast();
   const navigation = useNavigation();
-  const route = useRoute<FormRoute>();
-  const { mode, staff } = route.params;
 
   // Basic fields
   const [fullName, setFullName] = useState(staff?.fullName ?? '');
@@ -473,6 +557,38 @@ export function StaffFormScreen() {
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  // Resolve-screen styles (loader + recovery error for the wrapper).
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  resolveTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  resolveText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  resolveBtn: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  resolveBtnText: {
+    color: colors.primary,
+    fontWeight: fontWeights.bold,
+    fontSize: fontSizes.sm,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,

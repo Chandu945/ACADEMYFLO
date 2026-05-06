@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { ScrollView, View, StyleSheet, Keyboard } from 'react-native';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { ScrollView, View, Text, StyleSheet, Keyboard, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TextInput } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
@@ -17,9 +17,10 @@ import {
   saveBatchUseCase,
 } from '../../../application/batch/use-cases/save-batch.usecase';
 import { createBatch, updateBatch } from '../../../infra/batch/batch-api';
-import { invalidateBatchCache } from '../../../infra/batch/batch-cache';
+import { invalidateBatchCache, getBatchesCached } from '../../../infra/batch/batch-cache';
 import type { Weekday, CreateBatchRequest } from '../../../domain/batch/batch.types';
-import { spacing, radius, shadows } from '../../theme';
+import type { BatchListItem } from '../../../domain/batch/batch.types';
+import { spacing, radius, shadows, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
@@ -29,13 +30,90 @@ type FormRoute = RouteProp<BatchesStackParamList, 'BatchForm'>;
 
 const saveApi = { createBatch, updateBatch };
 
+type BatchFormBodyProps = {
+  mode: 'create' | 'edit';
+  batch: BatchListItem | undefined;
+};
+
+/** Wrapper that resolves the route params before mounting the form. On
+ *  web URL refresh the route's `batch` object gets toString'd to
+ *  "[object Object]" — reject it and look the batch up by ID instead. */
 export function BatchFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation();
+  const route = useRoute<FormRoute>();
+  const mode: 'create' | 'edit' = route.params?.mode === 'edit' ? 'edit' : 'create';
+
+  const paramBatchRaw = route.params?.batch as unknown;
+  const paramBatch =
+    paramBatchRaw &&
+    typeof paramBatchRaw === 'object' &&
+    !Array.isArray(paramBatchRaw) &&
+    typeof (paramBatchRaw as { id?: unknown }).id === 'string'
+      ? (paramBatchRaw as BatchListItem)
+      : undefined;
+  const batchId = route.params?.batchId ?? paramBatch?.id;
+
+  const [fetched, setFetched] = useState<BatchListItem | null>(null);
+  const [resolving, setResolving] = useState(
+    mode === 'edit' && !paramBatch && !!batchId,
+  );
+
+  useEffect(() => {
+    if (mode !== 'edit' || paramBatch || !batchId) return;
+    let cancelled = false;
+    setResolving(true);
+    getBatchesCached()
+      .then((items) => {
+        if (cancelled) return;
+        const found = items.find((b) => b.id === batchId);
+        setFetched(found ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setFetched(null);
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, paramBatch, batchId]);
+
+  const batchForForm = paramBatch ?? fetched ?? undefined;
+
+  if (mode === 'edit' && resolving) {
+    return (
+      <SafeAreaView style={[styles.scroll, styles.center]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.resolveText}>Loading batch…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (mode === 'edit' && !batchForForm) {
+    return (
+      <SafeAreaView style={[styles.scroll, styles.center]}>
+        <Text style={styles.resolveTitle}>Couldn't load this batch</Text>
+        <Text style={styles.resolveText}>
+          Open the form again from the batches list.
+        </Text>
+        <Pressable style={styles.resolveBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.resolveBtnText}>Go back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  return <BatchFormBody key={batchForForm?.id ?? 'create'} mode={mode} batch={batchForForm} />;
+}
+
+function BatchFormBody({ mode, batch }: BatchFormBodyProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { showToast } = useToast();
   const navigation = useNavigation();
-  const route = useRoute<FormRoute>();
-  const { mode, batch } = route.params;
 
   const [batchName, setBatchName] = useState(batch?.batchName ?? '');
   const [days, setDays] = useState<Weekday[]>(batch?.days ?? []);
@@ -236,6 +314,38 @@ export function BatchFormScreen() {
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  // Resolve-screen styles (loader + recovery error for the wrapper).
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  resolveTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  resolveText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  resolveBtn: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  resolveBtnText: {
+    color: colors.primary,
+    fontWeight: fontWeights.bold,
+    fontSize: fontSizes.sm,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,

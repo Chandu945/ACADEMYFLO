@@ -12,7 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 
 export type StaffStackParamList = {
   StaffList: undefined;
-  StaffForm: { mode: 'create' | 'edit'; staff?: StaffListItem };
+  StaffForm: { mode: 'create' | 'edit'; staffUserId?: string; staff?: StaffListItem };
   StaffAttendance: undefined;
   StaffAttendanceDailyReport: { date: string };
   StaffAttendanceMonthlySummary: { month: string };

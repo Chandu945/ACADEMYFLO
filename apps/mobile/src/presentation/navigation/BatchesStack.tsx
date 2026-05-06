@@ -10,8 +10,12 @@ import { useTheme } from '../context/ThemeContext';
 
 export type BatchesStackParamList = {
   BatchesList: undefined;
-  BatchForm: { mode: 'create' | 'edit'; batch?: BatchListItem };
-  BatchDetail: { batch: BatchListItem };
+  /** `batchId` is the URL-safe primary param. `batch` is an optional
+   *  pre-fetched payload — present on native row-tap, absent on web URL
+   *  refresh. The screen falls back to fetching by ID when only the ID
+   *  is present. */
+  BatchForm: { mode: 'create' | 'edit'; batchId?: string; batch?: BatchListItem };
+  BatchDetail: { batchId: string; batch?: BatchListItem };
   AddStudentToBatch: { batchId: string; existingStudentIds: string[] };
 };
 
@@ -42,8 +46,8 @@ export function BatchesStack() {
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => {
-                if (route.params.mode === 'edit' && route.params.batch) {
-                  navigation.navigate('BatchDetail', { batch: route.params.batch });
+                if (route.params.mode === 'edit' && route.params.batchId) {
+                  navigation.navigate('BatchDetail', { batchId: route.params.batchId });
                 } else {
                   navigation.navigate('BatchesList');
                 }

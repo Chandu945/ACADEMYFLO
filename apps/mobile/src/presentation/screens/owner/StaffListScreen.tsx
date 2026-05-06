@@ -106,7 +106,7 @@ export function StaffListScreen() {
 
   const handleRowPress = useCallback(
     (staff: StaffListItem) => {
-      navigation.navigate('StaffForm', { mode: 'edit', staff });
+      navigation.navigate('StaffForm', { mode: 'edit', staffUserId: staff.id, staff });
     },
     [navigation],
   );

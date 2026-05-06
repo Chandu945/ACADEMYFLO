@@ -57,10 +57,10 @@ export type MoreStackParamList = {
   EnquiryList: { filter?: string } | undefined;
   AddEnquiry: undefined;
   EnquiryDetail: { enquiryId: string };
-  EditEnquiry: { enquiry: EnquiryDetail };
+  EditEnquiry: { enquiryId: string; enquiry?: EnquiryDetail };
   EventList: undefined;
   AddEvent: undefined;
-  EditEvent: { event: EventDetail };
+  EditEvent: { eventId: string; event?: EventDetail };
   EventDetail: { eventId: string };
   EventGallery: { eventId: string; eventTitle: string };
   PhotoViewer: { eventId: string; photos: GalleryPhoto[]; initialIndex: number };
@@ -71,11 +71,11 @@ export type MoreStackParamList = {
   AcademyInfo: undefined;
   PaymentHistory: undefined;
   BatchesList: undefined;
-  BatchForm: { mode: 'create' | 'edit'; batch?: BatchListItem };
-  BatchDetail: { batch: BatchListItem };
+  BatchForm: { mode: 'create' | 'edit'; batchId?: string; batch?: BatchListItem };
+  BatchDetail: { batchId: string; batch?: BatchListItem };
   AddStudentToBatch: { batchId: string; existingStudentIds: string[] };
   StaffList: undefined;
-  StaffForm: { mode: 'create' | 'edit'; staff?: StaffListItem };
+  StaffForm: { mode: 'create' | 'edit'; staffUserId?: string; staff?: StaffListItem };
   StaffAttendance: undefined;
   StaffAttendanceDailyReport: { date: string };
   StaffAttendanceMonthlySummary: { month: string };
@@ -351,10 +351,10 @@ export function MoreStack() {
           headerLeft: () => (
             <HeaderBackButton
               onPress={() => {
-                if (route.params.mode === 'edit' && route.params.batch) {
+                if (route.params.mode === 'edit' && route.params.batchId) {
                   // Edit mode: user reached BatchForm via BatchDetail, so
                   // BatchDetail is in history — navigate pops back to it.
-                  navigation.navigate('BatchDetail', { batch: route.params.batch });
+                  navigation.navigate('BatchDetail', { batchId: route.params.batchId });
                 } else {
                   popToOrReplaceList(navigation, 'BatchesList', 'MoreHome');
                 }

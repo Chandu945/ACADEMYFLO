@@ -570,7 +570,11 @@ export function ChildDetailScreen() {
             <Text style={styles.noData}>No fee records found</Text>
           </View>
         )}
-        {fees.some((f) => f.status === 'DUE') && (
+        {/* Only show the "visit academy" note when the academy hasn't
+            enabled in-app payments. With manualPaymentsEnabled the parent
+            has a working "Pay now" button on every DUE fee — telling them
+            to visit the academy directly contradicts that flow. */}
+        {fees.some((f) => f.status === 'DUE') && !paymentMethods?.manualPaymentsEnabled && (
           <View style={styles.payAtAcademyNote}>
             <Text style={styles.payAtAcademyStar}>*</Text>
             <Text style={styles.payAtAcademyText}>

@@ -16,13 +16,14 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import type { BatchesStackParamList } from '../../navigation/BatchesStack';
+import type { BatchListItem } from '../../../domain/batch/batch.types';
 import type { StudentListItem } from '../../../domain/student/student.types';
 import {
   listBatchStudents,
   removeStudentFromBatch,
   deleteBatch,
 } from '../../../infra/batch/batch-api';
-import { invalidateBatchCache } from '../../../infra/batch/batch-cache';
+import { invalidateBatchCache, getBatchesCached } from '../../../infra/batch/batch-cache';
 import { Badge } from '../../components/ui/Badge';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
@@ -106,7 +107,23 @@ export function BatchDetailScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation<Nav>();
   const route = useRoute<DetailRoute>();
-  const batch = route.params?.batch;
+
+  // Reject the broken string-form param. On web URL refresh, an object
+  // route param gets toString'd to "[object Object]" — that's not a
+  // BatchListItem. Trust `batchId` (URL-safe primitive) instead.
+  const paramBatchRaw = route.params?.batch as unknown;
+  const paramBatch =
+    paramBatchRaw &&
+    typeof paramBatchRaw === 'object' &&
+    !Array.isArray(paramBatchRaw) &&
+    typeof (paramBatchRaw as { id?: unknown }).id === 'string'
+      ? (paramBatchRaw as BatchListItem)
+      : undefined;
+  const batchId = route.params?.batchId ?? paramBatch?.id;
+
+  const [fetchedBatch, setFetchedBatch] = useState<BatchListItem | null>(null);
+  const [bootstrapping, setBootstrapping] = useState(!paramBatch && !!batchId);
+  const batch = paramBatch ?? fetchedBatch ?? undefined;
   const { user } = useAuth();
 
   const isOwner = user?.role === 'OWNER';
@@ -133,6 +150,29 @@ export function BatchDetailScreen() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [searchText]);
+
+  // Fetch batch by ID when arriving via URL refresh / deep link without
+  // a pre-fetched payload. Uses the cached list (cheap and shared with
+  // BatchMultiSelect / BatchesList) so we don't add a new network round-trip.
+  useEffect(() => {
+    if (paramBatch || !batchId) return;
+    let cancelled = false;
+    getBatchesCached()
+      .then((items) => {
+        if (cancelled) return;
+        const found = items.find((b) => b.id === batchId);
+        setFetchedBatch(found ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedBatch(null);
+      })
+      .finally(() => {
+        if (!cancelled) setBootstrapping(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [paramBatch, batchId]);
 
   const fetchStudents = useCallback(
     async (page: number, append = false) => {
@@ -250,7 +290,7 @@ export function BatchDetailScreen() {
 
   const handleEdit = useCallback(() => {
     if (!batch) return;
-    navigation.navigate('BatchForm', { mode: 'edit', batch });
+    navigation.navigate('BatchForm', { mode: 'edit', batchId: batch.id, batch });
   }, [navigation, batch]);
 
   const handleDelete = useCallback(() => {
@@ -306,7 +346,7 @@ export function BatchDetailScreen() {
   }
 
   const daysText = batch.days.length > 0
-    ? batch.days.map((d) => DAY_SHORT[d] ?? d).join(', ')
+    ? batch.days.map((d: string) => DAY_SHORT[d] ?? d).join(', ')
     : 'No days set';
 
   const formatTime12h = (time: string): string => {
@@ -445,6 +485,37 @@ export function BatchDetailScreen() {
     ),
     [batch, daysText, timeSlotText, isOwner, handleEdit, handleDelete, handleAddStudent, searchText, colors, styles],
   );
+
+  // Initial-load skeleton: when arriving via URL refresh without a
+  // pre-fetched batch object, show a skeleton until getBatchesCached
+  // resolves. Avoids flashing the empty stub layout for ~1 second.
+  if (bootstrapping) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['bottom']}>
+        <View style={{ padding: spacing.base, gap: spacing.md }}>
+          <SkeletonTile />
+          <SkeletonTile />
+          <SkeletonTile />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Resolved but the batch wasn't found in the cached list (deleted, or
+  // no longer accessible) — surface a clear recovery path instead of
+  // rendering empty fields.
+  if (!batch) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['bottom']}>
+        <EmptyState
+          variant="empty"
+          icon="account-alert-outline"
+          message="Batch not available"
+          subtitle="It may have been deleted. Open the batches list to refresh."
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>

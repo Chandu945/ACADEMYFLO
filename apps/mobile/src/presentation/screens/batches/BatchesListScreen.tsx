@@ -79,7 +79,10 @@ export function BatchesListScreen() {
 
   const handleRowPress = useCallback(
     (batch: BatchListItem) => {
-      navigation.navigate('BatchDetail', { batch });
+      // Pass the URL-safe `batchId` plus the full `batch` for instant
+      // native render. On web URL refresh only the ID survives — the
+      // detail screen falls back to fetching by ID.
+      navigation.navigate('BatchDetail', { batchId: batch.id, batch });
     },
     [navigation],
   );
