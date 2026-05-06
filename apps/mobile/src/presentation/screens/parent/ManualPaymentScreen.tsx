@@ -23,7 +23,10 @@ import { InlineError } from '../../components/ui/InlineError';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import type { ParentFeesStackParamList } from '../../navigation/ParentFeesStack';
 import { parentApi } from '../../../infra/parent/parent-api';
-import type { AcademyPaymentMethods } from '../../../domain/parent/parent.types';
+import type {
+  AcademyPaymentMethods,
+  PendingPaymentRequestForParent,
+} from '../../../domain/parent/parent.types';
 import { spacing, fontSizes, fontWeights, radius, gradient } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -54,6 +57,14 @@ export function ManualPaymentScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('UPI');
+
+  // Pre-flight: is a payment request already pending for this fee? If staff
+  // recorded a cash collection (or the parent submitted earlier), we want to
+  // surface that card and skip the upload form — saves the parent from
+  // uploading a UPI screenshot for a fee already in flight, and avoids the
+  // duplicate-pending error coming back from the API.
+  const [pending, setPending] = useState<PendingPaymentRequestForParent | null>(null);
+  const [pendingChecking, setPendingChecking] = useState(true);
 
   // The amount passed via route params is whatever the calling screen had at
   // navigation time — but the dashboard summary or a parent's child detail
@@ -102,6 +113,28 @@ export function ManualPaymentScreen() {
       active = false;
     };
   }, []);
+
+  // Pre-flight check for an existing pending request against this same fee.
+  // If staff already recorded a payment (or the parent submitted earlier and
+  // closed the screen) we want to show that immediately instead of the
+  // upload form — saves the parent from preparing a duplicate submission
+  // that the backend would reject anyway.
+  useEffect(() => {
+    let active = true;
+    parentApi
+      .getPendingPaymentRequest(feeDueId)
+      .then((r) => {
+        if (!active) return;
+        if (r.ok) setPending(r.value);
+        // On error: silently fall through to the regular form. The submit
+        // path still has its own duplicate-pending check at the database
+        // level, so the worst case is the same as before this feature.
+      })
+      .finally(() => active && setPendingChecking(false));
+    return () => {
+      active = false;
+    };
+  }, [feeDueId]);
 
   // Pull the up-to-date fee details so the screen reflects the same amount
   // the backend will validate against. We query a 24-month window centered
@@ -196,6 +229,18 @@ export function ManualPaymentScreen() {
     }
 
     setSubmitting(true);
+
+    // Defense in depth: someone could have recorded a payment between when
+    // this screen mounted and the parent tapping submit. Re-check; if a
+    // pending request now exists, swap to the status card instead of
+    // pushing a duplicate that the backend would reject anyway.
+    const preflight = await parentApi.getPendingPaymentRequest(feeDueId);
+    if (preflight.ok && preflight.value) {
+      setPending(preflight.value);
+      setSubmitting(false);
+      return;
+    }
+
     const res = await parentApi.submitManualPaymentRequest({
       studentId,
       feeDueId,
@@ -230,7 +275,7 @@ export function ManualPaymentScreen() {
     showToast,
   ]);
 
-  if (loading) {
+  if (loading || pendingChecking) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -257,6 +302,81 @@ export function ManualPaymentScreen() {
           Your academy hasn't enabled manual payments yet. Please reach out to them directly.
         </Text>
       </View>
+    );
+  }
+
+  // A pending request already exists for this fee — staff recorded a cash
+  // collection, or the parent submitted earlier and came back. Show the
+  // status card instead of the upload form to prevent a duplicate
+  // submission. The owner approves/rejects the existing request, and the
+  // parent sees the result in their fees list.
+  if (pending) {
+    const isOwn = pending.source === 'PARENT' && pending.submittedBy === 'You';
+    const title = isOwn
+      ? 'Your previous payment is pending review'
+      : pending.source === 'STAFF'
+      ? 'Payment already recorded'
+      : 'A payment is already pending review';
+    const subtitle = isOwn
+      ? 'You uploaded proof for this fee earlier. The academy is reviewing it — please wait for them to approve before uploading again.'
+      : pending.source === 'STAFF'
+      ? `${pending.submittedBy} has already recorded a payment for this fee. The owner is reviewing it before marking the fee as paid.`
+      : 'Another submission for this fee is in review. You can upload a new one after the current one is processed.';
+    const methodLabel =
+      pending.paymentMethod === 'CASH'
+        ? 'Cash'
+        : pending.paymentMethod === 'UPI'
+        ? 'UPI'
+        : pending.paymentMethod === 'BANK'
+        ? 'Bank transfer'
+        : pending.paymentMethod
+        ? 'Other'
+        : null;
+    return (
+      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.pendingCard}>
+            <View style={styles.pendingIcon}>
+              <AppIcon name="clock-outline" size={26} color={colors.warningText} />
+            </View>
+            <Text style={styles.pendingTitle}>{title}</Text>
+            <Text style={styles.pendingSubtitle}>{subtitle}</Text>
+
+            <View style={styles.pendingMetaRow}>
+              <Text style={styles.pendingMetaLabel}>Amount</Text>
+              <Text style={styles.pendingMetaValue}>{formatAmount(pending.amount)}</Text>
+            </View>
+            <View style={styles.pendingMetaRow}>
+              <Text style={styles.pendingMetaLabel}>Submitted by</Text>
+              <Text style={styles.pendingMetaValue}>{pending.submittedBy}</Text>
+            </View>
+            {methodLabel && (
+              <View style={styles.pendingMetaRow}>
+                <Text style={styles.pendingMetaLabel}>Method</Text>
+                <Text style={styles.pendingMetaValue}>{methodLabel}</Text>
+              </View>
+            )}
+            <View style={styles.pendingMetaRow}>
+              <Text style={styles.pendingMetaLabel}>Submitted</Text>
+              <Text style={styles.pendingMetaValue}>
+                {new Date(pending.submittedAt).toLocaleString()}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.pendingBackBtn}
+              onPress={() => navigation.goBack()}
+              testID="pending-back-btn"
+            >
+              <Text style={styles.pendingBackText}>Back to fees</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
@@ -609,6 +729,74 @@ const makeStyles = (colors: Colors) =>
       color: colors.textMedium,
       textAlign: 'center',
       lineHeight: 20,
+    },
+
+    /* Pending-request notice */
+    pendingCard: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.warningBorder,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.warningText,
+      borderRadius: radius.xl,
+      padding: spacing.base,
+      gap: spacing.sm,
+    },
+    pendingIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: radius.full,
+      backgroundColor: colors.warningBg,
+      borderWidth: 1,
+      borderColor: colors.warningBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'flex-start',
+      marginBottom: spacing.xs,
+    },
+    pendingTitle: {
+      fontSize: fontSizes.lg,
+      fontWeight: fontWeights.bold,
+      color: colors.text,
+    },
+    pendingSubtitle: {
+      fontSize: fontSizes.sm,
+      color: colors.textMedium,
+      lineHeight: 20,
+      marginBottom: spacing.sm,
+    },
+    pendingMetaRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    pendingMetaLabel: {
+      fontSize: fontSizes.xs,
+      color: colors.textSecondary,
+      fontWeight: fontWeights.medium,
+    },
+    pendingMetaValue: {
+      fontSize: fontSizes.sm,
+      color: colors.text,
+      fontWeight: fontWeights.semibold,
+    },
+    pendingBackBtn: {
+      marginTop: spacing.md,
+      alignSelf: 'flex-start',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm + 2,
+      borderRadius: radius.full,
+      backgroundColor: colors.primarySoft,
+      borderWidth: 1,
+      borderColor: colors.primaryLight,
+    },
+    pendingBackText: {
+      color: colors.primary,
+      fontWeight: fontWeights.bold,
+      fontSize: fontSizes.sm,
     },
 
     /* Amount hero */

@@ -190,3 +190,21 @@ export const parentPaymentRequestSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
 });
+
+/** Pre-flight pending-request lookup. Returned by
+ *  `GET /parent/fee-dues/:feeDueId/pending-request` so the parent's payment
+ *  screen can warn "this fee already has a pending payment" before the
+ *  parent uploads a UPI screenshot. */
+export const pendingPaymentRequestForParentSchema = z.object({
+  pending: z
+    .object({
+      id: z.string(),
+      source: z.enum(['STAFF', 'PARENT']),
+      amount: z.number(),
+      submittedAt: z.string(),
+      submittedBy: z.string(),
+      paymentMethod: z.enum(['UPI', 'BANK', 'CASH', 'OTHER']).nullable(),
+      proofImageUrl: z.string().nullable(),
+    })
+    .nullable(),
+});

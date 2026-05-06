@@ -176,6 +176,21 @@ export type ParentPaymentRequest = {
   updatedAt: string;
 };
 
+/** Returned by the pre-flight pending-request endpoint. Tells the parent's
+ *  payment screen whether a payment for the same fee is already in flight
+ *  (and who put it there) so the parent doesn't waste time uploading a
+ *  duplicate UPI screenshot. */
+export type PendingPaymentRequestForParent = {
+  id: string;
+  source: 'STAFF' | 'PARENT';
+  amount: number;
+  submittedAt: string;
+  /** Display label — staff full name, "You", or "Family member". */
+  submittedBy: string;
+  paymentMethod: ParentPaymentMethod | null;
+  proofImageUrl: string | null;
+};
+
 export type SubmitManualPaymentRequestInput = {
   studentId: string;
   feeDueId: string;

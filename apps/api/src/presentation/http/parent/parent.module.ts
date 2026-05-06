@@ -99,6 +99,7 @@ import { GetAcademyInfoUseCase } from '@application/parent/use-cases/get-academy
 import { GetPaymentHistoryUseCase } from '@application/parent/use-cases/get-payment-history.usecase';
 import { GetAcademyPaymentMethodsUseCase } from '@application/parent/use-cases/get-academy-payment-methods.usecase';
 import { CreateParentPaymentRequestUseCase } from '@application/parent/use-cases/create-parent-payment-request.usecase';
+import { GetPendingPaymentRequestUseCase } from '@application/parent/use-cases/get-pending-payment-request.usecase';
 import { UploadPaymentProofUseCase } from '@application/parent/use-cases/upload-payment-proof.usecase';
 
 // Cashfree infra
@@ -481,6 +482,21 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         PARENT_STUDENT_LINK_REPOSITORY,
         AUDIT_RECORDER_PORT,
         CLOCK_PORT,
+      ],
+    },
+    {
+      provide: 'GET_PENDING_PAYMENT_REQUEST_USE_CASE',
+      useFactory: (
+        userRepo: UserRepository,
+        feeDueRepo: FeeDueRepository,
+        linkRepo: ParentStudentLinkRepository,
+        prRepo: PaymentRequestRepository,
+      ) => new GetPendingPaymentRequestUseCase(userRepo, feeDueRepo, linkRepo, prRepo),
+      inject: [
+        USER_REPOSITORY,
+        FEE_DUE_REPOSITORY,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        PAYMENT_REQUEST_REPOSITORY,
       ],
     },
   ],

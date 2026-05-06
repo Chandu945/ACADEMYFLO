@@ -37,6 +37,7 @@ import type { GetPaymentHistoryUseCase } from '@application/parent/use-cases/get
 import type { GetAcademyPaymentMethodsUseCase } from '@application/parent/use-cases/get-academy-payment-methods.usecase';
 import type { CreateParentPaymentRequestUseCase } from '@application/parent/use-cases/create-parent-payment-request.usecase';
 import type { UploadPaymentProofUseCase } from '@application/parent/use-cases/upload-payment-proof.usecase';
+import type { GetPendingPaymentRequestUseCase } from '@application/parent/use-cases/get-pending-payment-request.usecase';
 import { CreateParentPaymentRequestDto } from './dto/create-parent-payment-request.dto';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
@@ -92,6 +93,8 @@ export class ParentController {
     private readonly createParentPaymentRequest: CreateParentPaymentRequestUseCase,
     @Inject('UPLOAD_PAYMENT_PROOF_USE_CASE')
     private readonly uploadPaymentProof: UploadPaymentProofUseCase,
+    @Inject('GET_PENDING_PAYMENT_REQUEST_USE_CASE')
+    private readonly getPendingPaymentRequest: GetPendingPaymentRequestUseCase,
     @Inject(USER_REPOSITORY)
     private readonly userRepo: UserRepository,
     @Inject(ACADEMY_REPOSITORY)
@@ -120,6 +123,24 @@ export class ParentController {
     const result = await this.getAcademyPaymentMethods.execute({
       actorUserId: user.userId,
       actorRole: user.role,
+    });
+    return mapResultToResponse(result, req);
+  }
+
+  @Get('fee-dues/:feeDueId/pending-request')
+  @ApiOperation({
+    summary:
+      'Pre-flight check: returns the pending payment request for a fee, if any. Lets the parent UI surface "this fee already has a pending payment" before they upload a proof screenshot.',
+  })
+  async getPendingForFeeDue(
+    @Param('feeDueId') feeDueId: string,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    const result = await this.getPendingPaymentRequest.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      feeDueId,
     });
     return mapResultToResponse(result, req);
   }

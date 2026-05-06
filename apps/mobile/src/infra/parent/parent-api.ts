@@ -12,6 +12,7 @@ import type {
   PaymentHistoryItem,
   AcademyPaymentMethods,
   ParentPaymentRequest,
+  PendingPaymentRequestForParent,
   SubmitManualPaymentRequestInput,
 } from '../../domain/parent/parent.types';
 import {
@@ -26,6 +27,7 @@ import {
   paymentHistoryListSchema,
   academyPaymentMethodsSchema,
   parentPaymentRequestSchema,
+  pendingPaymentRequestForParentSchema,
 } from '../../domain/parent/parent.schemas';
 import type { AppError } from '../../domain/common/errors';
 import { err, ok, type Result } from '../../domain/common/result';
@@ -265,6 +267,23 @@ export async function submitManualPaymentRequest(
   }
 }
 
+export async function getPendingPaymentRequest(
+  feeDueId: string,
+): Promise<Result<PendingPaymentRequestForParent | null, AppError>> {
+  const result = await apiGet<unknown>(
+    `/api/v1/parent/fee-dues/${encodeURIComponent(feeDueId)}/pending-request`,
+  );
+  if (!result.ok) return result;
+  const parsed = pendingPaymentRequestForParentSchema.safeParse(result.value);
+  if (!parsed.success) {
+    if (__DEV__) {
+      console.error('[parentApi] getPendingPaymentRequest schema mismatch:', parsed.error.issues);
+    }
+    return err({ code: 'UNKNOWN', message: 'Unexpected server response' });
+  }
+  return ok(parsed.data.pending);
+}
+
 export const parentApi = {
   getMyChildren,
   getChildAttendance,
@@ -279,4 +298,5 @@ export const parentApi = {
   getPaymentHistory,
   getAcademyPaymentMethods,
   submitManualPaymentRequest,
+  getPendingPaymentRequest,
 };
