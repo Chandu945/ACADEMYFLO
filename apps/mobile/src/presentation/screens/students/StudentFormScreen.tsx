@@ -19,7 +19,9 @@ import {
   validateStudentForm,
   saveStudentUseCase,
 } from '../../../application/student/use-cases/save-student.usecase';
-import { createStudent, updateStudent, getStudentPhotoUploadPath } from '../../../infra/student/student-api';
+import { createStudent, updateStudent, getStudent, getStudentPhotoUploadPath } from '../../../infra/student/student-api';
+import { ActivityIndicator } from 'react-native';
+import type { StudentListItem } from '../../../domain/student/student.types';
 import { getStudentBatches, setStudentBatches } from '../../../infra/batch/batch-api';
 import { ProfilePhotoUploader } from '../../components/common/ProfilePhotoUploader';
 import type { Gender, CreateStudentRequest } from '../../../domain/student/student.types';
@@ -62,13 +64,106 @@ function stripCountryCode(phone: string): string {
   return stripped;
 }
 
+type StudentFormBodyProps = {
+  mode: 'create' | 'edit';
+  student: StudentListItem | undefined;
+};
+
+/** Wrapper that resolves the route params before mounting the heavy form.
+ *  Handles the web-refresh case where the URL serialized the `student`
+ *  object as the literal string "[object Object]" — falls back to fetching
+ *  by `studentId`. */
 export function StudentFormScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation();
+  const route = useRoute<FormRoute>();
+  // Guard against missing/malformed route.params. React Navigation should
+  // always populate params when the route was navigated to with them, but
+  // on a hot-reload edge case route.params could be undefined briefly.
+  const params = route.params ?? ({} as Partial<FormRoute['params']>);
+  const mode: 'create' | 'edit' = params.mode === 'edit' ? 'edit' : 'create';
+
+  // Reject the broken string-form param. On web URL refresh, an object
+  // param gets toString'd to "[object Object]" — that's not a valid
+  // StudentListItem. Also reject arrays (typeof array === 'object').
+  const paramStudentRaw = params.student;
+  const paramStudent =
+    paramStudentRaw &&
+    typeof paramStudentRaw === 'object' &&
+    !Array.isArray(paramStudentRaw) &&
+    typeof (paramStudentRaw as { id?: unknown }).id === 'string'
+      ? (paramStudentRaw as StudentListItem)
+      : undefined;
+  const studentId = params.studentId ?? paramStudent?.id;
+
+  const [fetched, setFetched] = useState<StudentListItem | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(
+    mode === 'edit' && !paramStudent && !!studentId,
+  );
+
+  useEffect(() => {
+    if (mode !== 'edit' || paramStudent || !studentId) return;
+    let cancelled = false;
+    setResolving(true);
+    getStudent(studentId)
+      .then((r) => {
+        if (cancelled) return;
+        if (r.ok) {
+          setFetched(r.value);
+          setResolveError(null);
+        } else {
+          setResolveError(r.error.message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, paramStudent, studentId]);
+
+  const studentForForm = paramStudent ?? fetched ?? undefined;
+
+  if (mode === 'edit' && resolving) {
+    return (
+      <SafeAreaView style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.resolveText}>Loading student…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (mode === 'edit' && !studentForForm) {
+    return (
+      <SafeAreaView style={[styles.container, styles.center]}>
+        <Text style={styles.resolveTitle}>Couldn't load this student</Text>
+        <Text style={styles.resolveText}>
+          {resolveError ?? 'Open the form again from the students list.'}
+        </Text>
+        <Pressable style={styles.resolveBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.resolveBtnText}>Go back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <StudentFormBody
+      key={studentForForm?.id ?? 'create'}
+      mode={mode}
+      student={studentForForm}
+    />
+  );
+}
+
+function StudentFormBody({ mode, student }: StudentFormBodyProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { showToast } = useToast();
   const navigation = useNavigation();
-  const route = useRoute<FormRoute>();
-  const { mode, student } = route.params;
   const { user, subscription, refreshSubscription } = useAuth();
   const isStaff = user?.role === 'STAFF';
 
@@ -163,16 +258,44 @@ export function StudentFormScreen() {
   useEffect(() => {
     if (mode === 'edit' && student?.id) {
       let cancelled = false;
-      getStudentBatches(student.id).then((result) => {
-        if (!cancelled && result.ok) {
-          const ids = result.value.map((b) => b.id);
-          setSelectedBatchIds(ids);
-          initialRef.current.selectedBatchIds = ids;
-        }
-      }).catch(() => {});
-      return () => { cancelled = true; };
+      getStudentBatches(student.id)
+        .then((result) => {
+          if (cancelled) return;
+          if (result.ok) {
+            const ids = result.value.map((b) => b.id);
+            if (__DEV__) {
+              console.log('[StudentFormScreen] Loaded batches for', student.id, ids);
+            }
+            setSelectedBatchIds(ids);
+            initialRef.current.selectedBatchIds = ids;
+          } else {
+            // Surface the failure so it doesn't silently look like the
+            // student has no batches (which would tempt the user to "fix"
+            // it by re-saving and accidentally clearing their real batches).
+            if (__DEV__) {
+              console.warn('[StudentFormScreen] getStudentBatches failed:', result.error);
+            }
+            showToast(
+              `Couldn't load this student's batches: ${result.error.message}. Don't save until they reload.`,
+              'error',
+            );
+          }
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          if (__DEV__) {
+            console.error('[StudentFormScreen] getStudentBatches threw:', e);
+          }
+          showToast(
+            "Couldn't load this student's batches. Don't save until they reload.",
+            'error',
+          );
+        });
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [mode, student?.id]);
+  }, [mode, student?.id, showToast]);
 
   // --- Field change helpers ---
   const clearFieldError = useCallback((field: string) => {
@@ -640,6 +763,42 @@ export function StudentFormScreen() {
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  // Resolve-screen styles (loading + error states for the wrapper).
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  resolveTitle: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  resolveText: {
+    fontSize: fontSizes.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  resolveBtn: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  resolveBtnText: {
+    color: colors.primary,
+    fontWeight: fontWeights.bold,
+    fontSize: fontSizes.sm,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.bg,

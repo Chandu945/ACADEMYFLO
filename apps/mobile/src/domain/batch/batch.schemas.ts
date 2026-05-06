@@ -11,7 +11,10 @@ export const batchListItemSchema = z.object({
   endTime: z.string().nullish().default(null),
   maxStudents: z.number().int().nullish().default(null),
   status: z.enum(['ACTIVE', 'INACTIVE']),
-  studentCount: z.number().int(),
+  // Some endpoints (e.g. GET /students/:id/batches) don't include
+  // studentCount because the per-student view doesn't need capacity info.
+  // Default to 0 so validation succeeds against either response shape.
+  studentCount: z.number().int().default(0),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

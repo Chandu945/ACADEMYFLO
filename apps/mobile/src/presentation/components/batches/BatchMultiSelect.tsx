@@ -72,6 +72,17 @@ export function BatchMultiSelect({
     });
   }, [batches, selectedIds]);
 
+  // CRITICAL: this hook MUST be declared before any early returns below.
+  // Putting it after the loading/empty-state branches violated the Rules
+  // of Hooks — when batches loaded asynchronously, the first render hit
+  // an early return (no hook), the second render passed all the early
+  // returns and called the hook (one extra hook), and React threw
+  // "Rendered more hooks than during the previous render".
+  const initiallyEnrolledSet = useMemo(
+    () => new Set(initiallyEnrolledIds ?? []),
+    [initiallyEnrolledIds],
+  );
+
   const selectedCount = selectedIds.length;
 
   // Header is the same in every render branch so the section feels stable.
@@ -129,11 +140,6 @@ export function BatchMultiSelect({
       </View>
     );
   }
-
-  const initiallyEnrolledSet = useMemo(
-    () => new Set(initiallyEnrolledIds ?? []),
-    [initiallyEnrolledIds],
-  );
 
   return (
     <View style={styles.section}>

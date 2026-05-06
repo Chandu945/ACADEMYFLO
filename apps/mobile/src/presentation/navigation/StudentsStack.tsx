@@ -10,7 +10,14 @@ import { useTheme } from '../context/ThemeContext';
 
 export type StudentsStackParamList = {
   StudentsList: undefined;
-  StudentForm: { mode: 'create' | 'edit'; student?: StudentListItem };
+  /** Edit-mode forms need a `studentId` (URL-safe) so the screen can fetch
+   *  by ID on web refresh. `student` is an optional pre-fetched payload
+   *  passed from native navigations for instant render. */
+  StudentForm: {
+    mode: 'create' | 'edit';
+    studentId?: string;
+    student?: StudentListItem;
+  };
   /** `studentId` is the URL-safe primary param. `student` is an optional
    *  pre-fetched payload passed when navigating from the list (lets the
    *  detail screen render instantly). On web refresh / deep link the

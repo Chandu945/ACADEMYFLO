@@ -6,8 +6,8 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import { StudentBatchErrors } from '../../common/errors';
-import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
+import type { BatchListItemDto } from './list-batches.usecase';
 import type { UserRole } from '@academyflo/contracts';
 
 export interface GetStudentBatchesInput {
@@ -24,7 +24,9 @@ export class GetStudentBatchesUseCase {
     private readonly studentBatchRepo: StudentBatchRepository,
   ) {}
 
-  async execute(input: GetStudentBatchesInput): Promise<Result<BatchDto[], AppError>> {
+  async execute(
+    input: GetStudentBatchesInput,
+  ): Promise<Result<BatchListItemDto[], AppError>> {
     if (input.actorRole !== 'OWNER' && input.actorRole !== 'STAFF') {
       return err(StudentBatchErrors.viewNotAllowed());
     }
@@ -49,6 +51,22 @@ export class GetStudentBatchesUseCase {
     // Single $in query — was N separate findById round-trips.
     const batches = await this.batchRepo.findByIds(batchIds);
 
-    return ok(batches.map(toBatchDto));
+    // Enrich each batch with its current studentCount so the response shape
+    // matches GET /batches. The mobile schema (batchListItemSchema) requires
+    // studentCount; without it the per-student endpoint fails Zod validation
+    // and the form silently shows an empty selection — letting the user
+    // accidentally clear their real batches by hitting Save.
+    const idStrings = batches.map((b) => b.id.toString());
+    const countByBatch =
+      idStrings.length > 0
+        ? await this.studentBatchRepo.countByBatchIds(idStrings)
+        : new Map<string, number>();
+
+    const data: BatchListItemDto[] = batches.map((batch) => ({
+      ...toBatchDto(batch),
+      studentCount: countByBatch.get(batch.id.toString()) ?? 0,
+    }));
+
+    return ok(data);
   }
 }

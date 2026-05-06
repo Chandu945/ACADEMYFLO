@@ -187,10 +187,10 @@ export function StudentsListScreen() {
 
   const handleRowPress = useCallback(
     (student: StudentListItem) => {
-      // Pass `studentId` (URL-safe) plus the full `student` so native paths
-      // can render instantly. On web refresh, only the URL survives, so the
-      // detail screen falls back to fetching by id.
-      navigation.navigate('StudentDetail', { studentId: student.id, student });
+      // Only pass the URL-safe `studentId`. The detail screen fetches by
+      // ID. Passing the full object as a param would serialize to
+      // "[object Object]" in the URL on web, breaking on refresh.
+      navigation.navigate('StudentDetail', { studentId: student.id });
     },
     [navigation],
   );
@@ -496,8 +496,9 @@ export function StudentsListScreen() {
           student={lastActionMenuStudentRef.current}
           onClose={() => setActionMenuStudent(null)}
           onEdit={() => {
-            if (lastActionMenuStudentRef.current) {
-              navigation.navigate('StudentForm', { mode: 'edit', student: lastActionMenuStudentRef.current });
+            const s = lastActionMenuStudentRef.current;
+            if (s) {
+              navigation.navigate('StudentForm', { mode: 'edit', studentId: s.id });
             }
           }}
           onAssignBatch={() => {

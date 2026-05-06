@@ -22,6 +22,7 @@ import type { FeeDueItem } from '../../../domain/fees/fees.types';
 import { StudentActionMenu } from '../../components/student/StudentActionMenu';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { InlineError } from '../../components/ui/InlineError';
+import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { useToast } from '../../context/ToastContext';
 import LinearGradient from 'react-native-linear-gradient';
 import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
@@ -95,6 +96,11 @@ export function StudentDetailScreen() {
   const [student, setStudent] = useState<StudentListItem>(
     paramStudent ?? ({ id: studentId ?? '', fullName: '', status: 'ACTIVE' } as StudentListItem),
   );
+  // True while we're loading the student for the first time WITHOUT a
+  // pre-fetched object (e.g. web URL refresh, deep link, or any flow where
+  // navigation passes only `studentId`). Avoids flashing the empty stub
+  // ("—" for every field) for a second before the data lands.
+  const [bootstrapping, setBootstrapping] = useState(!paramStudent?.fullName);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionMenuVisible, setActionMenuVisible] = useState(false);
@@ -151,6 +157,10 @@ export function StudentDetailScreen() {
       if (mountedRef.current) {
         setError('Failed to load student data.');
       }
+    } finally {
+      // First load complete (success or error) — render the real screen
+      // even on error so the InlineError banner has a place to show up.
+      if (mountedRef.current) setBootstrapping(false);
     }
   }, [studentId, showToast, navigation]);
 
@@ -217,6 +227,23 @@ export function StudentDetailScreen() {
     );
   }
 
+  // Initial-load loader: when we arrived without pre-fetched student data
+  // (web URL refresh / deep link), don't flash the empty stub for a second
+  // before the fetch completes. Show a skeleton instead.
+  if (bootstrapping) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['bottom']}>
+        <View style={styles.bootstrappingContent}>
+          <SkeletonTile />
+          <View style={styles.bootstrappingGap} />
+          <SkeletonTile />
+          <View style={styles.bootstrappingGap} />
+          <SkeletonTile />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView
@@ -262,7 +289,7 @@ export function StudentDetailScreen() {
         <View style={styles.actionsRow}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('StudentForm', { mode: 'edit', student })}
+            onPress={() => navigation.navigate('StudentForm', { mode: 'edit', studentId: student.id })}
             accessibilityLabel="Edit student"
             accessibilityRole="button"
             testID="edit-student-button"
@@ -483,10 +510,10 @@ export function StudentDetailScreen() {
           student={student}
           onClose={() => setActionMenuVisible(false)}
           onEdit={() => {
-            navigation.navigate('StudentForm', { mode: 'edit', student });
+            navigation.navigate('StudentForm', { mode: 'edit', studentId: student.id });
           }}
           onAssignBatch={() => {
-            navigation.navigate('StudentForm', { mode: 'edit', student });
+            navigation.navigate('StudentForm', { mode: 'edit', studentId: student.id });
           }}
           onDeleted={() => navigation.goBack()}
           onStatusChanged={refetchStudent}
@@ -497,6 +524,12 @@ export function StudentDetailScreen() {
 }
 
 const makeStyles = (colors: Colors) => StyleSheet.create({
+  bootstrappingContent: {
+    padding: spacing.base,
+  },
+  bootstrappingGap: {
+    height: spacing.md,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
