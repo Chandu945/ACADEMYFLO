@@ -11,6 +11,10 @@ import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
 import { isValidMonthKey, getTodayLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
+
+function toLocalDateKey(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
 import { AttendanceErrors } from '../../common/errors';
 import type {
   StudentMonthlyAttendanceDto,
@@ -89,16 +93,52 @@ export class GetStudentMonthlyAttendanceUseCase {
     }
 
     const today = getTodayLocalDate();
+    const monthStart = `${input.month}-01`;
+    const studentJoinKey = toLocalDateKey(student.joiningDate);
+    const studentEffectiveStart = studentJoinKey > monthStart ? studentJoinKey : monthStart;
+    const enrolStartByBatch = new Map<string, string>();
+    for (const enrol of enrollments) {
+      const enrolKey = toLocalDateKey(enrol.assignedAt);
+      enrolStartByBatch.set(
+        enrol.batchId,
+        enrolKey > studentEffectiveStart ? enrolKey : studentEffectiveStart,
+      );
+    }
+
+    // Per-batch breakdown stays session-level: each batch's scheduled dates,
+    // capped to that enrollment's effective start date.
     let totalExpected = 0;
     let totalPresent = 0;
-    const allMissedDates = new Set<string>();
+    const expectedBatchesByDate = new Map<string, Set<string>>();
+    const presentBatchesByDate = new Map<string, Set<string>>();
     const perBatch: StudentBatchAttendanceBreakdown[] = batches.map((batch) => {
       const batchId = batch.id.toString();
-      const expectedDates = scheduledDatesInMonth(input.month, batch.days, holidayDates, today);
+      const enrolStart = enrolStartByBatch.get(batchId) ?? studentEffectiveStart;
+      const expectedDates = scheduledDatesInMonth(
+        input.month,
+        batch.days,
+        holidayDates,
+        today,
+      ).filter((d) => d >= enrolStart);
       const presentSet = presentByBatch.get(batchId) ?? new Set<string>();
       const presentDates = expectedDates.filter((d) => presentSet.has(d));
       const absentDates = expectedDates.filter((d) => !presentSet.has(d));
-      for (const d of absentDates) allMissedDates.add(d);
+      for (const d of expectedDates) {
+        let set = expectedBatchesByDate.get(d);
+        if (!set) {
+          set = new Set();
+          expectedBatchesByDate.set(d, set);
+        }
+        set.add(batchId);
+      }
+      for (const d of presentDates) {
+        let set = presentBatchesByDate.get(d);
+        if (!set) {
+          set = new Set();
+          presentBatchesByDate.set(d, set);
+        }
+        set.add(batchId);
+      }
       totalExpected += expectedDates.length;
       totalPresent += presentDates.length;
       return {
@@ -111,15 +151,38 @@ export class GetStudentMonthlyAttendanceUseCase {
       };
     });
 
+    // Day-level aggregates — the user-facing "how is this student doing".
+    let presentDays = 0;
+    let absentDays = 0;
+    let partialDays = 0;
+    const dayAbsentDates: string[] = [];
+    for (const [date, expectedBatches] of expectedBatchesByDate) {
+      const presentBatches = presentBatchesByDate.get(date);
+      if (!presentBatches || presentBatches.size === 0) {
+        absentDays++;
+        dayAbsentDates.push(date);
+      } else {
+        presentDays++;
+        if (presentBatches.size < expectedBatches.size) partialDays++;
+      }
+    }
+    const expectedDays = expectedBatchesByDate.size;
+
     return ok({
       studentId: input.studentId,
       month: input.month,
-      absentDates: [...allMissedDates].sort(),
+      absentDates: dayAbsentDates.sort(),
       holidayDates,
+      // Session-level (kept for backward compat / per-batch math).
       presentCount: totalPresent,
       absentCount: Math.max(0, totalExpected - totalPresent),
       expectedCount: totalExpected,
       holidayCount: holidayDates.length,
+      // Day-level (the new actionable metrics).
+      expectedDays,
+      presentDays,
+      absentDays,
+      partialDays,
       perBatch,
     });
   }

@@ -64,10 +64,27 @@ export function getPendingDuesExportUrl(month: string): string {
   return `/api/v1/reports/dues/pending/export.pdf?month=${encodeURIComponent(month)}`;
 }
 
+export function getStudentMonthlyAttendancePdfUrl(studentId: string, month: string): string {
+  return `/api/v1/attendance/reports/monthly/student/${encodeURIComponent(
+    studentId,
+  )}/export.pdf?month=${encodeURIComponent(month)}`;
+}
+
+export function getMonthlyAttendanceSummaryPdfUrl(month: string): string {
+  return `/api/v1/attendance/reports/monthly/summary/export.pdf?month=${encodeURIComponent(month)}`;
+}
+
+export function getMonthlyAttendanceSummaryCsvUrl(month: string): string {
+  return `/api/v1/attendance/reports/monthly/summary/export.csv?month=${encodeURIComponent(month)}`;
+}
+
 export const reportsApi = {
   getMonthlyRevenue,
   getStudentWiseDues,
   getMonthWiseDues,
   getRevenueExportUrl,
   getPendingDuesExportUrl,
+  getStudentMonthlyAttendancePdfUrl,
+  getMonthlyAttendanceSummaryPdfUrl,
+  getMonthlyAttendanceSummaryCsvUrl,
 };

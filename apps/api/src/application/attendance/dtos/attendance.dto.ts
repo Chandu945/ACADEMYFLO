@@ -34,6 +34,18 @@ export interface StudentMonthlyAttendanceDto {
   /** Sum across batches of scheduled-days-in-month minus holidays-on-scheduled-days. */
   expectedCount: number;
   holidayCount: number;
+  /** Distinct days the student was scheduled (union across batches), capped at
+   *  joining date, per-batch enrollment dates, and today. The actionable
+   *  headline metric for "how is this student doing" — always >= partialDays
+   *  + presentDays + absentDays. */
+  expectedDays: number;
+  /** Days the student was present in at least one of their scheduled batches. */
+  presentDays: number;
+  /** Days the student was scheduled but present in NO batch. */
+  absentDays: number;
+  /** Days the student was present in some but not all of their scheduled
+   *  batches (subset of presentDays — sub-state surfaced in the detail UI). */
+  partialDays: number;
   perBatch: StudentBatchAttendanceBreakdown[];
 }
 

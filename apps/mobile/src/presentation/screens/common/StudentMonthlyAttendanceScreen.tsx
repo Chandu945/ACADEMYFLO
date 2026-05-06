@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
@@ -8,11 +8,16 @@ import type { AppError } from '../../../domain/common/errors';
 import type { StudentMonthlyDetail } from '../../../domain/attendance/attendance.types';
 import { getStudentMonthlyDetailUseCase } from '../../../application/attendance/use-cases/get-student-monthly-detail.usecase';
 import { getStudentMonthlyDetail } from '../../../infra/attendance/attendance-api';
+import { exportStudentMonthlyAttendancePdfUseCase } from '../../../application/reports/use-cases/export-student-monthly-attendance-pdf.usecase';
+import { getStudentMonthlyAttendancePdfUrl } from '../../../infra/reports/reports-api';
+import { pdfDownload } from '../../../infra/reports/pdf-download';
 import { AttendanceCalendar } from '../../components/attendance/AttendanceCalendar';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { useToast } from '../../context/ToastContext';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,7 +37,28 @@ export function StudentMonthlyAttendanceScreen() {
   const [detail, setDetail] = useState<StudentMonthlyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const { showToast } = useToast();
   const mountedRef = useRef(true);
+
+  const handleExportPdf = useCallback(async () => {
+    if (exporting || !studentId) return;
+    setExporting(true);
+    try {
+      const result = await exportStudentMonthlyAttendancePdfUseCase(
+        { pdfDownload, getExportUrl: getStudentMonthlyAttendancePdfUrl },
+        studentId,
+        month,
+      );
+      if (result.ok) {
+        showToast('Report downloaded', 'success');
+      } else {
+        showToast(result.error.message ?? 'Could not download report', 'error');
+      }
+    } finally {
+      if (mountedRef.current) setExporting(false);
+    }
+  }, [exporting, studentId, month, showToast]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +126,17 @@ export function StudentMonthlyAttendanceScreen() {
     );
   }
 
+  // Day-level metrics (use new fields when present, fall back to session
+  // counts so the screen still renders against an un-redeployed API).
+  const expectedDays = detail.expectedDays ?? detail.expectedCount;
+  const presentDays = detail.presentDays ?? detail.presentCount;
+  const absentDays = detail.absentDays ?? detail.absentCount;
+  const partialDays = detail.partialDays ?? 0;
+  const fullDays = Math.max(0, presentDays - partialDays);
+  const pct = expectedDays > 0 ? Math.round((presentDays / expectedDays) * 100) : null;
+  const tone =
+    pct == null ? 'neutral' : pct >= 90 ? 'success' : pct >= 75 ? 'warning' : 'danger';
+
   const dateItems = [
     ...detail.absentDates.map((d) => ({ date: d, type: 'ABSENT' as const })),
     ...detail.holidayDates.map((d) => ({ date: d, type: 'HOLIDAY' as const })),
@@ -110,21 +147,93 @@ export function StudentMonthlyAttendanceScreen() {
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {fullName ? <Text style={styles.studentName} accessibilityRole="header">{fullName}</Text> : null}
       <Text style={styles.monthLabel}>{new Date(detail.month + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</Text>
+      <View style={styles.exportRow}>
+        <Pressable
+          onPress={handleExportPdf}
+          disabled={exporting}
+          style={({ pressed }) => [
+            styles.exportBtn,
+            exporting && styles.exportBtnDisabled,
+            pressed && { opacity: 0.7 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Export this student's attendance as PDF"
+          testID="export-student-attendance-pdf"
+        >
+          {exporting ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <>
+              <AppIcon name="download" size={14} color={colors.primary} />
+              <Text style={styles.exportBtnText}>Export PDF</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
 
-      <View style={styles.countsRow}>
-        <View style={styles.countBox} accessibilityLabel={`${detail.presentCount} days present`}>
-          <Text style={styles.presentNum}>{detail.presentCount}</Text>
-          <Text style={styles.countLabel}>Present</Text>
+      {/* Headline card: prominent percentage + day-level summary */}
+      <View style={[styles.headlineCard, styles[`headlineCard_${tone}`]]}>
+        <View style={styles.headlineLeft}>
+          <Text style={[styles.headlinePct, styles[`headlinePctText_${tone}`]]}>
+            {pct == null ? '—' : `${pct}%`}
+          </Text>
+          <Text style={styles.headlineLabel}>
+            {expectedDays > 0 ? `${presentDays} of ${expectedDays} days` : 'No scheduled days yet'}
+          </Text>
         </View>
-        <View style={styles.countBox} accessibilityLabel={`${detail.absentCount} days absent`}>
-          <Text style={styles.absentNum}>{detail.absentCount}</Text>
-          <Text style={styles.countLabel}>Absent</Text>
-        </View>
-        <View style={styles.countBox} accessibilityLabel={`${detail.holidayCount} holidays`}>
-          <Text style={styles.holidayNum}>{detail.holidayCount}</Text>
-          <Text style={styles.countLabel}>Holiday</Text>
+        <View style={styles.headlineDivider} />
+        <View style={styles.headlineRight}>
+          <View style={styles.miniStat}>
+            <Text style={[styles.miniStatNum, { color: colors.success }]}>{fullDays}</Text>
+            <Text style={styles.miniStatLabel}>Full</Text>
+          </View>
+          {partialDays > 0 && (
+            <View style={styles.miniStat}>
+              <Text style={[styles.miniStatNum, { color: colors.warning }]}>{partialDays}</Text>
+              <Text style={styles.miniStatLabel}>Partial</Text>
+            </View>
+          )}
+          <View style={styles.miniStat}>
+            <Text style={[styles.miniStatNum, { color: colors.danger }]}>{absentDays}</Text>
+            <Text style={styles.miniStatLabel}>Absent</Text>
+          </View>
+          <View style={styles.miniStat}>
+            <Text style={[styles.miniStatNum, { color: colors.warning }]}>{detail.holidayCount}</Text>
+            <Text style={styles.miniStatLabel}>Holiday</Text>
+          </View>
         </View>
       </View>
+
+      {/* Per-batch breakdown — session-level info that's actually useful per batch */}
+      {detail.perBatch.length > 0 && (
+        <View style={styles.batchCard}>
+          <Text style={styles.cardTitle}>By Batch</Text>
+          {detail.perBatch.map((b) => {
+            const batchPct = b.expectedCount > 0
+              ? Math.round((b.presentCount / b.expectedCount) * 100)
+              : null;
+            const batchTone =
+              batchPct == null ? 'neutral' : batchPct >= 90 ? 'success' : batchPct >= 75 ? 'warning' : 'danger';
+            return (
+              <View key={b.batchId} style={styles.batchRow}>
+                <View style={styles.batchInfo}>
+                  <Text style={styles.batchName} numberOfLines={1}>{b.batchName}</Text>
+                  <Text style={styles.batchSub}>
+                    {b.expectedCount > 0
+                      ? `${b.presentCount} of ${b.expectedCount} sessions`
+                      : 'No scheduled sessions yet'}
+                  </Text>
+                </View>
+                <View style={[styles.batchPct, styles[`pctBadge_${batchTone}`]]}>
+                  <Text style={[styles.batchPctText, styles[`pctText_${batchTone}`]]}>
+                    {batchPct == null ? '—' : `${batchPct}%`}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       <AttendanceCalendar
         month={detail.month}
@@ -171,41 +280,155 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     fontWeight: fontWeights.semibold,
     color: colors.textSecondary,
     textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  exportRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginBottom: spacing.base,
   },
-  countsRow: {
+  exportBtn: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  countBox: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.primarySoft,
+    backgroundColor: colors.primarySoft,
+    minHeight: 32,
+  },
+  exportBtnDisabled: {
+    opacity: 0.5,
+  },
+  exportBtnText: {
+    fontSize: 12,
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
+    letterSpacing: 0.2,
+  },
+  headlineCard: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    gap: spacing.md,
     ...shadows.sm,
   },
-  presentNum: {
+  headlineCard_success: { borderLeftColor: colors.success },
+  headlineCard_warning: { borderLeftColor: colors.warning },
+  headlineCard_danger: { borderLeftColor: colors.danger },
+  headlineCard_neutral: { borderLeftColor: colors.border },
+  headlineLeft: {
+    justifyContent: 'center',
+    minWidth: 90,
+  },
+  headlinePct: {
     fontSize: fontSizes['3xl'],
     fontWeight: fontWeights.bold,
-    color: colors.success,
+    letterSpacing: -1,
   },
-  absentNum: {
-    fontSize: fontSizes['3xl'],
-    fontWeight: fontWeights.bold,
-    color: colors.danger,
-  },
-  holidayNum: {
-    fontSize: fontSizes['3xl'],
-    fontWeight: fontWeights.bold,
-    color: colors.warning,
-  },
-  countLabel: {
-    fontSize: fontSizes.sm,
+  headlinePctText_success: { color: colors.successText },
+  headlinePctText_warning: { color: colors.warningText },
+  headlinePctText_danger: { color: colors.dangerText },
+  headlinePctText_neutral: { color: colors.textSecondary },
+  headlineLabel: {
+    fontSize: fontSizes.xs,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: 2,
+    fontWeight: fontWeights.medium,
   },
+  headlineDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+  },
+  headlineRight: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+  },
+  miniStat: {
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  miniStatNum: {
+    fontSize: fontSizes.lg,
+    fontWeight: fontWeights.bold,
+    letterSpacing: -0.3,
+  },
+  miniStatLabel: {
+    fontSize: 10,
+    color: colors.textDisabled,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  batchCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.base,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  cardTitle: {
+    fontSize: fontSizes.md,
+    fontWeight: fontWeights.bold,
+    color: colors.text,
+    letterSpacing: -0.2,
+    marginBottom: spacing.sm,
+  },
+  batchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  batchInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  batchName: {
+    fontSize: fontSizes.sm,
+    fontWeight: fontWeights.semibold,
+    color: colors.text,
+  },
+  batchSub: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  batchPct: {
+    minWidth: 52,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  batchPctText: {
+    fontSize: fontSizes.xs,
+    fontWeight: fontWeights.bold,
+  },
+  pctBadge_success: { backgroundColor: colors.successBg, borderColor: colors.successBorder },
+  pctBadge_warning: { backgroundColor: colors.warningBg, borderColor: colors.warningBorder },
+  pctBadge_danger: { backgroundColor: colors.dangerBg, borderColor: colors.dangerBorder },
+  pctBadge_neutral: { backgroundColor: colors.bgSubtle, borderColor: colors.border },
+  pctText_success: { color: colors.successText },
+  pctText_warning: { color: colors.warningText },
+  pctText_danger: { color: colors.dangerText },
+  pctText_neutral: { color: colors.textSecondary },
   sectionTitle: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.semibold,

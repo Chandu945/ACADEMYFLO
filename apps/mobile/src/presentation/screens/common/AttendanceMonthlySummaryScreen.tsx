@@ -9,9 +9,14 @@ import type { AppError } from '../../../domain/common/errors';
 import type { MonthlySummaryItem } from '../../../domain/attendance/attendance.types';
 import { getMonthlySummaryUseCase } from '../../../application/attendance/use-cases/get-monthly-summary.usecase';
 import { getMonthlySummary } from '../../../infra/attendance/attendance-api';
+import { exportMonthlyAttendanceSummaryPdfUseCase } from '../../../application/reports/use-cases/export-monthly-attendance-summary-pdf.usecase';
+import { getMonthlyAttendanceSummaryPdfUrl } from '../../../infra/reports/reports-api';
+import { pdfDownload } from '../../../infra/reports/pdf-download';
 import { SkeletonTile } from '../../components/ui/SkeletonTile';
 import { InlineError } from '../../components/ui/InlineError';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { AppIcon } from '../../components/ui/AppIcon';
+import { useToast } from '../../context/ToastContext';
 import { spacing, fontSizes, fontWeights, radius, shadows } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
@@ -37,9 +42,29 @@ export function AttendanceMonthlySummaryScreen() {
   const [error, setError] = useState<AppError | null>(null);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const { showToast } = useToast();
   const mountedRef = useRef(true);
   const fetchingMoreRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleExportPdf = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportMonthlyAttendanceSummaryPdfUseCase(
+        { pdfDownload, getExportUrl: getMonthlyAttendanceSummaryPdfUrl },
+        month,
+      );
+      if (result.ok) {
+        showToast('Report downloaded', 'success');
+      } else {
+        showToast(result.error.message ?? 'Could not download report', 'error');
+      }
+    } finally {
+      if (mountedRef.current) setExporting(false);
+    }
+  }, [exporting, month, showToast]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -138,24 +163,48 @@ export function AttendanceMonthlySummaryScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: MonthlySummaryItem }) => (
-      <Pressable
-        style={styles.row}
-        onPress={() => handleRowPress(item)}
-        accessibilityLabel={`${item.fullName}: ${item.presentCount} present, ${item.absentCount} absent, ${item.holidayCount} holidays. Tap for details.`}
-        accessibilityRole="button"
-        testID={`summary-row-${item.studentId}`}
-      >
-        <Text style={styles.name} numberOfLines={1}>
-          {item.fullName}
-        </Text>
-        <View style={styles.counts}>
-          <Text style={styles.presentCount}>{item.presentCount}P</Text>
-          <Text style={styles.absentCountText}>{item.absentCount}A</Text>
-          <Text style={styles.holidayCount}>{item.holidayCount}H</Text>
-        </View>
-      </Pressable>
-    ),
+    ({ item }: { item: MonthlySummaryItem }) => {
+      const expected = item.presentCount + item.absentCount;
+      const hasData = expected > 0;
+      const pct = hasData ? Math.round((item.presentCount / expected) * 100) : null;
+      const tone =
+        pct == null
+          ? 'neutral'
+          : pct >= 90
+            ? 'success'
+            : pct >= 75
+              ? 'warning'
+              : 'danger';
+      return (
+        <Pressable
+          style={[styles.row, styles[`rowStripe_${tone}`]]}
+          onPress={() => handleRowPress(item)}
+          accessibilityLabel={
+            hasData
+              ? `${item.fullName}: ${pct} percent attendance — ${item.presentCount} of ${expected} days present, ${item.holidayCount} holidays. Tap for details.`
+              : `${item.fullName}: no scheduled days yet. Tap for details.`
+          }
+          accessibilityRole="button"
+          testID={`summary-row-${item.studentId}`}
+        >
+          <View style={styles.info}>
+            <Text style={styles.name} numberOfLines={1}>
+              {item.fullName}
+            </Text>
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {hasData
+                ? `${item.presentCount} of ${expected} days · ${item.holidayCount} holidays`
+                : 'No scheduled days yet'}
+            </Text>
+          </View>
+          <View style={[styles.pctBadge, styles[`pctBadge_${tone}`]]}>
+            <Text style={[styles.pctText, styles[`pctText_${tone}`]]}>
+              {hasData ? `${pct}%` : '—'}
+            </Text>
+          </View>
+        </Pressable>
+      );
+    },
     [handleRowPress, styles],
   );
 
@@ -172,7 +221,32 @@ export function AttendanceMonthlySummaryScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <Text style={styles.monthLabel}>{new Date(month + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.monthLabel}>
+          {new Date(month + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+        </Text>
+        <Pressable
+          onPress={handleExportPdf}
+          disabled={exporting || items.length === 0}
+          style={({ pressed }) => [
+            styles.exportBtn,
+            (exporting || items.length === 0) && styles.exportBtnDisabled,
+            pressed && { opacity: 0.7 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Export attendance summary as PDF"
+          testID="export-attendance-summary-pdf"
+        >
+          {exporting ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <>
+              <AppIcon name="download" size={14} color={colors.primary} />
+              <Text style={styles.exportBtnText}>Export PDF</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -219,12 +293,40 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
   monthLabel: {
     fontSize: fontSizes.lg,
     fontWeight: fontWeights.semibold,
     color: colors.text,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
+    flexShrink: 1,
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.primarySoft,
+    backgroundColor: colors.primarySoft,
+    minHeight: 30,
+  },
+  exportBtnDisabled: {
+    opacity: 0.4,
+  },
+  exportBtnText: {
+    fontSize: 12,
+    fontWeight: fontWeights.bold,
+    color: colors.primary,
+    letterSpacing: 0.2,
   },
   searchContainer: {
     paddingHorizontal: spacing.base,
@@ -252,35 +354,68 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.base,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs + 2,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
     ...shadows.sm,
   },
-  name: {
+  rowStripe_success: { borderLeftColor: colors.success },
+  rowStripe_warning: { borderLeftColor: colors.warning },
+  rowStripe_danger: { borderLeftColor: colors.danger },
+  rowStripe_neutral: { borderLeftColor: colors.border },
+  info: {
     flex: 1,
+    minWidth: 0,
+  },
+  name: {
     fontSize: fontSizes.md,
     fontWeight: fontWeights.semibold,
     color: colors.text,
+    letterSpacing: -0.2,
+    marginBottom: 2,
   },
-  counts: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  subtitle: {
+    fontSize: fontSizes.xs,
+    color: colors.textSecondary,
   },
-  presentCount: {
+  pctBadge: {
+    minWidth: 56,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  pctBadge_success: {
+    backgroundColor: colors.successBg,
+    borderColor: colors.successBorder,
+  },
+  pctBadge_warning: {
+    backgroundColor: colors.warningBg,
+    borderColor: colors.warningBorder,
+  },
+  pctBadge_danger: {
+    backgroundColor: colors.dangerBg,
+    borderColor: colors.dangerBorder,
+  },
+  pctBadge_neutral: {
+    backgroundColor: colors.bgSubtle,
+    borderColor: colors.border,
+  },
+  pctText: {
     fontSize: fontSizes.sm,
     fontWeight: fontWeights.bold,
-    color: colors.success,
+    letterSpacing: -0.2,
   },
-  absentCountText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
-    color: colors.danger,
-  },
-  holidayCount: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
-    color: colors.warning,
-  },
+  pctText_success: { color: colors.successText },
+  pctText_warning: { color: colors.warningText },
+  pctText_danger: { color: colors.dangerText },
+  pctText_neutral: { color: colors.textSecondary },
   footer: {
     paddingVertical: spacing.base,
     alignItems: 'center',

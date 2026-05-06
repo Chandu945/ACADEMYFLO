@@ -1,8 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
-import type { PdfRenderer } from '@application/reports/ports/pdf-renderer.port';
+import type {
+  PdfRenderer,
+  StudentMonthlyAttendancePdfInput,
+  MonthlyAttendanceSummaryPdfInput,
+} from '@application/reports/ports/pdf-renderer.port';
 import type { MonthlyRevenueSummaryDto } from '@application/reports/dtos/monthly-revenue.dto';
 import type { StudentWiseDueItemDto } from '@application/reports/dtos/student-wise-dues.dto';
+
+function formatMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y!, m! - 1, 1).toLocaleDateString('en-IN', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function formatLocalDate(d: string): string {
+  // Input "YYYY-MM-DD" → "5 May 2026"
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 @Injectable()
 export class PdfkitRenderer implements PdfRenderer {
@@ -116,6 +137,216 @@ export class PdfkitRenderer implements PdfRenderer {
 
     doc.end();
 
+    return new Promise((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
+  async renderStudentMonthlyAttendance(
+    input: StudentMonthlyAttendancePdfInput,
+  ): Promise<Buffer> {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+    const pct =
+      input.expectedDays > 0
+        ? Math.round((input.presentDays / input.expectedDays) * 100)
+        : null;
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('Attendance Report', { align: 'center' });
+    doc.moveDown(0.3);
+    doc.fontSize(14).font('Helvetica').text(input.studentName, { align: 'center' });
+    doc.fontSize(11).fillColor('#666').text(formatMonth(input.month), { align: 'center' });
+    doc.fillColor('black');
+    doc.moveDown(1);
+
+    // Headline summary box
+    const startX = 40;
+    const boxY = doc.y;
+    doc
+      .roundedRect(startX, boxY, 515, 70, 8)
+      .fillColor('#F4F5F7')
+      .fill();
+    doc.fillColor('black');
+
+    doc
+      .fontSize(28)
+      .font('Helvetica-Bold')
+      .text(pct == null ? '—' : `${pct}%`, startX + 20, boxY + 15, { width: 100 });
+    doc
+      .fontSize(10)
+      .font('Helvetica')
+      .fillColor('#666')
+      .text('Attendance', startX + 20, boxY + 50);
+    doc.fillColor('black');
+
+    // Stat columns inside the headline box
+    const statY = boxY + 18;
+    const statCols = [
+      { label: 'Expected', value: input.expectedDays, x: startX + 150 },
+      { label: 'Present', value: input.presentDays, x: startX + 230 },
+      { label: 'Partial', value: input.partialDays, x: startX + 310 },
+      { label: 'Absent', value: input.absentDays, x: startX + 380 },
+      { label: 'Holidays', value: input.holidayCount, x: startX + 450 },
+    ];
+    for (const stat of statCols) {
+      doc
+        .fontSize(18)
+        .font('Helvetica-Bold')
+        .text(String(stat.value), stat.x, statY, { width: 60, align: 'center' });
+      doc
+        .fontSize(8)
+        .font('Helvetica')
+        .fillColor('#666')
+        .text(stat.label.toUpperCase(), stat.x, statY + 28, { width: 60, align: 'center' });
+      doc.fillColor('black');
+    }
+
+    doc.y = boxY + 90;
+
+    // Per-batch breakdown
+    if (input.perBatch.length > 0) {
+      doc.fontSize(13).font('Helvetica-Bold').text('By Batch', startX);
+      doc.moveDown(0.5);
+      let by = doc.y;
+      doc
+        .fontSize(9)
+        .font('Helvetica-Bold')
+        .text('Batch', startX, by, { width: 220 })
+        .text('Sessions', startX + 220, by, { width: 90, align: 'right' })
+        .text('Attended', startX + 310, by, { width: 90, align: 'right' })
+        .text('%', startX + 400, by, { width: 60, align: 'right' });
+      by += 14;
+      doc.moveTo(startX, by).lineTo(startX + 515, by).strokeColor('#DDD').stroke();
+      doc.strokeColor('black');
+      by += 6;
+
+      doc.font('Helvetica').fontSize(9);
+      for (const b of input.perBatch) {
+        if (by > 760) {
+          doc.addPage();
+          by = 40;
+        }
+        const bp =
+          b.expectedCount > 0 ? Math.round((b.presentCount / b.expectedCount) * 100) : null;
+        doc
+          .text(b.batchName, startX, by, { width: 220 })
+          .text(String(b.expectedCount), startX + 220, by, { width: 90, align: 'right' })
+          .text(String(b.presentCount), startX + 310, by, { width: 90, align: 'right' })
+          .text(bp == null ? '—' : `${bp}%`, startX + 400, by, { width: 60, align: 'right' });
+        by += 14;
+      }
+      doc.y = by + 10;
+    }
+
+    // Absent dates
+    if (input.absentDates.length > 0) {
+      if (doc.y > 700) doc.addPage();
+      doc.fontSize(13).font('Helvetica-Bold').text('Absent Days', startX);
+      doc.moveDown(0.4);
+      doc.fontSize(9).font('Helvetica');
+      for (const d of input.absentDates) {
+        if (doc.y > 760) doc.addPage();
+        doc.text(`• ${formatLocalDate(d)}`, startX + 8);
+      }
+      doc.moveDown(0.5);
+    }
+
+    // Holiday dates
+    if (input.holidayDates.length > 0) {
+      if (doc.y > 700) doc.addPage();
+      doc.fontSize(13).font('Helvetica-Bold').text('Holidays', startX);
+      doc.moveDown(0.4);
+      doc.fontSize(9).font('Helvetica');
+      for (const d of input.holidayDates) {
+        if (doc.y > 760) doc.addPage();
+        doc.text(`• ${formatLocalDate(d)}`, startX + 8);
+      }
+    }
+
+    doc.end();
+    return new Promise((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
+  async renderMonthlyAttendanceSummary(
+    input: MonthlyAttendanceSummaryPdfInput,
+  ): Promise<Buffer> {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('Monthly Attendance Summary', {
+      align: 'center',
+    });
+    doc.moveDown(0.3);
+    doc.fontSize(13).font('Helvetica').text(input.academyName, { align: 'center' });
+    doc.fontSize(11).fillColor('#666').text(formatMonth(input.month), { align: 'center' });
+    doc.fillColor('black');
+    doc.moveDown(1);
+
+    // Sort: worst attendance first (most actionable for owners).
+    const sorted = [...input.rows].sort((a, b) => {
+      const ap = a.percentage ?? 101;
+      const bp = b.percentage ?? 101;
+      return ap - bp;
+    });
+
+    // Aggregate stats
+    const withData = sorted.filter((r) => r.expectedDays > 0);
+    const avgPct =
+      withData.length > 0
+        ? Math.round(
+            withData.reduce((s, r) => s + (r.percentage ?? 0), 0) / withData.length,
+          )
+        : null;
+    const below75 = withData.filter((r) => (r.percentage ?? 100) < 75).length;
+
+    doc.fontSize(11).font('Helvetica');
+    doc.text(`Total students: ${sorted.length}`);
+    doc.text(`Average attendance: ${avgPct == null ? '—' : `${avgPct}%`}`);
+    doc.text(`Below 75%: ${below75}`);
+    doc.moveDown(0.5);
+
+    // Table header
+    const startX = 40;
+    let y = doc.y;
+    doc
+      .fontSize(10)
+      .font('Helvetica-Bold')
+      .text('Student', startX, y, { width: 230 })
+      .text('Days', startX + 230, y, { width: 80, align: 'right' })
+      .text('Absent', startX + 310, y, { width: 70, align: 'right' })
+      .text('Attendance %', startX + 380, y, { width: 135, align: 'right' });
+    y += 16;
+    doc.moveTo(startX, y).lineTo(startX + 515, y).strokeColor('#999').stroke();
+    doc.strokeColor('black');
+    y += 6;
+
+    doc.font('Helvetica').fontSize(9);
+    for (const r of sorted) {
+      if (y > 760) {
+        doc.addPage();
+        y = 40;
+      }
+      const flag = r.percentage != null && r.percentage < 75 ? '!' : ' ';
+      const pctText = r.percentage == null ? '—' : `${r.percentage}%`;
+      doc
+        .text(`${flag} ${r.fullName}`, startX, y, { width: 230 })
+        .text(`${r.presentDays} / ${r.expectedDays}`, startX + 230, y, {
+          width: 80,
+          align: 'right',
+        })
+        .text(String(r.absentDays), startX + 310, y, { width: 70, align: 'right' })
+        .text(pctText, startX + 380, y, { width: 135, align: 'right' });
+      y += 14;
+    }
+
+    doc.end();
     return new Promise((resolve) => {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
     });

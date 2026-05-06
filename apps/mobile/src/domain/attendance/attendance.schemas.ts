@@ -80,6 +80,11 @@ export const studentMonthlyDetailResponseSchema = z.object({
   absentCount: z.number().int(),
   expectedCount: z.number().int().default(0),
   holidayCount: z.number().int(),
+  // Day-level fields are optional — older API versions don't return them.
+  expectedDays: z.number().int().optional(),
+  presentDays: z.number().int().optional(),
+  absentDays: z.number().int().optional(),
+  partialDays: z.number().int().optional(),
   perBatch: z.array(studentBatchAttendanceBreakdownSchema).default([]),
 });
 

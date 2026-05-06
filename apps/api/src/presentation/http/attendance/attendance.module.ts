@@ -44,6 +44,16 @@ import { GetDailyAttendanceReportUseCase } from '@application/attendance/use-cas
 import { GetStudentMonthlyAttendanceUseCase } from '@application/attendance/use-cases/get-student-monthly-attendance.usecase';
 import { GetMonthlyAttendanceSummaryUseCase } from '@application/attendance/use-cases/get-monthly-attendance-summary.usecase';
 import { GetMonthDailyCountsUseCase } from '@application/attendance/use-cases/get-month-daily-counts.usecase';
+import { ExportStudentMonthlyAttendancePdfUseCase } from '@application/attendance/use-cases/export-student-monthly-attendance-pdf.usecase';
+import { ExportMonthlyAttendanceSummaryPdfUseCase } from '@application/attendance/use-cases/export-monthly-attendance-summary-pdf.usecase';
+import { ExportMonthlyAttendanceSummaryCsvUseCase } from '@application/attendance/use-cases/export-monthly-attendance-summary-csv.usecase';
+import { PdfkitRenderer } from '@infrastructure/reports/pdfkit-renderer';
+import { PDF_RENDERER } from '@application/reports/ports/pdf-renderer.port';
+import type { PdfRenderer } from '@application/reports/ports/pdf-renderer.port';
+import { MongoAcademyRepository } from '@infrastructure/repositories/mongo-academy.repository';
+import { AcademyModel, AcademySchema } from '@infrastructure/database/schemas/academy.schema';
+import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { StudentAttendanceRepository } from '@domain/attendance/ports/student-attendance.repository';
@@ -66,6 +76,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
       { name: StudentBatchModel.name, schema: StudentBatchSchema },
       { name: BatchModel.name, schema: BatchSchema },
       { name: ParentStudentLinkModel.name, schema: ParentStudentLinkSchema },
+      { name: AcademyModel.name, schema: AcademySchema },
     ]),
   ],
   controllers: [AttendanceController],
@@ -75,6 +86,8 @@ import type { TransactionPort } from '@application/common/transaction.port';
     { provide: STUDENT_REPOSITORY, useClass: MongoStudentRepository },
     { provide: STUDENT_BATCH_REPOSITORY, useClass: MongoStudentBatchRepository },
     { provide: BATCH_REPOSITORY, useClass: MongoBatchRepository },
+    { provide: ACADEMY_REPOSITORY, useClass: MongoAcademyRepository },
+    { provide: PDF_RENDERER, useClass: PdfkitRenderer },
     { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
@@ -233,6 +246,41 @@ import type { TransactionPort } from '@application/common/transaction.port';
         STUDENT_ATTENDANCE_REPOSITORY,
         HOLIDAY_REPOSITORY,
       ],
+    },
+    {
+      provide: 'EXPORT_STUDENT_MONTHLY_ATTENDANCE_PDF_USE_CASE',
+      useFactory: (
+        getDetail: GetStudentMonthlyAttendanceUseCase,
+        sr: StudentRepository,
+        renderer: PdfRenderer,
+      ) => new ExportStudentMonthlyAttendancePdfUseCase(getDetail, sr, renderer),
+      inject: [
+        'GET_STUDENT_MONTHLY_ATTENDANCE_USE_CASE',
+        STUDENT_REPOSITORY,
+        PDF_RENDERER,
+      ],
+    },
+    {
+      provide: 'EXPORT_MONTHLY_ATTENDANCE_SUMMARY_PDF_USE_CASE',
+      useFactory: (
+        getSummary: GetMonthlyAttendanceSummaryUseCase,
+        ur: UserRepository,
+        ar: AcademyRepository,
+        renderer: PdfRenderer,
+      ) =>
+        new ExportMonthlyAttendanceSummaryPdfUseCase(getSummary, ur, ar, renderer),
+      inject: [
+        'GET_MONTHLY_ATTENDANCE_SUMMARY_USE_CASE',
+        USER_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        PDF_RENDERER,
+      ],
+    },
+    {
+      provide: 'EXPORT_MONTHLY_ATTENDANCE_SUMMARY_CSV_USE_CASE',
+      useFactory: (getSummary: GetMonthlyAttendanceSummaryUseCase) =>
+        new ExportMonthlyAttendanceSummaryCsvUseCase(getSummary),
+      inject: ['GET_MONTHLY_ATTENDANCE_SUMMARY_USE_CASE'],
     },
   ],
 })

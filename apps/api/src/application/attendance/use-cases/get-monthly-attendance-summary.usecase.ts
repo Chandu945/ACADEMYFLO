@@ -11,6 +11,12 @@ import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { canViewAttendance } from '@domain/attendance/rules/attendance.rules';
 import { isValidMonthKey, getTodayLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
+
+/** Format a JS Date as YYYY-MM-DD in IST (Asia/Kolkata) for comparison
+ *  against scheduled-date keys. */
+function toLocalDateKey(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
 import { AttendanceErrors } from '../../common/errors';
 import type { MonthlyAttendanceSummaryItem } from '../dtos/attendance.dto';
 import type { UserRole } from '@academyflo/contracts';
@@ -76,30 +82,34 @@ export class GetMonthlyAttendanceSummaryUseCase {
     const holidayDates = holidays.map((h) => h.date);
     // Cap "elapsed" date and holiday count to today (IST). Past months: today
     // > monthEnd, so the cap is a no-op. Current month: only past + today
-    // count as expected sessions, and only past holidays are counted. Future
-    // months: nothing is expected and absent stays at 0.
+    // count as expected days. Future months: nothing is expected.
     const today = getTodayLocalDate();
+    const monthStart = `${input.month}-01`;
     const holidayCount = holidayDates.filter((d) => d <= today).length;
 
-    // Per-page enrollments + the matching batches, batched to avoid N+1.
-    const enrollmentsByStudent = new Map<string, string[]>();
+    // Per-page enrollments WITH assignment dates, plus the matching batches.
+    const enrollmentsByStudent = new Map<
+      string,
+      { batchId: string; assignedAt: Date }[]
+    >();
     const allBatchIds = new Set<string>();
     await Promise.all(
       studentIds.map(async (sid) => {
         const enrollments = await this.studentBatchRepo.findByStudentId(sid);
-        const batchIds = enrollments.map((e) => e.batchId);
-        enrollmentsByStudent.set(sid, batchIds);
-        for (const id of batchIds) allBatchIds.add(id);
+        const list = enrollments.map((e) => ({
+          batchId: e.batchId,
+          assignedAt: e.assignedAt,
+        }));
+        enrollmentsByStudent.set(sid, list);
+        for (const e of list) allBatchIds.add(e.batchId);
       }),
     );
     const batches =
       allBatchIds.size > 0 ? await this.batchRepo.findByIds([...allBatchIds]) : [];
-    const batchById = new Map(batches.map((b) => [b.id.toString(), b]));
 
-    // Cache scheduled DATES per batch (not just count) so we can compute the
-    // union of distinct expected days across a student's batches. A student
-    // enrolled in two batches that both meet on Monday should count as one
-    // expected day, not two — humans count days, not session-records.
+    // Cache scheduled DATES per batch (excluding holidays and future days).
+    // We then filter per-student against their joining date and per-batch
+    // assignment date to avoid charging absences for time before they joined.
     const expectedDatesByBatch = new Map<string, string[]>();
     for (const batch of batches) {
       expectedDatesByBatch.set(
@@ -109,7 +119,8 @@ export class GetMonthlyAttendanceSummaryUseCase {
     }
 
     // Distinct present DATES per student. One record per (student, batch, day)
-    // collapses into one present day for the student.
+    // collapses into one present day — "lax" day definition: present in ANY
+    // batch on a day = present day for the student.
     const presentDatesByStudent = new Map<string, Set<string>>();
     for (const record of allPresent) {
       let set = presentDatesByStudent.get(record.studentId);
@@ -122,13 +133,21 @@ export class GetMonthlyAttendanceSummaryUseCase {
 
     const data: MonthlyAttendanceSummaryItem[] = students.map((s) => {
       const sid = s.id.toString();
-      const batchIds = enrollmentsByStudent.get(sid) ?? [];
+      const studentJoinKey = toLocalDateKey(s.joiningDate);
+      const studentStart = studentJoinKey > monthStart ? studentJoinKey : monthStart;
+
+      const enrollments = enrollmentsByStudent.get(sid) ?? [];
       const expectedDates = new Set<string>();
-      for (const bid of batchIds) {
-        const dates = expectedDatesByBatch.get(bid);
+      for (const enrol of enrollments) {
+        const dates = expectedDatesByBatch.get(enrol.batchId);
         if (!dates) continue;
-        for (const d of dates) expectedDates.add(d);
+        const enrolKey = toLocalDateKey(enrol.assignedAt);
+        const effectiveStart = enrolKey > studentStart ? enrolKey : studentStart;
+        for (const d of dates) {
+          if (d >= effectiveStart) expectedDates.add(d);
+        }
       }
+
       const presentDates = presentDatesByStudent.get(sid) ?? new Set<string>();
       let presentCount = 0;
       let absentCount = 0;

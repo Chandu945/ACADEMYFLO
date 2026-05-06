@@ -11,8 +11,12 @@ import {
   Inject,
   UseGuards,
   Req,
+  Res,
+  Header,
+  StreamableFile,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RbacGuard } from '../common/guards/rbac.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -28,6 +32,9 @@ import type { GetDailyAttendanceReportUseCase } from '@application/attendance/us
 import type { GetStudentMonthlyAttendanceUseCase } from '@application/attendance/use-cases/get-student-monthly-attendance.usecase';
 import type { GetMonthlyAttendanceSummaryUseCase } from '@application/attendance/use-cases/get-monthly-attendance-summary.usecase';
 import type { GetMonthDailyCountsUseCase } from '@application/attendance/use-cases/get-month-daily-counts.usecase';
+import type { ExportStudentMonthlyAttendancePdfUseCase } from '@application/attendance/use-cases/export-student-monthly-attendance-pdf.usecase';
+import type { ExportMonthlyAttendanceSummaryPdfUseCase } from '@application/attendance/use-cases/export-monthly-attendance-summary-pdf.usecase';
+import type { ExportMonthlyAttendanceSummaryCsvUseCase } from '@application/attendance/use-cases/export-monthly-attendance-summary-csv.usecase';
 import { AttendanceQueryDto, DateOnlyQueryDto } from './dto/attendance.query';
 import { MarkStudentAttendanceDto } from './dto/mark-student-attendance.dto';
 import { BulkSetAbsencesDto } from './dto/bulk-set-absences.dto';
@@ -65,6 +72,12 @@ export class AttendanceController {
     private readonly getMonthlyAttendanceSummary: GetMonthlyAttendanceSummaryUseCase,
     @Inject('GET_MONTH_DAILY_COUNTS_USE_CASE')
     private readonly getMonthDailyCounts: GetMonthDailyCountsUseCase,
+    @Inject('EXPORT_STUDENT_MONTHLY_ATTENDANCE_PDF_USE_CASE')
+    private readonly exportStudentMonthlyAttendancePdf: ExportStudentMonthlyAttendancePdfUseCase,
+    @Inject('EXPORT_MONTHLY_ATTENDANCE_SUMMARY_PDF_USE_CASE')
+    private readonly exportMonthlyAttendanceSummaryPdf: ExportMonthlyAttendanceSummaryPdfUseCase,
+    @Inject('EXPORT_MONTHLY_ATTENDANCE_SUMMARY_CSV_USE_CASE')
+    private readonly exportMonthlyAttendanceSummaryCsv: ExportMonthlyAttendanceSummaryCsvUseCase,
     @Inject(LOGGER_PORT) private readonly logger: LoggerPort,
   ) {}
 
@@ -293,6 +306,93 @@ export class AttendanceController {
     });
 
     return mapResultToResponse(result, req);
+  }
+
+  @Get('reports/monthly/student/:studentId/export.pdf')
+  @Roles('OWNER', 'STAFF')
+  @Header('Content-Type', 'application/pdf')
+  @ApiOperation({ summary: 'Export per-student monthly attendance as PDF' })
+  async exportStudentMonthlyPdf(
+    @Param('studentId', ParseObjectIdPipe) studentId: string,
+    @Query() query: MonthlyQueryDto,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.exportStudentMonthlyAttendancePdf.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      studentId,
+      month: query.month,
+    });
+
+    if (!result.ok) {
+      return mapResultToResponse(result, req);
+    }
+
+    const safeName = result.value.studentName.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="attendance-${safeName}-${query.month}.pdf"`,
+    );
+    return new StreamableFile(result.value.pdf);
+  }
+
+  @Get('reports/monthly/summary/export.pdf')
+  @Roles('OWNER', 'STAFF')
+  @Header('Content-Type', 'application/pdf')
+  @ApiOperation({ summary: 'Export academy-wide monthly attendance summary as PDF' })
+  async exportSummaryPdf(
+    @Query() query: MonthlyQueryDto,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.exportMonthlyAttendanceSummaryPdf.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      month: query.month,
+    });
+
+    if (!result.ok) {
+      return mapResultToResponse(result, req);
+    }
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="attendance-summary-${query.month}.pdf"`,
+    );
+    return new StreamableFile(result.value);
+  }
+
+  @Get('reports/monthly/summary/export.csv')
+  @Roles('OWNER', 'STAFF')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @ApiOperation({ summary: 'Export academy-wide monthly attendance summary as CSV' })
+  async exportSummaryCsv(
+    @Query() query: MonthlyQueryDto,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.exportMonthlyAttendanceSummaryCsv.execute({
+      actorUserId: user.userId,
+      actorRole: user.role,
+      month: query.month,
+    });
+
+    if (!result.ok) {
+      return mapResultToResponse(result, req);
+    }
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="attendance-summary-${query.month}.csv"`,
+    );
+    // Wrap as StreamableFile so the CSV bytes flow through the same response
+    // path as the PDF exports (consistent Content-Type handling, no risk of
+    // Nest serializing a plain string as text/html).
+    return new StreamableFile(Buffer.from(result.value, 'utf-8'));
   }
 
 }

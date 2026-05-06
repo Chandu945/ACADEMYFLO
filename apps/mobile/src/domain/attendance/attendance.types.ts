@@ -74,10 +74,16 @@ export type StudentMonthlyDetail = {
   month: string;
   absentDates: string[];
   holidayDates: string[];
+  /** Session-level (kept for backward compat). */
   presentCount: number;
   absentCount: number;
   expectedCount: number;
   holidayCount: number;
+  /** Day-level metrics. Optional because deployed API may not yet return them. */
+  expectedDays?: number;
+  presentDays?: number;
+  absentDays?: number;
+  partialDays?: number;
   perBatch: StudentBatchAttendanceBreakdown[];
 };
 
