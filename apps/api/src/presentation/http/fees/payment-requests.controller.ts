@@ -125,6 +125,7 @@ export class PaymentRequestsController {
       actorUserId: user.userId,
       actorRole: user.role,
       status: query.status as PaymentRequestStatus | undefined,
+      studentId: query.studentId,
       page: query.page,
       pageSize: query.pageSize,
     });

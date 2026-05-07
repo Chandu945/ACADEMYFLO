@@ -14,6 +14,10 @@ export interface ListPaymentRequestsInput {
   actorUserId: string;
   actorRole: UserRole;
   status?: PaymentRequestStatus;
+  /** When set, returns ALL requests for this student regardless of author or
+   *  source. Used by the StudentFeeDetail screen to surface cross-author
+   *  pending requests so a staff member doesn't try to submit a duplicate. */
+  studentId?: string;
   page: number;
   pageSize: number;
 }
@@ -49,7 +53,18 @@ export class ListPaymentRequestsUseCase {
       : ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'];
 
     let requests;
-    if (input.actorRole === 'STAFF') {
+    if (input.studentId) {
+      // When a studentId is supplied, return ALL requests for that student
+      // regardless of author or source — gives the StudentFeeDetail screen
+      // the visibility it needs to prevent duplicate-pending submissions.
+      // Permission: both OWNER and STAFF can see this; staff already has
+      // access to the student's fee data so this exposes nothing new.
+      const all = await this.paymentRequestRepo.listByAcademyAndStudent(
+        user.academyId,
+        input.studentId,
+      );
+      requests = input.status ? all.filter((r) => r.status === input.status) : all;
+    } else if (input.actorRole === 'STAFF') {
       const all = await this.paymentRequestRepo.listByStaffAndAcademy(
         input.actorUserId,
         user.academyId,

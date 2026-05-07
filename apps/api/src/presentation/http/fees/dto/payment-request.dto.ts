@@ -32,6 +32,13 @@ export class ListPaymentRequestsQueryDto extends PaginationQueryDto {
   @IsString()
   @IsIn(PAYMENT_REQUEST_STATUSES)
   status?: string;
+
+  /** Optional filter — when present the endpoint returns all requests for
+   *  this student regardless of author/source so staff can see parent and
+   *  other-staff pending requests (duplicate prevention). */
+  @IsOptional()
+  @IsString()
+  studentId?: string;
 }
 
 export class EditPaymentRequestDto {

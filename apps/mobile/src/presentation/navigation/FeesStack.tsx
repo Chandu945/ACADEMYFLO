@@ -12,6 +12,9 @@ export type FeesStackParamList = {
     studentId: string;
     monthKey: string;
     amount: number;
+    baseAmount?: number;
+    lateFee?: number;
+    studentName?: string;
     requestId?: string;
     existingNotes?: string;
   };

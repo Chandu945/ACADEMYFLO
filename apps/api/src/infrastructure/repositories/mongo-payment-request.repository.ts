@@ -87,6 +87,15 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
   }
 
+  async listByAcademyAndStudent(academyId: string, studentId: string): Promise<PaymentRequest[]> {
+    const docs = await this.model
+      .find({ academyId, studentId })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
+  }
+
   async countPendingByAcademy(academyId: string): Promise<number> {
     return this.model.countDocuments({ academyId, status: 'PENDING' });
   }

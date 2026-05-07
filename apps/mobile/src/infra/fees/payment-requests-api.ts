@@ -19,10 +19,14 @@ export function createPaymentRequest(
 
 export function listPaymentRequests(
   status?: string,
+  studentId?: string,
 ): Promise<Result<PaymentRequestListApiResponse, AppError>> {
   const parts: string[] = [];
   if (status) {
     parts.push(`status=${encodeURIComponent(status)}`);
+  }
+  if (studentId) {
+    parts.push(`studentId=${encodeURIComponent(studentId)}`);
   }
   const qs = parts.join('&');
   return apiGet<PaymentRequestListApiResponse>(

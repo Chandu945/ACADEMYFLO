@@ -3,10 +3,21 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { AppIcon } from '../ui/AppIcon';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
 import type { FeeDueItem } from '../../../domain/fees/fees.types';
-import { spacing, fontSizes, fontWeights, radius } from '../../theme';
+import type { PaymentRequestItem } from '../../../domain/fees/payment-requests.types';
+import { spacing, fontSizes, fontWeights, radius, letterSpacing } from '../../theme';
 import type { Colors } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
-import { formatCurrency as formatAmount } from '../../utils/format';
+import { formatCurrency as formatAmount, formatTimeAgo } from '../../utils/format';
+
+/** When a fee due has an in-flight payment request, the screen passes the
+ * request alongside a flag indicating whether the current user authored it.
+ * Rows with `mine=true` get a yellow PENDING pill and tapping them opens the
+ * manage-request sheet; `mine=false` (another staff or a parent) gets a blue
+ * IN REVIEW pill — informational only. */
+export type FeeDueRowPendingRequest = {
+  request: PaymentRequestItem;
+  mine: boolean;
+};
 
 type FeeDueRowProps = {
   item: FeeDueItem;
@@ -16,6 +27,7 @@ type FeeDueRowProps = {
   /** When false, omit the month prefix from the subtitle. Use when the screen
    * already states the month (e.g., a single-month list). Default true. */
   showMonth?: boolean;
+  pendingRequest?: FeeDueRowPendingRequest | null;
 };
 
 function getStatusTone(
@@ -90,6 +102,7 @@ function FeeDueRowComponent({
   showStudentName = true,
   studentName,
   showMonth = true,
+  pendingRequest = null,
 }: FeeDueRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -109,6 +122,14 @@ function FeeDueRowComponent({
         : item.status === 'PAID'
           ? colors.success
           : colors.border;
+
+  // Pending pill — amber if mine (actionable), info-blue if someone else's
+  // (read-only awareness). Suppressed on PAID rows: a paid fee can't have a
+  // live pending request (approval marks it paid in the same transaction).
+  const showPendingPill = pendingRequest && item.status !== 'PAID';
+  const pillTone = pendingRequest?.mine
+    ? { bg: colors.warningBg, border: colors.warningBorder, fg: colors.warningText }
+    : { bg: colors.infoBg, border: colors.info, fg: colors.infoText };
 
   return (
     <TouchableOpacity
@@ -147,9 +168,28 @@ function FeeDueRowComponent({
         {item.status !== 'PAID' && item.lateFee > 0 && (
           <Text style={styles.lateFeeText}>+{formatAmount(item.lateFee)} late fee</Text>
         )}
+        {showPendingPill ? (
+          <Text style={styles.pendingMeta} numberOfLines={1}>
+            {pendingRequest!.mine
+              ? `Requested by you · ${formatTimeAgo(pendingRequest!.request.createdAt)}`
+              : `Submitted by ${pendingRequest!.request.staffName ?? 'another staff'} · ${formatTimeAgo(pendingRequest!.request.createdAt)}`}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.right}>
+        {showPendingPill ? (
+          <View
+            style={[
+              styles.pendingPill,
+              { backgroundColor: pillTone.bg, borderColor: pillTone.border },
+            ]}
+          >
+            <Text style={[styles.pendingPillText, { color: pillTone.fg }]}>
+              {pendingRequest!.mine ? 'PENDING' : 'IN REVIEW'}
+            </Text>
+          </View>
+        ) : null}
         <Text
           style={styles.amount}
           numberOfLines={1}
@@ -229,10 +269,28 @@ const makeStyles = (colors: Colors) =>
       fontWeight: fontWeights.medium,
       color: colors.dangerText,
     },
+    pendingMeta: {
+      marginTop: 2,
+      fontSize: 10,
+      fontWeight: fontWeights.medium,
+      color: colors.textSecondary,
+    },
     right: {
       alignItems: 'flex-end',
       minWidth: 84,
       maxWidth: 140,
+    },
+    pendingPill: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      marginBottom: 4,
+    },
+    pendingPillText: {
+      fontSize: 9,
+      fontWeight: fontWeights.bold,
+      letterSpacing: letterSpacing.widest,
     },
     amount: {
       fontSize: fontSizes.md,

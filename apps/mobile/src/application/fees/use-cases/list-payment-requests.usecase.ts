@@ -8,7 +8,10 @@ import {
 } from '../../../domain/fees/payment-requests.schemas';
 
 export type ListPaymentRequestsApiPort = {
-  listPaymentRequests(status?: string): Promise<Result<PaymentRequestListApiResponse, AppError>>;
+  listPaymentRequests(
+    status?: string,
+    studentId?: string,
+  ): Promise<Result<PaymentRequestListApiResponse, AppError>>;
 };
 
 export type ListPaymentRequestsDeps = {
@@ -23,8 +26,9 @@ export type ListPaymentRequestsResult = {
 export async function listPaymentRequestsUseCase(
   deps: ListPaymentRequestsDeps,
   status?: string,
+  studentId?: string,
 ): Promise<Result<ListPaymentRequestsResult, AppError>> {
-  const result = await deps.paymentRequestsApi.listPaymentRequests(status);
+  const result = await deps.paymentRequestsApi.listPaymentRequests(status, studentId);
 
   if (!result.ok) {
     return result;
