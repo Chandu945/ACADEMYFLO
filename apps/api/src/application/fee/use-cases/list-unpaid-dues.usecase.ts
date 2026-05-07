@@ -23,6 +23,12 @@ export interface ListUnpaidDuesInput {
   page: number;
   pageSize: number;
   batchId?: string;
+  /** Optional name-prefix filter. When set, the use case resolves matching
+   *  students via the student repo (prefix match on `fullNameNormalized`)
+   *  and narrows the dues list to those student ids before paginating, so
+   *  search returns complete results across the entire month — not just
+   *  the page already loaded on the client. */
+  search?: string;
 }
 
 export interface ListUnpaidDuesOutput {
@@ -66,6 +72,22 @@ export class ListUnpaidDuesUseCase {
       const batchAssignments = await this.studentBatchRepo.findByBatchId(input.batchId);
       const batchStudentIds = new Set(batchAssignments.map((a) => a.studentId));
       filteredDues = dues.filter((d) => batchStudentIds.has(d.studentId));
+    }
+
+    // Filter by name search if requested. Reuses the existing student.list
+    // search path (prefix match on `fullNameNormalized`) so the UX is
+    // consistent with the students screen. Capped at 1000 hits — academies
+    // exceeding that with a single prefix are extreme outliers; if it
+    // becomes a real concern we'll add a dedicated `findIdsByNameLike`.
+    const trimmedSearch = input.search?.trim();
+    if (trimmedSearch && this.studentRepo) {
+      const { students } = await this.studentRepo.list(
+        { academyId: user.academyId, search: trimmedSearch },
+        1,
+        1000,
+      );
+      const matchedIds = new Set(students.map((s) => s.id.toString()));
+      filteredDues = filteredDues.filter((d) => matchedIds.has(d.studentId));
     }
 
     // Build student name map (only for the page slice to avoid unnecessary lookups)

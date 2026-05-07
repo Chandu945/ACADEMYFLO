@@ -12,6 +12,23 @@ export type FeesApiPort = ListUnpaidDuesApiPort & ListPaidDuesApiPort;
 
 const UNPAID_PAGE_SIZE = 20;
 
+/** Defensive dedup by id — guards against React-key collisions when state
+ *  races (pagination append landing after a concurrent reload, focus
+ *  cascades, etc.) leave the items array with duplicates. The backend
+ *  enforces unique _id at the document level, so any duplicate here is
+ *  always client-side and always safe to drop. */
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 type UseFeesResult = {
   unpaidItems: FeeDueItem[];
   paidItems: FeeDueItem[];
@@ -28,8 +45,9 @@ type UseFeesResult = {
 
 export { getCurrentMonthIST };
 
-export function useFees(feesApi: FeesApiPort): UseFeesResult {
+export function useFees(feesApi: FeesApiPort, search: string = ''): UseFeesResult {
   const [month, setMonth] = useState(getCurrentMonthIST);
+  const trimmedSearch = search.trim();
   const [unpaidItems, setUnpaidItems] = useState<FeeDueItem[]>([]);
   const [paidItems, setPaidItems] = useState<FeeDueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,8 +80,8 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
     requestedPageRef.current = 1;
 
     const [unpaidSettled, paidSettled] = await Promise.allSettled([
-      listUnpaidDuesUseCase({ feesApi }, month, 1, UNPAID_PAGE_SIZE),
-      listPaidDuesUseCase({ feesApi }, month),
+      listUnpaidDuesUseCase({ feesApi }, month, 1, UNPAID_PAGE_SIZE, trimmedSearch || undefined),
+      listPaidDuesUseCase({ feesApi }, month, trimmedSearch || undefined),
     ]);
 
     loadInFlightRef.current = false;
@@ -97,14 +115,14 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
       return;
     }
 
-    setUnpaidItems(unpaidResult.value.items);
+    setUnpaidItems(dedupeById(unpaidResult.value.items));
     setUnpaidTotal(unpaidResult.value.meta.total);
     setHasMoreUnpaid(unpaidResult.value.meta.page < unpaidResult.value.meta.totalPages);
-    setPaidItems(paidResult.value);
+    setPaidItems(dedupeById(paidResult.value));
     setLoading(false);
     // Deps omit *Ref.current reads — refs are stable identities. If any ref
     // is ever promoted to state, re-add it here.
-  }, [month, feesApi]);
+  }, [month, feesApi, trimmedSearch]);
 
   const fetchMoreUnpaid = useCallback(async () => {
     if (fetchingMoreRef.current || loading || loadingMoreUnpaid || !hasMoreUnpaid) return;
@@ -118,12 +136,18 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
     setLoadingMoreUnpaid(true);
 
     try {
-      const result = await listUnpaidDuesUseCase({ feesApi }, month, nextPage, UNPAID_PAGE_SIZE);
+      const result = await listUnpaidDuesUseCase(
+        { feesApi },
+        month,
+        nextPage,
+        UNPAID_PAGE_SIZE,
+        trimmedSearch || undefined,
+      );
 
       if (!mountedRef.current) return;
 
       if (result.ok) {
-        setUnpaidItems((prev) => [...prev, ...result.value.items]);
+        setUnpaidItems((prev) => dedupeById([...prev, ...result.value.items]));
         setUnpaidPage(nextPage);
         setHasMoreUnpaid(result.value.meta.page < result.value.meta.totalPages);
       }
@@ -133,7 +157,7 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
       if (mountedRef.current) setLoadingMoreUnpaid(false);
       fetchingMoreRef.current = false;
     }
-  }, [loading, loadingMoreUnpaid, hasMoreUnpaid, unpaidPage, feesApi, month]);
+  }, [loading, loadingMoreUnpaid, hasMoreUnpaid, unpaidPage, feesApi, month, trimmedSearch]);
 
   const refetch = useCallback(() => {
     load();
@@ -150,13 +174,14 @@ export function useFees(feesApi: FeesApiPort): UseFeesResult {
   // Month change resets pagination immediately — even if a prior load is still
   // in flight, its results will be discarded via the loadIdRef check. Without
   // this, loadInFlightRef could block the new month's load and requestedPageRef
-  // would point at the old month's last page.
+  // would point at the old month's last page. Same for search changes — each
+  // new search term is a fresh query, paginated from page 1.
   useEffect(() => {
     loadInFlightRef.current = false;
     fetchingMoreRef.current = false;
     requestedPageRef.current = 1;
     setUnpaidPage(1);
-  }, [month]);
+  }, [month, trimmedSearch]);
 
   return {
     unpaidItems,

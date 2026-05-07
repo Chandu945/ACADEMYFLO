@@ -116,6 +116,7 @@ export function MyPaymentRequestsScreen() {
     ({ item }: { item: PaymentRequestItem }) => (
       <RequestRow
         item={item}
+        hideAuthor
         onCancel={item.status === 'PENDING' ? () => setCancelTarget(item) : undefined}
         onEdit={item.status === 'PENDING' ? () => handleEdit(item) : undefined}
       />

@@ -12,6 +12,8 @@ export type ListUnpaidDuesApiPort = {
     month: string,
     page: number,
     pageSize: number,
+    batchId?: string,
+    search?: string,
   ): Promise<Result<FeeDuePaginatedApiResponse, AppError>>;
 };
 
@@ -29,8 +31,9 @@ export async function listUnpaidDuesUseCase(
   month: string,
   page: number = 1,
   pageSize: number = 20,
+  search?: string,
 ): Promise<Result<UnpaidDuesPaginatedResult, AppError>> {
-  const result = await deps.feesApi.listUnpaidDues(month, page, pageSize);
+  const result = await deps.feesApi.listUnpaidDues(month, page, pageSize, undefined, search);
 
   if (!result.ok) {
     return result;

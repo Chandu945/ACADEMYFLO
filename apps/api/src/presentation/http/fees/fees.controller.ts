@@ -52,6 +52,7 @@ export class FeesController {
       page: query.page,
       pageSize: query.pageSize,
       batchId: query.batchId,
+      search: query.search,
     });
 
     return mapResultToResponse(result, req);
@@ -70,6 +71,7 @@ export class FeesController {
       actorRole: user.role,
       month: query.month,
       batchId: query.batchId,
+      search: query.search,
     });
 
     return mapResultToResponse(result, req);

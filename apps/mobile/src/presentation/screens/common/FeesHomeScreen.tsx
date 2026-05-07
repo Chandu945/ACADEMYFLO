@@ -108,7 +108,7 @@ export function FeesHomeScreen() {
   const {
     unpaidItems, paidItems, loading, error, month, setMonth, refetch,
     unpaidTotal, hasMoreUnpaid, loadingMoreUnpaid, fetchMoreUnpaid,
-  } = useFees(feesApiRef);
+  } = useFees(feesApiRef, debouncedSearch);
 
   const [searchActive, setSearchActive] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -212,35 +212,21 @@ export function FeesHomeScreen() {
     return () => { cancelled = true; };
   }, [selectedBatchId]);
 
+  // Search is now server-side (see useFees → listUnpaid/PaidDuesUseCase).
+  // We keep only the client-side batch filter here, since batch membership is
+  // resolved on the client via studentBatchRepo. Doing search client-side
+  // produced incomplete results: it could only filter the items currently
+  // loaded in memory (page 1 of 7), so a name on page 4 was invisible until
+  // the user scrolled there.
   const filteredUnpaidItems = useMemo(() => {
-    let items = unpaidItems;
-    if (batchStudentIds) {
-      items = items.filter((item) => batchStudentIds.has(item.studentId));
-    }
-    if (debouncedSearch) {
-      const searchLower = debouncedSearch.toLowerCase();
-      items = items.filter((item) => {
-        const name = studentNameMap[item.studentId];
-        return name && name.toLowerCase().includes(searchLower);
-      });
-    }
-    return items;
-  }, [unpaidItems, debouncedSearch, studentNameMap, batchStudentIds]);
+    if (!batchStudentIds) return unpaidItems;
+    return unpaidItems.filter((item) => batchStudentIds.has(item.studentId));
+  }, [unpaidItems, batchStudentIds]);
 
   const filteredPaidItems = useMemo(() => {
-    let items = paidItems;
-    if (batchStudentIds) {
-      items = items.filter((item) => batchStudentIds.has(item.studentId));
-    }
-    if (debouncedSearch) {
-      const searchLower = debouncedSearch.toLowerCase();
-      items = items.filter((item) => {
-        const name = studentNameMap[item.studentId];
-        return name && name.toLowerCase().includes(searchLower);
-      });
-    }
-    return items;
-  }, [paidItems, debouncedSearch, studentNameMap, batchStudentIds]);
+    if (!batchStudentIds) return paidItems;
+    return paidItems.filter((item) => batchStudentIds.has(item.studentId));
+  }, [paidItems, batchStudentIds]);
 
   const activeFilters = useMemo<ActiveFilter[]>(() => {
     const arr: ActiveFilter[] = [];
@@ -511,9 +497,15 @@ export function FeesHomeScreen() {
             it's filtering. Each card already shows the due-month. */}
         {selectedSegment === 2 ? (
           <View style={styles.allPendingCaption}>
-            <AppIcon name="clock-outline" size={14} color={colors.textSecondary} />
+            <AppIcon
+              name={isOwner ? 'clock-outline' : 'history'}
+              size={14}
+              color={colors.textSecondary}
+            />
             <Text style={styles.allPendingCaptionText}>
-              Showing all pending requests
+              {isOwner
+                ? 'Showing all pending requests'
+                : 'Your submitted requests across all months'}
             </Text>
           </View>
         ) : (

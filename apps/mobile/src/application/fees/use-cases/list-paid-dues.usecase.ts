@@ -8,7 +8,11 @@ import {
 } from '../../../domain/fees/fees.schemas';
 
 export type ListPaidDuesApiPort = {
-  listPaidDues(month: string): Promise<Result<FeeDueListApiResponse, AppError>>;
+  listPaidDues(
+    month: string,
+    batchId?: string,
+    search?: string,
+  ): Promise<Result<FeeDueListApiResponse, AppError>>;
 };
 
 export type ListPaidDuesDeps = {
@@ -18,8 +22,9 @@ export type ListPaidDuesDeps = {
 export async function listPaidDuesUseCase(
   deps: ListPaidDuesDeps,
   month: string,
+  search?: string,
 ): Promise<Result<FeeDueItem[], AppError>> {
-  const result = await deps.feesApi.listPaidDues(month);
+  const result = await deps.feesApi.listPaidDues(month, undefined, search);
 
   if (!result.ok) {
     return result;

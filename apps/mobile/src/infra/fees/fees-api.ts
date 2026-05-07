@@ -33,9 +33,11 @@ export async function listUnpaidDues(
   page: number = 1,
   pageSize: number = 20,
   batchId?: string,
+  search?: string,
 ): Promise<Result<FeeDuePaginatedApiResponse, AppError>> {
   const parts = [`month=${encodeURIComponent(month)}`, `page=${page}`, `pageSize=${pageSize}`];
   if (batchId) parts.push(`batchId=${encodeURIComponent(batchId)}`);
+  if (search) parts.push(`search=${encodeURIComponent(search)}`);
   const result = await apiGet<unknown>(`/api/v1/fees/dues?${parts.join('&')}`);
   return validateResponse(
     feeDuePaginatedResponseSchema as unknown as ZodSchema<FeeDuePaginatedApiResponse>,
@@ -47,9 +49,11 @@ export async function listUnpaidDues(
 export async function listPaidDues(
   month: string,
   batchId?: string,
+  search?: string,
 ): Promise<Result<FeeDueListApiResponse, AppError>> {
   const parts = [`month=${encodeURIComponent(month)}`];
   if (batchId) parts.push(`batchId=${encodeURIComponent(batchId)}`);
+  if (search) parts.push(`search=${encodeURIComponent(search)}`);
   const result = await apiGet<unknown>(`/api/v1/fees/paid?${parts.join('&')}`);
   return validateResponse(
     feeDueListResponseSchema as unknown as ZodSchema<FeeDueListApiResponse>,

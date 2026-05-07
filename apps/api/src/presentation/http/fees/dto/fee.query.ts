@@ -10,6 +10,12 @@ export class FeesMonthQueryDto {
   @IsOptional()
   @IsString()
   batchId?: string;
+
+  /** Name-prefix search across the entire month — server-side so the
+   *  result is complete regardless of pagination state. */
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
 
 export class FeesMonthPaginatedQueryDto extends PaginationQueryDto {
@@ -21,6 +27,12 @@ export class FeesMonthPaginatedQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   batchId?: string;
+
+  /** Name-prefix search across the entire month — server-side so the
+   *  result is complete regardless of pagination state. */
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
 
 export class StudentFeeRangeQueryDto {

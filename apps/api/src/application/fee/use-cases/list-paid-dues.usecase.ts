@@ -17,6 +17,10 @@ export interface ListPaidDuesInput {
   actorRole: UserRole;
   month: string;
   batchId?: string;
+  /** Optional name-prefix filter — same behaviour as the unpaid endpoint
+   *  so the staff/owner Fees search is complete and consistent across
+   *  both tabs. */
+  search?: string;
 }
 
 export class ListPaidDuesUseCase {
@@ -43,6 +47,19 @@ export class ListPaidDuesUseCase {
       const batchAssignments = await this.studentBatchRepo.findByBatchId(input.batchId);
       const batchStudentIds = new Set(batchAssignments.map((a) => a.studentId));
       dues = dues.filter((d) => batchStudentIds.has(d.studentId));
+    }
+
+    // Filter by name search — mirrors list-unpaid-dues.usecase.ts so the
+    // search behaviour is consistent across both tabs of the Fees screen.
+    const trimmedSearch = input.search?.trim();
+    if (trimmedSearch && this.studentRepo) {
+      const { students } = await this.studentRepo.list(
+        { academyId: user.academyId, search: trimmedSearch },
+        1,
+        1000,
+      );
+      const matchedIds = new Set(students.map((s) => s.id.toString()));
+      dues = dues.filter((d) => matchedIds.has(d.studentId));
     }
 
     // Build student name map
