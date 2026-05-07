@@ -105,14 +105,18 @@ export function FeesHomeScreen() {
   const segments = isOwner ? ['Unpaid', 'Paid', 'Approvals'] : ['Unpaid', 'Paid', 'My Requests'];
 
   const [selectedSegment, setSelectedSegment] = useState(0);
+  // Search state is declared BEFORE useFees so the value is in scope when
+  // we pass it. Reordering this caused a temporal-dead-zone read where
+  // search was always sent as undefined to the API → server-side filter
+  // never applied → list looked unfiltered no matter what was typed.
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   const {
     unpaidItems, paidItems, loading, error, month, setMonth, refetch,
     unpaidTotal, hasMoreUnpaid, loadingMoreUnpaid, fetchMoreUnpaid,
   } = useFees(feesApiRef, debouncedSearch);
-
-  const [searchActive, setSearchActive] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [selectedBatchName, setSelectedBatchName] = useState<string | null>(null);

@@ -2,32 +2,50 @@ import { isEligibleForDue, shouldFlipToDue, computeDueDate } from './fee.rules';
 
 describe('Fee Rules', () => {
   describe('isEligibleForDue', () => {
-    it('should return true for ACTIVE student joined before the month', () => {
+    // Rule: a student is eligible for a month only if they joined STRICTLY
+    // BEFORE that month. Joining any day of the target month skips it.
+
+    it('returns true for ACTIVE student who joined a month earlier', () => {
       const joiningDate = new Date('2024-01-15');
       expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(true);
     });
 
-    it('should return true for student joined on the 1st of the month', () => {
+    it('returns true for student who joined the immediately previous month', () => {
+      const joiningDate = new Date('2024-02-28');
+      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(true);
+    });
+
+    it('returns true for student who joined a previous calendar year', () => {
+      const joiningDate = new Date('2023-11-20');
+      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(true);
+    });
+
+    it('returns false for student who joined on the 1st of the target month', () => {
       const joiningDate = new Date('2024-03-01');
-      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(true);
-    });
-
-    it('should return true for student joined on the 15th of the month', () => {
-      const joiningDate = new Date('2024-03-15');
-      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(true);
-    });
-
-    it('should return false for student joined after the 15th (e.g. 16th)', () => {
-      const joiningDate = new Date('2024-03-16');
       expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(false);
     });
 
-    it('should return false for INACTIVE student', () => {
+    it('returns false for student who joined mid-month (e.g. 6th) of the target month', () => {
+      const joiningDate = new Date('2024-03-06');
+      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(false);
+    });
+
+    it('returns false for student who joined on the last day of the target month', () => {
+      const joiningDate = new Date('2024-03-31');
+      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(false);
+    });
+
+    it('returns false for student joining a future month', () => {
+      const joiningDate = new Date('2024-04-01');
+      expect(isEligibleForDue(joiningDate, '2024-03', true, false)).toBe(false);
+    });
+
+    it('returns false for INACTIVE student even if joining is in the past', () => {
       const joiningDate = new Date('2024-01-01');
       expect(isEligibleForDue(joiningDate, '2024-03', false, false)).toBe(false);
     });
 
-    it('should return false for deleted student', () => {
+    it('returns false for soft-deleted student', () => {
       const joiningDate = new Date('2024-01-01');
       expect(isEligibleForDue(joiningDate, '2024-03', true, true)).toBe(false);
     });

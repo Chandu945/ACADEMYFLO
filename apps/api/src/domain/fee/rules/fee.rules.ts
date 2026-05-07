@@ -14,20 +14,25 @@ export function isEligibleForDue(
 ): boolean {
   if (!isActive || isDeleted) return false;
 
-  const [year, month] = monthKey.split('-').map(Number);
-
-  // Compare using local date components (relies on TZ=Asia/Kolkata)
+  // A student is eligible for a month's fee only if they joined STRICTLY
+  // BEFORE that month — joining on any day of the target month skips it.
+  // Their first fee is the next month's, generated on the 1st-of-month
+  // cron run as UPCOMING and flipped to DUE on the academy's due date.
+  //
+  // This replaces the previous "joined after the 15th = skip" rule, which
+  // surprised students who joined early in the month with an immediately-
+  // overdue fee, and which used a hard-coded day independent of the
+  // academy's configured `dueDateDay`. The new rule is one comparison and
+  // gives every new joiner a clean "first month free, charged from next
+  // month onward" experience that's easy to explain to parents.
+  //
+  // Compare on YYYY-MM strings (relies on TZ=Asia/Kolkata) — string compare
+  // matches calendar order for zero-padded YYYY-MM values.
   const joinYear = joiningDate.getFullYear();
   const joinMonth = joiningDate.getMonth() + 1;
-  const joinDay = joiningDate.getDate();
+  const joiningMonthKey = `${joinYear}-${String(joinMonth).padStart(2, '0')}`;
 
-  // If joining year-month is after the target month, not eligible
-  if (joinYear > year! || (joinYear === year! && joinMonth > month!)) return false;
-
-  // If same month but joined after the 15th, not eligible (late-month join)
-  if (joinYear === year! && joinMonth === month! && joinDay > 15) return false;
-
-  return true;
+  return joiningMonthKey < monthKey;
 }
 
 export function shouldFlipToDue(todayDay: number, dueDateDay: number): boolean {
