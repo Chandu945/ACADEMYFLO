@@ -12,9 +12,15 @@ import {
   markAttendanceUseCase,
   type MarkAttendanceApiPort,
 } from './use-cases/mark-attendance.usecase';
+import {
+  bulkSetAbsencesUseCase,
+  type BulkSetAbsencesApiPort,
+} from './use-cases/bulk-set-absences.usecase';
 import { getTodayIST } from '../../domain/common/date-utils';
 
-export type AttendanceApiPort = DailyAttendanceApiPort & MarkAttendanceApiPort;
+export type AttendanceApiPort = DailyAttendanceApiPort &
+  MarkAttendanceApiPort &
+  BulkSetAbsencesApiPort;
 
 type UseAttendanceResult = {
   items: DailyAttendanceItem[];
@@ -50,6 +56,11 @@ export function useAttendance(
   const pendingTogglesRef = useRef(new Set<string>());
   const fetchingMoreRef = useRef(false);
   const loadRef = useRef<(targetPage: number, append: boolean) => Promise<void>>();
+  // (batchId, date) pairs we've already auto-filled in this hook instance, so
+  // a re-render or refetch never re-fires the bulk-set and silently un-marks
+  // absences a coach has just recorded.
+  const autoFilledRef = useRef(new Set<string>());
+  const autoFillingRef = useRef(false);
 
   const load = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -81,6 +92,52 @@ export function useAttendance(
           }
           setPage(targetPage);
           setHasMore(targetPage < result.value.meta.totalPages);
+
+          // First-view default-PRESENT auto-fill: only on the initial page
+          // load (not pagination), only when the API confirms the roll has
+          // never been touched, only for today's IST date, only when a batch
+          // is selected and it's not a holiday. Idempotent per (batch, date)
+          // for this hook instance via autoFilledRef.
+          if (
+            !append &&
+            !result.value.isHoliday &&
+            result.value.rollOpened === false &&
+            batchId &&
+            date === getTodayIST() &&
+            !autoFillingRef.current
+          ) {
+            const key = `${batchId}:${date}`;
+            if (!autoFilledRef.current.has(key)) {
+              autoFilledRef.current.add(key);
+              autoFillingRef.current = true;
+              try {
+                const bulkResult = await bulkSetAbsencesUseCase(
+                  { attendanceApi },
+                  batchId,
+                  date,
+                  [],
+                );
+                if (mountedRef.current && bulkResult.ok) {
+                  // Reflect freshly-inserted PRESENT rows in the UI without
+                  // a network refetch — the coach sees the flip immediately.
+                  setItems((prev) =>
+                    prev.map((item) =>
+                      item.status === 'HOLIDAY'
+                        ? item
+                        : { ...item, status: 'PRESENT' as AttendanceStatus },
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (__DEV__) console.error('[useAttendance] auto-fill PRESENT failed:', e);
+                // Don't surface — the coach can still mark manually; treat
+                // the failure as transient and let the next load retry.
+                autoFilledRef.current.delete(key);
+              } finally {
+                autoFillingRef.current = false;
+              }
+            }
+          }
         } else {
           setError(result.error);
         }

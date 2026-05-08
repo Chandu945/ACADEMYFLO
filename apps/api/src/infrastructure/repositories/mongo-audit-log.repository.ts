@@ -69,6 +69,21 @@ export class MongoAuditLogRepository implements AuditLogRepository {
     };
   }
 
+  async existsForBatchDate(academyId: string, batchId: string, date: string): Promise<boolean> {
+    // STUDENT_ATTENDANCE_EDITED is written by both mark-student-attendance and
+    // bulk-set-absences with context.batchId and context.date. Either kind of
+    // edit means the roll has been touched.
+    const found = await this.model
+      .exists({
+        academyId,
+        entityType: 'STUDENT_ATTENDANCE',
+        'context.batchId': batchId,
+        'context.date': date,
+      })
+      .exec();
+    return found !== null;
+  }
+
   private toDomain(doc: unknown): AuditLog {
     const d = doc as {
       _id: string;

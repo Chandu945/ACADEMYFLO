@@ -12,6 +12,8 @@ export type DailyAttendanceItem = {
 export type DailyAttendancePage = {
   date: string;
   isHoliday: boolean;
+  /** True iff any prior attendance edit was recorded for (batch, date). */
+  rollOpened: boolean;
   items: DailyAttendanceItem[];
   meta: {
     page: number;

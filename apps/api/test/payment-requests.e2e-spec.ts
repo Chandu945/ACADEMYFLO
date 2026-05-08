@@ -92,6 +92,7 @@ describe('Payment Requests Endpoints (e2e)', () => {
         items: [],
         meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 },
       }),
+      existsForBatchDate: async () => false,
     };
 
     engine = new RunMonthlyDuesEngineUseCase(academyRepo, studentRepo, feeDueRepo);

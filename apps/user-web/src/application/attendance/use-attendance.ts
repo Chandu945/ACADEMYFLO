@@ -13,6 +13,12 @@ type AttendanceItem = {
 type AttendancePage = {
   date: string;
   isHoliday: boolean;
+  /**
+   * True iff at least one attendance edit has been audit-logged for the
+   * current (batch, date). Older API versions don't return it; treat absent
+   * as true so we never auto-fill against legacy responses.
+   */
+  rollOpened?: boolean;
   data: AttendanceItem[];
   meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
 };

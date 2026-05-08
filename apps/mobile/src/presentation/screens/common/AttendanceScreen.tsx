@@ -17,7 +17,7 @@ import { AppIcon } from '../../components/ui/AppIcon';
 import type { AttendanceStackParamList } from '../../navigation/AttendanceStack';
 import type { DailyAttendanceItem } from '../../../domain/attendance/attendance.types';
 import { useAttendance, getTodayIST } from '../../../application/attendance/use-attendance';
-import { getDailyAttendance, markAttendance } from '../../../infra/attendance/attendance-api';
+import { getDailyAttendance, markAttendance, bulkSetAbsences } from '../../../infra/attendance/attendance-api';
 import { declareHoliday, removeHoliday } from '../../../infra/attendance/holidays-api';
 import { declareHolidayUseCase } from '../../../application/attendance/use-cases/declare-holiday.usecase';
 import { removeHolidayUseCase } from '../../../application/attendance/use-cases/remove-holiday.usecase';
@@ -42,7 +42,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 type Nav = NativeStackNavigationProp<AttendanceStackParamList, 'AttendanceMain'>;
 
-const attendanceApi = { getDailyAttendance, markAttendance };
+const attendanceApi = { getDailyAttendance, markAttendance, bulkSetAbsences };
 const holidaysApiRef = { declareHoliday, removeHoliday };
 
 // Maps JS Date.getDay() (0=Sun..6=Sat) to the contracts Weekday literal so

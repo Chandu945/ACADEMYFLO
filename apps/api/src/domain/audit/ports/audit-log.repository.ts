@@ -15,4 +15,10 @@ export interface AuditLogFilter {
 export interface AuditLogRepository {
   save(log: AuditLog): Promise<void>;
   listByAcademy(academyId: string, filter: AuditLogFilter): Promise<Paginated<AuditLog>>;
+  /**
+   * Whether any STUDENT_ATTENDANCE audit entry exists for this (batch, date)
+   * within the academy. Used to detect "fresh roll never touched" vs.
+   * "edited roll" so the UI can safely auto-fill PRESENT only the first time.
+   */
+  existsForBatchDate(academyId: string, batchId: string, date: string): Promise<boolean>;
 }

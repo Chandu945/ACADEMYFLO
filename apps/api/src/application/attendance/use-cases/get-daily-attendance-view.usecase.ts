@@ -8,6 +8,7 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
+import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repository';
 import { canViewAttendance, validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { formatLocalDate } from '../../../shared/date-utils';
 import { AttendanceErrors } from '../../common/errors';
@@ -27,6 +28,15 @@ export interface GetDailyAttendanceViewInput {
 export interface GetDailyAttendanceViewOutput {
   date: string;
   isHoliday: boolean;
+  /**
+   * True iff at least one attendance edit has been audit-logged for this
+   * (batch, date). Only meaningful when `batchId` is provided in the input;
+   * always `true` for batch-less views so callers don't auto-fill across
+   * the whole academy. The mobile/user-web hooks use `false` as the trigger
+   * to fire one bulk-set-absences with an empty absent list, materialising
+   * the "default present" UX in storage.
+   */
+  rollOpened: boolean;
   data: DailyAttendanceViewItem[];
   meta: {
     page: number;
@@ -44,6 +54,7 @@ export class GetDailyAttendanceViewUseCase {
     private readonly holidayRepo: HolidayRepository,
     private readonly studentBatchRepo?: StudentBatchRepository,
     private readonly batchRepo?: BatchRepository,
+    private readonly auditLogRepo?: AuditLogRepository,
   ) {}
 
   async execute(
@@ -87,6 +98,9 @@ export class GetDailyAttendanceViewUseCase {
         return ok({
           date: input.date,
           isHoliday,
+          // Empty roster means there's nothing to mark; treat as already
+          // opened so the UI never tries to auto-fill against an empty list.
+          rollOpened: true,
           data: [],
           meta: { page: input.page, pageSize: input.pageSize, totalItems: 0, totalPages: 0 },
         });
@@ -133,6 +147,9 @@ export class GetDailyAttendanceViewUseCase {
       return ok({
         date: input.date,
         isHoliday: true,
+        // Holidays are not editable rolls; treat as already opened so the UI
+        // never tries to auto-fill PRESENT against a holiday banner.
+        rollOpened: true,
         data: students.map((s) => ({
           studentId: s.id.toString(),
           fullName: s.fullName,
@@ -165,9 +182,19 @@ export class GetDailyAttendanceViewUseCase {
       status: presentSet.has(s.id.toString()) ? ('PRESENT' as const) : ('ABSENT' as const),
     }));
 
+    // Without a batchId we can't safely answer "has this roll been touched?"
+    // — the audit log keys touches per (batch, date). Default to `true` so
+    // batch-less callers (e.g. academy-wide overview) don't auto-fill.
+    const rollOpened: boolean = input.batchId && this.auditLogRepo
+      ? presentSet.size > 0
+        ? true
+        : await this.auditLogRepo.existsForBatchDate(actor.academyId, input.batchId, input.date)
+      : true;
+
     return ok({
       date: input.date,
       isHoliday: false,
+      rollOpened,
       data,
       meta: {
         page: input.page,

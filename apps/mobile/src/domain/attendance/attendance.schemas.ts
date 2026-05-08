@@ -9,6 +9,10 @@ export const dailyAttendanceItemSchema = z.object({
 export const dailyAttendanceResponseSchema = z.object({
   date: z.string(),
   isHoliday: z.boolean(),
+  // True if any prior attendance edit was recorded for (batch, date). Older
+  // API versions don't return this field — default to true so legacy
+  // responses don't trigger an unintended auto-fill.
+  rollOpened: z.boolean().default(true),
   data: z.array(dailyAttendanceItemSchema),
   meta: z.object({
     page: z.number().int(),

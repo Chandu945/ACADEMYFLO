@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDailyAttendance, markAttendance, markBulkAttendance, useMonthlySummary, useMonthDailyCounts, removeHoliday } from '@/application/attendance/use-attendance';
 import { useBatches } from '@/application/batches/use-batches';
@@ -112,6 +112,47 @@ export default function AttendancePage() {
       setLocalStatuses(map);
     }
   }, [attendance]);
+
+  // First-view default-PRESENT auto-fill. Mirrors apps/mobile use-attendance:
+  // only when the API confirms the roll has never been touched, only for
+  // today's IST date, only when a batch is selected, and only on a day the
+  // batch actually meets. Idempotent per (batch, date) for this page mount.
+  const autoFilledRef = useRef<Set<string>>(new Set());
+  const autoFillingRef = useRef(false);
+  useEffect(() => {
+    if (!attendance) return;
+    if (attendance.isHoliday) return;
+    if (attendance.rollOpened !== false) return;
+    if (!batchId) return;
+    if (selectedDate !== today) return;
+    if (isOffSchedule) return;
+    if (!attendance.data || attendance.data.length === 0) return;
+    const key = `${batchId}:${selectedDate}`;
+    if (autoFilledRef.current.has(key)) return;
+    if (autoFillingRef.current) return;
+    autoFilledRef.current.add(key);
+    autoFillingRef.current = true;
+    (async () => {
+      try {
+        const updates = attendance.data.map((item) => ({
+          studentId: item.studentId,
+          status: 'PRESENT',
+        }));
+        const result = await markBulkAttendance(batchId, selectedDate, updates, accessToken);
+        if (result.ok) {
+          refetch();
+        } else {
+          // Don't surface — coach can still mark manually; clear the guard so
+          // the next load gets another shot.
+          autoFilledRef.current.delete(key);
+        }
+      } catch {
+        autoFilledRef.current.delete(key);
+      } finally {
+        autoFillingRef.current = false;
+      }
+    })();
+  }, [attendance, batchId, selectedDate, today, isOffSchedule, accessToken, refetch]);
 
   const navigateDate = useCallback((delta: number) => {
     setSelectedDate((prev) => {

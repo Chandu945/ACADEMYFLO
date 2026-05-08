@@ -1495,6 +1495,16 @@ export class InMemoryAuditLogRepository implements AuditLogRepository {
     };
   }
 
+  async existsForBatchDate(academyId: string, batchId: string, date: string): Promise<boolean> {
+    return this.logs.some(
+      (l) =>
+        l.academyId === academyId &&
+        l.entityType === 'STUDENT_ATTENDANCE' &&
+        l.context?.['batchId'] === batchId &&
+        l.context?.['date'] === date,
+    );
+  }
+
   clear(): void {
     this.logs = [];
   }

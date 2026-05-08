@@ -43,6 +43,7 @@ export async function getDailyAttendanceUseCase(
   return ok({
     date: parsed.data.date,
     isHoliday: parsed.data.isHoliday,
+    rollOpened: parsed.data.rollOpened,
     items: parsed.data.data,
     meta: parsed.data.meta,
   });

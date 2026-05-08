@@ -44,3 +44,11 @@ AuditLogSchema.index({ academyId: 1, action: 1, createdAt: -1 });
 
 // Filtering: by academy + entityType, newest first
 AuditLogSchema.index({ academyId: 1, entityType: 1, createdAt: -1 });
+
+// Roll-touch lookup: exists() probe in `existsForBatchDate` for the
+// auto-fill-PRESENT decision in the daily attendance view. Sparse so it only
+// indexes STUDENT_ATTENDANCE entries (the only ones that carry both keys).
+AuditLogSchema.index(
+  { academyId: 1, entityType: 1, 'context.batchId': 1, 'context.date': 1 },
+  { sparse: true },
+);

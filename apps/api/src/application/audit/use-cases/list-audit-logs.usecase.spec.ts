@@ -38,6 +38,7 @@ function buildDeps() {
   const auditLogRepo: jest.Mocked<AuditLogRepository> = {
     save: jest.fn(),
     listByAcademy: jest.fn(),
+    existsForBatchDate: jest.fn(),
   };
 
   return { userRepo, auditLogRepo };

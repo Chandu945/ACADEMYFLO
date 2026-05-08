@@ -116,7 +116,7 @@ describe('ApprovePaymentRequestUseCase', () => {
     clock = { now: () => fixedNow };
     tx = { run: jest.fn().mockImplementation((fn) => fn()) };
 
-    auditLogRepo = { save: jest.fn(), listByAcademy: jest.fn() } as jest.Mocked<AuditLogRepository>;
+    auditLogRepo = { save: jest.fn(), listByAcademy: jest.fn(), existsForBatchDate: jest.fn() } as jest.Mocked<AuditLogRepository>;
 
     useCase = new ApprovePaymentRequestUseCase(
       userRepo,

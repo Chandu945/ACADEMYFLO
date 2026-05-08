@@ -61,6 +61,8 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { AUDIT_LOG_REPOSITORY } from '@domain/audit/ports/audit-log.repository';
+import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repository';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import type { TransactionPort } from '@application/common/transaction.port';
 
@@ -99,7 +101,8 @@ import type { TransactionPort } from '@application/common/transaction.port';
         hr: HolidayRepository,
         sbr: StudentBatchRepository,
         br: BatchRepository,
-      ) => new GetDailyAttendanceViewUseCase(ur, sr, ar, hr, sbr, br),
+        alr: AuditLogRepository,
+      ) => new GetDailyAttendanceViewUseCase(ur, sr, ar, hr, sbr, br, alr),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
@@ -107,6 +110,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
         HOLIDAY_REPOSITORY,
         STUDENT_BATCH_REPOSITORY,
         BATCH_REPOSITORY,
+        AUDIT_LOG_REPOSITORY,
       ],
     },
     {

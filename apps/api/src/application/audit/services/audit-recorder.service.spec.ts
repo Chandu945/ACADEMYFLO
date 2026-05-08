@@ -11,6 +11,7 @@ describe('AuditRecorderService', () => {
     repo = {
       save: jest.fn(),
       listByAcademy: jest.fn(),
+      existsForBatchDate: jest.fn(),
     } as jest.Mocked<AuditLogRepository>;
     logger = {
       info: jest.fn(),

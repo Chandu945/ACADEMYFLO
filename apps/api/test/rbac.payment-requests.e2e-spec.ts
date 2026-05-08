@@ -82,6 +82,7 @@ describe('Payment Requests RBAC (e2e)', () => {
         items: [],
         meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 },
       }),
+      existsForBatchDate: async () => false,
     };
 
     const moduleFixture = await Test.createTestingModule({
