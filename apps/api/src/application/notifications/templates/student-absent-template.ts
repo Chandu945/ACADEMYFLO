@@ -5,6 +5,11 @@ export interface StudentAbsentPush {
     type: 'STUDENT_ABSENCE';
     academyId: string;
     studentId: string;
+    /**
+     * Mobile uses this to render the ChildDetail screen header without an
+     * extra fetch — Phase B deep-link landing.
+     */
+    studentName: string;
     batchId: string;
     date: string;
   };
@@ -24,6 +29,7 @@ export function buildStudentAbsentPush(params: {
       type: 'STUDENT_ABSENCE',
       academyId: params.academyId,
       studentId: params.studentId,
+      studentName: params.studentName,
       batchId: params.batchId,
       date: params.date,
     },

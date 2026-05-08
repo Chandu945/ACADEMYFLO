@@ -40,6 +40,11 @@ export interface ManualPaymentRejectedPush {
     academyId: string;
     paymentRequestId: string;
     studentId: string;
+    /**
+     * Mobile uses this to render the ChildDetail screen header without an
+     * extra fetch — Phase B deep-link landing.
+     */
+    studentName: string;
     monthKey: string;
   };
 }
@@ -82,6 +87,7 @@ export function buildManualPaymentRejectedPush(params: {
       academyId: params.academyId,
       paymentRequestId: params.paymentRequestId,
       studentId: params.studentId,
+      studentName: params.studentName,
       monthKey: params.monthKey,
     },
   };

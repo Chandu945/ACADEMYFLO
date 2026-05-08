@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useCallba
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { navigateFromOutside } from '../navigation/navigation-ref';
+import { setPendingDeepLink, type DeepLinkTarget } from '../navigation/pending-deep-link';
 import {
   requestNotificationPermission,
   getFcmToken,
@@ -108,6 +109,82 @@ const SAFE_OVERRIDE_ROUTES: ReadonlySet<string> = new Set([
   'More',
 ]);
 
+/**
+ * Phase B — deep-link targets that land *past* a tab root.
+ *
+ * For each (notification type, role) pair listed here, the resolver stages
+ * a chain of pushes via `setPendingDeepLink` and returns the tab to focus
+ * first. The relevant stack-root screen (ChildrenListScreen for 'Children',
+ * MoreScreen for 'More') reads the staged value in its useFocusEffect and
+ * pushes each step in order — building a clean back-stack like
+ * `[Root → Mid → Leaf]`.
+ *
+ * Returns `null` for types that don't deep-link past tab roots; those
+ * fall through to the existing tab-root routing in ROUTE_BY_TYPE.
+ */
+function resolveDeepLinkTarget(
+  notification: RemoteNotification,
+  role: UserRole | undefined,
+): { tab: string; target: DeepLinkTarget } | null {
+  if (!role) return null;
+  const data = notification.data ?? {};
+
+  if (notification.type === 'STUDENT_ABSENCE' && role === 'PARENT' && data['studentId']) {
+    return {
+      tab: 'Children',
+      target: {
+        stack: 'ParentHome',
+        chain: [
+          {
+            screen: 'ChildDetail',
+            params: {
+              studentId: data['studentId'],
+              fullName: data['studentName'] ?? '',
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  if (notification.type === 'MANUAL_PAYMENT_REJECTED' && role === 'PARENT' && data['studentId']) {
+    return {
+      tab: 'Children',
+      target: {
+        stack: 'ParentHome',
+        chain: [
+          {
+            screen: 'ChildDetail',
+            params: {
+              studentId: data['studentId'],
+              fullName: data['studentName'] ?? '',
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  if (
+    notification.type === 'ENQUIRY_NEW' &&
+    (role === 'OWNER' || role === 'STAFF') &&
+    data['enquiryId']
+  ) {
+    return {
+      tab: 'More',
+      target: {
+        stack: 'More',
+        chain: [
+          { screen: 'EnquiryList' },
+          { screen: 'EnquiryDetail', params: { enquiryId: data['enquiryId'] } },
+        ],
+      },
+    };
+  }
+
+  return null;
+}
+
 function resolveNotificationRoute(
   notification: RemoteNotification,
   role: UserRole | undefined,
@@ -201,6 +278,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const handleNotificationTap = useCallback(
     (notification: RemoteNotification) => {
+      // Phase B: prefer deep-link routing when a (type, role) pair has a
+      // staged target. The chain is consumed by the relevant stack-root
+      // screen on focus — see pending-deep-link.ts for the contract.
+      const deep = resolveDeepLinkTarget(notification, user?.role);
+      if (deep) {
+        setPendingDeepLink(deep.target);
+        navigateFromOutside(deep.tab);
+        return;
+      }
       const target = resolveNotificationRoute(notification, user?.role);
       if (target) {
         navigateFromOutside(target.name, target.params);

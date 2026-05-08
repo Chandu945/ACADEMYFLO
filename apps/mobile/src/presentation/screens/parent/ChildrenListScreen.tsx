@@ -6,13 +6,15 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  ActivityIndicator} from 'react-native';
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, StackActions } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { InitialsAvatar } from '../../components/ui/InitialsAvatar';
 import type { ParentHomeStackParamList } from '../../navigation/ParentHomeStack';
+import { consumePendingDeepLink } from '../../navigation/pending-deep-link';
 import type { ChildSummary } from '../../../domain/parent/parent.types';
 import { getMyChildrenUseCase } from '../../../application/parent/use-cases/get-my-children.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
@@ -72,7 +74,9 @@ export function ChildrenListScreen() {
   useEffect(() => {
     mountedRef.current = true;
     load();
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, [load]);
 
   const isFirstFocus = useRef(true);
@@ -84,6 +88,25 @@ export function ChildrenListScreen() {
       }
       load();
     }, [load]),
+  );
+
+  // Phase B: deep-link consumer. When a push notification (e.g.,
+  // STUDENT_ABSENCE) stages a chain targeting the ParentHome stack,
+  // NotificationContext navigates to this tab; on focus we consume the
+  // chain and push each step. Stack ends up `[ChildrenList → ChildDetail]`
+  // so the back button correctly returns the parent to the list.
+  //
+  // dispatch(StackActions.push) over navigation.push keeps the call site
+  // typed loosely — the chain is heterogeneous across param shapes and
+  // the resolver in NotificationContext enforces the runtime contract.
+  useFocusEffect(
+    useCallback(() => {
+      const pending = consumePendingDeepLink('ParentHome');
+      if (!pending) return;
+      for (const step of pending.chain) {
+        navigation.dispatch(StackActions.push(step.screen, step.params));
+      }
+    }, [navigation]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -133,12 +156,7 @@ export function ChildrenListScreen() {
             })
           }
         >
-          <InitialsAvatar
-            name={item.fullName}
-            size={48}
-            variant="palette"
-            style={styles.avatar}
-          />
+          <InitialsAvatar name={item.fullName} size={48} variant="palette" style={styles.avatar} />
           <View style={styles.cardInfo}>
             <View style={styles.nameRow}>
               <Text style={styles.childName} numberOfLines={1}>
@@ -180,7 +198,6 @@ export function ChildrenListScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        
         <AppIcon name="alert-circle-outline" size={48} color={colors.danger} />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={load}>
@@ -193,179 +210,185 @@ export function ChildrenListScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <FlatList
-      data={children}
-      keyExtractor={keyExtractor}
-      renderItem={renderChild}
-      ListHeaderComponent={renderHeader}
-      contentContainerStyle={styles.list}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
-      }
-      ListEmptyComponent={
-        <EmptyState
-          icon="account-child-outline"
-          message="No Children Linked"
-          subtitle="Ask your academy to link your child to this account"
-        />
-      }
-    />
+        data={children}
+        keyExtractor={keyExtractor}
+        renderItem={renderChild}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon="account-child-outline"
+            message="No Children Linked"
+            subtitle="Ask your academy to link your child to this account"
+          />
+        }
+      />
     </SafeAreaView>
   );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
-  list: { padding: spacing.base, paddingBottom: spacing['2xl'] },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.xs,
-  },
-  greeting: {
-    fontSize: fontSizes.base,
-    color: colors.textSecondary,
-  },
-  parentName: {
-    fontSize: fontSizes['2xl'],
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-    marginTop: 2,
-  },
-  headerBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.base,
-    marginBottom: spacing.sm + 2,
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderLeftWidth: 4,
-    ...shadows.sm,
-  },
-  cardStripe_success: { borderLeftColor: colors.success },
-  cardStripe_warning: { borderLeftColor: colors.warning },
-  cardStripe_danger: { borderLeftColor: colors.danger },
-  cardStripe_neutral: { borderLeftColor: colors.border },
-  avatar: {
-    flexShrink: 0,
-  },
-  cardInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  childName: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-    letterSpacing: -0.2,
-    flexShrink: 1,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginLeft: spacing.sm,
-  },
-  feeText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.medium,
-    color: colors.textSecondary,
-  },
-  feeLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.normal,
-    color: colors.textDisabled,
-  },
-  rightCol: {
-    alignItems: 'center',
-    gap: 2,
-    flexShrink: 0,
-  },
-  pctBadge: {
-    minWidth: 56,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  pctBadge_success: {
-    backgroundColor: colors.successBg,
-    borderColor: colors.successBorder,
-  },
-  pctBadge_warning: {
-    backgroundColor: colors.warningBg,
-    borderColor: colors.warningBorder,
-  },
-  pctBadge_danger: {
-    backgroundColor: colors.dangerBg,
-    borderColor: colors.dangerBorder,
-  },
-  pctBadge_neutral: {
-    backgroundColor: colors.bgSubtle,
-    borderColor: colors.border,
-  },
-  pctText: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
-    letterSpacing: -0.2,
-  },
-  pctText_success: { color: colors.successText },
-  pctText_warning: { color: colors.warningText },
-  pctText_danger: { color: colors.dangerText },
-  pctText_neutral: { color: colors.textSecondary },
-  pctLabel: {
-    fontSize: 9,
-    color: colors.textDisabled,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: fontWeights.semibold,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['2xl'],
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: fontSizes.md,
-    color: colors.textSecondary,
-  },
-  errorText: {
-    color: colors.danger,
-    fontSize: fontSizes.md,
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: spacing.base,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.bgSubtle,
-    borderRadius: radius.md,
-  },
-  retryText: {
-    color: colors.text,
-    fontWeight: fontWeights.semibold,
-    fontSize: fontSizes.base,
-  },
-});
+const makeStyles = (colors: Colors) =>
+  StyleSheet.create({
+    list: { padding: spacing.base, paddingBottom: spacing['2xl'] },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.lg,
+      paddingHorizontal: spacing.xs,
+    },
+    greeting: {
+      fontSize: fontSizes.base,
+      color: colors.textSecondary,
+    },
+    parentName: {
+      fontSize: fontSizes['2xl'],
+      fontWeight: fontWeights.bold,
+      color: colors.text,
+      marginTop: 2,
+    },
+    headerBadge: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.base,
+      marginBottom: spacing.sm + 2,
+      gap: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderLeftWidth: 4,
+      ...shadows.sm,
+    },
+    cardStripe_success: { borderLeftColor: colors.success },
+    cardStripe_warning: { borderLeftColor: colors.warning },
+    cardStripe_danger: { borderLeftColor: colors.danger },
+    cardStripe_neutral: { borderLeftColor: colors.border },
+    avatar: {
+      flexShrink: 0,
+    },
+    cardInfo: {
+      flex: 1,
+      minWidth: 0,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    childName: {
+      fontSize: fontSizes.md,
+      fontWeight: fontWeights.bold,
+      color: colors.text,
+      letterSpacing: -0.2,
+      flexShrink: 1,
+    },
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginLeft: spacing.sm,
+    },
+    feeText: {
+      fontSize: fontSizes.sm,
+      fontWeight: fontWeights.medium,
+      color: colors.textSecondary,
+    },
+    feeLabel: {
+      fontSize: fontSizes.xs,
+      fontWeight: fontWeights.normal,
+      color: colors.textDisabled,
+    },
+    rightCol: {
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
+    },
+    pctBadge: {
+      minWidth: 56,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      borderRadius: radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    pctBadge_success: {
+      backgroundColor: colors.successBg,
+      borderColor: colors.successBorder,
+    },
+    pctBadge_warning: {
+      backgroundColor: colors.warningBg,
+      borderColor: colors.warningBorder,
+    },
+    pctBadge_danger: {
+      backgroundColor: colors.dangerBg,
+      borderColor: colors.dangerBorder,
+    },
+    pctBadge_neutral: {
+      backgroundColor: colors.bgSubtle,
+      borderColor: colors.border,
+    },
+    pctText: {
+      fontSize: fontSizes.sm,
+      fontWeight: fontWeights.bold,
+      letterSpacing: -0.2,
+    },
+    pctText_success: { color: colors.successText },
+    pctText_warning: { color: colors.warningText },
+    pctText_danger: { color: colors.dangerText },
+    pctText_neutral: { color: colors.textSecondary },
+    pctLabel: {
+      fontSize: 9,
+      color: colors.textDisabled,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      fontWeight: fontWeights.semibold,
+    },
+    center: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing['2xl'],
+    },
+    loadingText: {
+      marginTop: spacing.md,
+      fontSize: fontSizes.md,
+      color: colors.textSecondary,
+    },
+    errorText: {
+      color: colors.danger,
+      fontSize: fontSizes.md,
+      marginTop: spacing.md,
+      textAlign: 'center',
+    },
+    retryButton: {
+      marginTop: spacing.base,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.sm,
+      backgroundColor: colors.bgSubtle,
+      borderRadius: radius.md,
+    },
+    retryText: {
+      color: colors.text,
+      fontWeight: fontWeights.semibold,
+      fontSize: fontSizes.base,
+    },
+  });
