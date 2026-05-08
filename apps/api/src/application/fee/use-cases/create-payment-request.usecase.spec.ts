@@ -23,7 +23,7 @@ describe('CreatePaymentRequestUseCase', () => {
       save: jest.fn(),
       updateAcademyId: jest.fn(),
       listByAcademyAndRole: jest.fn(),
-    countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
+      countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
       incrementTokenVersionByAcademyId: jest.fn(),
       incrementTokenVersionByUserId: jest.fn(),
       listByAcademyId: jest.fn(),
@@ -38,8 +38,8 @@ describe('CreatePaymentRequestUseCase', () => {
       countActiveByAcademy: jest.fn(),
       findByIds: jest.fn(),
       findBirthdaysByAcademy: jest.fn(),
-    findByEmailInAcademy: jest.fn(),
-    findByPhoneInAcademy: jest.fn(),
+      findByEmailInAcademy: jest.fn(),
+      findByPhoneInAcademy: jest.fn(),
       countInactiveByAcademy: jest.fn(),
       countNewAdmissionsByAcademyAndDateRange: jest.fn(),
       saveWithVersionPrecondition: jest.fn().mockResolvedValue(true),
@@ -254,5 +254,115 @@ describe('CreatePaymentRequestUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('FORBIDDEN');
     }
+  });
+
+  describe('owner notification on creation', () => {
+    function happyPathDeps() {
+      userRepo.findById.mockResolvedValue(makeStaff());
+      studentRepo.findById.mockResolvedValue(makeStudent());
+      feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(
+        FeeDue.create({
+          id: 'due-1',
+          academyId: 'academy-1',
+          studentId: 's1',
+          monthKey: '2024-03',
+          amount: 500,
+          dueDate: '2024-03-05',
+        }),
+      );
+      prRepo.findPendingByFeeDue.mockResolvedValue(null);
+    }
+
+    function ownerUser(id: string) {
+      const u = User.create({
+        id,
+        fullName: `Owner ${id}`,
+        email: `${id}@x.com`,
+        phoneNumber: '+919876500000',
+        role: 'OWNER',
+        passwordHash: 'h',
+      });
+      return User.reconstitute(id, { ...u['props'], academyId: 'academy-1' });
+    }
+
+    it('pushes to all academy owners after creation', async () => {
+      happyPathDeps();
+      userRepo.listByAcademyAndRole.mockResolvedValue({
+        users: [ownerUser('owner-1'), ownerUser('owner-2')],
+        total: 2,
+      });
+      const pushService = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
+
+      const auditRecorder = { record: jest.fn() };
+      const academyRepo = { findById: jest.fn().mockResolvedValue({ lateFeeEnabled: false }) };
+      const clock = { now: () => new Date('2026-05-05T12:00:00Z') };
+      const uc = new CreatePaymentRequestUseCase(
+        userRepo,
+        studentRepo,
+        feeDueRepo,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        academyRepo as any,
+        prRepo,
+        auditRecorder,
+        clock,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pushService as any,
+      );
+
+      const result = await uc.execute({
+        actorUserId: 'staff-1',
+        actorRole: 'STAFF',
+        studentId: 's1',
+        monthKey: '2024-03',
+        staffNotes: 'Collected from parent',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(pushService.sendToUsers).toHaveBeenCalledWith(
+        ['owner-1', 'owner-2'],
+        expect.objectContaining({
+          title: 'New payment request',
+          data: expect.objectContaining({ type: 'PAYMENT_REQUEST_PENDING' }),
+        }),
+      );
+    });
+
+    it('returns ok even when push throws — request creation must not fail', async () => {
+      happyPathDeps();
+      userRepo.listByAcademyAndRole.mockResolvedValue({
+        users: [ownerUser('owner-1')],
+        total: 1,
+      });
+      const pushService = {
+        sendToUsers: jest.fn().mockRejectedValue(new Error('FCM down')),
+      };
+
+      const auditRecorder = { record: jest.fn() };
+      const academyRepo = { findById: jest.fn().mockResolvedValue({ lateFeeEnabled: false }) };
+      const clock = { now: () => new Date('2026-05-05T12:00:00Z') };
+      const uc = new CreatePaymentRequestUseCase(
+        userRepo,
+        studentRepo,
+        feeDueRepo,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        academyRepo as any,
+        prRepo,
+        auditRecorder,
+        clock,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pushService as any,
+      );
+
+      const result = await uc.execute({
+        actorUserId: 'staff-1',
+        actorRole: 'STAFF',
+        studentId: 's1',
+        monthKey: '2024-03',
+        staffNotes: 'Collected',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(prRepo.save).toHaveBeenCalled();
+    });
   });
 });

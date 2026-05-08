@@ -63,6 +63,8 @@ import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.por
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { AUDIT_LOG_REPOSITORY } from '@domain/audit/ports/audit-log.repository';
 import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repository';
+import { ABSENCE_NOTIFICATION_SCHEDULER_PORT } from '@application/notifications/ports/absence-notification-scheduler.port';
+import type { AbsenceNotificationSchedulerPort } from '@application/notifications/ports/absence-notification-scheduler.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import type { TransactionPort } from '@application/common/transaction.port';
 
@@ -123,7 +125,8 @@ import type { TransactionPort } from '@application/common/transaction.port';
         br: BatchRepository,
         sbr: StudentBatchRepository,
         audit: AuditRecorderPort,
-      ) => new MarkStudentAttendanceUseCase(ur, sr, ar, hr, br, sbr, audit),
+        scheduler: AbsenceNotificationSchedulerPort,
+      ) => new MarkStudentAttendanceUseCase(ur, sr, ar, hr, br, sbr, audit, scheduler),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
@@ -132,6 +135,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
         BATCH_REPOSITORY,
         STUDENT_BATCH_REPOSITORY,
         AUDIT_RECORDER_PORT,
+        ABSENCE_NOTIFICATION_SCHEDULER_PORT,
       ],
     },
     {
@@ -145,7 +149,8 @@ import type { TransactionPort } from '@application/common/transaction.port';
         sbr: StudentBatchRepository,
         audit: AuditRecorderPort,
         tx: TransactionPort,
-      ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, br, sbr, audit, tx),
+        scheduler: AbsenceNotificationSchedulerPort,
+      ) => new BulkSetAbsencesUseCase(ur, sr, ar, hr, br, sbr, audit, tx, scheduler),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
@@ -155,6 +160,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
         STUDENT_BATCH_REPOSITORY,
         AUDIT_RECORDER_PORT,
         TRANSACTION_PORT,
+        ABSENCE_NOTIFICATION_SCHEDULER_PORT,
       ],
     },
     {
@@ -258,11 +264,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
         sr: StudentRepository,
         renderer: PdfRenderer,
       ) => new ExportStudentMonthlyAttendancePdfUseCase(getDetail, sr, renderer),
-      inject: [
-        'GET_STUDENT_MONTHLY_ATTENDANCE_USE_CASE',
-        STUDENT_REPOSITORY,
-        PDF_RENDERER,
-      ],
+      inject: ['GET_STUDENT_MONTHLY_ATTENDANCE_USE_CASE', STUDENT_REPOSITORY, PDF_RENDERER],
     },
     {
       provide: 'EXPORT_MONTHLY_ATTENDANCE_SUMMARY_PDF_USE_CASE',
@@ -271,8 +273,7 @@ import type { TransactionPort } from '@application/common/transaction.port';
         ur: UserRepository,
         ar: AcademyRepository,
         renderer: PdfRenderer,
-      ) =>
-        new ExportMonthlyAttendanceSummaryPdfUseCase(getSummary, ur, ar, renderer),
+      ) => new ExportMonthlyAttendanceSummaryPdfUseCase(getSummary, ur, ar, renderer),
       inject: [
         'GET_MONTHLY_ATTENDANCE_SUMMARY_USE_CASE',
         USER_REPOSITORY,

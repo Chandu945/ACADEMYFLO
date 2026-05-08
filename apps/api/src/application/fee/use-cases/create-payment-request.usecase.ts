@@ -18,6 +18,8 @@ import type { UserRole } from '@academyflo/contracts';
 import { computeLateFee } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { ClockPort } from '../../common/clock.port';
+import type { PushNotificationService } from '../../notifications/push-notification.service';
+import { buildPaymentRequestPendingPush } from '../../notifications/templates/payment-request-pending-template';
 import { formatLocalDate } from '../../../shared/date-utils';
 import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
 import { randomUUID } from 'crypto';
@@ -39,6 +41,12 @@ export class CreatePaymentRequestUseCase {
     private readonly paymentRequestRepo: PaymentRequestRepository,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly clock: ClockPort,
+    /**
+     * Optional so legacy fixtures keep working. Production wiring always
+     * passes the push service; absence is treated as "no notification" —
+     * the request is still created and the audit log is written.
+     */
+    private readonly pushService?: PushNotificationService,
   ) {}
 
   async execute(input: CreatePaymentRequestInput): Promise<Result<PaymentRequestDto, AppError>> {
@@ -110,12 +118,49 @@ export class CreatePaymentRequestUseCase {
       action: 'PAYMENT_REQUEST_CREATED',
       entityType: 'PAYMENT_REQUEST',
       entityId: pr.id.toString(),
-      context: { studentId: input.studentId, monthKey: input.monthKey, amount: String(totalPayable) },
+      context: {
+        studentId: input.studentId,
+        monthKey: input.monthKey,
+        amount: String(totalPayable),
+      },
     });
 
-    return ok(toPaymentRequestDto(pr, {
-      staffName: user.fullName,
-      studentName: student.fullName,
-    }));
+    // Notify the academy's owners that a request is awaiting their approval.
+    // Best-effort — a push outage must not fail the request creation, since
+    // the request is already durable and visible in the approval queue.
+    if (this.pushService) {
+      try {
+        const { users: owners } = await this.userRepo.listByAcademyAndRole(
+          user.academyId,
+          'OWNER',
+          1,
+          100,
+        );
+        const ownerIds = owners.map((o) => o.id.toString());
+        if (ownerIds.length > 0) {
+          const message = buildPaymentRequestPendingPush({
+            staffName: user.fullName,
+            studentName: student.fullName,
+            monthKey: input.monthKey,
+            amount: totalPayable,
+            academyId: user.academyId,
+            paymentRequestId: pr.id.toString(),
+            studentId: input.studentId,
+          });
+          await this.pushService.sendToUsers(ownerIds, message);
+        }
+      } catch {
+        // Swallow — the request is created and audit-logged. The push
+        // service logs internally; missing a notification is recoverable
+        // (owner sees the queue next time they open the app).
+      }
+    }
+
+    return ok(
+      toPaymentRequestDto(pr, {
+        staffName: user.fullName,
+        studentName: student.fullName,
+      }),
+    );
   }
 }

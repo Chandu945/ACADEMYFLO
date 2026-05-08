@@ -20,6 +20,8 @@ import type { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { toPaymentRequestDto } from '../dtos/payment-request.dto';
 import type { UserRole } from '@academyflo/contracts';
 import { DEFAULT_RECEIPT_PREFIX } from '@academyflo/contracts';
+import type { PushNotificationService } from '../../notifications/push-notification.service';
+import { buildManualPaymentApprovedPush } from '../../notifications/templates/manual-payment-result-templates';
 import { randomUUID } from 'crypto';
 
 export interface ApprovePaymentRequestInput {
@@ -51,6 +53,11 @@ export class ApprovePaymentRequestUseCase {
     private readonly clock: ClockPort,
     private readonly transaction: TransactionPort,
     private readonly auditLogRepo: AuditLogRepository,
+    /**
+     * Optional so legacy fixtures keep working. Production wiring always
+     * passes the push service. Push failures never roll back the approval.
+     */
+    private readonly pushService?: PushNotificationService,
   ) {}
 
   async execute(input: ApprovePaymentRequestInput): Promise<Result<PaymentRequestDto, AppError>> {
@@ -113,7 +120,10 @@ export class ApprovePaymentRequestUseCase {
           throw new ConcurrentApprovalError();
         }
 
-        const next = await this.transactionLogRepo.incrementReceiptCounter(request.academyId, prefix);
+        const next = await this.transactionLogRepo.incrementReceiptCounter(
+          request.academyId,
+          prefix,
+        );
         const receiptNumber = generateReceiptNumber(prefix, next);
 
         // Transaction-log source depends on who authored the request:
@@ -121,8 +131,7 @@ export class ApprovePaymentRequestUseCase {
         //   PARENT manual payment  → 'MANUAL'
         // Both require owner approval and flow through this same code path;
         // only the recorded provenance differs.
-        const txLogSource =
-          request.source === 'PARENT' ? 'MANUAL' : 'STAFF_APPROVED';
+        const txLogSource = request.source === 'PARENT' ? 'MANUAL' : 'STAFF_APPROVED';
 
         // Persist the principal/late-fee split alongside the gross amount.
         // baseAmount is whatever the parent paid toward base (capped at
@@ -178,10 +187,32 @@ export class ApprovePaymentRequestUseCase {
       this.studentRepo.findById(approved.studentId),
     ]);
 
-    return ok(toPaymentRequestDto(approved, {
-      staffName: staffUser?.fullName,
-      studentName: student?.fullName,
-      reviewedByName: user.fullName,
-    }));
+    // Notify the parent only when this approval is for a parent-submitted
+    // manual payment. Staff-submitted requests don't need a push to the
+    // staff who created them — staff see the result in the in-app queue.
+    if (this.pushService && approved.source === 'PARENT' && student) {
+      try {
+        const message = buildManualPaymentApprovedPush({
+          studentName: student.fullName,
+          monthKey: approved.monthKey,
+          academyId: approved.academyId,
+          paymentRequestId: approved.id.toString(),
+          studentId: approved.studentId,
+        });
+        // approved.staffUserId stores the parent's userId for PARENT-source
+        // requests (see PaymentRequest entity comment).
+        await this.pushService.sendToUsers([approved.staffUserId], message);
+      } catch {
+        // Swallow — payment is already approved and recorded.
+      }
+    }
+
+    return ok(
+      toPaymentRequestDto(approved, {
+        staffName: staffUser?.fullName,
+        studentName: student?.fullName,
+        reviewedByName: user.fullName,
+      }),
+    );
   }
 }

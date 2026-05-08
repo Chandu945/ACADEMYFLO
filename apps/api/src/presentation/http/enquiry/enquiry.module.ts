@@ -27,12 +27,18 @@ import { MongoTransactionService } from '@infrastructure/database/mongo-transact
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import {
+  DeviceTokensModule,
+  PUSH_NOTIFICATION_SERVICE,
+} from '../device-tokens/device-tokens.module';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
 
 @Module({
   imports: [
     AuthModule,
     AcademyOnboardingModule,
     AuditLogsModule,
+    DeviceTokensModule,
     MongooseModule.forFeature([
       { name: EnquiryModel.name, schema: EnquirySchema },
       { name: StudentModel.name, schema: StudentSchema },
@@ -45,9 +51,13 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
       provide: 'CREATE_ENQUIRY_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
-        new CreateEnquiryUseCase(userRepo, enquiryRepo, audit),
-      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        enquiryRepo: EnquiryRepository,
+        audit: AuditRecorderPort,
+        push: PushNotificationService,
+      ) => new CreateEnquiryUseCase(userRepo, enquiryRepo, audit, push),
+      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT, PUSH_NOTIFICATION_SERVICE],
     },
     {
       provide: 'LIST_ENQUIRIES_USE_CASE',
@@ -63,20 +73,29 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
     },
     {
       provide: 'UPDATE_ENQUIRY_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
-        new UpdateEnquiryUseCase(userRepo, enquiryRepo, audit),
+      useFactory: (
+        userRepo: UserRepository,
+        enquiryRepo: EnquiryRepository,
+        audit: AuditRecorderPort,
+      ) => new UpdateEnquiryUseCase(userRepo, enquiryRepo, audit),
       inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'ADD_FOLLOWUP_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
-        new AddFollowUpUseCase(userRepo, enquiryRepo, audit),
+      useFactory: (
+        userRepo: UserRepository,
+        enquiryRepo: EnquiryRepository,
+        audit: AuditRecorderPort,
+      ) => new AddFollowUpUseCase(userRepo, enquiryRepo, audit),
       inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'CLOSE_ENQUIRY_USE_CASE',
-      useFactory: (userRepo: UserRepository, enquiryRepo: EnquiryRepository, audit: AuditRecorderPort) =>
-        new CloseEnquiryUseCase(userRepo, enquiryRepo, audit),
+      useFactory: (
+        userRepo: UserRepository,
+        enquiryRepo: EnquiryRepository,
+        audit: AuditRecorderPort,
+      ) => new CloseEnquiryUseCase(userRepo, enquiryRepo, audit),
       inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
@@ -94,7 +113,13 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
         transaction: TransactionPort,
         audit: AuditRecorderPort,
       ) => new ConvertToStudentUseCase(userRepo, enquiryRepo, studentRepo, transaction, audit),
-      inject: [USER_REPOSITORY, ENQUIRY_REPOSITORY, STUDENT_REPOSITORY, TRANSACTION_PORT, AUDIT_RECORDER_PORT],
+      inject: [
+        USER_REPOSITORY,
+        ENQUIRY_REPOSITORY,
+        STUDENT_REPOSITORY,
+        TRANSACTION_PORT,
+        AUDIT_RECORDER_PORT,
+      ],
     },
   ],
 })

@@ -10,6 +10,8 @@ import type { EnquirySource } from '@domain/enquiry/entities/enquiry.entity';
 import { EnquiryErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { PushNotificationService } from '../../notifications/push-notification.service';
+import { buildEnquiryNewPush } from '../../notifications/templates/enquiry-new-template';
 
 export interface CreateEnquiryInput {
   actorUserId: string;
@@ -59,6 +61,12 @@ export class CreateEnquiryUseCase {
     private readonly userRepo: UserRepository,
     private readonly enquiryRepo: EnquiryRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    /**
+     * Optional so legacy fixtures keep working. Production wiring always
+     * passes the push service. Failure to notify never fails enquiry
+     * creation — the lead is already saved.
+     */
+    private readonly pushService?: PushNotificationService,
   ) {}
 
   async execute(input: CreateEnquiryInput): Promise<Result<CreateEnquiryOutput, AppError>> {
@@ -146,6 +154,33 @@ export class CreateEnquiryUseCase {
 
     if (existing) {
       output.warning = 'An active enquiry with this mobile number already exists';
+    }
+
+    // Notify other owners and staff so leads get picked up quickly. Skip
+    // the actor — they just created the enquiry and don't need a push for
+    // their own action. Best-effort: a push outage doesn't fail creation.
+    if (this.pushService) {
+      try {
+        const [{ users: owners }, { users: staff }] = await Promise.all([
+          this.userRepo.listByAcademyAndRole(actor.academyId, 'OWNER', 1, 100),
+          this.userRepo.listByAcademyAndRole(actor.academyId, 'STAFF', 1, 100),
+        ]);
+        const recipientIds = [...owners, ...staff]
+          .map((u) => u.id.toString())
+          .filter((id) => id !== input.actorUserId);
+        if (recipientIds.length > 0) {
+          const message = buildEnquiryNewPush({
+            prospectName: enquiry.prospectName,
+            mobileNumber: enquiry.mobileNumber,
+            source: enquiry.source,
+            academyId: actor.academyId,
+            enquiryId: enquiry.id.toString(),
+          });
+          await this.pushService.sendToUsers(recipientIds, message);
+        }
+      } catch {
+        // Swallow — enquiry is durable; the team will see it on next list refresh.
+      }
     }
 
     return ok(output);

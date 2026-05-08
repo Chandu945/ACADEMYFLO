@@ -36,7 +36,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       save: jest.fn(),
       updateAcademyId: jest.fn(),
       listByAcademyAndRole: jest.fn(),
-    countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
+      countActiveByAcademyAndRole: jest.fn().mockResolvedValue(0),
       incrementTokenVersionByAcademyId: jest.fn(),
       incrementTokenVersionByUserId: jest.fn(),
       listByAcademyId: jest.fn(),
@@ -116,7 +116,11 @@ describe('ApprovePaymentRequestUseCase', () => {
     clock = { now: () => fixedNow };
     tx = { run: jest.fn().mockImplementation((fn) => fn()) };
 
-    auditLogRepo = { save: jest.fn(), listByAcademy: jest.fn(), existsForBatchDate: jest.fn() } as jest.Mocked<AuditLogRepository>;
+    auditLogRepo = {
+      save: jest.fn(),
+      listByAcademy: jest.fn(),
+      existsForBatchDate: jest.fn(),
+    } as jest.Mocked<AuditLogRepository>;
 
     useCase = new ApprovePaymentRequestUseCase(
       userRepo,
@@ -248,5 +252,117 @@ describe('ApprovePaymentRequestUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('CONFLICT');
     }
+  });
+
+  describe('parent push on PARENT-source approval', () => {
+    function makeParentRequest() {
+      return PaymentRequest.create({
+        id: 'pr-1',
+        academyId: 'academy-1',
+        studentId: 's1',
+        feeDueId: 'due-1',
+        monthKey: '2024-03',
+        amount: 500,
+        // staffUserId stores the parent's userId for PARENT-source requests
+        // per the entity contract.
+        staffUserId: 'parent-1',
+        staffNotes: 'Manual payment via UPI',
+        source: 'PARENT',
+        proofImageUrl: 'https://r2.example/proof.jpg',
+      });
+    }
+
+    function makeParentUser() {
+      const u = User.create({
+        id: 'parent-1',
+        fullName: 'Parent',
+        email: 'p@e.com',
+        phoneNumber: '+919876511111',
+        role: 'PARENT',
+        passwordHash: 'h',
+      });
+      return User.reconstitute('parent-1', { ...u['props'], academyId: 'academy-1' });
+    }
+
+    function makeStudentEntity() {
+      // Shape-compatible stand-in — the use-case only reads `.fullName`
+      // from the resolved student. Avoids the heavy Student fixture setup.
+      return { id: { toString: () => 's1' }, fullName: 'Aarav Sharma' } as never;
+    }
+
+    it('pushes to the parent (staffUserId) on approval when source === PARENT', async () => {
+      userRepo.findById.mockResolvedValue(makeOwner());
+      // The use-case calls findById a second time to resolve the staffUser
+      // (which for a PARENT request is the parent themselves).
+      userRepo.findById.mockResolvedValueOnce(makeOwner()).mockResolvedValueOnce(makeParentUser());
+      prRepo.findById.mockResolvedValue(makeParentRequest());
+      feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDue());
+      academyRepo.findById.mockResolvedValue(makeAcademy());
+      txLogRepo.incrementReceiptCounter.mockResolvedValue(1);
+      studentRepo.findById.mockResolvedValue(makeStudentEntity());
+
+      const pushService = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
+      const uc = new ApprovePaymentRequestUseCase(
+        userRepo,
+        academyRepo,
+        feeDueRepo,
+        prRepo,
+        txLogRepo,
+        studentRepo,
+        clock,
+        tx,
+        auditLogRepo,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pushService as any,
+      );
+
+      const result = await uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        requestId: 'pr-1',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(pushService.sendToUsers).toHaveBeenCalledWith(
+        ['parent-1'],
+        expect.objectContaining({
+          title: 'Payment approved',
+          data: expect.objectContaining({ type: 'MANUAL_PAYMENT_APPROVED' }),
+        }),
+      );
+    });
+
+    it('does NOT push when source === STAFF (staff already see the queue)', async () => {
+      userRepo.findById.mockResolvedValue(makeOwner());
+      prRepo.findById.mockResolvedValue(makePendingRequest()); // STAFF source
+      feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDue());
+      academyRepo.findById.mockResolvedValue(makeAcademy());
+      txLogRepo.incrementReceiptCounter.mockResolvedValue(1);
+      studentRepo.findById.mockResolvedValue(makeStudentEntity());
+
+      const pushService = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
+      const uc = new ApprovePaymentRequestUseCase(
+        userRepo,
+        academyRepo,
+        feeDueRepo,
+        prRepo,
+        txLogRepo,
+        studentRepo,
+        clock,
+        tx,
+        auditLogRepo,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pushService as any,
+      );
+
+      const result = await uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        requestId: 'pr-1',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(pushService.sendToUsers).not.toHaveBeenCalled();
+    });
   });
 });

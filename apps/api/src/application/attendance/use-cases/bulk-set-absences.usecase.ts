@@ -17,6 +17,7 @@ import {
 import { AttendanceErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { AbsenceNotificationSchedulerPort } from '../../notifications/ports/absence-notification-scheduler.port';
 import type { TransactionPort } from '../../common/transaction.port';
 import { randomUUID } from 'crypto';
 
@@ -45,6 +46,11 @@ export class BulkSetAbsencesUseCase {
     private readonly studentBatchRepo: StudentBatchRepository,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly transaction?: TransactionPort,
+    /**
+     * Optional for the same reason MarkStudentAttendance's is — keeps legacy
+     * fixtures working. Production wiring always passes one.
+     */
+    private readonly absenceScheduler?: AbsenceNotificationSchedulerPort,
   ) {}
 
   async execute(input: BulkSetAbsencesInput): Promise<Result<BulkSetAbsencesOutput, AppError>> {
@@ -178,6 +184,56 @@ export class BulkSetAbsencesUseCase {
         absentCount: String(uniqueAbsent.length),
       },
     });
+
+    // Compute scheduler work for parity with the per-tap path:
+    //   Schedule a push for every student in the absent list. The per-tap
+    //   mark-student-attendance always schedules on ABSENT regardless of
+    //   prior state — bulk-set must do the same so a coach hitting "Mark
+    //   All Absent" gets the same parent push behavior as tapping each kid
+    //   one by one. BullMQ jobId dedup makes re-scheduling already-pending
+    //   absences a cheap no-op.
+    //
+    //   Cancel a push for every student transitioning ABSENT → PRESENT
+    //   (had no PRESENT row before, has one now). Cancel is also called
+    //   for students who never had a pending notification (cheap Redis
+    //   no-op via getJob), but only for the diff set — not the full
+    //   roster — to keep the round-trip count bounded.
+    //
+    // Auto-fill fast-path: when the request marks no one absent AND there
+    // were no PRESENT rows before, nothing transitions and nothing was
+    // ever scheduled for these students. Skip the work entirely to avoid
+    // N redundant Redis lookups per fresh-roll-view.
+    const isFreshRollAutoFill = uniqueAbsent.length === 0 && currentPresent.length === 0;
+    if (this.absenceScheduler && !isFreshRollAutoFill) {
+      const newlyPresentIds: string[] = [];
+      for (const studentId of shouldBePresentIds) {
+        if (!currentPresentSet.has(studentId)) {
+          newlyPresentIds.push(studentId);
+        }
+      }
+      // allSettled (not all): a single scheduler failure must not abandon
+      // the rest of the work. Each call already throws on its own
+      // infrastructure errors and is logged inside the scheduler — we just
+      // make sure all of them get attempted.
+      await Promise.allSettled([
+        ...uniqueAbsent.map((studentId) =>
+          this.absenceScheduler!.schedule({
+            academyId,
+            studentId,
+            batchId: input.batchId,
+            date: input.date,
+          }),
+        ),
+        ...newlyPresentIds.map((studentId) =>
+          this.absenceScheduler!.cancel({
+            academyId,
+            studentId,
+            batchId: input.batchId,
+            date: input.date,
+          }),
+        ),
+      ]);
+    }
 
     return ok({
       batchId: input.batchId,

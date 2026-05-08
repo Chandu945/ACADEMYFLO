@@ -12,7 +12,10 @@ import {
 } from '../../infra/notification/firebase-messaging';
 import { pushTokenApi } from '../../infra/notification/push-token-api';
 import { registerPushTokenUseCase } from '../../application/notification/use-cases/register-push-token.usecase';
-import type { RemoteNotification, NotificationType } from '../../domain/notification/notification.types';
+import type {
+  RemoteNotification,
+  NotificationType,
+} from '../../domain/notification/notification.types';
 import type { UserRole } from '@academyflo/contracts';
 
 // Map notification type → top-level tab route name per role. The backend may
@@ -34,6 +37,41 @@ const ROUTE_BY_TYPE: Record<NotificationType, Partial<Record<UserRole, string>>>
     PARENT: 'Children',
     OWNER: 'Attendance',
     STAFF: 'Attendance',
+  },
+  // Sent by the backend's delayed absence-notification job. Routed to the
+  // parent's Children tab — the explicit Children list is the safe stack
+  // root from which the parent picks the relevant child to see today's
+  // attendance. Deep-linking to ChildDetail directly is intentionally not
+  // attempted (see SAFE_OVERRIDE_ROUTES rationale below).
+  STUDENT_ABSENCE: {
+    PARENT: 'Children',
+    OWNER: 'Attendance',
+    STAFF: 'Attendance',
+  },
+  // Fired when staff submits a payment request. Routed to the Fees tab,
+  // whose home screen renders the pending-approvals queue inline. PARENT
+  // doesn't receive this push (only owners can act on it), but the entry
+  // is required because Record<NotificationType, ...> demands every type.
+  PAYMENT_REQUEST_PENDING: {
+    OWNER: 'Fees',
+    STAFF: 'Fees',
+  },
+  // Fired when a new enquiry is created. Lands on the More tab; the team
+  // member taps "Enquiries" from the menu to see the lead at the top of
+  // the list. PARENT never receives this push.
+  ENQUIRY_NEW: {
+    OWNER: 'More',
+    STAFF: 'More',
+  },
+  // Owner approved a parent's manual payment. Parent lands on the Payments
+  // tab where the approved payment shows in the history with its receipt.
+  MANUAL_PAYMENT_APPROVED: {
+    PARENT: 'Payments',
+  },
+  // Owner rejected a parent's manual payment. Parent lands on Children to
+  // pick the kid and re-submit the payment with corrections.
+  MANUAL_PAYMENT_REJECTED: {
+    PARENT: 'Children',
   },
   ANNOUNCEMENT: {
     PARENT: 'More',
@@ -150,13 +188,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  const handleForegroundNotification = useCallback((notification: RemoteNotification) => {
-    // Show a non-blocking toast for foreground notifications
-    const text = notification.title
-      ? `${notification.title}${notification.body ? ` \u2014 ${notification.body}` : ''}`
-      : notification.body ?? 'New notification';
-    showToast(text, 'info');
-  }, [showToast]);
+  const handleForegroundNotification = useCallback(
+    (notification: RemoteNotification) => {
+      // Show a non-blocking toast for foreground notifications
+      const text = notification.title
+        ? `${notification.title}${notification.body ? ` \u2014 ${notification.body}` : ''}`
+        : (notification.body ?? 'New notification');
+      showToast(text, 'info');
+    },
+    [showToast],
+  );
 
   const handleNotificationTap = useCallback(
     (notification: RemoteNotification) => {
@@ -243,7 +284,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [registerToken]);
 
   return (
-    <NotificationContext.Provider value={useMemo(() => ({ requestPermission: doRequestPermission }), [doRequestPermission])}>
+    <NotificationContext.Provider
+      value={useMemo(() => ({ requestPermission: doRequestPermission }), [doRequestPermission])}
+    >
       {children}
     </NotificationContext.Provider>
   );

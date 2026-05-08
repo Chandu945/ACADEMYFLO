@@ -48,6 +48,8 @@ import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.por
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { AUDIT_LOG_REPOSITORY } from '@domain/audit/ports/audit-log.repository';
 import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repository';
+import { PUSH_NOTIFICATION_SERVICE } from '../device-tokens/device-tokens.module';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
 
 @Module({
   imports: [
@@ -80,7 +82,8 @@ import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repositor
         prr: PaymentRequestRepository,
         audit: AuditRecorderPort,
         clock: ClockPort,
-      ) => new CreatePaymentRequestUseCase(ur, sr, fdr, ar, prr, audit, clock),
+        push: PushNotificationService,
+      ) => new CreatePaymentRequestUseCase(ur, sr, fdr, ar, prr, audit, clock, push),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
@@ -89,6 +92,7 @@ import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repositor
         PAYMENT_REQUEST_REPOSITORY,
         AUDIT_RECORDER_PORT,
         CLOCK_PORT,
+        PUSH_NOTIFICATION_SERVICE,
       ],
     },
     {
@@ -99,15 +103,33 @@ import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repositor
     },
     {
       provide: 'EDIT_PAYMENT_REQUEST_USE_CASE',
-      useFactory: (ur: UserRepository, sr: StudentRepository, prr: PaymentRequestRepository, audit: AuditRecorderPort) =>
-        new EditPaymentRequestUseCase(ur, sr, prr, audit),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY, AUDIT_RECORDER_PORT],
+      useFactory: (
+        ur: UserRepository,
+        sr: StudentRepository,
+        prr: PaymentRequestRepository,
+        audit: AuditRecorderPort,
+      ) => new EditPaymentRequestUseCase(ur, sr, prr, audit),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        PAYMENT_REQUEST_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'CANCEL_PAYMENT_REQUEST_USE_CASE',
-      useFactory: (ur: UserRepository, sr: StudentRepository, prr: PaymentRequestRepository, audit: AuditRecorderPort) =>
-        new CancelPaymentRequestUseCase(ur, sr, prr, audit),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY, AUDIT_RECORDER_PORT],
+      useFactory: (
+        ur: UserRepository,
+        sr: StudentRepository,
+        prr: PaymentRequestRepository,
+        audit: AuditRecorderPort,
+      ) => new CancelPaymentRequestUseCase(ur, sr, prr, audit),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        PAYMENT_REQUEST_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'APPROVE_PAYMENT_REQUEST_USE_CASE',
@@ -121,7 +143,9 @@ import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repositor
         clock: ClockPort,
         tx: TransactionPort,
         auditLogRepo: AuditLogRepository,
-      ) => new ApprovePaymentRequestUseCase(ur, ar, fdr, prr, tlr, sr, clock, tx, auditLogRepo),
+        push: PushNotificationService,
+      ) =>
+        new ApprovePaymentRequestUseCase(ur, ar, fdr, prr, tlr, sr, clock, tx, auditLogRepo, push),
       inject: [
         USER_REPOSITORY,
         ACADEMY_REPOSITORY,
@@ -132,6 +156,7 @@ import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repositor
         CLOCK_PORT,
         TRANSACTION_PORT,
         AUDIT_LOG_REPOSITORY,
+        PUSH_NOTIFICATION_SERVICE,
       ],
     },
     {
@@ -144,8 +169,18 @@ import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repositor
         clock: ClockPort,
         audit: AuditRecorderPort,
         tx: TransactionPort,
-      ) => new RejectPaymentRequestUseCase(ur, sr, prr, fdr, clock, audit, tx),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PAYMENT_REQUEST_REPOSITORY, FEE_DUE_REPOSITORY, CLOCK_PORT, AUDIT_RECORDER_PORT, TRANSACTION_PORT],
+        push: PushNotificationService,
+      ) => new RejectPaymentRequestUseCase(ur, sr, prr, fdr, clock, audit, tx, push),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        PAYMENT_REQUEST_REPOSITORY,
+        FEE_DUE_REPOSITORY,
+        CLOCK_PORT,
+        AUDIT_RECORDER_PORT,
+        TRANSACTION_PORT,
+        PUSH_NOTIFICATION_SERVICE,
+      ],
     },
     {
       provide: 'LIST_TRANSACTION_LOGS_USE_CASE',

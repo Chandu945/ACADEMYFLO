@@ -18,6 +18,7 @@ import {
 import { AttendanceErrors } from '../../common/errors';
 import type { StudentAttendanceStatus, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { AbsenceNotificationSchedulerPort } from '../../notifications/ports/absence-notification-scheduler.port';
 import { randomUUID } from 'crypto';
 
 export interface MarkStudentAttendanceInput {
@@ -45,6 +46,12 @@ export class MarkStudentAttendanceUseCase {
     private readonly batchRepo: BatchRepository,
     private readonly studentBatchRepo: StudentBatchRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    /**
+     * Optional so legacy test fixtures and any non-DI callers don't break.
+     * Production wiring always provides one; absence is treated as "no
+     * notifications" — equivalent to running without Redis.
+     */
+    private readonly absenceScheduler?: AbsenceNotificationSchedulerPort,
   ) {}
 
   async execute(
@@ -150,6 +157,28 @@ export class MarkStudentAttendanceUseCase {
         status: input.status,
       },
     });
+
+    // Schedule (or cancel) the parent push. Best-effort — a scheduling outage
+    // must NEVER fail the attendance write, since attendance is canonical and
+    // notifications are advisory.
+    if (this.absenceScheduler) {
+      const mark = {
+        academyId: actor.academyId,
+        studentId: input.studentId,
+        batchId: input.batchId,
+        date: input.date,
+      };
+      try {
+        if (input.status === 'ABSENT') {
+          await this.absenceScheduler.schedule(mark);
+        } else {
+          await this.absenceScheduler.cancel(mark);
+        }
+      } catch {
+        // Swallow — the scheduler logs internally. Returning ok is the
+        // correct outcome: the coach's tap was honored in storage.
+      }
+    }
 
     return ok({
       studentId: input.studentId,

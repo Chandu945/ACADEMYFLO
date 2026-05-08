@@ -5,6 +5,7 @@ import type { StudentAttendanceRepository } from '@domain/attendance/ports/stude
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { AbsenceNotificationSchedulerPort } from '../../notifications/ports/absence-notification-scheduler.port';
 import { User } from '@domain/identity/entities/user.entity';
 import { Student } from '@domain/student/entities/student.entity';
 import { Holiday } from '@domain/attendance/entities/holiday.entity';
@@ -145,7 +146,10 @@ function buildDeps() {
   };
 }
 
-function makeUseCase(deps: ReturnType<typeof buildDeps>): MarkStudentAttendanceUseCase {
+function makeUseCase(
+  deps: ReturnType<typeof buildDeps>,
+  scheduler?: AbsenceNotificationSchedulerPort,
+): MarkStudentAttendanceUseCase {
   return new MarkStudentAttendanceUseCase(
     deps.userRepo,
     deps.studentRepo,
@@ -154,6 +158,7 @@ function makeUseCase(deps: ReturnType<typeof buildDeps>): MarkStudentAttendanceU
     deps.batchRepo,
     deps.studentBatchRepo,
     deps.auditRecorder,
+    scheduler,
   );
 }
 
@@ -390,5 +395,91 @@ describe('MarkStudentAttendanceUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('VALIDATION');
     }
+  });
+
+  describe('absence-notification scheduling', () => {
+    function makeScheduler(): jest.Mocked<AbsenceNotificationSchedulerPort> {
+      return { schedule: jest.fn(), cancel: jest.fn() };
+    }
+
+    it('calls scheduler.schedule with the correct mark when ABSENT', async () => {
+      const today = todayLocalDate();
+      const deps = buildDeps();
+      const scheduler = makeScheduler();
+      deps.userRepo.findById.mockResolvedValue(createOwner());
+      deps.studentRepo.findById.mockResolvedValue(createStudent());
+      deps.holidayRepo.findByAcademyAndDate.mockResolvedValue(null);
+
+      const uc = makeUseCase(deps, scheduler);
+      const result = await uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: today,
+        status: 'ABSENT',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(scheduler.schedule).toHaveBeenCalledWith({
+        academyId: 'academy-1',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: today,
+      });
+      expect(scheduler.cancel).not.toHaveBeenCalled();
+    });
+
+    it('calls scheduler.cancel with the correct mark when PRESENT', async () => {
+      const today = todayLocalDate();
+      const deps = buildDeps();
+      const scheduler = makeScheduler();
+      deps.userRepo.findById.mockResolvedValue(createOwner());
+      deps.studentRepo.findById.mockResolvedValue(createStudent());
+      deps.holidayRepo.findByAcademyAndDate.mockResolvedValue(null);
+      deps.attendanceRepo.findByAcademyStudentBatchDate.mockResolvedValue(null);
+
+      const uc = makeUseCase(deps, scheduler);
+      const result = await uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: today,
+        status: 'PRESENT',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(scheduler.cancel).toHaveBeenCalledWith({
+        academyId: 'academy-1',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: today,
+      });
+      expect(scheduler.schedule).not.toHaveBeenCalled();
+    });
+
+    it('returns ok even if the scheduler throws — attendance write must not fail', async () => {
+      const today = todayLocalDate();
+      const deps = buildDeps();
+      const scheduler = makeScheduler();
+      scheduler.schedule.mockRejectedValue(new Error('Redis connection refused'));
+      deps.userRepo.findById.mockResolvedValue(createOwner());
+      deps.studentRepo.findById.mockResolvedValue(createStudent());
+      deps.holidayRepo.findByAcademyAndDate.mockResolvedValue(null);
+
+      const uc = makeUseCase(deps, scheduler);
+      const result = await uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: today,
+        status: 'ABSENT',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(deps.attendanceRepo.deleteByAcademyStudentBatchDate).toHaveBeenCalled();
+    });
   });
 });

@@ -16,6 +16,8 @@ import type { PaymentRequestDto } from '../dtos/payment-request.dto';
 import { toPaymentRequestDto } from '../dtos/payment-request.dto';
 import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { PushNotificationService } from '../../notifications/push-notification.service';
+import { buildManualPaymentRejectedPush } from '../../notifications/templates/manual-payment-result-templates';
 
 export interface RejectPaymentRequestInput {
   actorUserId: string;
@@ -33,6 +35,11 @@ export class RejectPaymentRequestUseCase {
     private readonly clock: ClockPort,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly transaction: TransactionPort,
+    /**
+     * Optional so legacy fixtures keep working. Production wiring always
+     * passes the push service. Push failures never roll back the rejection.
+     */
+    private readonly pushService?: PushNotificationService,
   ) {}
 
   async execute(input: RejectPaymentRequestInput): Promise<Result<PaymentRequestDto, AppError>> {
@@ -95,10 +102,31 @@ export class RejectPaymentRequestUseCase {
       this.studentRepo.findById(rejected.studentId),
     ]);
 
-    return ok(toPaymentRequestDto(rejected, {
-      staffName: staffUser?.fullName,
-      studentName: student?.fullName,
-      reviewedByName: user.fullName,
-    }));
+    // Notify the parent only when this rejection is for a parent-submitted
+    // manual payment. Staff-submitted requests don't need a push to the
+    // staff who created them — staff see the result in the in-app queue.
+    if (this.pushService && rejected.source === 'PARENT' && student) {
+      try {
+        const message = buildManualPaymentRejectedPush({
+          studentName: student.fullName,
+          monthKey: rejected.monthKey,
+          academyId: rejected.academyId,
+          paymentRequestId: rejected.id.toString(),
+          studentId: rejected.studentId,
+        });
+        // staffUserId stores the parent's userId for PARENT-source requests.
+        await this.pushService.sendToUsers([rejected.staffUserId], message);
+      } catch {
+        // Swallow — rejection is already recorded.
+      }
+    }
+
+    return ok(
+      toPaymentRequestDto(rejected, {
+        staffName: staffUser?.fullName,
+        studentName: student?.fullName,
+        reviewedByName: user.fullName,
+      }),
+    );
   }
 }

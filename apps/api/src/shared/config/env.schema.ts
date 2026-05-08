@@ -41,13 +41,20 @@ export const envSchema = z
       .default('false')
       .transform((v) => v === 'true'),
 
+    // Absence push notifications: delay in ms between an ABSENT mark and the
+    // push to the parent. Default 1 hour gives the coach a generous window to
+    // correct mistakes before the parent is paged.
+    ABSENCE_NOTIFY_DELAY_MS: z.coerce.number().int().min(0).default(3_600_000),
+
     // Performance
     INDEX_ASSERTION_ENABLED: z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(200),
-    MONGODB_READ_PREFERENCE: z.enum(['primary', 'primaryPreferred', 'secondary', 'secondaryPreferred', 'nearest']).default('secondaryPreferred'),
+    MONGODB_READ_PREFERENCE: z
+      .enum(['primary', 'primaryPreferred', 'secondary', 'secondaryPreferred', 'nearest'])
+      .default('secondaryPreferred'),
 
     // Swagger
     SWAGGER_ENABLED: z
@@ -101,7 +108,11 @@ export const envSchema = z
     MIN_APP_VERSION_IOS: z.string().default('1.0.0'),
 
     // CORS
-    CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3002,http://localhost:3003,http://localhost:8081'),
+    CORS_ALLOWED_ORIGINS: z
+      .string()
+      .default(
+        'http://localhost:3000,http://localhost:3002,http://localhost:3003,http://localhost:8081',
+      ),
 
     // Redis Cache
     REDIS_URL: z.string().url().optional(),
@@ -179,7 +190,9 @@ export const envSchema = z
     // CORS_ALLOWED_ORIGINS has a dev-localhost default that must never ship
     // to prod/staging — a missed env var would otherwise silently accept
     // any request forging a localhost Origin header.
-    if (val.CORS_ALLOWED_ORIGINS.split(',').some((o) => o.trim().toLowerCase().includes('localhost'))) {
+    if (
+      val.CORS_ALLOWED_ORIGINS.split(',').some((o) => o.trim().toLowerCase().includes('localhost'))
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['CORS_ALLOWED_ORIGINS'],

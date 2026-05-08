@@ -105,6 +105,10 @@ export class AppConfigService {
     return this.config.SUBSCRIPTION_TIER_CRON_ENABLED;
   }
 
+  get absenceNotifyDelayMs(): number {
+    return this.config.ABSENCE_NOTIFY_DELAY_MS;
+  }
+
   get indexAssertionEnabled(): boolean {
     return this.config.INDEX_ASSERTION_ENABLED;
   }
