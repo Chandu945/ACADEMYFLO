@@ -1,8 +1,13 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useCallback } from 'react';
+import { StackActions } from '@react-navigation/native';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
-import { navigateFromOutside } from '../navigation/navigation-ref';
-import { setPendingDeepLink, type DeepLinkTarget } from '../navigation/pending-deep-link';
+import { navigateFromOutside, dispatchFromOutside } from '../navigation/navigation-ref';
+import {
+  setPendingDeepLink,
+  consumePendingDeepLink,
+  type DeepLinkTarget,
+} from '../navigation/pending-deep-link';
 import {
   requestNotificationPermission,
   getFcmToken,
@@ -279,12 +284,31 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const handleNotificationTap = useCallback(
     (notification: RemoteNotification) => {
       // Phase B: prefer deep-link routing when a (type, role) pair has a
-      // staged target. The chain is consumed by the relevant stack-root
-      // screen on focus — see pending-deep-link.ts for the contract.
+      // staged target. The chain is normally consumed by the relevant
+      // stack-root screen on focus — see pending-deep-link.ts for the
+      // contract.
       const deep = resolveDeepLinkTarget(notification, user?.role);
       if (deep) {
         setPendingDeepLink(deep.target);
         navigateFromOutside(deep.tab);
+
+        // "Already on target tab" fallback. If the user was already on
+        // the tab we just navigated to, focus didn't change → the
+        // useFocusEffect consumer in ChildrenListScreen / MoreScreen
+        // never re-runs → the staged chain would sit forever. Schedule
+        // a tick-later dispatch: if the focus consumer ran first (cold
+        // start, different tab), pending is already null and this is a
+        // no-op; otherwise we dispatch the chain directly so the deep
+        // link still works.
+        const stack = deep.target.stack;
+        setTimeout(() => {
+          const stillPending = consumePendingDeepLink(stack);
+          if (!stillPending) return;
+          for (const step of stillPending.chain) {
+            dispatchFromOutside(StackActions.push(step.screen, step.params));
+          }
+        }, 50);
+
         return;
       }
       const target = resolveNotificationRoute(notification, user?.role);

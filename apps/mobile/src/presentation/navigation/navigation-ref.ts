@@ -1,4 +1,8 @@
-import { createNavigationContainerRef, CommonActions } from '@react-navigation/native';
+import {
+  createNavigationContainerRef,
+  CommonActions,
+  type NavigationAction,
+} from '@react-navigation/native';
 
 /**
  * Global navigation ref. Attach it to the root <NavigationContainer ref={...} />
@@ -23,4 +27,19 @@ export const navigationRef = createNavigationContainerRef<any>();
 export function navigateFromOutside(name: string, params?: Record<string, any>) {
   if (!navigationRef.isReady()) return;
   navigationRef.dispatch(CommonActions.navigate({ name, params }));
+}
+
+/**
+ * Dispatch an arbitrary navigation action from outside the React tree.
+ * Used by NotificationContext for the "already-on-target-tab" fallback:
+ * when `navigateFromOutside(tab)` is a no-op (focus didn't change),
+ * the useFocusEffect deep-link consumer doesn't fire, so we dispatch
+ * the chain directly here.
+ *
+ * Silently drops if the navigator hasn't mounted yet — same contract
+ * as `navigateFromOutside`.
+ */
+export function dispatchFromOutside(action: NavigationAction) {
+  if (!navigationRef.isReady()) return;
+  navigationRef.dispatch(action);
 }
