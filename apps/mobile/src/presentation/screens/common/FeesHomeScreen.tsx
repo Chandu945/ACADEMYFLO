@@ -8,7 +8,8 @@ import {
   StyleSheet,
   Keyboard,
   Modal,
-  Platform} from 'react-native';
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,6 +18,8 @@ import type { FeesStackParamList } from '../../navigation/FeesStack';
 import { useAuth } from '../../context/AuthContext';
 import { useFees } from '../../../application/fees/use-fees';
 import { listUnpaidDues, listPaidDues } from '../../../infra/fees/fees-api';
+import { listPaymentRequestsUseCase } from '../../../application/fees/use-cases/list-payment-requests.usecase';
+import { listPaymentRequests } from '../../../infra/fees/payment-requests-api';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { MonthPickerRow } from '../../components/fees/MonthPickerRow';
 import { getBatchesCached } from '../../../infra/batch/batch-cache';
@@ -38,6 +41,7 @@ import { getCurrentMonthIST } from '../../../domain/common/date-utils';
 type Nav = NativeStackNavigationProp<FeesStackParamList, 'FeesHome'>;
 
 const feesApiRef = { listUnpaidDues, listPaidDues };
+const paymentRequestsApiRef = { listPaymentRequests };
 
 function addMonths(monthStr: string, delta: number): string {
   const [y, m] = monthStr.split('-').map(Number) as [number, number];
@@ -114,8 +118,17 @@ export function FeesHomeScreen() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const {
-    unpaidItems, paidItems, loading, error, month, setMonth, refetch,
-    unpaidTotal, hasMoreUnpaid, loadingMoreUnpaid, fetchMoreUnpaid,
+    unpaidItems,
+    paidItems,
+    loading,
+    error,
+    month,
+    setMonth,
+    refetch,
+    unpaidTotal,
+    hasMoreUnpaid,
+    loadingMoreUnpaid,
+    fetchMoreUnpaid,
   } = useFees(feesApiRef, debouncedSearch);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
@@ -161,7 +174,9 @@ export function FeesHomeScreen() {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Refresh fees each time screen gains focus
@@ -213,7 +228,9 @@ export function FeesHomeScreen() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedBatchId]);
 
   // Search is now server-side (see useFees → listUnpaid/PaidDuesUseCase).
@@ -293,14 +310,61 @@ export function FeesHomeScreen() {
     setDebouncedSearch('');
   }, []);
 
-  // Clear search/filters when switching to Approvals/My Requests
-  const handleSegmentChange = useCallback((index: number) => {
-    setSelectedSegment(index);
-    if (index === 2) {
-      if (searchActive) closeSearch();
-      clearAllFilters();
+  // ── Pending-approvals badge count (owner only) ──────────────────────
+  // Lifted out of PendingApprovalsScreen so the Approvals tab label can
+  // surface "needs your action" affordance regardless of which sub-tab
+  // is currently active. Refetched on focus, on tab change, and after
+  // the owner approves/rejects a request (via onActionComplete).
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number | undefined>(undefined);
+  const loadPendingApprovalsCount = useCallback(async () => {
+    if (!isOwner) return;
+    try {
+      const result = await listPaymentRequestsUseCase(
+        { paymentRequestsApi: paymentRequestsApiRef },
+        'PENDING',
+      );
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setPendingApprovalsCount(result.value.items.length);
+      }
+      // On error: leave the previous count in place. Stale is better than
+      // flicker — the next refetch will correct.
+    } catch (e) {
+      if (__DEV__) console.error('[FeesHomeScreen] pending count load failed:', e);
     }
-  }, [searchActive, closeSearch, clearAllFilters]);
+  }, [isOwner]);
+
+  // Clear search/filters when switching to Approvals/My Requests
+  const handleSegmentChange = useCallback(
+    (index: number) => {
+      setSelectedSegment(index);
+      if (index === 2) {
+        if (searchActive) closeSearch();
+        clearAllFilters();
+      }
+      // Refresh the count when the user moves between tabs — covers the
+      // case where another device approved a request while this one was
+      // sitting on Unpaid.
+      loadPendingApprovalsCount();
+    },
+    [searchActive, closeSearch, clearAllFilters, loadPendingApprovalsCount],
+  );
+
+  // Refetch on focus so the badge reflects activity since the user last
+  // visited the Fees tab from elsewhere in the app.
+  useFocusEffect(
+    useCallback(() => {
+      loadPendingApprovalsCount();
+    }, [loadPendingApprovalsCount]),
+  );
+
+  // After the owner approves or rejects a request, the in-place
+  // PendingApprovalsScreen calls back via onActionComplete; we use that
+  // to also drop the count immediately so the badge stays in sync.
+  const handleApprovalActionComplete = useCallback(() => {
+    refetch();
+    loadPendingApprovalsCount();
+  }, [refetch, loadPendingApprovalsCount]);
 
   const showSearchAndFilters = selectedSegment !== 2;
 
@@ -350,7 +414,13 @@ export function FeesHomeScreen() {
             </View>
             {showSearchAndFilters && (
               <View style={styles.navActions}>
-                <TouchableOpacity onPress={openSearch} style={styles.navBtn} testID="search-button" accessibilityLabel="Search students" accessibilityRole="button">
+                <TouchableOpacity
+                  onPress={openSearch}
+                  style={styles.navBtn}
+                  testID="search-button"
+                  accessibilityLabel="Search students"
+                  accessibilityRole="button"
+                >
                   <AppIcon name="magnify" size={22} color={colors.text} />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -384,7 +454,9 @@ export function FeesHomeScreen() {
       </View>
 
       {/* ── Active Filter Pills (visible when panel closed) ── */}
-      {!showFilters && showSearchAndFilters && <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />}
+      {!showFilters && showSearchAndFilters && (
+        <ActiveFilterBar filters={activeFilters} onClearAll={clearAllFilters} />
+      )}
 
       {/* ── Filter Modal (centered dialog) ────────────── */}
       {(() => {
@@ -409,9 +481,7 @@ export function FeesHomeScreen() {
                 </View>
                 <View style={styles.filterModalTitleWrap}>
                   <Text style={styles.filterModalTitle}>Filter Fees</Text>
-                  <Text style={styles.filterModalSubtitle}>
-                    Pick a batch to narrow the results
-                  </Text>
+                  <Text style={styles.filterModalSubtitle}>Pick a batch to narrow the results</Text>
                 </View>
                 {selectedBatchId !== null && (
                   <TouchableOpacity
@@ -525,6 +595,10 @@ export function FeesHomeScreen() {
           selectedIndex={selectedSegment}
           onSelect={handleSegmentChange}
           testID="fees-segments"
+          // Only the owner sees the Approvals badge. Staff segment 2 is
+          // "My Requests" (their own submissions); the count is less of a
+          // call-to-action there and is left blank for now.
+          badges={isOwner ? [undefined, undefined, pendingApprovalsCount] : undefined}
         />
       </View>
 
@@ -556,7 +630,7 @@ export function FeesHomeScreen() {
       )}
       {selectedSegment === 2 &&
         (isOwner ? (
-          <PendingApprovalsScreen onActionComplete={refetch} />
+          <PendingApprovalsScreen onActionComplete={handleApprovalActionComplete} />
         ) : (
           <MyPaymentRequestsScreen />
         ))}
@@ -564,216 +638,219 @@ export function FeesHomeScreen() {
   );
 }
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
+const makeStyles = (colors: Colors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
 
-  /* ── Navbar ─────────────────────────────────────── */
-  navbar: {
-    backgroundColor: colors.bg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    paddingHorizontal: spacing.base,
-  },
-  titleBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 44,
-  },
-  navTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-  },
-  navSubtitle: {
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  navActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  navBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navBtnActive: {
-    backgroundColor: colors.bgSubtle,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: fontSizes.base,
-    color: colors.text,
-    paddingVertical: 8,
-    marginLeft: spacing.xs,
-  },
+    /* ── Navbar ─────────────────────────────────────── */
+    navbar: {
+      backgroundColor: colors.bg,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.sm,
+      paddingHorizontal: spacing.base,
+    },
+    titleBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 44,
+    },
+    navTitle: {
+      fontSize: fontSizes.lg,
+      fontWeight: fontWeights.bold,
+      color: colors.text,
+    },
+    navSubtitle: {
+      fontSize: fontSizes.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    navActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    navBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navBtnActive: {
+      backgroundColor: colors.bgSubtle,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 44,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: fontSizes.base,
+      color: colors.text,
+      paddingVertical: 8,
+      marginLeft: spacing.xs,
+    },
 
-  filterBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    overflow: 'hidden',
-    borderRadius: radius.full,
-    width: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBadgeText: {
-    fontSize: 9,
-    fontWeight: fontWeights.bold,
-    color: colors.white,
-  },
+    filterBadge: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      overflow: 'hidden',
+      borderRadius: radius.full,
+      width: 16,
+      height: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterBadgeText: {
+      fontSize: 9,
+      fontWeight: fontWeights.bold,
+      color: colors.white,
+    },
 
-  /* ── Filter Modal ──────────────────────────────── */
-  filterModalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.lg,
-    ...(Platform.OS === 'web' ? { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 } : {}),
-  },
-  filterModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  filterModalSheet: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl + 4,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
-    width: '100%',
-    maxWidth: 420,
-    maxHeight: '85%',
-  },
-  filterModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  filterModalIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterModalTitleWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  filterModalTitle: {
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.bold,
-    color: colors.text,
-    letterSpacing: -0.2,
-  },
-  filterModalSubtitle: {
-    marginTop: 2,
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-  },
-  filterModalClear: {
-    fontSize: fontSizes.sm,
-    fontWeight: fontWeights.bold,
-    color: colors.danger,
-  },
-  filterDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
-  },
-  filterSectionLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: spacing.sm,
-  },
-  filterCardTitle: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.bold,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  filterChipsScroll: {
-    maxHeight: 280,
-    flexGrow: 0,
-  },
-  filterChipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs + 2,
-    paddingBottom: spacing.sm,
-  },
-  batchChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 7,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bg,
-    overflow: 'hidden',
-  },
-  batchChipActive: {
-    borderColor: 'transparent',
-  },
-  batchChipText: {
-    fontSize: 12,
-    fontWeight: fontWeights.semibold,
-    letterSpacing: 0.2,
-  },
-  batchChipTextActive: {
-    color: '#FFFFFF',
-  },
-  filterApplyBtn: {
-    overflow: 'hidden',
-    borderRadius: radius.full,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.lg,
-  },
-  filterApplyText: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.bold,
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
+    /* ── Filter Modal ──────────────────────────────── */
+    filterModalOverlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.lg,
+      ...(Platform.OS === 'web'
+        ? { position: 'fixed' as any, top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }
+        : {}),
+    },
+    filterModalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+    },
+    filterModalSheet: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl + 4,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.lg,
+      width: '100%',
+      maxWidth: 420,
+      maxHeight: '85%',
+    },
+    filterModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    filterModalIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterModalTitleWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    filterModalTitle: {
+      fontSize: fontSizes.lg,
+      fontWeight: fontWeights.bold,
+      color: colors.text,
+      letterSpacing: -0.2,
+    },
+    filterModalSubtitle: {
+      marginTop: 2,
+      fontSize: fontSizes.xs,
+      color: colors.textSecondary,
+    },
+    filterModalClear: {
+      fontSize: fontSizes.sm,
+      fontWeight: fontWeights.bold,
+      color: colors.danger,
+    },
+    filterDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: spacing.md,
+    },
+    filterSectionLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: spacing.sm,
+    },
+    filterCardTitle: {
+      fontSize: fontSizes.xs,
+      fontWeight: fontWeights.bold,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    filterChipsScroll: {
+      maxHeight: 280,
+      flexGrow: 0,
+    },
+    filterChipsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs + 2,
+      paddingBottom: spacing.sm,
+    },
+    batchChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: 7,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.bg,
+      overflow: 'hidden',
+    },
+    batchChipActive: {
+      borderColor: 'transparent',
+    },
+    batchChipText: {
+      fontSize: 12,
+      fontWeight: fontWeights.semibold,
+      letterSpacing: 0.2,
+    },
+    batchChipTextActive: {
+      color: '#FFFFFF',
+    },
+    filterApplyBtn: {
+      overflow: 'hidden',
+      borderRadius: radius.full,
+      height: 50,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: spacing.lg,
+    },
+    filterApplyText: {
+      fontSize: fontSizes.md,
+      fontWeight: fontWeights.bold,
+      color: '#FFFFFF',
+      letterSpacing: 0.3,
+    },
 
-  /* ── Controls ──────────────────────────────────── */
-  controlsSection: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.sm,
-  },
-  allPendingCaption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm + 2,
-  },
-  allPendingCaptionText: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-    fontWeight: fontWeights.medium,
-  },
-});
+    /* ── Controls ──────────────────────────────────── */
+    controlsSection: {
+      paddingHorizontal: spacing.base,
+      paddingTop: spacing.sm,
+    },
+    allPendingCaption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.sm + 2,
+    },
+    allPendingCaptionText: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+      fontWeight: fontWeights.medium,
+    },
+  });
