@@ -19,7 +19,11 @@ export const staffListItemSchema = z.object({
   status: z.enum(['ACTIVE', 'INACTIVE']),
   academyId: z.string(),
   startDate: z.string().nullable().optional().default(null),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).nullable().optional().default(null),
+  // Backend staff DTOs (create/update) constrain gender to ['MALE', 'FEMALE'] —
+  // unlike student/enquiry which use the full GENDERS contract (incl. OTHER).
+  // Mobile picker for staff matches that narrower set, so the schema stays in
+  // sync; OTHER intentionally omitted to mirror backend.
+  gender: z.enum(['MALE', 'FEMALE']).nullable().optional().default(null),
   whatsappNumber: z.string().nullable().optional().default(null),
   mobileNumber: z.string().nullable().optional().default(null),
   address: z.string().nullable().optional().default(null),

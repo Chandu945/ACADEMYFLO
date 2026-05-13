@@ -4,7 +4,7 @@ import type { AppError } from '@shared/kernel';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EnquiryRepository } from '@domain/enquiry/ports/enquiry.repository';
-import type { EnquirySource } from '@domain/enquiry/entities/enquiry.entity';
+import type { Enquiry, EnquirySource } from '@domain/enquiry/entities/enquiry.entity';
 import { EnquiryErrors } from '../../common/errors';
 import { toEnquiryDetail } from './get-enquiry-detail.usecase';
 import type { EnquiryDetailOutput } from './get-enquiry-detail.usecase';
@@ -60,6 +60,24 @@ export class UpdateEnquiryUseCase {
       return err(AppErrorClass.validation('Mobile number must be 10-15 digits'));
     }
 
+    // M4 fix: when mobile changes, re-check uniqueness against other active
+    // enquiries in the academy. Prior code only ran the soft-warning on
+    // create — so an owner could update enquiry A's mobile to match
+    // enquiry B's, leaving two ACTIVE enquiries for the same prospect.
+    // We surface a hard conflict rather than a soft warning here because
+    // the user explicitly edited the field.
+    if (input.mobileNumber !== undefined && input.mobileNumber !== enquiry.mobileNumber) {
+      const collision = await this.enquiryRepo.findActiveByMobileAndAcademy(
+        actor.academyId,
+        input.mobileNumber,
+      );
+      if (collision && collision.id.toString() !== enquiry.id.toString()) {
+        return err(
+          AppErrorClass.conflict('Another active enquiry already exists with this mobile number'),
+        );
+      }
+    }
+
     const loadedVersion = enquiry.audit.version;
     const updated = enquiry.update({
       prospectName: input.prospectName,
@@ -71,10 +89,27 @@ export class UpdateEnquiryUseCase {
       interestedIn: input.interestedIn,
       source: input.source,
       notes: input.notes,
-      nextFollowUpDate: input.nextFollowUpDate !== undefined
-        ? (input.nextFollowUpDate ? new Date(input.nextFollowUpDate) : null)
-        : undefined,
+      nextFollowUpDate:
+        input.nextFollowUpDate !== undefined
+          ? input.nextFollowUpDate
+            ? new Date(input.nextFollowUpDate)
+            : null
+          : undefined,
     });
+
+    // M2 fix: compute the diff between the original enquiry and the merged
+    // update so the audit log records WHICH fields changed (not just
+    // "something changed"). Matches the pattern shipped for update-student
+    // (M1) and update-event (M1) so audit trails stay consistent across
+    // entities.
+    const changedFields = diffChangedEnquiryFields(enquiry, updated);
+
+    // M3 fix: no-op skip. If nothing actually changed (caller submitted the
+    // same values, or only sent undefined fields), don't save and don't
+    // audit. Avoids version-history churn and empty-update audit entries.
+    if (changedFields.length === 0) {
+      return ok(toEnquiryDetail(enquiry));
+    }
 
     const saved = await this.enquiryRepo.saveWithVersionPrecondition(updated, loadedVersion);
     if (!saved) return err(EnquiryErrors.concurrencyConflict());
@@ -86,11 +121,36 @@ export class UpdateEnquiryUseCase {
       entityType: 'ENQUIRY',
       entityId: input.enquiryId,
       context: {
-        ...(input.prospectName !== undefined ? { prospectName: input.prospectName } : {}),
-        ...(input.mobileNumber !== undefined ? { mobileNumber: input.mobileNumber } : {}),
+        prospectName: enquiry.prospectName,
+        changedFields: changedFields.join(','),
       },
     });
 
     return ok(toEnquiryDetail(updated));
   }
+}
+
+/**
+ * M2 helper: returns the list of fields that differ between the original
+ * enquiry and the merged update. Nullable fields are normalised to null
+ * before comparison so undefined vs null doesn't falsely register as a
+ * change. Dates compared by getTime; followUps not compared (this use case
+ * doesn't touch them).
+ */
+function diffChangedEnquiryFields(oldE: Enquiry, newE: Enquiry): string[] {
+  const changed: string[] = [];
+  if (oldE.prospectName !== newE.prospectName) changed.push('prospectName');
+  if ((oldE.guardianName ?? null) !== (newE.guardianName ?? null)) changed.push('guardianName');
+  if (oldE.mobileNumber !== newE.mobileNumber) changed.push('mobileNumber');
+  if ((oldE.whatsappNumber ?? null) !== (newE.whatsappNumber ?? null))
+    changed.push('whatsappNumber');
+  if ((oldE.email ?? null) !== (newE.email ?? null)) changed.push('email');
+  if ((oldE.address ?? null) !== (newE.address ?? null)) changed.push('address');
+  if ((oldE.interestedIn ?? null) !== (newE.interestedIn ?? null)) changed.push('interestedIn');
+  if ((oldE.source ?? null) !== (newE.source ?? null)) changed.push('source');
+  if ((oldE.notes ?? null) !== (newE.notes ?? null)) changed.push('notes');
+  const oldFu = oldE.nextFollowUpDate?.getTime() ?? null;
+  const newFu = newE.nextFollowUpDate?.getTime() ?? null;
+  if (oldFu !== newFu) changed.push('nextFollowUpDate');
+  return changed;
 }

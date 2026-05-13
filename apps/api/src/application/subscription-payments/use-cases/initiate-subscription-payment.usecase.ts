@@ -87,7 +87,9 @@ export class InitiateSubscriptionPaymentUseCase {
           tierKey: existingPending.tierKey,
           // We didn't persist the original expiry — surface an ISO string that
           // reflects the known window so the client can time its polling.
-          expiresAt: new Date(existingPending.audit.createdAt.getTime() + RESUME_WINDOW_MS).toISOString(),
+          expiresAt: new Date(
+            existingPending.audit.createdAt.getTime() + RESUME_WINDOW_MS,
+          ).toISOString(),
         });
       }
 
@@ -171,9 +173,18 @@ export class InitiateSubscriptionPaymentUseCase {
         orderId,
         error: error instanceof Error ? error.message : 'Unknown',
       });
+      // M1 fix (subscription audit): CAS. A concurrent webhook (unlikely on
+      // this path since createOrder hasn't returned yet, but a retried
+      // request that succeeded on the gateway side might race) could have
+      // already transitioned this payment out of PENDING. Don't clobber.
       const failed = payment.markFailed('CASHFREE_CREATE_ORDER_FAILED');
-      await this.paymentRepo.save(failed);
-      return err(new AppError('PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is temporarily unavailable. Please try again.'));
+      await this.paymentRepo.saveWithStatusPrecondition(failed, 'PENDING');
+      return err(
+        new AppError(
+          'PAYMENT_PROVIDER_UNAVAILABLE',
+          'Payment provider is temporarily unavailable. Please try again.',
+        ),
+      );
     }
 
     // Validate Cashfree response
@@ -184,9 +195,16 @@ export class InitiateSubscriptionPaymentUseCase {
         hasCfOrderId: !!cfResult.cfOrderId,
         hasPaymentSessionId: !!cfResult.paymentSessionId,
       });
+      // M1 fix (subscription audit): CAS same as the createOrder-failure
+      // branch above.
       const failed = payment.markFailed('CASHFREE_INVALID_RESPONSE');
-      await this.paymentRepo.save(failed);
-      return err(new AppError('PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider returned an invalid response. Please try again.'));
+      await this.paymentRepo.saveWithStatusPrecondition(failed, 'PENDING');
+      return err(
+        new AppError(
+          'PAYMENT_PROVIDER_UNAVAILABLE',
+          'Payment provider returned an invalid response. Please try again.',
+        ),
+      );
     }
 
     // Update payment with Cashfree details

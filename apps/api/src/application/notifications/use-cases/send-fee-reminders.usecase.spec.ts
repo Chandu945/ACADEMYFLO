@@ -124,11 +124,15 @@ describe('SendFeeRemindersUseCase', () => {
     }
   });
 
-  it('should send to student email when present', async () => {
+  it('M2: prefers guardian email over student email when BOTH are set', async () => {
+    // Pre-fix code preferred `student.email` (often a minor's school
+    // account, or empty) over `guardian.email` (the financially-
+    // responsible adult). Fee reminders are about money → audience is
+    // the parent. M2 swapped the precedence.
     const academy = createAcademy();
     await academyRepo.save(academy);
     await subscriptionRepo.save(createSubscription('academy-1'));
-    const student = createStudent('s1', 'academy-1', 'student@test.com');
+    const student = createStudent('s1', 'academy-1', 'student@test.com', 'guardian@test.com');
     await studentRepo.save(student);
     // dueDate = fixedDate + 3 days = 2024-03-05
     const due = createFeeDue('d1', 'academy-1', 's1', '2024-03-05');
@@ -140,22 +144,25 @@ describe('SendFeeRemindersUseCase', () => {
       expect(result.value.emailsSent).toBe(1);
     }
     expect(emailSender.send).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'student@test.com' }),
+      expect.objectContaining({ to: 'guardian@test.com' }),
     );
   });
 
-  it('should fall back to guardian email when student email is null', async () => {
+  it('M2: falls back to student email when guardian email is empty', async () => {
+    // Fallback path for legacy records that have student.email but no
+    // guardian.email. Better to reach SOMEONE than skip the reminder
+    // entirely.
     const academy = createAcademy();
     await academyRepo.save(academy);
     await subscriptionRepo.save(createSubscription('academy-1'));
-    const student = createStudent('s1', 'academy-1', null, 'guardian@test.com');
+    const student = createStudent('s1', 'academy-1', 'student@test.com', '');
     await studentRepo.save(student);
     const due = createFeeDue('d1', 'academy-1', 's1', '2024-03-05');
     await feeDueRepo.save(due);
 
     await useCase.execute();
     expect(emailSender.send).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'guardian@test.com' }),
+      expect.objectContaining({ to: 'student@test.com' }),
     );
   });
 

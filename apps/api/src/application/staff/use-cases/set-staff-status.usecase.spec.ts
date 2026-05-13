@@ -46,9 +46,12 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
-  const sessionRepo: jest.Mocked<import('@domain/identity/ports/session.repository').SessionRepository> = {
+  const sessionRepo: jest.Mocked<
+    import('@domain/identity/ports/session.repository').SessionRepository
+  > = {
     save: jest.fn(),
     findByUserAndDevice: jest.fn(),
     findActiveByDeviceId: jest.fn(),
@@ -58,14 +61,21 @@ function buildDeps() {
     deleteExpiredAndRevoked: jest.fn(),
   };
   const auditRecorder = { record: jest.fn() };
-  const prRepo: jest.Mocked<import("@domain/fee/ports/payment-request.repository").PaymentRequestRepository> = {
+  const prRepo: jest.Mocked<
+    import('@domain/fee/ports/payment-request.repository').PaymentRequestRepository
+  > = {
     save: jest.fn(),
     findById: jest.fn(),
     findPendingByFeeDue: jest.fn(),
     listByAcademyAndStatuses: jest.fn().mockResolvedValue([]),
     listByStaffAndAcademy: jest.fn().mockResolvedValue([]),
+    listByAcademyAndStudent: jest.fn().mockResolvedValue([]),
     countPendingByAcademy: jest.fn(),
+    countPendingByStaffAndAcademy: jest.fn().mockResolvedValue(0),
+    countPendingByAuthorAndAcademySince: jest.fn().mockResolvedValue(0),
+    listPendingByStudentAndAcademy: jest.fn().mockResolvedValue([]),
     deleteAllByAcademyAndStudent: jest.fn(),
+    deletePendingByAcademyAndStudent: jest.fn(),
   };
   return { userRepo, sessionRepo, auditRecorder, prRepo };
 }
@@ -173,5 +183,56 @@ describe('SetStaffStatusUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('NOT_FOUND');
     }
+  });
+
+  // M3 regression: same-status submission is a no-op success.
+  it('M3: same-status submission returns ok without saving or revoking', async () => {
+    const { userRepo, sessionRepo, auditRecorder, prRepo } = buildDeps();
+    const owner = createOwner();
+    const staff = createStaff('ACTIVE');
+    userRepo.findById.mockImplementation(async (id) => {
+      if (id === 'owner-1') return owner;
+      if (id === 'staff-1') return staff;
+      return null;
+    });
+
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo, auditRecorder, prRepo);
+    const result = await uc.execute({
+      ownerUserId: 'owner-1',
+      ownerRole: 'OWNER',
+      staffId: 'staff-1',
+      status: 'ACTIVE', // matches current
+    });
+
+    expect(result.ok).toBe(true);
+    expect(userRepo.save).not.toHaveBeenCalled();
+    expect(sessionRepo.revokeAllByUserIds).not.toHaveBeenCalled();
+    expect(auditRecorder.record).not.toHaveBeenCalled();
+    expect(prRepo.countPendingByStaffAndAcademy).not.toHaveBeenCalled();
+  });
+
+  // M6 regression: count-pending is a direct DB count, not a list+filter.
+  it('M6: uses countPendingByStaffAndAcademy instead of listByStaffAndAcademy', async () => {
+    const { userRepo, sessionRepo, auditRecorder, prRepo } = buildDeps();
+    prRepo.countPendingByStaffAndAcademy.mockResolvedValue(3);
+    userRepo.findById.mockImplementation(async (id) => {
+      if (id === 'owner-1') return createOwner();
+      if (id === 'staff-1') return createStaff('ACTIVE');
+      return null;
+    });
+
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo, auditRecorder, prRepo);
+    await uc.execute({
+      ownerUserId: 'owner-1',
+      ownerRole: 'OWNER',
+      staffId: 'staff-1',
+      status: 'INACTIVE',
+    });
+
+    expect(prRepo.countPendingByStaffAndAcademy).toHaveBeenCalledWith('staff-1', 'academy-1');
+    expect(prRepo.listByStaffAndAcademy).not.toHaveBeenCalled();
+    // Audit context records the count.
+    const auditCall = auditRecorder.record.mock.calls[0]![0];
+    expect(auditCall.context?.['pendingPaymentRequests']).toBe('3');
   });
 });

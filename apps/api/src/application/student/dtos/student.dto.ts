@@ -34,8 +34,12 @@ export interface StudentDto {
   whatsappNumber: string | null;
   addressText: string | null;
   status: StudentStatus;
-  createdAt: Date;
-  updatedAt: Date;
+  // ISO 8601 wire format — JSON.stringify(date) already produces this string
+  // and mobile expects a string. Declaring as `string` makes the DTO contract
+  // match the wire shape (and removes the need for callers to know that
+  // toISOString() is applied at serialization).
+  createdAt: string;
+  updatedAt: string;
 }
 
 export function toStudentDto(student: Student): StudentDto {
@@ -69,8 +73,8 @@ export function toStudentDto(student: Student): StudentDto {
     whatsappNumber: student.whatsappNumber,
     addressText: student.addressText,
     status: student.status,
-    createdAt: student.audit.createdAt,
-    updatedAt: student.audit.updatedAt,
+    createdAt: student.audit.createdAt.toISOString(),
+    updatedAt: student.audit.updatedAt.toISOString(),
   };
 }
 
@@ -99,7 +103,7 @@ export function toStudentDtoFromRow(row: StudentListRow): StudentDto {
     whatsappNumber: row.whatsappNumber,
     addressText: row.addressText,
     status: row.status,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }

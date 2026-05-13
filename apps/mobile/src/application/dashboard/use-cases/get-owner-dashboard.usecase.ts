@@ -29,6 +29,7 @@ function mapToKpis(raw: OwnerDashboardApiPayload): OwnerDashboardKpis {
     todayAbsentCount: raw.todayAbsentCount,
     dueStudentsCount: raw.dueStudentsCount,
     todayPresentCount: raw.todayPresentCount,
+    todayScheduledCount: raw.todayScheduledCount,
     totalExpenses: raw.totalExpenses,
     lateFeeCollected: raw.lateFeeCollected,
     overdueCount: raw.overdueCount,

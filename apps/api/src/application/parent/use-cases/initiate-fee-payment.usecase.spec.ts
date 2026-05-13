@@ -65,6 +65,7 @@ function buildDeps() {
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
     anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
   const linkRepo: jest.Mocked<ParentStudentLinkRepository> = {
     save: jest.fn(),
@@ -99,6 +100,7 @@ function buildDeps() {
     sumUnpaidAmountByAcademyAndMonth: jest.fn(),
     countOverdueByAcademy: jest.fn(),
     listOverdueByAcademy: jest.fn(),
+    saveSnapshotIfStillDue: jest.fn(),
   };
   const feePaymentRepo: jest.Mocked<FeePaymentRepository> = {
     save: jest.fn(),
@@ -112,6 +114,7 @@ function buildDeps() {
     findById: jest.fn().mockResolvedValue(null),
     findByOwnerUserId: jest.fn(),
     findAllIds: jest.fn(),
+    saveWithVersionPrecondition: jest.fn(),
   };
   const cashfreeGateway: jest.Mocked<CashfreeGatewayPort> = {
     createOrder: jest.fn().mockResolvedValue({

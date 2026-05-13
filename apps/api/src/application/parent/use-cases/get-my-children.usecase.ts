@@ -8,12 +8,20 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { scheduledDatesInMonth } from '@domain/attendance/value-objects/batch-schedule.vo';
 import { getTodayLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import { ParentErrors } from '../../common/errors';
 import type { ChildSummaryDto } from '../dtos/parent.dto';
 import type { UserRole } from '@academyflo/contracts';
+import { computeLateFee } from '@academyflo/contracts';
+import { formatLocalDate } from '../../../shared/date-utils';
+import {
+  buildEffectiveLateFeeConfig,
+  buildLateFeeConfigFromAcademy,
+} from '../../fee/common/late-fee';
+import type { LateFeeConfig } from '@academyflo/contracts';
 
 export interface GetMyChildrenInput {
   parentUserId: string;
@@ -26,7 +34,7 @@ function monthKeyOffset(monthKey: string, delta: number): string {
   if (!y || !m) return monthKey;
   const total = y * 12 + (m - 1) + delta;
   const ny = Math.floor(total / 12);
-  const nm = (total % 12 + 12) % 12;
+  const nm = ((total % 12) + 12) % 12;
   return `${ny}-${String(nm + 1).padStart(2, '0')}`;
 }
 
@@ -43,6 +51,17 @@ export class GetMyChildrenUseCase {
     private readonly feeDueRepo: FeeDueRepository,
     private readonly studentBatchRepo: StudentBatchRepository,
     private readonly batchRepo: BatchRepository,
+    /**
+     * Needed for the M2 fix (parent-flows audit): the dashboard's
+     * `totalUnpaidAmount` and `currentMonthFeeAmount` previously used
+     * `lateFeeApplied` (which is only persisted at PAID time, so always 0
+     * for unpaid items). That under-reported the real bill and contradicted
+     * the per-child fees screen, which already computes the dynamic late
+     * fee. Now both screens use the same buildEffectiveLateFeeConfig +
+     * computeLateFee path. Optional so legacy fixtures keep working —
+     * without it, the dashboard falls back to base amount only.
+     */
+    private readonly academyRepo?: AcademyRepository,
   ) {}
 
   async execute(input: GetMyChildrenInput): Promise<Result<ChildSummaryDto[], AppError>> {
@@ -64,11 +83,29 @@ export class GetMyChildrenUseCase {
     await Promise.all(
       academyIds.map(async (aid) => {
         const holidays = await this.holidayRepo.findByAcademyAndMonth(aid, currentMonth);
-        holidayDatesByAcademy.set(aid, holidays.map((h) => h.date));
+        holidayDatesByAcademy.set(
+          aid,
+          holidays.map((h) => h.date),
+        );
       }),
     );
 
     const studentAcademy = new Map(links.map((l) => [l.studentId, l.academyId]));
+
+    // M2 fix (parent-flows audit): pre-load each in-scope academy's live
+    // late-fee config so we can apply the same dynamic-late-fee math the
+    // per-child fees screen uses. Per-academy cache so a parent linked to
+    // five kids in one academy only hits the academy repo once.
+    const liveConfigByAcademy = new Map<string, LateFeeConfig | undefined>();
+    if (this.academyRepo) {
+      await Promise.all(
+        academyIds.map(async (aid) => {
+          const academy = await this.academyRepo!.findById(aid);
+          liveConfigByAcademy.set(aid, buildLateFeeConfigFromAcademy(academy));
+        }),
+      );
+    }
+    const todayStr = formatLocalDate(new Date());
 
     const summaries: ChildSummaryDto[] = await Promise.all(
       students.map(async (s) => {
@@ -79,11 +116,7 @@ export class GetMyChildrenUseCase {
 
         try {
           const [presentRecords, enrollments] = await Promise.all([
-            this.attendanceRepo.findPresentByAcademyStudentAndMonth(
-              academyId,
-              sid,
-              currentMonth,
-            ),
+            this.attendanceRepo.findPresentByAcademyStudentAndMonth(academyId, sid, currentMonth),
             this.studentBatchRepo.findByStudentId(sid),
           ]);
 
@@ -96,8 +129,7 @@ export class GetMyChildrenUseCase {
             const today = getTodayLocalDate();
             const monthStart = `${currentMonth}-01`;
             const studentJoinKey = toLocalDateKey(s.joiningDate);
-            const studentEffectiveStart =
-              studentJoinKey > monthStart ? studentJoinKey : monthStart;
+            const studentEffectiveStart = studentJoinKey > monthStart ? studentJoinKey : monthStart;
             const enrolStartByBatch = new Map<string, string>();
             for (const enrol of enrollments) {
               const enrolKey = toLocalDateKey(enrol.assignedAt);
@@ -108,8 +140,7 @@ export class GetMyChildrenUseCase {
             }
             const expectedDates = new Set<string>();
             for (const b of batches) {
-              const enrolStart =
-                enrolStartByBatch.get(b.id.toString()) ?? studentEffectiveStart;
+              const enrolStart = enrolStartByBatch.get(b.id.toString()) ?? studentEffectiveStart;
               const dates = scheduledDatesInMonth(currentMonth, b.days, holidayDates, today);
               for (const d of dates) {
                 if (d >= enrolStart) expectedDates.add(d);
@@ -153,18 +184,35 @@ export class GetMyChildrenUseCase {
             currentMonth,
           );
           // listByStudentAndRange returns sorted ASC by monthKey already.
-          const unpaid = fees.filter(
-            (f) => f.status === 'DUE' || f.status === 'UPCOMING',
-          );
+          const unpaid = fees.filter((f) => f.status === 'DUE' || f.status === 'UPCOMING');
           totalUnpaidMonths = unpaid.length;
-          totalUnpaidAmount = unpaid.reduce(
-            (sum, f) => sum + f.amount + (f.lateFeeApplied ?? 0),
-            0,
-          );
+
+          // M2 fix: compute the dynamic late fee per unpaid fee using the
+          // same path as get-child-fees.usecase. `lateFeeApplied` on an
+          // unpaid record is always 0 (only set at PAID time), so the prior
+          // sum hid late-fee growth from the parent's dashboard. We honour
+          // the per-fee snapshot (a fee that flipped to DUE under an old
+          // policy keeps that rate) and fall back to the live config when
+          // there's no snapshot yet.
+          const liveConfig = liveConfigByAcademy.get(academyId);
+          const lateFeeFor = (f: (typeof unpaid)[number]): number => {
+            const effective = buildEffectiveLateFeeConfig(f.lateFeeConfigSnapshot, liveConfig);
+            if (!effective) return 0;
+            const rawDate = f.dueDate as unknown as Date | string;
+            const dueDateStr =
+              typeof rawDate === 'string'
+                ? rawDate.slice(0, 10)
+                : new Date(rawDate).toISOString().slice(0, 10);
+            const computed = computeLateFee(dueDateStr, todayStr, effective);
+            return Number.isFinite(computed) ? computed : 0;
+          };
+
+          totalUnpaidAmount = unpaid.reduce((sum, f) => sum + f.amount + lateFeeFor(f), 0);
+
           const oldest = unpaid[0];
           if (oldest) {
             currentMonthFeeDueId = oldest.id.toString();
-            currentMonthFeeAmount = oldest.amount + (oldest.lateFeeApplied ?? 0);
+            currentMonthFeeAmount = oldest.amount + lateFeeFor(oldest);
             currentMonthFeeStatus = oldest.status;
             currentMonthFeeMonthKey = oldest.monthKey;
           }

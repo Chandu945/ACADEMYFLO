@@ -12,11 +12,17 @@ const ACTION_LABELS: Record<string, string> = {
   STUDENT_UPDATED: 'Student Updated',
   STUDENT_STATUS_CHANGED: 'Status Changed',
   STUDENT_DELETED: 'Student Deleted',
+  STUDENT_BATCHES_CHANGED: 'Batches Changed',
+  STUDENT_PHOTO_UPLOADED: 'Photo Uploaded',
+  BATCH_PHOTO_UPLOADED: 'Batch Photo Uploaded',
+  BATCH_STUDENT_ADDED: 'Student Added to Batch',
+  BATCH_STUDENT_REMOVED: 'Student Removed from Batch',
   STUDENT_ATTENDANCE_EDITED: 'Attendance Edited',
   PAYMENT_REQUEST_CREATED: 'Payment Created',
   PAYMENT_REQUEST_CANCELLED: 'Payment Cancelled',
   PAYMENT_REQUEST_APPROVED: 'Payment Approved',
   PAYMENT_REQUEST_REJECTED: 'Payment Rejected',
+  PAYMENT_REQUEST_AUTO_RESOLVED: 'Payment Auto-Confirmed',
   STAFF_ATTENDANCE_CHANGED: 'Staff Attendance',
   MONTHLY_DUES_ENGINE_RAN: 'Dues Engine Ran',
   EVENT_CREATED: 'Event Created',
@@ -38,8 +44,53 @@ const ACTION_LABELS: Record<string, string> = {
   SUBSCRIPTION_PAYMENT_COMPLETED: 'Payment Completed',
   SUBSCRIPTION_PAYMENT_FAILED: 'Payment Failed',
   ACCOUNT_DELETION_REQUESTED: 'Deletion Requested',
+  // Backend records US-spelled CANCELED + COMPLETED (mongo audit log payloads
+  // were drifting from the UK-spelled labels mobile shipped originally). Keep
+  // the legacy keys above for any historical rows; the canonical keys below
+  // catch every new row the backend writes.
   ACCOUNT_DELETION_CANCELLED: 'Deletion Cancelled',
+  ACCOUNT_DELETION_CANCELED: 'Deletion Cancelled',
   ACCOUNT_DELETION_EXECUTED: 'Account Deleted',
+  ACCOUNT_DELETION_COMPLETED: 'Account Deleted',
+  // G3 mobile-alignment fix: labels for the new audit actions added across
+  // the recent backend audits. Without these, the row falls back to the
+  // raw action string and reads like noise in an otherwise polished feed.
+  PASSWORD_RESET_REQUESTED: 'Password Reset Requested',
+  PASSWORD_RESET_COMPLETED: 'Password Reset Completed',
+  PASSWORD_CHANGED: 'Password Changed',
+  USER_PROFILE_UPDATED: 'Profile Updated',
+  USER_LOGGED_IN: 'Logged In',
+  USER_LOGGED_OUT: 'Logged Out',
+  ADMIN_LOGGED_IN: 'Admin Login',
+  PARENT_INVITED: 'Parent Invited',
+  PARENT_ACTIVATED: 'Parent Activated',
+  ACADEMY_CREATED: 'Academy Created',
+  ACADEMY_INSTITUTE_INFO_UPDATED: 'Institute Info Updated',
+  ACADEMY_SETTINGS_UPDATED: 'Academy Settings Updated',
+  ACADEMY_INSTITUTE_IMAGE_UPLOADED: 'Branding Image Uploaded',
+  ACADEMY_INSTITUTE_IMAGE_DELETED: 'Branding Image Deleted',
+  ADMIN_ACADEMY_FORCE_LOGOUT: 'Force Logout (Admin)',
+  ADMIN_SUBSCRIPTION_SET_MANUAL: 'Subscription Set (Admin)',
+  ADMIN_SUBSCRIPTION_DEACTIVATED: 'Subscription Deactivated (Admin)',
+  ADMIN_ACADEMY_LOGIN_DISABLED: 'Academy Login Disabled (Admin)',
+  EXPENSE_CATEGORY_CREATED: 'Expense Category Created',
+  EXPENSE_CATEGORY_DELETED: 'Expense Category Deleted',
+  HOLIDAY_DECLARED: 'Holiday Declared',
+  HOLIDAY_REMOVED: 'Holiday Cancelled',
+  STAFF_CREATED: 'Staff Added',
+  STAFF_UPDATED: 'Staff Updated',
+  STAFF_DEACTIVATED: 'Staff Deactivated',
+  STAFF_REACTIVATED: 'Staff Reactivated',
+  STAFF_PHOTO_UPLOADED: 'Staff Photo Uploaded',
+  FEE_PAYMENT_INITIATED: 'Fee Payment Initiated',
+  FEE_PAYMENT_COMPLETED: 'Fee Payment Completed',
+  FEE_PAYMENT_FAILED: 'Fee Payment Failed',
+  FEE_PAYMENT_DUPLICATE_COLLECTED: 'Duplicate Fee Collected',
+  SUBSCRIPTION_PAYMENT_INITIATED: 'Subscription Payment Initiated',
+  PAYMENT_REQUEST_UPDATED: 'Payment Updated',
+  EVENT_STATUS_CHANGED: 'Event Status Changed',
+  ENQUIRY_FOLLOWUP_ADDED: 'Enquiry Follow-up',
+  ENQUIRY_CONVERTED: 'Enquiry Converted',
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -63,10 +114,12 @@ const ENTITY_LABELS: Record<string, string> = {
 
 function getActionIcon(action: string): string {
   if (action.includes('CREATED') || action.includes('PLUS')) return 'plus-circle-outline';
-  if (action.includes('UPDATED') || action.includes('EDITED') || action.includes('CHANGED')) return 'pencil-circle-outline';
+  if (action.includes('UPDATED') || action.includes('EDITED') || action.includes('CHANGED'))
+    return 'pencil-circle-outline';
   if (action.includes('DELETED') || action.includes('REMOVE')) return 'minus-circle-outline';
   if (action.includes('APPROVED') || action.includes('COMPLETED')) return 'check-circle-outline';
-  if (action.includes('REJECTED') || action.includes('FAILED') || action.includes('CANCELLED')) return 'close-circle-outline';
+  if (action.includes('REJECTED') || action.includes('FAILED') || action.includes('CANCELLED'))
+    return 'close-circle-outline';
   if (action.includes('ATTENDANCE')) return 'calendar-check-outline';
   if (action.includes('PAYMENT') || action.includes('FEE')) return 'cash';
   if (action.includes('PHOTO') || action.includes('GALLERY')) return 'image-outline';
@@ -74,20 +127,33 @@ function getActionIcon(action: string): string {
 }
 
 function getActionColorKey(action: string): 'info' | 'success' | 'warning' | 'danger' | 'primary' {
-  if (action.includes('DELETED') || action.includes('REJECTED') || action.includes('CANCELLED') || action.includes('FAILED')) return 'danger';
-  if (action.includes('APPROVED') || action.includes('COMPLETED') || action.includes('PAID')) return 'success';
+  if (
+    action.includes('DELETED') ||
+    action.includes('REJECTED') ||
+    action.includes('CANCELLED') ||
+    action.includes('FAILED')
+  )
+    return 'danger';
+  if (action.includes('APPROVED') || action.includes('COMPLETED') || action.includes('PAID'))
+    return 'success';
   if (action.includes('CREATED') || action.includes('UPLOADED')) return 'info';
-  if (action.includes('UPDATED') || action.includes('CHANGED') || action.includes('EDITED')) return 'warning';
+  if (action.includes('UPDATED') || action.includes('CHANGED') || action.includes('EDITED'))
+    return 'warning';
   return 'primary';
 }
 
 function getActionBg(colorKey: string, colors: Colors): string {
   switch (colorKey) {
-    case 'info': return colors.infoBg;
-    case 'success': return colors.successBg;
-    case 'warning': return colors.warningBg;
-    case 'danger': return colors.dangerBg;
-    default: return colors.primarySoft;
+    case 'info':
+      return colors.infoBg;
+    case 'success':
+      return colors.successBg;
+    case 'warning':
+      return colors.warningBg;
+    case 'danger':
+      return colors.dangerBg;
+    default:
+      return colors.primarySoft;
   }
 }
 
@@ -96,9 +162,18 @@ const MAX_VALUE_LENGTH = 30;
 
 /** Keys with raw IDs or technical data — hide from UI */
 const HIDDEN_CONTEXT_KEYS = new Set([
-  'staffUserId', 'studentId', 'userId', 'entityId', 'academyId',
-  'feeDueId', 'requestId', 'orderId', 'parentId', 'batchId',
-  'providerPaymentId', 'cfPaymentId',
+  'staffUserId',
+  'studentId',
+  'userId',
+  'entityId',
+  'academyId',
+  'feeDueId',
+  'requestId',
+  'orderId',
+  'parentId',
+  'batchId',
+  'providerPaymentId',
+  'cfPaymentId',
 ]);
 
 /** Check if a value looks like a UUID */
@@ -143,7 +218,10 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const contextEntries = item.context
     ? Object.entries(item.context)
-        .filter(([key, val]) => !HIDDEN_CONTEXT_KEYS.has(key) && val && !isUuidLike(val) && !val.includes('[REDACTED'))
+        .filter(
+          ([key, val]) =>
+            !HIDDEN_CONTEXT_KEYS.has(key) && val && !isUuidLike(val) && !val.includes('[REDACTED'),
+        )
         .slice(0, MAX_CONTEXT_KEYS)
     : [];
 
@@ -155,7 +233,12 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
   return (
     <View style={styles.card} testID={testID}>
       <View style={styles.topRow}>
-        <View style={[styles.iconCircle, isPrimary ? { overflow: 'hidden' } : { backgroundColor: iconBg }]}>
+        <View
+          style={[
+            styles.iconCircle,
+            isPrimary ? { overflow: 'hidden' } : { backgroundColor: iconBg },
+          ]}
+        >
           {isPrimary && (
             <LinearGradient
               colors={[gradient.start, gradient.end]}
@@ -167,11 +250,14 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
           <AppIcon name={getActionIcon(item.action)} size={18} color={iconColor} />
         </View>
         <View style={styles.headerInfo}>
-          <Text style={styles.actionLabel} testID={testID ? `${testID}-action` : undefined} numberOfLines={1}>
+          <Text
+            style={styles.actionLabel}
+            testID={testID ? `${testID}-action` : undefined}
+            numberOfLines={1}
+          >
             {ACTION_LABELS[item.action] ?? item.action.replace(/_/g, ' ')}
           </Text>
           <View style={styles.metaRow}>
-            
             <AppIcon name="clock-outline" size={12} color={colors.textSecondary} />
             <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
           </View>
@@ -209,83 +295,84 @@ function AuditLogRowComponent({ item, testID }: AuditLogRowProps) {
 
 export const AuditLogRow = memo(AuditLogRowComponent);
 
-const makeStyles = (colors: Colors) => StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.base,
-    marginBottom: spacing.sm,
-    ...shadows.sm,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  actionLabel: {
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.semibold,
-    color: colors.text,
-    marginBottom: 2,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  time: {
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: fontSizes.sm,
-    color: colors.textSecondary,
-  },
-  contextRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.bgSubtle,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    gap: 4,
-  },
-  chipKey: {
-    fontSize: fontSizes.xs,
-    color: colors.textSecondary,
-    fontWeight: fontWeights.medium,
-  },
-  chipVal: {
-    fontSize: fontSizes.xs,
-    color: colors.text,
-  },
-});
+const makeStyles = (colors: Colors) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      padding: spacing.base,
+      marginBottom: spacing.sm,
+      ...shadows.sm,
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    iconCircle: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerInfo: {
+      flex: 1,
+    },
+    actionLabel: {
+      fontSize: fontSizes.md,
+      fontWeight: fontWeights.semibold,
+      color: colors.text,
+      marginBottom: 2,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    time: {
+      fontSize: fontSizes.xs,
+      color: colors.textSecondary,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingTop: spacing.xs,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    detailItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    detailText: {
+      fontSize: fontSizes.sm,
+      color: colors.textSecondary,
+    },
+    contextRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: spacing.sm,
+      gap: spacing.xs,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.bgSubtle,
+      borderRadius: radius.full,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      gap: 4,
+    },
+    chipKey: {
+      fontSize: fontSizes.xs,
+      color: colors.textSecondary,
+      fontWeight: fontWeights.medium,
+    },
+    chipVal: {
+      fontSize: fontSizes.xs,
+      color: colors.text,
+    },
+  });

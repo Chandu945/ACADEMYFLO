@@ -84,6 +84,7 @@ function buildDeps() {
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
     anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
   const studentRepo: jest.Mocked<StudentRepository> = {
     save: jest.fn(),
@@ -91,6 +92,7 @@ function buildDeps() {
     list: jest.fn(),
     listActiveByAcademy: jest.fn(),
     countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
     findByIds: jest.fn(),
     findBirthdaysByAcademy: jest.fn(),
     findByEmailInAcademy: jest.fn(),
@@ -110,6 +112,8 @@ function buildDeps() {
     deleteByAcademyAndDate: jest.fn(),
     countPresentByAcademyAndDate: jest.fn(),
     countDistinctStudentsPresentByAcademyAndDate: jest.fn(),
+    countDistinctStudentsAbsentByAcademyAndDate: jest.fn().mockResolvedValue(0),
+    findAbsentByAcademyAndMonth: jest.fn().mockResolvedValue([]),
     deleteAllByAcademyAndStudent: jest.fn(),
   };
   const holidayRepo: jest.Mocked<HolidayRepository> = {
@@ -129,6 +133,7 @@ function buildDeps() {
   const studentBatchRepo: jest.Mocked<StudentBatchRepository> = {
     replaceForStudent: jest.fn(),
     findByStudentId: jest.fn().mockResolvedValue([createEnrollment()]),
+    findByStudentIds: jest.fn().mockResolvedValue([createEnrollment()]),
     findByBatchId: jest.fn().mockResolvedValue([createEnrollment()]),
     deleteByBatchId: jest.fn(),
     countByBatchId: jest.fn(),
@@ -190,7 +195,11 @@ describe('MarkStudentAttendanceUseCase', () => {
     expect(deps.attendanceRepo.save).toHaveBeenCalled();
   });
 
-  it('deletes the present record when marking ABSENT', async () => {
+  it('upserts an ABSENT record when marking ABSENT', async () => {
+    // Default-present model: ABSENT marks are persisted as explicit rows
+    // (status='ABSENT') rather than modelled by deletion. The use-case
+    // saves the entity with status='ABSENT'; the unique-index upsert in
+    // the repo merges with any existing row for the same (a,s,b,d) key.
     const today = todayLocalDate();
     const deps = buildDeps();
     deps.userRepo.findById.mockResolvedValue(createOwner());
@@ -208,12 +217,16 @@ describe('MarkStudentAttendanceUseCase', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(deps.attendanceRepo.deleteByAcademyStudentBatchDate).toHaveBeenCalledWith(
-      'academy-1',
-      'student-1',
-      'batch-1',
-      today,
+    expect(deps.attendanceRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        academyId: 'academy-1',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: today,
+        status: 'ABSENT',
+      }),
     );
+    expect(deps.attendanceRepo.deleteByAcademyStudentBatchDate).not.toHaveBeenCalled();
   });
 
   it('is idempotent when marking PRESENT twice (existing record)', async () => {
@@ -245,6 +258,65 @@ describe('MarkStudentAttendanceUseCase', () => {
 
     expect(result.ok).toBe(true);
     expect(deps.attendanceRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('M1: concurrent PRESENT marks succeed idempotently when save hits duplicate-key', async () => {
+    // Two coaches tap "Present" on the same student within milliseconds.
+    // Both pass the existence check (record not yet committed), both try to
+    // insert. The second insert hits the unique index and Mongo throws
+    // a duplicate-key error (code 11000). Without M1 this surfaced as a 500
+    // to the slower coach; with M1 it's treated as idempotent success — the
+    // desired state (student is PRESENT) is already achieved.
+    const today = todayLocalDate();
+    const deps = buildDeps();
+    deps.userRepo.findById.mockResolvedValue(createOwner());
+    deps.studentRepo.findById.mockResolvedValue(createStudent());
+    deps.holidayRepo.findByAcademyAndDate.mockResolvedValue(null);
+    // First check returns null (no record yet — race window open).
+    deps.attendanceRepo.findByAcademyStudentBatchDate.mockResolvedValue(null);
+    // Save throws Mongo's duplicate-key error.
+    const dupErr = Object.assign(new Error('E11000 duplicate key error'), { code: 11000 });
+    deps.attendanceRepo.save.mockRejectedValueOnce(dupErr);
+
+    const uc = makeUseCase(deps);
+    const result = await uc.execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      studentId: 'student-1',
+      batchId: 'batch-1',
+      date: today,
+      status: 'PRESENT',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.status).toBe('PRESENT');
+    }
+  });
+
+  it('M1: non-duplicate errors from save still propagate (not swallowed)', async () => {
+    // Defensive: only error code 11000 is treated as idempotent — any other
+    // error (real DB outage, validation failure, etc.) must still bubble so
+    // it isn't silently lost.
+    const today = todayLocalDate();
+    const deps = buildDeps();
+    deps.userRepo.findById.mockResolvedValue(createOwner());
+    deps.studentRepo.findById.mockResolvedValue(createStudent());
+    deps.holidayRepo.findByAcademyAndDate.mockResolvedValue(null);
+    deps.attendanceRepo.findByAcademyStudentBatchDate.mockResolvedValue(null);
+    deps.attendanceRepo.save.mockRejectedValueOnce(new Error('Connection refused'));
+
+    const uc = makeUseCase(deps);
+    await expect(
+      uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: today,
+        status: 'PRESENT',
+      }),
+    ).rejects.toThrow('Connection refused');
   });
 
   it('rejects marking on a holiday (409)', async () => {
@@ -479,7 +551,114 @@ describe('MarkStudentAttendanceUseCase', () => {
       });
 
       expect(result.ok).toBe(true);
-      expect(deps.attendanceRepo.deleteByAcademyStudentBatchDate).toHaveBeenCalled();
+      // Under the default-present model, ABSENT is persisted via save() (not
+      // a delete) — assert the save happened with status='ABSENT' instead.
+      expect(deps.attendanceRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'ABSENT' }),
+      );
+    });
+  });
+
+  // H2 (attendance audit): allow attendance edits for INACTIVE/LEFT students
+  // when the target date predates their status change. Pre-fix code blocked
+  // legitimate backfills (owner forgot to mark May 20 for a student who
+  // departed June 1).
+  describe('H2: historical edits for non-ACTIVE students', () => {
+    function createInactiveStudent(statusChangedAt: Date): Student {
+      const s = createStudent();
+      // Bypass the entity's normal lifecycle to construct a student in the
+      // "INACTIVE since X" state directly. Uses Student.reconstitute with
+      // an internal-prop override since changeStatus would set
+      // statusChangedAt to now().
+      return Student.reconstitute(s.id.toString(), {
+        ...s['props'],
+        status: 'INACTIVE',
+        statusChangedAt,
+      });
+    }
+
+    // Relative-to-today dates so the attendance 30-day window passes
+    // regardless of when the test runs.
+    function daysAgoString(days: number): string {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    function daysAgoDate(days: number): Date {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      return d;
+    }
+
+    it('allows marking attendance for INACTIVE student when date is before statusChangedAt', async () => {
+      const deps = buildDeps();
+      deps.userRepo.findById.mockResolvedValue(createOwner());
+      // Student went INACTIVE 5 days ago. We're marking attendance for
+      // 10 days ago (before they departed). Both inside the 30-day window.
+      deps.studentRepo.findById.mockResolvedValue(createInactiveStudent(daysAgoDate(5)));
+      deps.batchRepo.findById.mockResolvedValue(createBatch());
+      deps.studentBatchRepo.findByStudentId.mockResolvedValue([createEnrollment()]);
+
+      const result = await makeUseCase(deps).execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: daysAgoString(10),
+        status: 'PRESENT',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(deps.attendanceRepo.save).toHaveBeenCalled();
+    });
+
+    it('still rejects when date is on or after statusChangedAt', async () => {
+      const deps = buildDeps();
+      deps.userRepo.findById.mockResolvedValue(createOwner());
+      // Student went INACTIVE 10 days ago. Trying to mark 5 days ago
+      // (after they departed) — must be rejected.
+      deps.studentRepo.findById.mockResolvedValue(createInactiveStudent(daysAgoDate(10)));
+      deps.batchRepo.findById.mockResolvedValue(createBatch());
+
+      const result = await makeUseCase(deps).execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: daysAgoString(5),
+        status: 'PRESENT',
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('VALIDATION');
+    });
+
+    it('rejects INACTIVE student with null statusChangedAt (no history to compare against)', async () => {
+      const deps = buildDeps();
+      deps.userRepo.findById.mockResolvedValue(createOwner());
+      const s = createStudent();
+      const broken = Student.reconstitute(s.id.toString(), {
+        ...s['props'],
+        status: 'INACTIVE',
+        statusChangedAt: null,
+      });
+      deps.studentRepo.findById.mockResolvedValue(broken);
+      deps.batchRepo.findById.mockResolvedValue(createBatch());
+
+      const result = await makeUseCase(deps).execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        date: daysAgoString(10),
+        status: 'PRESENT',
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('VALIDATION');
     });
   });
 });

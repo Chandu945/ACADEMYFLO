@@ -4,7 +4,10 @@ import { EventsController } from './events.controller';
 import { EventGalleryController } from './event-gallery.controller';
 import { AuthModule } from '../auth/auth.module';
 import { EventModel, EventSchema } from '@infrastructure/database/schemas/event.schema';
-import { GalleryPhotoModel, GalleryPhotoSchema } from '@infrastructure/database/schemas/gallery-photo.schema';
+import {
+  GalleryPhotoModel,
+  GalleryPhotoSchema,
+} from '@infrastructure/database/schemas/gallery-photo.schema';
 import { MongoEventRepository } from '@infrastructure/repositories/mongo-event.repository';
 import { MongoGalleryPhotoRepository } from '@infrastructure/repositories/mongo-gallery-photo.repository';
 import { EVENT_REPOSITORY } from '@domain/event/ports/event.repository';
@@ -32,6 +35,18 @@ import type { LoggerPort } from '@shared/logging/logger.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import type { TransactionPort } from '@application/common/transaction.port';
 import { MongoTransactionService } from '@infrastructure/database/mongo-transaction.service';
+import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
+import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
+import {
+  ParentStudentLinkModel,
+  ParentStudentLinkSchema,
+} from '@infrastructure/database/schemas/parent-student-link.schema';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
+import {
+  DeviceTokensModule,
+  PUSH_NOTIFICATION_SERVICE,
+} from '../device-tokens/device-tokens.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
 
@@ -39,27 +54,36 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
   imports: [
     AuthModule,
     AuditLogsModule,
+    DeviceTokensModule,
     MongooseModule.forFeature([
       { name: EventModel.name, schema: EventSchema },
       { name: GalleryPhotoModel.name, schema: GalleryPhotoSchema },
+      { name: ParentStudentLinkModel.name, schema: ParentStudentLinkSchema },
     ]),
   ],
   controllers: [EventsController, EventGalleryController],
   providers: [
     { provide: EVENT_REPOSITORY, useClass: MongoEventRepository },
     { provide: GALLERY_PHOTO_REPOSITORY, useClass: MongoGalleryPhotoRepository },
+    { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
     { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
       provide: 'CREATE_EVENT_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>
-        new CreateEventUseCase(userRepo, eventRepo, auditRecorder),
+      useFactory: (
+        userRepo: UserRepository,
+        eventRepo: EventRepository,
+        auditRecorder: AuditRecorderPort,
+      ) => new CreateEventUseCase(userRepo, eventRepo, auditRecorder),
       inject: [USER_REPOSITORY, EVENT_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'UPDATE_EVENT_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>
-        new UpdateEventUseCase(userRepo, eventRepo, auditRecorder),
+      useFactory: (
+        userRepo: UserRepository,
+        eventRepo: EventRepository,
+        auditRecorder: AuditRecorderPort,
+      ) => new UpdateEventUseCase(userRepo, eventRepo, auditRecorder),
       inject: [USER_REPOSITORY, EVENT_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
@@ -112,27 +136,83 @@ import { R2StorageService } from '@infrastructure/storage/r2-storage.service';
     },
     {
       provide: 'CHANGE_EVENT_STATUS_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, auditRecorder: AuditRecorderPort) =>
-        new ChangeEventStatusUseCase(userRepo, eventRepo, auditRecorder),
-      inject: [USER_REPOSITORY, EVENT_REPOSITORY, AUDIT_RECORDER_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        eventRepo: EventRepository,
+        auditRecorder: AuditRecorderPort,
+        parentLinkRepo: ParentStudentLinkRepository,
+        push: PushNotificationService,
+      ) => new ChangeEventStatusUseCase(userRepo, eventRepo, auditRecorder, parentLinkRepo, push),
+      inject: [
+        USER_REPOSITORY,
+        EVENT_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        PUSH_NOTIFICATION_SERVICE,
+      ],
     },
     {
       provide: 'LIST_GALLERY_PHOTOS_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository) =>
-        new ListGalleryPhotosUseCase(userRepo, eventRepo, galleryRepo),
+      useFactory: (
+        userRepo: UserRepository,
+        eventRepo: EventRepository,
+        galleryRepo: GalleryPhotoRepository,
+      ) => new ListGalleryPhotosUseCase(userRepo, eventRepo, galleryRepo),
       inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY],
     },
     {
       provide: 'UPLOAD_GALLERY_PHOTO_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository, fileStorage: FileStoragePort, auditRecorder: AuditRecorderPort, logger: LoggerPort) =>
-        new UploadGalleryPhotoUseCase(userRepo, eventRepo, galleryRepo, fileStorage, auditRecorder, logger),
-      inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT, LOGGER_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        eventRepo: EventRepository,
+        galleryRepo: GalleryPhotoRepository,
+        fileStorage: FileStoragePort,
+        auditRecorder: AuditRecorderPort,
+        logger: LoggerPort,
+      ) =>
+        new UploadGalleryPhotoUseCase(
+          userRepo,
+          eventRepo,
+          galleryRepo,
+          fileStorage,
+          auditRecorder,
+          logger,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        EVENT_REPOSITORY,
+        GALLERY_PHOTO_REPOSITORY,
+        FILE_STORAGE_PORT,
+        AUDIT_RECORDER_PORT,
+        LOGGER_PORT,
+      ],
     },
     {
       provide: 'DELETE_GALLERY_PHOTO_USE_CASE',
-      useFactory: (userRepo: UserRepository, eventRepo: EventRepository, galleryRepo: GalleryPhotoRepository, fileStorage: FileStoragePort, auditRecorder: AuditRecorderPort) =>
-        new DeleteGalleryPhotoUseCase(userRepo, eventRepo, galleryRepo, fileStorage, auditRecorder),
-      inject: [USER_REPOSITORY, EVENT_REPOSITORY, GALLERY_PHOTO_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        eventRepo: EventRepository,
+        galleryRepo: GalleryPhotoRepository,
+        fileStorage: FileStoragePort,
+        auditRecorder: AuditRecorderPort,
+        logger: LoggerPort,
+      ) =>
+        new DeleteGalleryPhotoUseCase(
+          userRepo,
+          eventRepo,
+          galleryRepo,
+          fileStorage,
+          auditRecorder,
+          logger,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        EVENT_REPOSITORY,
+        GALLERY_PHOTO_REPOSITORY,
+        FILE_STORAGE_PORT,
+        AUDIT_RECORDER_PORT,
+        LOGGER_PORT,
+      ],
     },
   ],
 })

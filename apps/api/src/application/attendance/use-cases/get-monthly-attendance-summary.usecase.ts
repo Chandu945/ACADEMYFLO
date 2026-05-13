@@ -87,25 +87,25 @@ export class GetMonthlyAttendanceSummaryUseCase {
     const monthStart = `${input.month}-01`;
     const holidayCount = holidayDates.filter((d) => d <= today).length;
 
-    // Per-page enrollments WITH assignment dates, plus the matching batches.
-    const enrollmentsByStudent = new Map<
-      string,
-      { batchId: string; assignedAt: Date }[]
-    >();
+    // M1 fix (attendance audit): per-page enrollments fetched in ONE query
+    // via `findByStudentIds` instead of N separate `findByStudentId` calls.
+    // Prior code did `Promise.all` over `studentIds.map(findByStudentId)` —
+    // for pageSize=50 that was 50 round-trips per request. The new batched
+    // `$in` query is one trip; we just bucket the results by studentId.
+    const enrollmentsByStudent = new Map<string, { batchId: string; assignedAt: Date }[]>();
+    for (const sid of studentIds) {
+      enrollmentsByStudent.set(sid, []);
+    }
     const allBatchIds = new Set<string>();
-    await Promise.all(
-      studentIds.map(async (sid) => {
-        const enrollments = await this.studentBatchRepo.findByStudentId(sid);
-        const list = enrollments.map((e) => ({
-          batchId: e.batchId,
-          assignedAt: e.assignedAt,
-        }));
-        enrollmentsByStudent.set(sid, list);
-        for (const e of list) allBatchIds.add(e.batchId);
-      }),
-    );
-    const batches =
-      allBatchIds.size > 0 ? await this.batchRepo.findByIds([...allBatchIds]) : [];
+    const allEnrollments = await this.studentBatchRepo.findByStudentIds(studentIds);
+    for (const enrol of allEnrollments) {
+      const bucket = enrollmentsByStudent.get(enrol.studentId);
+      if (bucket) {
+        bucket.push({ batchId: enrol.batchId, assignedAt: enrol.assignedAt });
+      }
+      allBatchIds.add(enrol.batchId);
+    }
+    const batches = allBatchIds.size > 0 ? await this.batchRepo.findByIds([...allBatchIds]) : [];
 
     // Cache scheduled DATES per batch (excluding holidays and future days).
     // We then filter per-student against their joining date and per-batch

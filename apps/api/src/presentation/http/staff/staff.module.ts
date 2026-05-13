@@ -26,10 +26,17 @@ import type { DeviceTokenRepository } from '@domain/notification/ports/device-to
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { USER_AUTH_CACHE_PORT } from '@application/identity/ports/user-auth-cache.port';
+import type { UserAuthCachePort } from '@application/identity/ports/user-auth-cache.port';
+import { LOGGER_PORT } from '@shared/logging/logger.port';
+import type { LoggerPort } from '@shared/logging/logger.port';
 import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 import { MongoPaymentRequestRepository } from '@infrastructure/repositories/mongo-payment-request.repository';
-import { PaymentRequestModel, PaymentRequestSchema } from '@infrastructure/database/schemas/payment-request.schema';
+import {
+  PaymentRequestModel,
+  PaymentRequestSchema,
+} from '@infrastructure/database/schemas/payment-request.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
@@ -54,7 +61,13 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
         academyRepo: AcademyRepository,
         emailSender: EmailSenderPort,
       ) => new CreateStaffUseCase(userRepo, hasher, audit, academyRepo, emailSender),
-      inject: [USER_REPOSITORY, PASSWORD_HASHER, AUDIT_RECORDER_PORT, ACADEMY_REPOSITORY, EMAIL_SENDER_PORT],
+      inject: [
+        USER_REPOSITORY,
+        PASSWORD_HASHER,
+        AUDIT_RECORDER_PORT,
+        ACADEMY_REPOSITORY,
+        EMAIL_SENDER_PORT,
+      ],
     },
     {
       provide: 'LIST_STAFF_USE_CASE',
@@ -68,9 +81,22 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
     },
     {
       provide: 'UPDATE_STAFF_USE_CASE',
-      useFactory: (userRepo: UserRepository, hasher: PasswordHasher, audit: AuditRecorderPort) =>
-        new UpdateStaffUseCase(userRepo, hasher, audit),
-      inject: [USER_REPOSITORY, PASSWORD_HASHER, AUDIT_RECORDER_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        hasher: PasswordHasher,
+        audit: AuditRecorderPort,
+        sessionRepo: SessionRepository,
+        emailSender: EmailSenderPort,
+        academyRepo: AcademyRepository,
+      ) => new UpdateStaffUseCase(userRepo, hasher, audit, sessionRepo, emailSender, academyRepo),
+      inject: [
+        USER_REPOSITORY,
+        PASSWORD_HASHER,
+        AUDIT_RECORDER_PORT,
+        SESSION_REPOSITORY,
+        EMAIL_SENDER_PORT,
+        ACADEMY_REPOSITORY,
+      ],
     },
     {
       provide: 'SET_STAFF_STATUS_USE_CASE',
@@ -82,6 +108,7 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
         emailSender: EmailSenderPort,
         academyRepo: AcademyRepository,
         deviceTokenRepo: DeviceTokenRepository,
+        userAuthCache: UserAuthCachePort,
       ) =>
         new SetStaffStatusUseCase(
           userRepo,
@@ -91,6 +118,7 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
           emailSender,
           academyRepo,
           deviceTokenRepo,
+          userAuthCache,
         ),
       inject: [
         USER_REPOSITORY,
@@ -100,13 +128,18 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
         EMAIL_SENDER_PORT,
         ACADEMY_REPOSITORY,
         DEVICE_TOKEN_REPOSITORY,
+        USER_AUTH_CACHE_PORT,
       ],
     },
     {
       provide: 'UPLOAD_STAFF_PHOTO_USE_CASE',
-      useFactory: (userRepo: UserRepository, fileStorage: FileStoragePort, audit: AuditRecorderPort) =>
-        new UploadStaffPhotoUseCase(userRepo, fileStorage, audit),
-      inject: [USER_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT],
+      useFactory: (
+        userRepo: UserRepository,
+        fileStorage: FileStoragePort,
+        audit: AuditRecorderPort,
+        logger: LoggerPort,
+      ) => new UploadStaffPhotoUseCase(userRepo, fileStorage, audit, logger),
+      inject: [USER_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT, LOGGER_PORT],
     },
   ],
 })

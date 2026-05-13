@@ -6,6 +6,7 @@ import type { SessionRepository } from '@domain/identity/ports/session.repositor
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { UserAuthCachePort } from '../../identity/ports/user-auth-cache.port';
 import { AdminErrors } from '../../common/errors';
 
 interface ForceLogoutAcademyInput {
@@ -25,6 +26,10 @@ export class ForceLogoutAcademyUseCase {
     private readonly academyRepo: AcademyRepository,
     private readonly auditRecorder: AuditRecorderPort,
     private readonly deviceTokenRepo: DeviceTokenRepository,
+    /** H1 identity-audit fix: bust the JwtAuthGuard cache for every
+     *  affected user so their old access tokens stop working immediately
+     *  rather than surviving the 5-min cache TTL. Optional for fixtures. */
+    private readonly userAuthCache?: UserAuthCachePort,
   ) {}
 
   async execute(
@@ -39,12 +44,13 @@ export class ForceLogoutAcademyUseCase {
       return err(AdminErrors.academyNotFound(input.academyId));
     }
 
-    // Note: user auth cache entries (user:auth:{userId}) for affected users will be
-    // invalidated on next JWT check via tokenVersion mismatch, and expire within 5 min TTL.
     const affectedUserIds = await this.userRepo.incrementTokenVersionByAcademyId(input.academyId);
     if (affectedUserIds.length > 0) {
       await this.sessionRepo.revokeAllByUserIds(affectedUserIds);
       await this.deviceTokenRepo.removeByUserIds(affectedUserIds);
+      // H1 identity-audit fix: explicit cache bust so every affected user's
+      // old access token can't survive the 5-min cache TTL.
+      await this.userAuthCache?.invalidateMany(affectedUserIds);
     }
 
     await this.auditRecorder.record({

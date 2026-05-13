@@ -34,7 +34,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const studentRepo: jest.Mocked<StudentRepository> = {
@@ -43,6 +44,7 @@ function buildDeps() {
     list: jest.fn(),
     listActiveByAcademy: jest.fn(),
     countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
     findByIds: jest.fn(),
     findBirthdaysByAcademy: jest.fn(),
     findByEmailInAcademy: jest.fn(),
@@ -185,5 +187,85 @@ describe('CreateStudentUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('VALIDATION');
     }
+  });
+
+  // L4 (student-management audit) — create-student must enforce the same
+  // length / format caps as update-student, otherwise the create endpoint
+  // is an easy bypass for the new guards. We pin two representative
+  // fields here; the comprehensive validator-by-validator coverage lives
+  // on the update-student spec.
+  describe('L4: field-length / format validation', () => {
+    it('rejects fatherName longer than 100 characters', async () => {
+      const { userRepo, studentRepo, auditRecorder } = buildDeps();
+      userRepo.findById.mockResolvedValue(createOwner());
+
+      const uc = new CreateStudentUseCase(userRepo, studentRepo, auditRecorder);
+      const result = await uc.execute({ ...validInput, fatherName: 'Z'.repeat(101) });
+
+      expect(result.ok).toBe(false);
+      expect(studentRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects whatsappNumber that is not E.164', async () => {
+      const { userRepo, studentRepo, auditRecorder } = buildDeps();
+      userRepo.findById.mockResolvedValue(createOwner());
+
+      const uc = new CreateStudentUseCase(userRepo, studentRepo, auditRecorder);
+      const result = await uc.execute({ ...validInput, whatsappNumber: '9999999999' });
+
+      expect(result.ok).toBe(false);
+      expect(studentRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects address.line1 longer than 100 characters', async () => {
+      const { userRepo, studentRepo, auditRecorder } = buildDeps();
+      userRepo.findById.mockResolvedValue(createOwner());
+
+      const uc = new CreateStudentUseCase(userRepo, studentRepo, auditRecorder);
+      const result = await uc.execute({
+        ...validInput,
+        address: { ...validInput.address, line1: 'X'.repeat(101) },
+      });
+
+      expect(result.ok).toBe(false);
+      expect(studentRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  // H2b (enquiry-management audit follow-up): emails must be normalized to
+  // lowercase BEFORE both the dedup query and storage. Otherwise the
+  // mongo-student.repository lowercases on lookup but mismatches a stored
+  // "Rohit@example.com" against a search for "rohit@example.com", letting
+  // a duplicate through. update-student already normalizes; this brings
+  // create into agreement.
+  describe('H2b: email normalization on create', () => {
+    it('stores student.email in lowercase even if caller supplies mixed case', async () => {
+      const { userRepo, studentRepo, auditRecorder } = buildDeps();
+      userRepo.findById.mockResolvedValue(createOwner());
+
+      const uc = new CreateStudentUseCase(userRepo, studentRepo, auditRecorder);
+      const result = await uc.execute({
+        ...validInput,
+        email: '  Rohit.Kumar@Example.COM  ',
+      });
+
+      expect(result.ok).toBe(true);
+      const savedStudent = studentRepo.save.mock.calls[0]![0];
+      expect(savedStudent.email).toBe('rohit.kumar@example.com');
+    });
+
+    it('passes lowercase email to the dedup query (regression for mixed-case bypass)', async () => {
+      const { userRepo, studentRepo, auditRecorder } = buildDeps();
+      userRepo.findById.mockResolvedValue(createOwner());
+
+      const uc = new CreateStudentUseCase(userRepo, studentRepo, auditRecorder);
+      await uc.execute({ ...validInput, email: 'Rohit@Example.COM' });
+
+      // First arg is academyId, second is the email to look up.
+      expect(studentRepo.findByEmailInAcademy).toHaveBeenCalledWith(
+        'academy-1',
+        'rohit@example.com',
+      );
+    });
   });
 });

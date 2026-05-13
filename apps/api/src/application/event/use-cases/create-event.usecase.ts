@@ -120,12 +120,20 @@ export class CreateEventUseCase {
 
     await this.eventRepo.save(event);
 
+    // M5 fix: include title + startDate in the audit context so the entry
+    // is human-readable on its own ("Annual Day was created on 2026-04-15").
+    // Without this, audit log just shows a UUID and no clue what got made.
     await this.auditRecorder.record({
       academyId: actor.academyId,
       actorUserId: input.actorUserId,
       action: 'EVENT_CREATED',
       entityType: 'EVENT',
       entityId: event.id.toString(),
+      context: {
+        title: event.title,
+        startDate: event.startDate.toISOString().slice(0, 10),
+        ...(event.eventType ? { eventType: event.eventType } : {}),
+      },
     });
 
     return ok({

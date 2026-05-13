@@ -60,16 +60,33 @@ export const childFeeDueSchema = z.object({
   monthKey: z.string(),
   dueDate: z.string(),
   amount: z.number(),
-  lateFee: z.number().nullable().transform((v) => v ?? 0),
-  totalPayable: z.number().nullable().transform((v) => v ?? 0),
+  lateFee: z
+    .number()
+    .nullable()
+    .transform((v) => v ?? 0),
+  totalPayable: z
+    .number()
+    .nullable()
+    .transform((v) => v ?? 0),
   status: z.enum(['UPCOMING', 'DUE', 'PAID']),
   paidAt: z.string().nullable(),
   paidSource: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL']).nullable(),
   paymentLabel: z.enum(['CASH', 'UPI', 'CARD', 'NET_BANKING', 'ONLINE']).nullable(),
   // Optional + default-null so older API responses (pre-deploy) still parse
   // cleanly while the mobile app rolls out alongside the backend change.
+  // G4 mobile-alignment fix: include `source` so the UI can distinguish a
+  // parent-submitted proof from a staff-recorded cash collection. Old
+  // servers without the field still parse (.optional + default 'PARENT').
   pendingRequest: z
-    .object({ id: z.string(), amount: z.number(), createdAt: z.string() })
+    .object({
+      id: z.string(),
+      amount: z.number(),
+      createdAt: z.string(),
+      source: z
+        .enum(['PARENT', 'STAFF'])
+        .optional()
+        .transform((v) => v ?? 'PARENT'),
+    })
     .nullable()
     .optional()
     .transform((v) => v ?? null),
@@ -133,26 +150,39 @@ export const academyInfoSchema = z.object({
 // for unknown values (no UI mapping exists for the rendered chip otherwise).
 export const paymentHistoryItemSchema = z.object({
   feeDueId: z.string(),
-  receiptNumber: z.string().nullable().transform((v) => v ?? '—'),
-  studentName: z.string().nullable().transform((v) => v ?? 'Unknown'),
-  monthKey: z.string().nullable().transform((v) => v ?? ''),
-  amount: z.number().nullable().transform((v) => v ?? 0),
-  source: z
-    .enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL'])
-    .catch('MANUAL'),
-  paidAt: z.string().nullable().transform((v) => v ?? ''),
+  receiptNumber: z
+    .string()
+    .nullable()
+    .transform((v) => v ?? '—'),
+  studentName: z
+    .string()
+    .nullable()
+    .transform((v) => v ?? 'Unknown'),
+  monthKey: z
+    .string()
+    .nullable()
+    .transform((v) => v ?? ''),
+  amount: z
+    .number()
+    .nullable()
+    .transform((v) => v ?? 0),
+  source: z.enum(['OWNER_DIRECT', 'STAFF_APPROVED', 'PARENT_ONLINE', 'MANUAL']).catch('MANUAL'),
+  paidAt: z
+    .string()
+    .nullable()
+    .transform((v) => v ?? ''),
 });
 
 // Drop tx items that are too broken to even render (missing feeDueId — the row
 // key) instead of failing the whole list.
-export const paymentHistoryListSchema = z
-  .array(z.unknown())
-  .transform((items) =>
-    items
-      .map((it) => paymentHistoryItemSchema.safeParse(it))
-      .filter((r): r is { success: true; data: z.infer<typeof paymentHistoryItemSchema> } => r.success)
-      .map((r) => r.data),
-  );
+export const paymentHistoryListSchema = z.array(z.unknown()).transform((items) =>
+  items
+    .map((it) => paymentHistoryItemSchema.safeParse(it))
+    .filter(
+      (r): r is { success: true; data: z.infer<typeof paymentHistoryItemSchema> } => r.success,
+    )
+    .map((r) => r.data),
+);
 
 /* ── Manual payment (Phase 2/3) ──────────────────────────────────────────── */
 

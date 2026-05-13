@@ -7,6 +7,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
+import type { LoggerPort } from '@shared/logging/logger.port';
 import { Student } from '@domain/student/entities/student.entity';
 import { AuthErrors } from '../../common/errors';
 import {
@@ -34,15 +35,28 @@ export class UploadProfilePhotoUseCase {
     private readonly fileStorage: FileStoragePort,
     private readonly parentLinkRepo: ParentStudentLinkRepository | null,
     private readonly studentRepo: StudentRepository | null,
+    /**
+     * M2 identity-audit fix: log R2 upload failures so ops can see what
+     * the user just saw. Optional so legacy fixtures stay compatible —
+     * without it, errors still surface as typed AppErrors, just without
+     * the ops-side trace.
+     */
+    private readonly logger?: LoggerPort,
   ) {}
 
-  async execute(input: UploadProfilePhotoInput): Promise<Result<UploadProfilePhotoOutput, AppError>> {
+  async execute(
+    input: UploadProfilePhotoInput,
+  ): Promise<Result<UploadProfilePhotoOutput, AppError>> {
     const user = await this.userRepo.findById(input.actorUserId);
     if (!user) {
       return err(AuthErrors.invalidCredentials());
     }
 
-    if (!ALLOWED_IMAGE_MIME_TYPES.includes(input.mimeType as typeof ALLOWED_IMAGE_MIME_TYPES[number])) {
+    if (
+      !ALLOWED_IMAGE_MIME_TYPES.includes(
+        input.mimeType as (typeof ALLOWED_IMAGE_MIME_TYPES)[number],
+      )
+    ) {
       return err(AppErrorClass.validation('Only JPEG, PNG, and WebP images are allowed'));
     }
 
@@ -64,7 +78,30 @@ export class UploadProfilePhotoUseCase {
     const filename = `${uuidv4()}.${ext}`;
     const folder = user.academyId ? `profiles/${user.academyId}` : `profiles/${input.actorUserId}`;
 
-    const { url } = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
+    // M2 identity-audit fix: same upload-hardening pattern we shipped for
+    // parent's payment-proof. Pre-fix code let any R2 failure bubble as a
+    // raw 500. Now: timeout/network errors → NETWORK (retryable), terminal
+    // errors → UPLOAD_FAILED (with an ops-side log entry).
+    let url: string;
+    try {
+      const result = await this.fileStorage.upload(folder, filename, input.buffer, input.mimeType);
+      url = result.url;
+    } catch (e) {
+      const errLike = e as { code?: string; name?: string; message?: string };
+      const code = (errLike.code ?? errLike.name ?? '').toLowerCase();
+      if (code.includes('timeout') || code.includes('econn') || code.includes('network')) {
+        return err(new AppErrorClass('NETWORK', 'Could not reach storage service. Please retry.'));
+      }
+      this.logger?.error('Profile-photo storage upload failed', {
+        code,
+        message: errLike.message ?? '',
+        userId: input.actorUserId,
+        academyId: user.academyId ?? '',
+      });
+      return err(
+        new AppErrorClass('UPLOAD_FAILED', 'Failed to upload profile photo. Please try again.'),
+      );
+    }
 
     // Update user profile photo
     const updatedUser = user.updateProfilePhoto(url);

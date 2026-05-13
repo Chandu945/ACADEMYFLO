@@ -22,11 +22,17 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { SubscriptionRepository } from '@domain/subscription/ports/subscription.repository';
 import type { ClockPort } from '@application/common/clock.port';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { USER_AUTH_CACHE_PORT } from '@application/identity/ports/user-auth-cache.port';
+import type { UserAuthCachePort } from '@application/identity/ports/user-auth-cache.port';
 import { AuthModule } from '../auth/auth.module';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
 @Module({
   imports: [
     AuthModule,
+    AuditLogsModule,
     MongooseModule.forFeature([
       { name: AcademyModel.name, schema: AcademySchema },
       { name: SubscriptionModel.name, schema: SubscriptionSchema },
@@ -51,12 +57,24 @@ import { AuthModule } from '../auth/auth.module';
         userRepo: UserRepository,
         createTrial: CreateTrialSubscriptionUseCase,
         transaction: TransactionPort,
-      ) => new SetupAcademyUseCase(academyRepo, userRepo, createTrial, transaction),
+        audit: AuditRecorderPort,
+        userAuthCache: UserAuthCachePort,
+      ) =>
+        new SetupAcademyUseCase(
+          academyRepo,
+          userRepo,
+          createTrial,
+          transaction,
+          audit,
+          userAuthCache,
+        ),
       inject: [
         ACADEMY_REPOSITORY,
         USER_REPOSITORY,
         'CREATE_TRIAL_SUBSCRIPTION_USE_CASE',
         TRANSACTION_PORT,
+        AUDIT_RECORDER_PORT,
+        USER_AUTH_CACHE_PORT,
       ],
     },
   ],

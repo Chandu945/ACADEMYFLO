@@ -109,7 +109,11 @@ export class SoftDeleteStudentUseCase {
         const [parentLinks, attendance, paymentRequests] = await Promise.all([
           this.parentLinkRepo.deleteAllByStudentId(input.studentId),
           this.attendanceRepo.deleteAllByAcademyAndStudent(academyId, input.studentId),
-          this.paymentRequestRepo.deleteAllByAcademyAndStudent(academyId, input.studentId),
+          // M4 fix: only PENDING PRs are deleted. APPROVED/REJECTED/CANCELLED
+          // are preserved as immutable history — APPROVED PRs are referenced
+          // by TransactionLog records, so deleting them would leave dangling
+          // refs that break dispute resolution and compliance reporting.
+          this.paymentRequestRepo.deletePendingByAcademyAndStudent(academyId, input.studentId),
         ]);
 
         cascadeCounts = { parentLinks, attendance, paymentRequests };
@@ -131,7 +135,9 @@ export class SoftDeleteStudentUseCase {
         studentId: input.studentId,
         cascadeParentLinks: String(cascadeCounts.parentLinks),
         cascadeAttendance: String(cascadeCounts.attendance),
-        cascadePaymentRequests: String(cascadeCounts.paymentRequests),
+        // Renamed in M4 fix to reflect that only PENDING PRs are cascaded.
+        // Approved/Rejected/Cancelled PRs are preserved as immutable history.
+        cascadePendingPaymentRequests: String(cascadeCounts.paymentRequests),
       },
     });
 

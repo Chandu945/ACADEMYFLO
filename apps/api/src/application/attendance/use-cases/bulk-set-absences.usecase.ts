@@ -19,6 +19,7 @@ import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { AbsenceNotificationSchedulerPort } from '../../notifications/ports/absence-notification-scheduler.port';
 import type { TransactionPort } from '../../common/transaction.port';
+import { formatLocalDate } from '@shared/date-utils';
 import { randomUUID } from 'crypto';
 
 export interface BulkSetAbsencesInput {
@@ -36,6 +37,41 @@ export interface BulkSetAbsencesOutput {
   absentCount: number;
 }
 
+/**
+ * KNOWN LIMITATION (L7 attendance audit — accepted as wontfix):
+ *
+ * `currentPresent` is read BEFORE the transaction starts. The diff-vs-write
+ * cycle is therefore vulnerable to a race with a concurrent single-tap
+ * mark-student-attendance on the same batch+date:
+ *
+ *   1. Bulk-set reads currentPresent (no transaction session).
+ *   2. While bulk-set computes its diff, a single-tap commit lands —
+ *      say it marks student D as PRESENT.
+ *   3. Bulk-set's diff doesn't know about D. Two failure modes:
+ *      a. If bulk-set's input has D in `shouldBePresentIds`, the insert
+ *         attempt hits the unique index `(academyId, studentId, batchId,
+ *         date)` and Mongo throws 11000 — the whole transaction aborts.
+ *      b. If bulk-set's input has D in `absentStudentIds`, the delete
+ *         loop iterates `currentPresent` (which doesn't include D) and
+ *         skips deleting D's record — D stays PRESENT contrary to
+ *         bulk-set's intent.
+ *
+ * Why this is left in place:
+ *   - Requires two coaches editing the same batch+date within
+ *     milliseconds. Single-owner academies never hit it; multi-coach
+ *     academies coordinating in person rarely hit it.
+ *   - Failure mode (a) returns 500 to one coach who can refresh and
+ *     re-submit. Failure mode (b) is a silent inconsistency that's
+ *     correctable by re-running bulk-set or manually re-marking.
+ *   - No data loss in either case.
+ *
+ * Proper fix if this becomes a real support burden:
+ *   - Replace the per-record delete loop with `deleteMany({academyId,
+ *     batchId, date, studentId: {$nin: shouldBePresentIds}})` — atomic
+ *     and race-free, no dependency on a pre-loaded snapshot.
+ *   - Wrap inserts in 11000-idempotent catch (M1-style pattern).
+ *   - Requires a new repo method like `deleteByBatchAndDateExceptStudents`.
+ */
 export class BulkSetAbsencesUseCase {
   constructor(
     private readonly userRepo: UserRepository,
@@ -45,7 +81,14 @@ export class BulkSetAbsencesUseCase {
     private readonly batchRepo: BatchRepository,
     private readonly studentBatchRepo: StudentBatchRepository,
     private readonly auditRecorder: AuditRecorderPort,
-    private readonly transaction?: TransactionPort,
+    /**
+     * Required (L3 fix). Previously optional with a fallback that ran the
+     * diff-write loop unwrapped — a mid-flight failure on the 3rd delete
+     * after 2 succeeded would leave partial state. Production has always
+     * wired the transaction; the optional fallback only ever exercised an
+     * unrealistic code path from test fixtures that forgot to pass it.
+     */
+    private readonly transaction: TransactionPort,
     /**
      * Optional for the same reason MarkStudentAttendance's is — keeps legacy
      * fixtures working. Production wiring always passes one.
@@ -111,17 +154,33 @@ export class BulkSetAbsencesUseCase {
       if (student.academyId !== academyId) {
         return err(AttendanceErrors.studentNotInAcademy());
       }
+      // H2 fix (attendance audit): allow attendance edits for INACTIVE/LEFT
+      // students if the target date predates their status change. See the
+      // matching block in mark-student-attendance.usecase.ts for context.
       if (student.status !== 'ACTIVE') {
-        return err(AttendanceErrors.studentNotActive(studentId));
+        const statusChangedAt = student.statusChangedAt;
+        const wasActiveOnDate =
+          statusChangedAt !== null && input.date < formatLocalDate(statusChangedAt);
+        if (!wasActiveOnDate) {
+          return err(AttendanceErrors.studentNotActive(studentId));
+        }
       }
     }
 
-    // Active students in the batch should be PRESENT; everyone else (in absent
-    // set or inactive) should not have a record. We filter to ACTIVE because
-    // attendance for inactive students isn't tracked.
+    // Students in the batch who were ACTIVE *on the target date* should be
+    // PRESENT; everyone else has no record. H2 fix: same backfill-friendly
+    // logic as the per-student check above — a student who departed AFTER
+    // the target date still counts as on-roster for that date. Without
+    // this, bulk-set on a historical date drops departed students from
+    // `shouldBePresentIds` and silently deletes their valid PRESENT records.
     const allRosterStudents = await this.studentRepo.findByIds([...rosterIds]);
     const activeRosterIds = allRosterStudents
-      .filter((s) => !s.isDeleted() && s.status === 'ACTIVE')
+      .filter((s) => {
+        if (s.isDeleted()) return false;
+        if (s.status === 'ACTIVE') return true;
+        const statusChangedAt = s.statusChangedAt;
+        return statusChangedAt !== null && input.date < formatLocalDate(statusChangedAt);
+      })
       .map((s) => s.id.toString());
     const absentSet = new Set(uniqueAbsent);
     const shouldBePresentIds = activeRosterIds.filter((id) => !absentSet.has(id));
@@ -166,11 +225,7 @@ export class BulkSetAbsencesUseCase {
       }
     };
 
-    if (this.transaction) {
-      await this.transaction.run(bulkOps);
-    } else {
-      await bulkOps();
-    }
+    await this.transaction.run(bulkOps);
 
     await this.auditRecorder.record({
       academyId,

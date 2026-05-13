@@ -38,7 +38,8 @@ export class GetSubscriptionPaymentStatusUseCase {
     // Validate actor is OWNER
     const user = await this.userRepo.findById(actorUserId);
     if (!user) return err(AppError.notFound('User', actorUserId));
-    if (user.role !== 'OWNER') return err(AppError.forbidden('Only owners can check payment status'));
+    if (user.role !== 'OWNER')
+      return err(AppError.forbidden('Only owners can check payment status'));
 
     // Resolve academy
     let academyId = user.academyId;
@@ -87,7 +88,10 @@ export class GetSubscriptionPaymentStatusUseCase {
               storedAmount: pendingPayment.amountInr,
             });
             const failed = pendingPayment.markFailed('AMOUNT_MISMATCH');
-            const transitioned = await this.paymentRepo.saveWithStatusPrecondition(failed, 'PENDING');
+            const transitioned = await this.paymentRepo.saveWithStatusPrecondition(
+              failed,
+              'PENDING',
+            );
             if (transitioned) {
               await this.auditRecorder.record({
                 academyId: pendingPayment.academyId,
@@ -109,52 +113,73 @@ export class GetSubscriptionPaymentStatusUseCase {
             payment = (await this.paymentRepo.findByOrderId(orderId)) ?? failed;
             // fall through to return the authoritative status below
           } else {
+            // Cashfree confirms payment — mark as SUCCESS and activate subscription
+            const now = this.clock.now();
+            const providerPaymentId = `verified_${cfOrder.cfOrderId}`;
+            const updated = pendingPayment.markSuccess(providerPaymentId, now);
 
-          // Cashfree confirms payment — mark as SUCCESS and activate subscription
-          const now = this.clock.now();
-          const providerPaymentId = `verified_${cfOrder.cfOrderId}`;
-          const updated = pendingPayment.markSuccess(providerPaymentId, now);
+            const saveAndActivate = async () => {
+              const transitioned = await this.paymentRepo.saveWithStatusPrecondition(
+                updated,
+                'PENDING',
+              );
+              if (!transitioned) {
+                this.logger.info('Payment already transitioned — skipping server-side activation', {
+                  orderId,
+                });
+                return;
+              }
+              await this.activateSubscription(
+                pendingPayment.academyId,
+                pendingPayment.tierKey,
+                now,
+              );
+            };
 
-          const saveAndActivate = async () => {
-            const transitioned = await this.paymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
-            if (!transitioned) {
-              this.logger.info('Payment already transitioned — skipping server-side activation', { orderId });
-              return;
-            }
-            await this.activateSubscription(pendingPayment.academyId, pendingPayment.tierKey, now);
-          };
+            await this.transaction.run(saveAndActivate);
 
-          await this.transaction.run(saveAndActivate);
-
-          this.logger.info('Server-side verification: payment SUCCESS', {
-            orderId,
-            academyId: pendingPayment.academyId,
-            tierKey: pendingPayment.tierKey,
-          });
-
-          await this.auditRecorder.record({
-            academyId: pendingPayment.academyId,
-            actorUserId: pendingPayment.ownerUserId,
-            action: 'SUBSCRIPTION_PAYMENT_COMPLETED',
-            entityType: 'SUBSCRIPTION_PAYMENT',
-            entityId: orderId,
-            context: {
+            this.logger.info('Server-side verification: payment SUCCESS', {
+              orderId,
+              academyId: pendingPayment.academyId,
               tierKey: pendingPayment.tierKey,
-              amountInr: String(pendingPayment.amountInr),
-              providerPaymentId,
-              verifiedBy: 'server_poll',
-            },
-          });
+            });
 
-          // Re-load payment to get updated status
-          payment = (await this.paymentRepo.findByOrderId(orderId)) ?? pendingPayment;
+            await this.auditRecorder.record({
+              academyId: pendingPayment.academyId,
+              actorUserId: pendingPayment.ownerUserId,
+              action: 'SUBSCRIPTION_PAYMENT_COMPLETED',
+              entityType: 'SUBSCRIPTION_PAYMENT',
+              entityId: orderId,
+              context: {
+                tierKey: pendingPayment.tierKey,
+                amountInr: String(pendingPayment.amountInr),
+                providerPaymentId,
+                verifiedBy: 'server_poll',
+              },
+            });
+
+            // Re-load payment to get updated status
+            payment = (await this.paymentRepo.findByOrderId(orderId)) ?? pendingPayment;
           } // end amount-match else
         } else if (cfOrder.orderStatus === 'EXPIRED') {
-          // Order expired at Cashfree — mark as FAILED
+          // Order expired at Cashfree — mark as FAILED with CAS (M1 fix).
+          // Pre-fix code used unconditional save; a concurrent webhook that
+          // had already moved the payment to SUCCESS would be silently
+          // overwritten to FAILED here. Precondition keeps the SUCCESS in
+          // place if a webhook beat us to the punch.
           const expired = pendingPayment.markFailed('ORDER_EXPIRED');
-          await this.paymentRepo.save(expired);
-          payment = expired;
-          this.logger.info('Server-side verification: order expired', { orderId });
+          const transitioned = await this.paymentRepo.saveWithStatusPrecondition(
+            expired,
+            'PENDING',
+          );
+          if (transitioned) {
+            payment = expired;
+            this.logger.info('Server-side verification: order expired', { orderId });
+          } else {
+            // Re-load to see whatever the concurrent writer left behind.
+            payment = (await this.paymentRepo.findByOrderId(orderId)) ?? pendingPayment;
+            this.logger.info('Skipping EXPIRED write — payment already transitioned', { orderId });
+          }
         }
         // Otherwise (ACTIVE) — still pending, continue polling
       } catch (error) {
@@ -197,15 +222,19 @@ export class GetSubscriptionPaymentStatusUseCase {
     });
   }
 
-  private async activateSubscription(
-    academyId: string,
-    tierKey: string,
-    now: Date,
-  ): Promise<void> {
+  private async activateSubscription(academyId: string, tierKey: string, now: Date): Promise<void> {
     const subscription = await this.subscriptionRepo.findByAcademyId(academyId);
     if (!subscription) {
+      // H1 fix (subscription audit): mirrors the webhook path. Throwing here
+      // aborts the surrounding transaction so the payment stays PENDING
+      // rather than being marked SUCCESS while the subscription remains on
+      // the old tier. Status endpoint surfaces this as a 500 — the owner's
+      // next poll either gets a real outcome (after operator fix) or stays
+      // PENDING. Either way, no charged-without-activated state.
       this.logger.error('No subscription found for academy during activation', { academyId });
-      return;
+      throw new Error(
+        `No subscription found for academy ${academyId} — aborting activation to roll back payment`,
+      );
     }
 
     let effectiveNow = now;

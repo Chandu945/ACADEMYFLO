@@ -27,9 +27,7 @@ function csvEscape(value: string | number): string {
 export class ExportMonthlyAttendanceSummaryCsvUseCase {
   constructor(private readonly getSummary: GetMonthlyAttendanceSummaryUseCase) {}
 
-  async execute(
-    input: ExportMonthlyAttendanceSummaryCsvInput,
-  ): Promise<Result<string, AppError>> {
+  async execute(input: ExportMonthlyAttendanceSummaryCsvInput): Promise<Result<string, AppError>> {
     const lines: string[] = [
       ['Student', 'Expected Days', 'Present Days', 'Absent Days', 'Holidays', 'Attendance %']
         .map(csvEscape)
@@ -50,14 +48,7 @@ export class ExportMonthlyAttendanceSummaryCsvUseCase {
         const expected = item.presentCount + item.absentCount;
         const pct = expected > 0 ? Math.round((item.presentCount / expected) * 100) : '';
         lines.push(
-          [
-            item.fullName,
-            expected,
-            item.presentCount,
-            item.absentCount,
-            item.holidayCount,
-            pct,
-          ]
+          [item.fullName, expected, item.presentCount, item.absentCount, item.holidayCount, pct]
             .map(csvEscape)
             .join(','),
         );

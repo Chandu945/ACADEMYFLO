@@ -31,7 +31,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const challengeRepo: jest.Mocked<PasswordResetChallengeRepository> = {

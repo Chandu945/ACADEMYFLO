@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import { Batch } from '@domain/batch/entities/batch.entity';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import {
   canManageBatch,
   validateBatchName,
@@ -35,6 +36,11 @@ export class CreateBatchUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly batchRepo: BatchRepository,
+    /**
+     * Used to record BATCH_CREATED audit (M1 fix). Optional so legacy
+     * fixtures keep working. Production wiring always passes it.
+     */
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: CreateBatchInput): Promise<Result<BatchDto, AppError>> {
@@ -83,9 +89,7 @@ export class CreateBatchUseCase {
 
     // endTime without startTime is invalid; startTime alone is allowed (open-ended).
     if (input.endTime && !input.startTime) {
-      return err(
-        AppErrorClass.validation('startTime is required when endTime is provided'),
-      );
+      return err(AppErrorClass.validation('startTime is required when endTime is provided'));
     }
     if (input.startTime && input.endTime) {
       const rangeCheck = validateTimeRange(input.startTime, input.endTime);
@@ -118,7 +122,37 @@ export class CreateBatchUseCase {
       maxStudents: input.maxStudents,
     });
 
-    await this.batchRepo.save(batch);
+    // M3 fix: catch the E11000 from the unique partial index on
+    // (academyId, batchNameNormalized) that fires when a concurrent
+    // create races past our findByAcademyAndName check. Without this,
+    // the second caller gets a raw 500 instead of a clean 409.
+    try {
+      await this.batchRepo.save(batch);
+    } catch (error) {
+      const err11000 = error as { code?: number; keyPattern?: Record<string, unknown> };
+      if (err11000?.code === 11000) {
+        return err(BatchErrors.nameAlreadyExists());
+      }
+      throw error;
+    }
+
+    // M1 fix: record BATCH_CREATED audit.
+    if (this.auditRecorder) {
+      await this.auditRecorder.record({
+        academyId: actor.academyId,
+        actorUserId: input.actorUserId,
+        action: 'BATCH_CREATED',
+        entityType: 'BATCH',
+        entityId: batch.id.toString(),
+        context: {
+          batchName: batch.batchName,
+          ...(batch.days.length > 0 ? { days: batch.days.join(',') } : {}),
+          ...(batch.startTime ? { startTime: batch.startTime } : {}),
+          ...(batch.endTime ? { endTime: batch.endTime } : {}),
+          ...(batch.maxStudents !== null ? { maxStudents: String(batch.maxStudents) } : {}),
+        },
+      });
+    }
 
     return ok(toBatchDto(batch));
   }

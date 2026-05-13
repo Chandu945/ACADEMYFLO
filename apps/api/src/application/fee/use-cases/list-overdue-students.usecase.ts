@@ -8,7 +8,7 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
 import { canViewFees } from '@domain/fee/rules/fee.rules';
 import { FeeErrors } from '../../common/errors';
 import { formatLocalDate, daysBetweenLocalDates } from '@shared/date-utils';
-import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
+import { buildLateFeeConfigFromAcademy, buildEffectiveLateFeeConfig } from '../common/late-fee';
 import { computeLateFee } from '@academyflo/contracts';
 import type { UserRole } from '@academyflo/contracts';
 
@@ -95,8 +95,9 @@ export class ListOverdueStudentsUseCase {
       for (const due of dues) {
         totalBaseAmount += due.amount;
 
-        // Compute late fee: prefer snapshot config over live config
-        const effectiveConfig = due.lateFeeConfigSnapshot ?? config;
+        // Compute late fee. The helper enforces L1 (live disable kills it)
+        // and M1 (snapshot locks the amount).
+        const effectiveConfig = buildEffectiveLateFeeConfig(due.lateFeeConfigSnapshot, config);
         if (effectiveConfig) {
           totalLateFee += computeLateFee(due.dueDate, today, effectiveConfig);
         }

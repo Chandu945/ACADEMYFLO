@@ -5,7 +5,12 @@ import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import { FeeDueModel } from '../database/schemas/fee-due.schema';
 import type { FeeDueDocument } from '../database/schemas/fee-due.schema';
-import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeRepeatInterval } from '@academyflo/contracts';
+import type {
+  FeeDueStatus,
+  PaidSource,
+  PaymentLabel,
+  LateFeeRepeatInterval,
+} from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 
@@ -182,7 +187,9 @@ export class MongoFeeDueRepository implements FeeDueRepository {
 
   async sumUnpaidAmountByAcademy(academyId: string): Promise<number> {
     const result = await this.model
-      .aggregate<{ total: number }>([
+      .aggregate<{
+        total: number;
+      }>([
         { $match: { academyId, status: { $in: ['UPCOMING', 'DUE'] } } },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ])
@@ -190,12 +197,11 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     return result[0]?.total ?? 0;
   }
 
-  async sumUnpaidAmountByAcademyAndMonth(
-    academyId: string,
-    monthKey: string,
-  ): Promise<number> {
+  async sumUnpaidAmountByAcademyAndMonth(academyId: string, monthKey: string): Promise<number> {
     const result = await this.model
-      .aggregate<{ total: number }>([
+      .aggregate<{
+        total: number;
+      }>([
         { $match: { academyId, monthKey, status: { $in: ['UPCOMING', 'DUE'] } } },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ])
@@ -208,7 +214,9 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     monthKey: string,
   ): Promise<number> {
     const result = await this.model
-      .aggregate<{ count: number }>([
+      .aggregate<{
+        count: number;
+      }>([
         { $match: { academyId, monthKey, status: { $in: ['UPCOMING', 'DUE'] } } },
         { $group: { _id: '$studentId' } },
         { $count: 'count' },
@@ -242,14 +250,44 @@ export class MongoFeeDueRepository implements FeeDueRepository {
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
   }
 
+  async saveSnapshotIfStillDue(
+    id: string,
+    snapshot: import('@academyflo/contracts').LateFeeConfig,
+  ): Promise<boolean> {
+    // Conditional update: only set the snapshot if the fee is still DUE and
+    // still un-snapshotted. If a concurrent mark-fee-paid transitioned the
+    // record to PAID between the cron's read and this write, the filter
+    // doesn't match → modifiedCount is 0 → the PAID state is preserved.
+    //
+    // Version is incremented so any subsequent optimistic-concurrency save()
+    // observes the update — without this, a later save() with the old
+    // version+1 would mistakenly think it's still racing the snapshot.
+    const result = await this.model
+      .updateOne(
+        { _id: id, status: 'DUE', lateFeeConfigSnapshot: null },
+        {
+          $set: { lateFeeConfigSnapshot: snapshot, updatedAt: new Date() },
+          $inc: { version: 1 },
+        },
+        { session: getTransactionSession() },
+      )
+      .exec();
+    return result.modifiedCount > 0;
+  }
+
   async deleteUpcomingByStudent(academyId: string, studentId: string): Promise<number> {
-    const result = await this.model.deleteMany({ academyId, studentId, status: 'UPCOMING' }, { session: getTransactionSession() });
+    const result = await this.model.deleteMany(
+      { academyId, studentId, status: 'UPCOMING' },
+      { session: getTransactionSession() },
+    );
     return result.deletedCount;
   }
 
   async sumLateFeeCollectedByAcademyAndMonth(academyId: string, monthKey: string): Promise<number> {
     const result = await this.model
-      .aggregate<{ total: number }>([
+      .aggregate<{
+        total: number;
+      }>([
         { $match: { academyId, monthKey, status: 'PAID', lateFeeApplied: { $gt: 0 } } },
         { $group: { _id: null, total: { $sum: '$lateFeeApplied' } } },
       ])
@@ -338,7 +376,8 @@ export class MongoFeeDueRepository implements FeeDueRepository {
             lateFeeEnabled: d.lateFeeConfigSnapshot.lateFeeEnabled,
             gracePeriodDays: d.lateFeeConfigSnapshot.gracePeriodDays,
             lateFeeAmountInr: d.lateFeeConfigSnapshot.lateFeeAmountInr,
-            lateFeeRepeatIntervalDays: d.lateFeeConfigSnapshot.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
+            lateFeeRepeatIntervalDays: d.lateFeeConfigSnapshot
+              .lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
           }
         : null,
       audit: {

@@ -7,7 +7,10 @@ import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import { canManageStaff } from '@domain/identity/rules/staff.rules';
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
-import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import type {
+  StaffQualificationInfo,
+  StaffSalaryConfig,
+} from '@domain/identity/entities/user.entity';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
@@ -39,7 +42,8 @@ export interface CreateStaffOutput {
   role: string;
   status: string;
   academyId: string;
-  startDate: Date | null;
+  // ISO 8601 wire format (see list-staff.usecase.ts for rationale).
+  startDate: string | null;
   gender: 'MALE' | 'FEMALE' | null;
   whatsappNumber: string | null;
   mobileNumber: string | null;
@@ -47,8 +51,8 @@ export interface CreateStaffOutput {
   qualificationInfo: StaffQualificationInfo | null;
   salaryConfig: StaffSalaryConfig | null;
   profilePhotoUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export class CreateStaffUseCase {
@@ -145,20 +149,22 @@ export class CreateStaffUseCase {
 
     // Fire-and-forget: send welcome email to new staff
     if (this.academyRepo && this.emailSender) {
-    const academy = await this.academyRepo.findById(owner.academyId!);
-    const academyName = academy?.academyName ?? 'Your Academy';
-    this.emailSender
-      .send({
-        to: staffWithAcademy.emailNormalized,
-        subject: `Welcome to ${academyName} - Staff Account Created`,
-        html: renderStaffWelcomeEmail({
-          staffName: staffWithAcademy.fullName,
-          academyName,
-          loginEmail: staffWithAcademy.emailNormalized,
-          loginPhone: staffWithAcademy.phoneE164,
-        }),
-      })
-      .catch(() => {/* best-effort */});
+      const academy = await this.academyRepo.findById(owner.academyId!);
+      const academyName = academy?.academyName ?? 'Your Academy';
+      this.emailSender
+        .send({
+          to: staffWithAcademy.emailNormalized,
+          subject: `Welcome to ${academyName} - Staff Account Created`,
+          html: renderStaffWelcomeEmail({
+            staffName: staffWithAcademy.fullName,
+            academyName,
+            loginEmail: staffWithAcademy.emailNormalized,
+            loginPhone: staffWithAcademy.phoneE164,
+          }),
+        })
+        .catch(() => {
+          /* best-effort */
+        });
     }
 
     return ok({
@@ -169,7 +175,7 @@ export class CreateStaffUseCase {
       role: staffWithAcademy.role,
       status: staffWithAcademy.status,
       academyId: owner.academyId,
-      startDate: staffWithAcademy.startDate,
+      startDate: staffWithAcademy.startDate?.toISOString() ?? null,
       gender: staffWithAcademy.gender,
       whatsappNumber: staffWithAcademy.whatsappNumber,
       mobileNumber: staffWithAcademy.mobileNumber,
@@ -177,8 +183,8 @@ export class CreateStaffUseCase {
       qualificationInfo: staffWithAcademy.qualificationInfo,
       salaryConfig: staffWithAcademy.salaryConfig,
       profilePhotoUrl: staffWithAcademy.profilePhotoUrl,
-      createdAt: staffWithAcademy.audit.createdAt,
-      updatedAt: staffWithAcademy.audit.updatedAt,
+      createdAt: staffWithAcademy.audit.createdAt.toISOString(),
+      updatedAt: staffWithAcademy.audit.updatedAt.toISOString(),
     });
   }
 }

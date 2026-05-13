@@ -20,9 +20,17 @@ function buildDeps() {
     findById: jest.fn(),
     findByOwnerUserId: jest.fn(),
     findAllIds: jest.fn(),
+    saveWithVersionPrecondition: jest.fn(),
   };
-  const userRepo: jest.Mocked<Pick<UserRepository, 'updateAcademyId'>> = {
+  // M1 academy-onboarding fix needs findById (to read the owner's
+  // tokenVersion) and incrementTokenVersionByUserId (CAS bump) in addition
+  // to updateAcademyId.
+  const userRepo: jest.Mocked<
+    Pick<UserRepository, 'updateAcademyId' | 'findById' | 'incrementTokenVersionByUserId'>
+  > = {
     updateAcademyId: jest.fn(),
+    findById: jest.fn().mockResolvedValue({ tokenVersion: 1 }),
+    incrementTokenVersionByUserId: jest.fn().mockResolvedValue(true),
   };
   const createTrial = {
     execute: jest
@@ -111,5 +119,82 @@ describe('SetupAcademyUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('CONFLICT');
     }
+  });
+
+  it('M1: bumps owner tokenVersion + invalidates auth cache after setup', async () => {
+    // Pre-fix, the owner's existing JWT carried academyId=null in its
+    // payload — and JwtAuthGuard reads request.user from the payload — so
+    // every academy-scoped call after setup failed with academyRequired
+    // until the user manually refreshed. M1 forces the refresh by bumping
+    // tokenVersion (next request → version mismatch → 401 → refresh →
+    // fresh JWT with new academyId) AND busting the cached user row so
+    // the guard re-reads from DB even before the next refresh.
+    const { academyRepo, userRepo, createTrial, transaction } = buildDeps();
+    academyRepo.findByOwnerUserId.mockResolvedValue(null);
+    const userAuthCache = {
+      invalidate: jest.fn().mockResolvedValue(undefined),
+      invalidateMany: jest.fn(),
+    };
+    const audit = { record: jest.fn().mockResolvedValue(undefined) };
+
+    const uc = new SetupAcademyUseCase(
+      academyRepo,
+      userRepo,
+      createTrial,
+      transaction,
+      audit,
+      userAuthCache,
+    );
+    const result = await uc.execute({
+      ownerUserId: 'owner-1',
+      ownerRole: 'OWNER',
+      academyName: 'Sunrise Academy',
+      address: ADDRESS,
+    });
+
+    expect(result.ok).toBe(true);
+    // tokenVersion bump uses CAS — passes the expected version we read.
+    const userRepoMock = userRepo as unknown as {
+      incrementTokenVersionByUserId: jest.Mock;
+      updateAcademyId: jest.Mock;
+    };
+    expect(userRepoMock.incrementTokenVersionByUserId).toHaveBeenCalledWith('owner-1', 1);
+    expect(userRepoMock.updateAcademyId).toHaveBeenCalled();
+    // Cache bust happens post-commit (after the transaction). M1 fix.
+    expect(userAuthCache.invalidate).toHaveBeenCalledWith('owner-1');
+    // M3: ACADEMY_CREATED audit recorded with the new id + name.
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'ACADEMY_CREATED',
+        actorUserId: 'owner-1',
+        entityType: 'ACADEMY',
+        context: expect.objectContaining({ academyName: 'Sunrise Academy' }),
+      }),
+    );
+  });
+
+  it('M2: maps 11000 duplicate-key from the transaction to academyAlreadyExists', async () => {
+    // The race: pre-check findByOwnerUserId(null) passes, but a concurrent
+    // setup landed first and committed. Mongo's unique index throws 11000
+    // on the loser. Pre-fix this bubbled as a 500. Post-fix it surfaces
+    // as the same CONFLICT a user would get from the pre-check path.
+    const { academyRepo, userRepo, createTrial } = buildDeps();
+    academyRepo.findByOwnerUserId.mockResolvedValue(null);
+    const transaction: TransactionPort = {
+      run: async () => {
+        throw Object.assign(new Error('E11000 duplicate key'), { code: 11000 });
+      },
+    };
+
+    const uc = new SetupAcademyUseCase(academyRepo, userRepo, createTrial, transaction);
+    const result = await uc.execute({
+      ownerUserId: 'owner-1',
+      ownerRole: 'OWNER',
+      academyName: 'Sunrise Academy',
+      address: ADDRESS,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('CONFLICT');
   });
 });

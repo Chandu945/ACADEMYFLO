@@ -102,6 +102,7 @@ function buildDeps() {
     sumUnpaidAmountByAcademyAndMonth: jest.fn(),
     countOverdueByAcademy: jest.fn(),
     listOverdueByAcademy: jest.fn(),
+    saveSnapshotIfStillDue: jest.fn(),
   };
   const transactionLogRepo: jest.Mocked<TransactionLogRepository> = {
     save: jest.fn(),
@@ -120,6 +121,7 @@ function buildDeps() {
     findById: jest.fn().mockResolvedValue({ receiptPrefix: 'RCP' }),
     findByOwnerUserId: jest.fn(),
     findAllIds: jest.fn(),
+    saveWithVersionPrecondition: jest.fn(),
   };
   const signatureVerifier: jest.Mocked<FeeWebhookSignatureVerifier> = {
     verify: jest.fn().mockReturnValue(true),
@@ -178,7 +180,10 @@ describe('HandleFeePaymentWebhookUseCase', () => {
 
   it('rejects webhooks with stale timestamp (replay protection)', async () => {
     const deps = buildDeps();
-    const staleTs = String(Math.floor(FROZEN_NOW_MS / 1000) - 120); // 2min old
+    // Production tolerance is 120s and the check is `skew > 120` (strict), so a
+    // timestamp at exactly 120s old is on the boundary. Use 121s to make the
+    // rejection unambiguous and stop the test riding the boundary.
+    const staleTs = String(Math.floor(FROZEN_NOW_MS / 1000) - 121);
 
     const result = await makeUc(deps).execute(makePayload(), { signature: 'sig', timestamp: staleTs });
     expect(result.ok).toBe(false);

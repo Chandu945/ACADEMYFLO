@@ -38,6 +38,14 @@ export interface StudentRepository {
   ): Promise<{ students: Student[]; total: number }>;
   listActiveByAcademy(academyId: string): Promise<Student[]>;
   countActiveByAcademy(academyId: string): Promise<number>;
+  /**
+   * Count distinct active students who have a session scheduled on `date`.
+   * "Scheduled" = student is ACTIVE, joiningDate is on/before `date`, and is
+   * enrolled in at least one batch whose weekly `days` includes the weekday
+   * of `date`. Drives the default-present dashboard tile so the denominator
+   * reflects "students expected today" rather than "all active students".
+   */
+  countScheduledStudentsByAcademyAndDate(academyId: string, date: string): Promise<number>;
   findByIds(ids: string[]): Promise<Student[]>;
   countInactiveByAcademy(academyId: string): Promise<number>;
   countNewAdmissionsByAcademyAndDateRange(

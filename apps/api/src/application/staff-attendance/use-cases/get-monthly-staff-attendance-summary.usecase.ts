@@ -57,12 +57,17 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
       return err(StaffAttendanceErrors.academyRequired());
     }
 
-    // Get ACTIVE staff paginated
+    // Get ACTIVE staff paginated. H1 fix (attendance audit): push the status
+    // filter into the repo so `total` reflects only ACTIVE staff — prior code
+    // returned both ACTIVE + INACTIVE in the page and used the unfiltered
+    // total, so a page of 20 might show 14 ACTIVE staff and a misleading
+    // "N total" / "X pages" count.
     const { users: staffUsers, total } = await this.userRepo.listByAcademyAndRole(
       actor.academyId,
       'STAFF',
       input.page,
       input.pageSize,
+      'ACTIVE',
     );
 
     // Get all present records and holidays for the month in bulk
@@ -77,9 +82,7 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
     const today = getTodayLocalDate();
     const elapsedDays = daysElapsedInMonth(input.month);
     const holidayCount = holidays.filter((h) => h.date <= today).length;
-    const holidayDateSet = new Set(
-      holidays.filter((h) => h.date <= today).map((h) => h.date),
-    );
+    const holidayDateSet = new Set(holidays.filter((h) => h.date <= today).map((h) => h.date));
 
     // Build present dates per staff (to compute overlap with holidays)
     const presentDatesMap = new Map<string, string[]>();

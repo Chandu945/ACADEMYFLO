@@ -42,12 +42,22 @@ export class DeleteExpenseUseCase {
     const saved = await this.expenseRepo.saveWithVersionPrecondition(deleted, loadedVersion);
     if (!saved) return err(ExpenseErrors.concurrencyConflict());
 
+    // M2 fix (expense audit): capture the snapshot at the moment of soft
+    // delete so the audit row stands alone even if the row is later hard-
+    // purged. "Who deleted the ₹50000 row in Travel last quarter?" should
+    // be answerable without rehydrating the soft-deleted record.
     await this.auditRecorder.record({
       academyId: deleted.academyId,
       actorUserId: input.actorUserId,
       action: 'EXPENSE_DELETED',
       entityType: 'EXPENSE',
       entityId: deleted.id.toString(),
+      context: {
+        categoryId: deleted.categoryId,
+        categoryName: deleted.categoryName,
+        amount: String(deleted.amount),
+        date: deleted.date,
+      },
     });
 
     return ok(undefined);

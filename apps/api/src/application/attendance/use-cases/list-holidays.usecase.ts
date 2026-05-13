@@ -46,7 +46,7 @@ export class ListHolidaysUseCase {
         date: h.date,
         reason: h.reason,
         declaredByUserId: h.declaredByUserId,
-        createdAt: h.audit.createdAt,
+        createdAt: h.audit.createdAt.toISOString(),
       })),
     );
   }

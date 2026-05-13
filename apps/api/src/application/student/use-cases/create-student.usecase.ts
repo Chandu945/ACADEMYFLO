@@ -14,6 +14,12 @@ import {
   validateDateOfBirth,
   validateGuardianMobile,
   validateGuardianEmail,
+  validateAddressLine,
+  validateCityOrState,
+  validateAddressText,
+  validateOptionalName,
+  validateOptionalPhone,
+  validateStudentEmail,
 } from '@domain/student/rules/student.rules';
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
@@ -106,17 +112,81 @@ export class CreateStudentUseCase {
       }
     }
 
-    if (input.guardian?.email) {
-      const guardianEmailCheck = validateGuardianEmail(input.guardian.email);
+    // H2b fix: normalize emails to lowercase+trimmed up-front so the format
+    // validator sees the canonical form and storage matches the dedup query.
+    // Prior code stored email as-typed but `mongo-student.repository.ts`
+    // lowercases on query — so a student created with "Rohit@example.com"
+    // wouldn't be matched by a subsequent "rohit@example.com" dedup,
+    // allowing a duplicate to slip through. `update-student.usecase.ts`
+    // already normalizes; this brings create into agreement.
+    const normalizedStudentEmail = input.email ? input.email.trim().toLowerCase() : input.email;
+    const normalizedGuardianEmail = input.guardian?.email
+      ? input.guardian.email.trim().toLowerCase()
+      : input.guardian?.email;
+
+    if (normalizedGuardianEmail) {
+      const guardianEmailCheck = validateGuardianEmail(normalizedGuardianEmail);
       if (!guardianEmailCheck.valid) {
         return err(AppErrorClass.validation(guardianEmailCheck.reason!));
       }
     }
 
+    // L4 fix: length / format validation for remaining free-text fields.
+    // Mirrors the update-student set so neither endpoint is a bypass for
+    // the other. Optional fields are only validated if the caller supplied
+    // a non-empty value.
+    {
+      const c = validateAddressLine(input.address.line1, 'Address line 1');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.address.line2 !== undefined && input.address.line2 !== null) {
+      const c = validateAddressLine(input.address.line2, 'Address line 2');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    {
+      const c = validateCityOrState(input.address.city, 'City');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    {
+      const c = validateCityOrState(input.address.state, 'State');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.guardian?.name) {
+      const c = validateOptionalName(input.guardian.name, 'Guardian name');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.fatherName) {
+      const c = validateOptionalName(input.fatherName, 'Father name');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.motherName) {
+      const c = validateOptionalName(input.motherName, 'Mother name');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.addressText) {
+      const c = validateAddressText(input.addressText);
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (normalizedStudentEmail) {
+      const c = validateStudentEmail(normalizedStudentEmail);
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.mobileNumber) {
+      const c = validateOptionalPhone(input.mobileNumber, 'Mobile number');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.whatsappNumber) {
+      const c = validateOptionalPhone(input.whatsappNumber, 'WhatsApp number');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+
     // Duplicate email check
-    const emailToCheck = input.email || input.guardian?.email;
+    const emailToCheck = normalizedStudentEmail || normalizedGuardianEmail;
     if (emailToCheck) {
-      const existingByEmail = await this.studentRepo.findByEmailInAcademy(actor.academyId, emailToCheck);
+      const existingByEmail = await this.studentRepo.findByEmailInAcademy(
+        actor.academyId,
+        emailToCheck,
+      );
       if (existingByEmail) {
         return err(StudentErrors.duplicateEmail());
       }
@@ -125,7 +195,10 @@ export class CreateStudentUseCase {
     // Duplicate phone check
     const phoneToCheck = input.mobileNumber || input.guardian?.mobile;
     if (phoneToCheck) {
-      const existingByPhone = await this.studentRepo.findByPhoneInAcademy(actor.academyId, phoneToCheck);
+      const existingByPhone = await this.studentRepo.findByPhoneInAcademy(
+        actor.academyId,
+        phoneToCheck,
+      );
       if (existingByPhone) {
         return err(StudentErrors.duplicatePhone());
       }
@@ -148,13 +221,13 @@ export class CreateStudentUseCase {
         ? {
             name: input.guardian.name,
             mobile: input.guardian.mobile,
-            email: input.guardian.email,
+            email: normalizedGuardianEmail ?? input.guardian.email,
           }
         : undefined,
       joiningDate: new Date(input.joiningDate),
       monthlyFee: input.monthlyFee,
       mobileNumber: input.mobileNumber,
-      email: input.email,
+      email: normalizedStudentEmail,
       fatherName: input.fatherName,
       motherName: input.motherName,
       whatsappNumber: input.whatsappNumber,

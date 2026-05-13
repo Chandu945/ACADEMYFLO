@@ -1,6 +1,7 @@
 import type { Result } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
+import { AppError as AppErrorClass } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EnquiryRepository } from '@domain/enquiry/ports/enquiry.repository';
 import type { ClosureReason } from '@domain/enquiry/entities/enquiry.entity';
@@ -30,6 +31,21 @@ export class CloseEnquiryUseCase {
       return err(EnquiryErrors.closeNotAllowed());
     }
 
+    // H3 fix: forbid manual close with CONVERTED. The conversion flow has
+    // its own use case (convert-to-student) that links the enquiry to a
+    // real student record. Allowing manual CONVERTED close lets a caller
+    // mark an enquiry as converted without a `convertedStudentId`, which
+    // leaves the retry-safe path in convert-to-student broken and the
+    // closed-list filter pointing to a non-existent student. Force the
+    // proper path.
+    if (input.closureReason === 'CONVERTED') {
+      return err(
+        AppErrorClass.validation(
+          'To mark an enquiry as CONVERTED, use the convert-to-student endpoint instead',
+        ),
+      );
+    }
+
     const actor = await this.userRepo.findById(input.actorUserId);
     if (!actor || !actor.academyId) {
       return err(EnquiryErrors.academyRequired());
@@ -45,7 +61,12 @@ export class CloseEnquiryUseCase {
     }
 
     const loadedVersion = enquiry.audit.version;
-    const closed = enquiry.close(input.closureReason, input.actorUserId, new Date(), input.convertedStudentId);
+    const closed = enquiry.close(
+      input.closureReason,
+      input.actorUserId,
+      new Date(),
+      input.convertedStudentId,
+    );
     const saved = await this.enquiryRepo.saveWithVersionPrecondition(closed, loadedVersion);
     if (!saved) return err(EnquiryErrors.concurrencyConflict());
 

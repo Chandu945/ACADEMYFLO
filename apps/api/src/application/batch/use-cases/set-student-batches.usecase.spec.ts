@@ -58,7 +58,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const studentRepo: jest.Mocked<StudentRepository> = {
@@ -67,6 +68,7 @@ function buildDeps() {
     list: jest.fn(),
     listActiveByAcademy: jest.fn(),
     countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
     findByIds: jest.fn(),
     findBirthdaysByAcademy: jest.fn(),
     findByEmailInAcademy: jest.fn(),
@@ -79,7 +81,10 @@ function buildDeps() {
   const batchRepo: jest.Mocked<BatchRepository> = {
     save: jest.fn(),
     findById: jest.fn(),
-    findByIds: jest.fn(),
+    // Default to empty so use-case `batches.map(...)` doesn't null-deref when
+    // a test exercises the "no batches selected" path. Per-case tests with
+    // actual batchIds override this with the matching `Batch[]` payload.
+    findByIds: jest.fn().mockResolvedValue([]),
     findByAcademyAndName: jest.fn(),
     listByAcademy: jest.fn(),
     deleteById: jest.fn(),
@@ -87,7 +92,11 @@ function buildDeps() {
 
   const studentBatchRepo: jest.Mocked<StudentBatchRepository> = {
     replaceForStudent: jest.fn(),
-    findByStudentId: jest.fn(),
+    // Default to empty so the use-case's `currentAssignments.map(...)` doesn't
+    // null-deref in any test that doesn't explicitly seed assignments. Tests
+    // that exercise the "existing assignments" path override this per-case.
+    findByStudentId: jest.fn().mockResolvedValue([]),
+    findByStudentIds: jest.fn().mockResolvedValue([]),
     findByBatchId: jest.fn(),
     deleteByBatchId: jest.fn(),
     countByBatchId: jest.fn(),
@@ -104,7 +113,9 @@ describe('SetStudentBatchesUseCase', () => {
     const deps = buildDeps();
     deps.userRepo.findById.mockResolvedValue(createMockUser());
     deps.studentRepo.findById.mockResolvedValue(createMockStudent());
-    deps.batchRepo.findByIds.mockImplementation(async (ids) => ids.map((id) => createMockBatch(id)));
+    deps.batchRepo.findByIds.mockImplementation(async (ids) =>
+      ids.map((id) => createMockBatch(id)),
+    );
 
     const uc = new SetStudentBatchesUseCase(
       deps.userRepo,
@@ -135,7 +146,9 @@ describe('SetStudentBatchesUseCase', () => {
     const deps = buildDeps();
     deps.userRepo.findById.mockResolvedValue(createMockUser());
     deps.studentRepo.findById.mockResolvedValue(createMockStudent());
-    deps.batchRepo.findByIds.mockImplementation(async (ids) => ids.map((id) => createMockBatch(id)));
+    deps.batchRepo.findByIds.mockImplementation(async (ids) =>
+      ids.map((id) => createMockBatch(id)),
+    );
 
     const uc = new SetStudentBatchesUseCase(
       deps.userRepo,
@@ -260,5 +273,120 @@ describe('SetStudentBatchesUseCase', () => {
       expect(result.value).toHaveLength(0);
     }
     expect(deps.studentBatchRepo.replaceForStudent).toHaveBeenCalledWith('student-1', []);
+  });
+
+  describe('M3: audit log for batch reassignment', () => {
+    function makeExistingAssignment(batchId: string) {
+      // Shape-compatible stand-in — the diff logic only reads `.batchId`.
+      return { batchId } as never;
+    }
+
+    it('records STUDENT_BATCHES_CHANGED audit with added and removed batch IDs', async () => {
+      const deps = buildDeps();
+      deps.userRepo.findById.mockResolvedValue(createMockUser());
+      deps.studentRepo.findById.mockResolvedValue(createMockStudent());
+      deps.batchRepo.findByIds.mockImplementation(async (ids) =>
+        ids.map((id) => createMockBatch(id)),
+      );
+      // Student currently in batch-1 and batch-2. We're setting to batch-2 and batch-3.
+      // Diff: added=batch-3, removed=batch-1.
+      deps.studentBatchRepo.findByStudentId.mockResolvedValue([
+        makeExistingAssignment('batch-1'),
+        makeExistingAssignment('batch-2'),
+      ]);
+
+      const auditRecorder = { record: jest.fn() };
+      const uc = new SetStudentBatchesUseCase(
+        deps.userRepo,
+        deps.studentRepo,
+        deps.batchRepo,
+        deps.studentBatchRepo,
+        deps.transaction,
+        auditRecorder,
+      );
+
+      const result = await uc.execute({
+        actorUserId: 'user-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchIds: ['batch-2', 'batch-3'],
+      });
+
+      expect(result.ok).toBe(true);
+      expect(auditRecorder.record).toHaveBeenCalledTimes(1);
+      const call = auditRecorder.record.mock.calls[0]![0];
+      expect(call.action).toBe('STUDENT_BATCHES_CHANGED');
+      expect(call.entityId).toBe('student-1');
+      expect(call.context.addedBatchIds).toBe('batch-3');
+      expect(call.context.removedBatchIds).toBe('batch-1');
+    });
+
+    it('skips audit when no batches actually changed (no-op set)', async () => {
+      const deps = buildDeps();
+      deps.userRepo.findById.mockResolvedValue(createMockUser());
+      deps.studentRepo.findById.mockResolvedValue(createMockStudent());
+      deps.batchRepo.findByIds.mockImplementation(async (ids) =>
+        ids.map((id) => createMockBatch(id)),
+      );
+      // Student is already in batch-1 and batch-2. Request sets the same.
+      deps.studentBatchRepo.findByStudentId.mockResolvedValue([
+        makeExistingAssignment('batch-1'),
+        makeExistingAssignment('batch-2'),
+      ]);
+
+      const auditRecorder = { record: jest.fn() };
+      const uc = new SetStudentBatchesUseCase(
+        deps.userRepo,
+        deps.studentRepo,
+        deps.batchRepo,
+        deps.studentBatchRepo,
+        deps.transaction,
+        auditRecorder,
+      );
+
+      const result = await uc.execute({
+        actorUserId: 'user-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchIds: ['batch-1', 'batch-2'],
+      });
+
+      expect(result.ok).toBe(true);
+      expect(auditRecorder.record).not.toHaveBeenCalled();
+    });
+
+    it('records empty string on the unaffected side (only-added case)', async () => {
+      // Student had no batches. Adding two — addedBatchIds is populated;
+      // removedBatchIds is empty string.
+      const deps = buildDeps();
+      deps.userRepo.findById.mockResolvedValue(createMockUser());
+      deps.studentRepo.findById.mockResolvedValue(createMockStudent());
+      deps.batchRepo.findByIds.mockImplementation(async (ids) =>
+        ids.map((id) => createMockBatch(id)),
+      );
+      deps.studentBatchRepo.findByStudentId.mockResolvedValue([]);
+
+      const auditRecorder = { record: jest.fn() };
+      const uc = new SetStudentBatchesUseCase(
+        deps.userRepo,
+        deps.studentRepo,
+        deps.batchRepo,
+        deps.studentBatchRepo,
+        deps.transaction,
+        auditRecorder,
+      );
+
+      const result = await uc.execute({
+        actorUserId: 'user-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+        batchIds: ['batch-1', 'batch-2'],
+      });
+
+      expect(result.ok).toBe(true);
+      const call = auditRecorder.record.mock.calls[0]![0];
+      expect(call.context.addedBatchIds).toBe('batch-1,batch-2');
+      expect(call.context.removedBatchIds).toBe('');
+    });
   });
 });

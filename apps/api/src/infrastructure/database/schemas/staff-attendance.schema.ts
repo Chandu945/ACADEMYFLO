@@ -4,8 +4,12 @@ import { type HydratedDocument } from 'mongoose';
 export type StaffAttendanceDocument = HydratedDocument<StaffAttendanceModel>;
 
 /**
- * ABSENT-only records: if no record exists for (academyId, staffUserId, date),
- * the staff member is considered PRESENT.
+ * PRESENT-only records: if a record exists for (academyId, staffUserId, date),
+ * the staff member is PRESENT. No record means ABSENT.
+ *
+ * Matches the student-attendance model (no-record = absent). The earlier
+ * doc described an ABSENT-only model that never matched the use-case
+ * implementation — corrected in the L1 attendance audit fix.
  */
 @Schema({
   collection: 'staffAttendance',
@@ -34,8 +38,8 @@ export class StaffAttendanceModel {
 
 export const StaffAttendanceSchema = SchemaFactory.createForClass(StaffAttendanceModel);
 
-// Unique: one absent record per (academy, staff, date)
+// Unique: one present record per (academy, staff, date)
 StaffAttendanceSchema.index({ academyId: 1, staffUserId: 1, date: 1 }, { unique: true });
 
-// Query: all absences for a given day
+// Query: all present staff for a given day
 StaffAttendanceSchema.index({ academyId: 1, date: 1 });

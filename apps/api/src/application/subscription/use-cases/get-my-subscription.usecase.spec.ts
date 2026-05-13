@@ -80,6 +80,7 @@ function buildDeps() {
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
       anonymizeAndSoftDelete: jest.fn(),
+      listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const academyRepo: jest.Mocked<AcademyRepository> = {
@@ -87,6 +88,7 @@ function buildDeps() {
     findById: jest.fn(),
     findByOwnerUserId: jest.fn(),
     findAllIds: jest.fn(),
+    saveWithVersionPrecondition: jest.fn(),
   };
 
   const subscriptionRepo: jest.Mocked<SubscriptionRepository> = {

@@ -34,6 +34,8 @@ import { AUDIT_LOG_REPOSITORY } from '@domain/audit/ports/audit-log.repository';
 import type { AuditLogRepository } from '@domain/audit/ports/audit-log.repository';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { USER_AUTH_CACHE_PORT } from '@application/identity/ports/user-auth-cache.port';
+import type { UserAuthCachePort } from '@application/identity/ports/user-auth-cache.port';
 import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
 import { PASSWORD_GENERATOR } from '@application/common/password-generator.port';
@@ -102,8 +104,15 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         emailSender: EmailSenderPort,
         userRepo: UserRepository,
         academyRepo: AcademyRepository,
-      ) => new DeactivateSubscriptionUseCase(repo, auditRecorder, emailSender, userRepo, academyRepo),
-      inject: [SUBSCRIPTION_REPOSITORY, AUDIT_RECORDER_PORT, EMAIL_SENDER_PORT, USER_REPOSITORY, ACADEMY_REPOSITORY],
+      ) =>
+        new DeactivateSubscriptionUseCase(repo, auditRecorder, emailSender, userRepo, academyRepo),
+      inject: [
+        SUBSCRIPTION_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        EMAIL_SENDER_PORT,
+        USER_REPOSITORY,
+        ACADEMY_REPOSITORY,
+      ],
     },
     {
       provide: 'SET_ACADEMY_LOGIN_DISABLED_USE_CASE',
@@ -114,8 +123,26 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         auditRecorder: AuditRecorderPort,
         emailSender: EmailSenderPort,
         deviceTokenRepo: DeviceTokenRepository,
-      ) => new SetAcademyLoginDisabledUseCase(academyRepo, userRepo, sessionRepo, auditRecorder, emailSender, deviceTokenRepo),
-      inject: [ACADEMY_REPOSITORY, USER_REPOSITORY, SESSION_REPOSITORY, AUDIT_RECORDER_PORT, EMAIL_SENDER_PORT, DEVICE_TOKEN_REPOSITORY],
+        userAuthCache: UserAuthCachePort,
+      ) =>
+        new SetAcademyLoginDisabledUseCase(
+          academyRepo,
+          userRepo,
+          sessionRepo,
+          auditRecorder,
+          emailSender,
+          deviceTokenRepo,
+          userAuthCache,
+        ),
+      inject: [
+        ACADEMY_REPOSITORY,
+        USER_REPOSITORY,
+        SESSION_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        EMAIL_SENDER_PORT,
+        DEVICE_TOKEN_REPOSITORY,
+        USER_AUTH_CACHE_PORT,
+      ],
     },
     {
       provide: 'FORCE_LOGOUT_ACADEMY_USE_CASE',
@@ -125,6 +152,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         academyRepo: AcademyRepository,
         auditRecorder: AuditRecorderPort,
         deviceTokenRepo: DeviceTokenRepository,
+        userAuthCache: UserAuthCachePort,
       ) =>
         new ForceLogoutAcademyUseCase(
           userRepo,
@@ -132,6 +160,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
           academyRepo,
           auditRecorder,
           deviceTokenRepo,
+          userAuthCache,
         ),
       inject: [
         USER_REPOSITORY,
@@ -139,6 +168,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         ACADEMY_REPOSITORY,
         AUDIT_RECORDER_PORT,
         DEVICE_TOKEN_REPOSITORY,
+        USER_AUTH_CACHE_PORT,
       ],
     },
     { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
@@ -153,6 +183,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         auditRecorder: AuditRecorderPort,
         deviceTokenRepo: DeviceTokenRepository,
         emailSender: EmailSenderPort,
+        userAuthCache: UserAuthCachePort,
       ) =>
         new ResetOwnerPasswordUseCase(
           userRepo,
@@ -163,6 +194,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
           auditRecorder,
           deviceTokenRepo,
           emailSender,
+          userAuthCache,
         ),
       inject: [
         USER_REPOSITORY,
@@ -173,6 +205,7 @@ import { MongoDbModule } from '@infrastructure/database/mongodb.module';
         AUDIT_RECORDER_PORT,
         DEVICE_TOKEN_REPOSITORY,
         EMAIL_SENDER_PORT,
+        USER_AUTH_CACHE_PORT,
       ],
     },
     {

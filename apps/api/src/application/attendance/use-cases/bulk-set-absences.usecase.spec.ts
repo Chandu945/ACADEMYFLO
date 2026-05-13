@@ -6,6 +6,7 @@ import type { HolidayRepository } from '@domain/attendance/ports/holiday.reposit
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { AbsenceNotificationSchedulerPort } from '../../notifications/ports/absence-notification-scheduler.port';
+import type { TransactionPort } from '../../common/transaction.port';
 import { User } from '@domain/identity/entities/user.entity';
 import { Student } from '@domain/student/entities/student.entity';
 import { StudentAttendance } from '@domain/attendance/entities/student-attendance.entity';
@@ -101,6 +102,13 @@ function buildDeps(opts: { studentIds: string[]; currentPresentIds: string[] }) 
     cancel: jest.fn(),
   };
 
+  // Noop transaction — invokes the inner fn directly. Mirrors what the
+  // production TransactionPort does in the happy path (sans real session
+  // wiring) so the use case exercises the same wrapped code path.
+  const noopTransaction: TransactionPort = {
+    run: async <T>(fn: () => Promise<T>): Promise<T> => fn(),
+  };
+
   const useCase = new BulkSetAbsencesUseCase(
     userRepo as unknown as UserRepository,
     studentRepo as unknown as StudentRepository,
@@ -109,7 +117,7 @@ function buildDeps(opts: { studentIds: string[]; currentPresentIds: string[] }) 
     batchRepo as unknown as BatchRepository,
     studentBatchRepo as unknown as StudentBatchRepository,
     auditRecorder,
-    undefined,
+    noopTransaction,
     scheduler,
   );
 

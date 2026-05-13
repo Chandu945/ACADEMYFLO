@@ -12,6 +12,18 @@ export const ownerDashboardApiSchema = z.object({
   todayAbsentCount: z.number().int().min(0),
   dueStudentsCount: z.number().int().min(0),
   todayPresentCount: z.number().int().min(0),
+  // Default-present model: backend exposes "students scheduled today" as the
+  // attendance tile denominator. Older API builds (pre-default-present
+  // rollout) don't return this field — `.nullish()` accepts both `undefined`
+  // (field omitted) and `null` (NestJS class-transformer can emit null for
+  // numeric fields that were unset upstream). Transform collapses both to
+  // null so the consumer has one shape to handle.
+  todayScheduledCount: z
+    .number()
+    .int()
+    .min(0)
+    .nullish()
+    .transform((v) => v ?? null),
   totalExpenses: z.number().min(0),
   lateFeeCollected: z.number().min(0),
   overdueCount: z.number().int().min(0),

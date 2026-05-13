@@ -64,21 +64,31 @@ import {
 import { MongoAcademyRepository } from '@infrastructure/repositories/mongo-academy.repository';
 import { MongoStudentAttendanceRepository } from '@infrastructure/repositories/mongo-student-attendance.repository';
 import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
-import { ParentStudentLinkModel, ParentStudentLinkSchema } from '@infrastructure/database/schemas/parent-student-link.schema';
+import {
+  ParentStudentLinkModel,
+  ParentStudentLinkSchema,
+} from '@infrastructure/database/schemas/parent-student-link.schema';
 import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
-import { PaymentRequestModel, PaymentRequestSchema } from '@infrastructure/database/schemas/payment-request.schema';
+import {
+  PaymentRequestModel,
+  PaymentRequestSchema,
+} from '@infrastructure/database/schemas/payment-request.schema';
 import { MongoPaymentRequestRepository } from '@infrastructure/repositories/mongo-payment-request.repository';
 import { PASSWORD_HASHER } from '@application/identity/ports/password-hasher.port';
 import type { PasswordHasher } from '@application/identity/ports/password-hasher.port';
+import { DeviceTokensModule } from '../device-tokens/device-tokens.module';
+import { PUSH_NOTIFICATION_SERVICE } from '../device-tokens/device-tokens.module';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
 
 @Module({
   imports: [
     AuthModule,
     AuditLogsModule,
     ParentModule,
+    DeviceTokensModule,
     MongooseModule.forFeature([
       { name: StudentModel.name, schema: StudentSchema },
       { name: FeeDueModel.name, schema: FeeDueSchema },
@@ -130,7 +140,12 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         studentQueryRepo: StudentQueryRepository,
         studentBatchRepo: StudentBatchRepository,
       ) => new ListStudentsUseCase(userRepo, studentRepo, studentQueryRepo, studentBatchRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, STUDENT_QUERY_REPOSITORY, STUDENT_BATCH_REPOSITORY],
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        STUDENT_QUERY_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+      ],
     },
     {
       provide: 'GET_STUDENT_USE_CASE',
@@ -148,8 +163,31 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         transaction: TransactionPort,
         emailSender: EmailSenderPort,
         academyRepo: AcademyRepository,
-      ) => new ChangeStudentStatusUseCase(userRepo, studentRepo, audit, feeDueRepo, transaction, emailSender, academyRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, AUDIT_RECORDER_PORT, FEE_DUE_REPOSITORY, TRANSACTION_PORT, EMAIL_SENDER_PORT, ACADEMY_REPOSITORY],
+        parentLinkRepo: ParentStudentLinkRepository,
+        push: PushNotificationService,
+      ) =>
+        new ChangeStudentStatusUseCase(
+          userRepo,
+          studentRepo,
+          audit,
+          feeDueRepo,
+          transaction,
+          emailSender,
+          academyRepo,
+          parentLinkRepo,
+          push,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        FEE_DUE_REPOSITORY,
+        TRANSACTION_PORT,
+        EMAIL_SENDER_PORT,
+        ACADEMY_REPOSITORY,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        PUSH_NOTIFICATION_SERVICE,
+      ],
     },
     {
       provide: 'SOFT_DELETE_STUDENT_USE_CASE',
@@ -195,14 +233,23 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         batchRepo: BatchRepository,
         studentBatchRepo: StudentBatchRepository,
         transaction: TransactionPort,
+        audit: AuditRecorderPort,
       ) =>
-        new SetStudentBatchesUseCase(userRepo, studentRepo, batchRepo, studentBatchRepo, transaction),
+        new SetStudentBatchesUseCase(
+          userRepo,
+          studentRepo,
+          batchRepo,
+          studentBatchRepo,
+          transaction,
+          audit,
+        ),
       inject: [
         USER_REPOSITORY,
         STUDENT_REPOSITORY,
         BATCH_REPOSITORY,
         STUDENT_BATCH_REPOSITORY,
         TRANSACTION_PORT,
+        AUDIT_RECORDER_PORT,
       ],
     },
     {
@@ -224,7 +271,13 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         linkRepo: ParentStudentLinkRepository,
         hasher: PasswordHasher,
       ) => new GetStudentCredentialsUseCase(userRepo, studentRepo, academyRepo, linkRepo, hasher),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, ACADEMY_REPOSITORY, PARENT_STUDENT_LINK_REPOSITORY, PASSWORD_HASHER],
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        PASSWORD_HASHER,
+      ],
     },
     {
       provide: 'GENERATE_STUDENT_REPORT_USE_CASE',
@@ -234,8 +287,21 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         academyRepo: AcademyRepository,
         feeDueRepo: FeeDueRepository,
         attendanceRepo: StudentAttendanceRepository,
-      ) => new GenerateStudentReportUseCase(userRepo, studentRepo, academyRepo, feeDueRepo, attendanceRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, ACADEMY_REPOSITORY, FEE_DUE_REPOSITORY, STUDENT_ATTENDANCE_REPOSITORY],
+      ) =>
+        new GenerateStudentReportUseCase(
+          userRepo,
+          studentRepo,
+          academyRepo,
+          feeDueRepo,
+          attendanceRepo,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        FEE_DUE_REPOSITORY,
+        STUDENT_ATTENDANCE_REPOSITORY,
+      ],
     },
     {
       provide: 'GENERATE_REGISTRATION_FORM_USE_CASE',
@@ -254,8 +320,15 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         academyRepo: AcademyRepository,
         batchRepo: BatchRepository,
         studentBatchRepo: StudentBatchRepository,
-      ) => new GenerateIdCardUseCase(userRepo, studentRepo, academyRepo, batchRepo, studentBatchRepo),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, ACADEMY_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY],
+      ) =>
+        new GenerateIdCardUseCase(userRepo, studentRepo, academyRepo, batchRepo, studentBatchRepo),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        BATCH_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+      ],
     },
     {
       provide: 'UPLOAD_STUDENT_PHOTO_USE_CASE',
@@ -263,8 +336,9 @@ import type { PasswordHasher } from '@application/identity/ports/password-hasher
         userRepo: UserRepository,
         studentRepo: StudentRepository,
         fileStorage: FileStoragePort,
-      ) => new UploadStudentPhotoUseCase(userRepo, studentRepo, fileStorage),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, FILE_STORAGE_PORT],
+        audit: AuditRecorderPort,
+      ) => new UploadStudentPhotoUseCase(userRepo, studentRepo, fileStorage, audit),
+      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT],
     },
   ],
 })

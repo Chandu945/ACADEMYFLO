@@ -75,5 +75,9 @@ export interface HolidayDto {
   date: string;
   reason: string | null;
   declaredByUserId: string;
-  createdAt: Date;
+  // ISO 8601 string — JSON wire format. Was `Date` historically, but JSON
+  // serialization always produced an ISO string and mobile zod schemas
+  // expect a string anyway. Declaring it as `string` here keeps the type
+  // contract honest end-to-end.
+  createdAt: string;
 }

@@ -26,8 +26,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(isProduction?: boolean) {
     // Prefer the explicitly injected flag; fall back to process.env only if
     // the filter is instantiated without arguments (e.g. in tests).
-    this.isProductionEnv =
-      isProduction ?? process.env['APP_ENV'] === 'production';
+    this.isProductionEnv = isProduction ?? process.env['APP_ENV'] === 'production';
   }
 
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -39,6 +38,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let message = 'Internal server error';
     let error = 'InternalServerError';
     let details: unknown[] = [];
+    // G1 mobile-alignment fix: pull the typed AppError code off the
+    // exception response so we can emit it in the envelope. The
+    // result-mapper throws NestJS exceptions with `{ message, code }`
+    // objects; surfacing `code` lets the mobile error-mapper render the
+    // right copy without round-tripping through status-code guesswork.
+    let appCode: string | undefined;
 
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
@@ -54,6 +59,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           details = resp['message'] as unknown[];
           message = 'Validation failed';
         }
+        if (typeof resp['code'] === 'string') {
+          appCode = resp['code'];
+        }
       }
 
       error = this.getErrorName(statusCode);
@@ -62,6 +70,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message = exception.message;
       error = 'ConcurrentModification';
       details = [{ entityType: exception.entityType }];
+      appCode = 'CONFLICT';
     }
 
     // Log unexpected (500) errors server-side for debugging
@@ -114,6 +123,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode,
       error,
       message,
+      // G1: include typed AppError code when present so the mobile error-
+      // mapper can surface the right copy + retry behaviour.
+      ...(appCode ? { code: appCode } : {}),
       path: request.url,
       method: request.method,
       timestamp: new Date().toISOString(),

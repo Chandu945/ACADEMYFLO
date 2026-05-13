@@ -24,9 +24,7 @@ export class GetExpenseSummaryUseCase {
     private readonly expenseRepo: ExpenseRepository,
   ) {}
 
-  async execute(
-    input: GetExpenseSummaryInput,
-  ): Promise<Result<ExpenseSummaryOutput, AppError>> {
+  async execute(input: GetExpenseSummaryInput): Promise<Result<ExpenseSummaryOutput, AppError>> {
     const check = canManageExpenses(input.actorRole);
     if (!check.allowed) return err(ExpenseErrors.notAllowed());
 

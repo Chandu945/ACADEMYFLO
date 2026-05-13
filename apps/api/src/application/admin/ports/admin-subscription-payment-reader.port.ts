@@ -1,8 +1,6 @@
 import type { Paginated } from '@academyflo/contracts';
 
-export const ADMIN_SUBSCRIPTION_PAYMENT_READER = Symbol(
-  'ADMIN_SUBSCRIPTION_PAYMENT_READER',
-);
+export const ADMIN_SUBSCRIPTION_PAYMENT_READER = Symbol('ADMIN_SUBSCRIPTION_PAYMENT_READER');
 
 export type AdminSubscriptionPaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
 

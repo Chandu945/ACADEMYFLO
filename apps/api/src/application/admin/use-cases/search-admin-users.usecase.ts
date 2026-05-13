@@ -1,12 +1,9 @@
-import type { Result , AppError } from '@shared/kernel';
+import type { Result, AppError } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { Paginated, UserRole } from '@academyflo/contracts';
 import { AdminErrors } from '../../common/errors';
-import type {
-  AdminUserReader,
-  AdminUserSearchFilter,
-} from '../ports/admin-user-reader.port';
+import type { AdminUserReader, AdminUserSearchFilter } from '../ports/admin-user-reader.port';
 
 export interface AdminUserSearchDto {
   id: string;
@@ -70,7 +67,7 @@ export class SearchAdminUsersUseCase {
         role: r.role,
         status: r.status,
         academyId: r.academyId,
-        academyName: r.academyId ? academyMap.get(r.academyId) ?? null : null,
+        academyName: r.academyId ? (academyMap.get(r.academyId) ?? null) : null,
         createdAt: r.createdAt.toISOString(),
       })),
       meta: result.meta,

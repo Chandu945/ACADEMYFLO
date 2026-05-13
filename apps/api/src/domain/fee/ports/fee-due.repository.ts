@@ -1,5 +1,5 @@
 import type { FeeDue } from '../entities/fee-due.entity';
-import type { FeeDueStatus } from '@academyflo/contracts';
+import type { FeeDueStatus, LateFeeConfig } from '@academyflo/contracts';
 
 export const FEE_DUE_REPOSITORY = Symbol('FEE_DUE_REPOSITORY');
 
@@ -7,7 +7,11 @@ export interface FeeDueRepository {
   save(feeDue: FeeDue): Promise<void>;
   bulkSave(feeDues: FeeDue[]): Promise<void>;
   findById(id: string): Promise<FeeDue | null>;
-  bulkUpdateStatus(ids: string[], status: FeeDueStatus, expectedCurrentStatus?: FeeDueStatus): Promise<void>;
+  bulkUpdateStatus(
+    ids: string[],
+    status: FeeDueStatus,
+    expectedCurrentStatus?: FeeDueStatus,
+  ): Promise<void>;
   findByAcademyStudentMonth(
     academyId: string,
     studentId: string,
@@ -51,6 +55,17 @@ export interface FeeDueRepository {
   findUnpaidByDueDate(dueDate: string): Promise<FeeDue[]>;
   findOverdueDues(upToDate: string): Promise<FeeDue[]>;
   findDueWithoutSnapshot(academyId: string): Promise<FeeDue[]>;
+  /**
+   * Conditional snapshot write — sets the late-fee config snapshot on a fee
+   * ONLY if it's still in DUE status AND still has no snapshot. Race-safe
+   * against a concurrent `mark-fee-paid` that may have transitioned the
+   * record to PAID between when the cron loaded it and when the cron writes.
+   *
+   * Returns true if the snapshot was applied, false if the precondition
+   * failed (fee was concurrently paid, or already snapshotted). Callers use
+   * the return value to count actual applications for telemetry.
+   */
+  saveSnapshotIfStillDue(id: string, snapshot: LateFeeConfig): Promise<boolean>;
   deleteUpcomingByStudent(academyId: string, studentId: string): Promise<number>;
   /**
    * DB-side SUM of lateFeeApplied for PAID fee dues in a given academy + month.
@@ -63,7 +78,11 @@ export interface FeeDueRepository {
    * this month's dues" — keeps the tile consistent with Total Collected, which
    * also buckets by transaction date.
    */
-  sumLateFeeCollectedByAcademyAndDateRange(academyId: string, from: Date, to: Date): Promise<number>;
+  sumLateFeeCollectedByAcademyAndDateRange(
+    academyId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number>;
   /**
    * DB-side COUNT of fee dues with status='DUE' and dueDate <= today.
    */

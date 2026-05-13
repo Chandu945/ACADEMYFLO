@@ -92,12 +92,19 @@ export interface ChildFeeDueDto {
   paidSource: PaidSource | null;
   paymentLabel: PaymentLabel | null;
   /**
-   * Set when the parent has an open manual-payment request for this due
-   * still awaiting owner approval. The UI uses this to swap the "Pay now"
-   * button for a pending-approval state instead of letting the parent
-   * re-submit and hit the duplicate-pending error at submit time.
+   * Set when there's an open manual-payment request for this due still
+   * awaiting owner approval. Source distinguishes parent-submitted (PARENT)
+   * from staff-recorded cash collection (STAFF) so the UI can swap the
+   * copy — pre-fix both surfaced as the same generic "pending" badge
+   * which confused parents who hadn't submitted anything (G4 mobile-
+   * alignment fix).
    */
-  pendingRequest: { id: string; amount: number; createdAt: string } | null;
+  pendingRequest: {
+    id: string;
+    amount: number;
+    createdAt: string;
+    source: 'PARENT' | 'STAFF';
+  } | null;
 }
 
 export interface InitiateFeePaymentOutput {

@@ -12,8 +12,12 @@ import type { EmailSenderPort } from '../../notifications/ports/email-sender.por
 import { renderStaffDeactivatedEmail } from '../../notifications/templates/staff-deactivated-template';
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
-import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import type {
+  StaffQualificationInfo,
+  StaffSalaryConfig,
+} from '@domain/identity/entities/user.entity';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { UserAuthCachePort } from '../../identity/ports/user-auth-cache.port';
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
 
 export interface SetStaffStatusInput {
@@ -31,7 +35,8 @@ export interface SetStaffStatusOutput {
   role: string;
   status: string;
   academyId: string | null;
-  startDate: Date | null;
+  // ISO 8601 wire format (see list-staff.usecase.ts for rationale).
+  startDate: string | null;
   gender: 'MALE' | 'FEMALE' | null;
   whatsappNumber: string | null;
   mobileNumber: string | null;
@@ -39,8 +44,8 @@ export interface SetStaffStatusOutput {
   qualificationInfo: StaffQualificationInfo | null;
   salaryConfig: StaffSalaryConfig | null;
   profilePhotoUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export class SetStaffStatusUseCase {
@@ -52,6 +57,10 @@ export class SetStaffStatusUseCase {
     private readonly emailSender?: EmailSenderPort,
     private readonly academyRepo?: AcademyRepository,
     private readonly deviceTokenRepo?: DeviceTokenRepository,
+    /** H1 identity-audit fix: bust the JwtAuthGuard cache so a deactivated
+     *  staff member's old access token stops working immediately rather
+     *  than surviving the 5-min cache TTL. */
+    private readonly userAuthCache?: UserAuthCachePort,
   ) {}
 
   async execute(input: SetStaffStatusInput): Promise<Result<SetStaffStatusOutput, AppError>> {
@@ -79,6 +88,14 @@ export class SetStaffStatusUseCase {
       return err(StaffErrors.notInAcademy());
     }
 
+    // M3 fix: same-status submission is a no-op success. Without this,
+    // re-submitting the current status would re-save, re-revoke sessions,
+    // re-remove device tokens, and add a noise audit entry. Matches the
+    // change-student-status / change-event-status pattern.
+    if (input.status === staff.status) {
+      return ok(toStaffStatusResponse(staff));
+    }
+
     const newTokenVersion =
       input.status === 'INACTIVE' ? staff.tokenVersion + 1 : staff.tokenVersion;
 
@@ -104,21 +121,23 @@ export class SetStaffStatusUseCase {
     });
 
     await this.userRepo.save(updated);
-    // Note: user auth cache (user:auth:{staffId}) will be invalidated on next
-    // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
+    // H1 identity-audit fix: explicit cache bust. The staff's tokenVersion
+    // changed AND their status flipped — both fields are cached. Without
+    // this, an INACTIVE staff's old access token keeps working for up to
+    // 5 min because the cache still reports them ACTIVE.
+    await this.userAuthCache?.invalidate(input.staffId);
 
     let pendingPrCount = 0;
     if (input.status === 'INACTIVE') {
       await this.sessionRepo.revokeAllByUserIds([input.staffId]);
       await this.deviceTokenRepo?.removeByUserIds([input.staffId]);
-      // Surface (don't auto-cancel) PRs the deactivated staff filed — owner
-      // should triage these manually so we don't quietly drop a parent's
-      // payment intent.
-      const allByStaff = await this.paymentRequestRepo.listByStaffAndAcademy(
+      // M6 fix: count PENDING payment requests directly at the DB layer.
+      // Prior code loaded EVERY PR the staff had ever filed into memory
+      // just to filter+count — unbounded query, scales O(staff history).
+      pendingPrCount = await this.paymentRequestRepo.countPendingByStaffAndAcademy(
         input.staffId,
         owner.academyId,
       );
-      pendingPrCount = allByStaff.filter((p) => p.status === 'PENDING').length;
     }
 
     await this.auditRecorder.record({
@@ -131,44 +150,52 @@ export class SetStaffStatusUseCase {
         staffName: staff.fullName,
         fromStatus: staff.status,
         toStatus: input.status,
-        ...(input.status === 'INACTIVE'
-          ? { pendingPaymentRequests: String(pendingPrCount) }
-          : {}),
+        ...(input.status === 'INACTIVE' ? { pendingPaymentRequests: String(pendingPrCount) } : {}),
       },
     });
 
-    // Fire-and-forget: notify staff about status change
+    // Fire-and-forget: notify staff about status change.
+    // L3 fix: drop the `?? ''` fallback. We already verified
+    // `staffBelongsToAcademy(staff, owner.academyId)` above so
+    // `staff.academyId === owner.academyId` (non-empty). The fallback
+    // was dead defensive code.
     if (this.emailSender && this.academyRepo) {
-      const academy = await this.academyRepo.findById(staff.academyId ?? '');
-      this.emailSender.send({
-        to: staff.emailNormalized,
-        subject: `Account ${input.status === 'INACTIVE' ? 'Deactivated' : 'Reactivated'} - ${academy?.academyName ?? 'Your Academy'}`,
-        html: renderStaffDeactivatedEmail({
-          staffName: staff.fullName,
-          academyName: academy?.academyName ?? 'Your Academy',
-          newStatus: input.status,
-        }),
-      }).catch(() => {});
+      const academy = await this.academyRepo.findById(owner.academyId);
+      this.emailSender
+        .send({
+          to: staff.emailNormalized,
+          subject: `Account ${input.status === 'INACTIVE' ? 'Deactivated' : 'Reactivated'} - ${academy?.academyName ?? 'Your Academy'}`,
+          html: renderStaffDeactivatedEmail({
+            staffName: staff.fullName,
+            academyName: academy?.academyName ?? 'Your Academy',
+            newStatus: input.status,
+          }),
+        })
+        .catch(() => {});
     }
 
-    return ok({
-      id: updated.id.toString(),
-      fullName: updated.fullName,
-      email: updated.emailNormalized,
-      phoneNumber: updated.phoneE164,
-      role: updated.role,
-      status: updated.status,
-      academyId: updated.academyId,
-      startDate: updated.startDate,
-      gender: updated.gender,
-      whatsappNumber: updated.whatsappNumber,
-      mobileNumber: updated.mobileNumber,
-      address: updated.address,
-      qualificationInfo: updated.qualificationInfo,
-      salaryConfig: updated.salaryConfig,
-      profilePhotoUrl: updated.profilePhotoUrl,
-      createdAt: updated.audit.createdAt,
-      updatedAt: updated.audit.updatedAt,
-    });
+    return ok(toStaffStatusResponse(updated));
   }
+}
+
+function toStaffStatusResponse(u: User): SetStaffStatusOutput {
+  return {
+    id: u.id.toString(),
+    fullName: u.fullName,
+    email: u.emailNormalized,
+    phoneNumber: u.phoneE164,
+    role: u.role,
+    status: u.status,
+    academyId: u.academyId,
+    startDate: u.startDate?.toISOString() ?? null,
+    gender: u.gender,
+    whatsappNumber: u.whatsappNumber,
+    mobileNumber: u.mobileNumber,
+    address: u.address,
+    qualificationInfo: u.qualificationInfo,
+    salaryConfig: u.salaryConfig,
+    profilePhotoUrl: u.profilePhotoUrl,
+    createdAt: u.audit.createdAt.toISOString(),
+    updatedAt: u.audit.updatedAt.toISOString(),
+  };
 }

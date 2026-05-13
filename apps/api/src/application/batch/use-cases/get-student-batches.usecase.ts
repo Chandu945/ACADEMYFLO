@@ -24,9 +24,7 @@ export class GetStudentBatchesUseCase {
     private readonly studentBatchRepo: StudentBatchRepository,
   ) {}
 
-  async execute(
-    input: GetStudentBatchesInput,
-  ): Promise<Result<BatchListItemDto[], AppError>> {
+  async execute(input: GetStudentBatchesInput): Promise<Result<BatchListItemDto[], AppError>> {
     if (input.actorRole !== 'OWNER' && input.actorRole !== 'STAFF') {
       return err(StudentBatchErrors.viewNotAllowed());
     }

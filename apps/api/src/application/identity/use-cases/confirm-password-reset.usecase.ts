@@ -13,6 +13,7 @@ import type { OtpAttemptTrackerPort } from '../services/otp-attempt-tracker';
 import { renderPasswordChangedEmail } from '../../notifications/templates/password-changed-template';
 import { PasswordResetErrors } from '../../common/errors';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { UserAuthCachePort } from '../ports/user-auth-cache.port';
 
 interface ConfirmPasswordResetInput {
   email: string;
@@ -35,6 +36,13 @@ export class ConfirmPasswordResetUseCase {
     private readonly otpAttemptTracker: OtpAttemptTrackerPort,
     private readonly emailSender?: EmailSenderPort,
     private readonly audit?: AuditRecorderPort,
+    /**
+     * H1 identity-audit fix: bust the JwtAuthGuard cache so an old access
+     * token already in an attacker's hands stops working immediately rather
+     * than surviving for the 5-min cache TTL. Optional so legacy fixtures
+     * compile; production DI always passes it.
+     */
+    private readonly userAuthCache?: UserAuthCachePort,
   ) {}
 
   async execute(
@@ -96,8 +104,13 @@ export class ConfirmPasswordResetUseCase {
       tokenVersion: user.tokenVersion + 1,
     });
     await this.userRepo.save(updated);
-    // Note: user auth cache (user:auth:{userId}) will be invalidated on next
-    // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
+    // H1 identity-audit fix: explicit cache bust. Pre-fix comment claimed
+    // "tokenVersion mismatch will invalidate next check" — but for an OLD
+    // access token (the threat-model case), cache.tokenVersion == old AND
+    // payload.tokenVersion == old, so the guard matches them and allows
+    // through. Only NEW tokens (post-rotation) ever trigger the mismatch
+    // re-fetch. Explicit del closes the gap.
+    await this.userAuthCache?.invalidate(userId);
 
     await this.sessionRepo.revokeAllByUserIds([userId]);
     // Drop push tokens too — the password change may be a response to
@@ -107,24 +120,28 @@ export class ConfirmPasswordResetUseCase {
     await this.otpAttemptTracker.recordSuccess(email);
 
     // Fire-and-forget: notify user about password change
-    this.emailSender?.send({
-      to: user.emailNormalized,
-      subject: 'Your Academyflo Password Has Been Changed',
-      html: renderPasswordChangedEmail({
-        userName: user.fullName,
-        userEmail: user.emailNormalized,
-      }),
-    }).catch(() => {});
+    this.emailSender
+      ?.send({
+        to: user.emailNormalized,
+        subject: 'Your Academyflo Password Has Been Changed',
+        html: renderPasswordChangedEmail({
+          userName: user.fullName,
+          userEmail: user.emailNormalized,
+        }),
+      })
+      .catch(() => {});
 
     if (user.academyId && this.audit) {
-      await this.audit.record({
-        academyId: user.academyId.toString(),
-        actorUserId: userId,
-        action: 'PASSWORD_RESET_COMPLETED',
-        entityType: 'USER',
-        entityId: userId,
-        context: { role: user.role },
-      }).catch(() => {});
+      await this.audit
+        .record({
+          academyId: user.academyId.toString(),
+          actorUserId: userId,
+          action: 'PASSWORD_RESET_COMPLETED',
+          entityType: 'USER',
+          entityId: userId,
+          context: { role: user.role },
+        })
+        .catch(() => {});
     }
 
     return ok({ message: 'Password reset successful.' });

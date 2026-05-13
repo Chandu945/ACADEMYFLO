@@ -6,6 +6,7 @@ import { Student } from '@domain/student/entities/student.entity';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FileStoragePort } from '../../common/ports/file-storage.port';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { StudentErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
 import { AppError as AppErrorClass } from '@shared/kernel';
@@ -30,6 +31,13 @@ export class UploadStudentPhotoUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly fileStorage: FileStoragePort,
+    /**
+     * Used to record an audit entry on every successful photo upload (M5
+     * student-management audit fix). Optional so legacy fixtures keep
+     * working — without it, the upload still succeeds but is silent in the
+     * audit log. Production wiring always passes it.
+     */
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: UploadStudentPhotoInput): Promise<Result<{ url: string }, AppError>> {
@@ -52,7 +60,11 @@ export class UploadStudentPhotoUseCase {
     }
     const loadedVersion = student.audit.version;
 
-    if (!ALLOWED_IMAGE_MIME_TYPES.includes(input.mimeType as typeof ALLOWED_IMAGE_MIME_TYPES[number])) {
+    if (
+      !ALLOWED_IMAGE_MIME_TYPES.includes(
+        input.mimeType as (typeof ALLOWED_IMAGE_MIME_TYPES)[number],
+      )
+    ) {
       return err(AppErrorClass.validation('Only JPEG, PNG, and WebP images are allowed'));
     }
 
@@ -85,7 +97,11 @@ export class UploadStudentPhotoUseCase {
     if (!saved) {
       // Concurrent edit won — the new file we just uploaded is orphaned (will
       // be GC'd). Tell the caller to reload and retry.
-      try { await this.fileStorage.delete(url); } catch { /* best effort */ }
+      try {
+        await this.fileStorage.delete(url);
+      } catch {
+        /* best effort */
+      }
       return err(StudentErrors.concurrencyConflict());
     }
 
@@ -98,6 +114,22 @@ export class UploadStudentPhotoUseCase {
         // Intentionally swallowed — the student now points at the new URL; the
         // old file will be cleaned up by storage GC eventually.
       }
+    }
+
+    // M5 fix: record the upload in the audit trail. Context intentionally
+    // omits the URL value — the URL embeds a storage path that's effectively
+    // PII for a minor's photo. The event-only entry ("photo uploaded by X
+    // for student Y at time Z") is what owners need for dispute and
+    // compliance scenarios.
+    if (this.auditRecorder) {
+      await this.auditRecorder.record({
+        academyId: actor.academyId,
+        actorUserId: input.actorUserId,
+        action: 'STUDENT_PHOTO_UPLOADED',
+        entityType: 'STUDENT',
+        entityId: input.studentId,
+        context: { studentId: input.studentId },
+      });
     }
 
     return ok({ url });

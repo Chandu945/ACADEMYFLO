@@ -28,8 +28,10 @@ export const StudentErrors = {
     new AppError('ACADEMY_SETUP_REQUIRED', 'Please complete academy setup first'),
   notInAcademy: () => AppError.forbidden('Student does not belong to your academy'),
   alreadyDeleted: () => AppError.conflict('Student has already been deleted'),
-  duplicateEmail: () => AppError.conflict('A student with this email already exists in your academy'),
-  duplicatePhone: () => AppError.conflict('A student with this phone number already exists in your academy'),
+  duplicateEmail: () =>
+    AppError.conflict('A student with this email already exists in your academy'),
+  duplicatePhone: () =>
+    AppError.conflict('A student with this phone number already exists in your academy'),
   feeChangeNotAllowed: () => AppError.forbidden('Only owners can change student fees'),
   statusChangeNotAllowed: () => AppError.forbidden('Only owners can change student status'),
   deleteNotAllowed: () => AppError.forbidden('Only owners can delete students'),
@@ -53,8 +55,7 @@ export const AttendanceErrors = {
   studentNotActive: (id: string) => AppError.validation(`Student '${id}' is not active`),
   batchNotInAcademy: () => AppError.forbidden('Batch does not belong to your academy'),
   batchNotFound: (id: string) => AppError.notFound('Batch', id),
-  studentNotInBatch: () =>
-    AppError.validation('Student is not enrolled in this batch'),
+  studentNotInBatch: () => AppError.validation('Student is not enrolled in this batch'),
 } as const;
 
 export const FeeErrors = {
@@ -121,7 +122,8 @@ export const AuthErrors = {
 } as const;
 
 export const PasswordResetErrors = {
-  cooldownActive: () => new AppError('COOLDOWN_ACTIVE', 'Please wait before requesting another code'),
+  cooldownActive: () =>
+    new AppError('COOLDOWN_ACTIVE', 'Please wait before requesting another code'),
   invalidOrExpiredOtp: () => AppError.unauthorized('Invalid or expired verification code'),
   tooManyAttempts: () => AppError.forbidden('Too many failed attempts. Please request a new code.'),
 } as const;
@@ -158,11 +160,19 @@ export const ParentErrors = {
   feeDueAlreadyPaid: () => AppError.conflict('Fee due has already been paid'),
   paymentAlreadyPending: () => AppError.conflict('A payment is already in progress for this fee'),
   paymentProviderUnavailable: () =>
-    new AppError('PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is temporarily unavailable. Please try again.'),
+    new AppError(
+      'PAYMENT_PROVIDER_UNAVAILABLE',
+      'Payment provider is temporarily unavailable. Please try again.',
+    ),
   onlinePaymentsDisabled: () =>
-    new AppError('FEATURE_DISABLED', 'Online fee payment is currently unavailable. Please pay at the academy.'),
-  guardianEmailRequired: () => AppError.validation('Student guardian email is required to invite a parent'),
-  guardianPhoneRequired: () => AppError.validation('Student guardian phone number is required to invite a parent'),
+    new AppError(
+      'FEATURE_DISABLED',
+      'Online fee payment is currently unavailable. Please pay at the academy.',
+    ),
+  guardianEmailRequired: () =>
+    AppError.validation('Student guardian email is required to invite a parent'),
+  guardianPhoneRequired: () =>
+    AppError.validation('Student guardian phone number is required to invite a parent'),
 } as const;
 
 export const EnquiryErrors = {
@@ -172,7 +182,8 @@ export const EnquiryErrors = {
   alreadyClosed: () => AppError.validation('This enquiry has already been closed'),
   closedCannotFollowUp: () => AppError.validation('Cannot add follow-up to a closed enquiry'),
   closeNotAllowed: () => AppError.forbidden('Only academy owner can close enquiries'),
-  convertNotAllowed: () => AppError.forbidden('Only academy owner can convert enquiries to students'),
+  convertNotAllowed: () =>
+    AppError.forbidden('Only academy owner can convert enquiries to students'),
   manageNotAllowed: () => AppError.forbidden('Only owners and staff can manage enquiries'),
   concurrencyConflict: () =>
     AppError.conflict('This enquiry was modified by someone else. Please reload and try again.'),
@@ -183,10 +194,25 @@ export const InstituteInfoErrors = {
     new AppError('ACADEMY_SETUP_REQUIRED', 'Please complete academy setup first'),
   viewNotAllowed: () => AppError.forbidden('Only owners can view institute info'),
   updateNotAllowed: () => AppError.forbidden('Only owners can update institute info'),
-  invalidIfsc: () => AppError.validation('IFSC code must match format: 4 letters, 0, then 6 alphanumeric characters'),
+  invalidIfsc: () =>
+    AppError.validation(
+      'IFSC code must match format: 4 letters, 0, then 6 alphanumeric characters',
+    ),
   invalidAccountNumber: () => AppError.validation('Account number must be 9-18 digits'),
   invalidUpiId: () => AppError.validation('UPI ID must be in format: name@provider'),
-  invalidFile: () => AppError.validation('Invalid file. Only JPEG, PNG, and WebP images are allowed (max 5MB)'),
+  invalidFile: () =>
+    AppError.validation('Invalid file. Only JPEG, PNG, and WebP images are allowed (max 5MB)'),
+  /** M5 academy-onboarding fix: surfaced when two concurrent owner sessions
+   *  saved to the same academy and the second lost the version race. */
+  concurrencyConflict: () =>
+    AppError.conflict(
+      'Academy settings were modified by someone else. Please reload and try again.',
+    ),
+  /** M4 academy-onboarding fix: hard storage failure on R2. Distinguish
+   *  from NETWORK so the client can decide whether retry is sensible. */
+  uploadFailed: () => new AppError('UPLOAD_FAILED', 'Failed to upload image. Please try again.'),
+  networkUnavailable: () =>
+    new AppError('NETWORK', 'Could not reach storage service. Please retry.'),
 } as const;
 
 export const EventErrors = {
@@ -214,6 +240,12 @@ export const AdminErrors = {
     AppError.notFound('Subscription for academy', academyId),
   notSuperAdmin: () => AppError.forbidden('Only super admins can perform this action'),
   invalidDates: () => AppError.validation('paidStartAt must be before paidEndAt'),
+  /** M2 admin audit fix: surfaced when two concurrent super-admin sessions
+   *  saved to the same subscription and the second lost the version race. */
+  concurrencyConflict: () =>
+    AppError.conflict(
+      'This subscription was modified by another admin. Please reload and try again.',
+    ),
 } as const;
 
 export const GalleryErrors = {
@@ -221,5 +253,6 @@ export const GalleryErrors = {
   photoNotFound: () => AppError.notFound('Gallery photo'),
   notAllowed: () => AppError.forbidden('You do not have permission for this gallery action'),
   uploadFailed: () => new AppError('UPLOAD_FAILED', 'Failed to upload photo. Please try again.'),
-  maxPhotosReached: () => AppError.validation('Maximum number of photos (50) reached for this event'),
+  maxPhotosReached: (max = 50) =>
+    AppError.validation(`Maximum number of photos (${max}) reached for this event`),
 } as const;

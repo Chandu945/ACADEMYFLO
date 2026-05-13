@@ -82,7 +82,9 @@ export class ListPaymentRequestsUseCase {
     // Resolve staff, student, and reviewer names for display
     const staffIds = [...new Set(paged.map((r) => r.staffUserId))];
     const studentIds = [...new Set(paged.map((r) => r.studentId))];
-    const reviewerIds = [...new Set(paged.map((r) => r.reviewedByUserId).filter(Boolean))] as string[];
+    const reviewerIds = [
+      ...new Set(paged.map((r) => r.reviewedByUserId).filter(Boolean)),
+    ] as string[];
 
     const [staffUsers, students, reviewerUsers] = await Promise.all([
       Promise.all(staffIds.map((id) => this.userRepo.findById(id))),
@@ -104,11 +106,13 @@ export class ListPaymentRequestsUseCase {
     }
 
     return ok({
-      data: paged.map((r) => toPaymentRequestDto(r, {
-        staffName: staffNameMap.get(r.staffUserId),
-        studentName: studentNameMap.get(r.studentId),
-        reviewedByName: r.reviewedByUserId ? reviewerNameMap.get(r.reviewedByUserId) : undefined,
-      })),
+      data: paged.map((r) =>
+        toPaymentRequestDto(r, {
+          staffName: staffNameMap.get(r.staffUserId),
+          studentName: studentNameMap.get(r.studentId),
+          reviewedByName: r.reviewedByUserId ? reviewerNameMap.get(r.reviewedByUserId) : undefined,
+        }),
+      ),
       meta: {
         page: input.page,
         pageSize: input.pageSize,

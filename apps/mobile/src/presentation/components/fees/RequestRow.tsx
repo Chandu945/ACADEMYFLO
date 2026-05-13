@@ -91,7 +91,10 @@ function RequestRowComponent({
 
   return (
     <AppCard
-      style={[styles.card, { borderLeftColor: accentColor, borderLeftWidth: 3 }]}
+      // AppCardProps.style is `ViewStyle` (single object), not an array, so the
+      // accent-stripe overrides are merged inline rather than passed as a
+      // tuple. StyleSheet objects are freezable but spread is safe here.
+      style={{ ...styles.card, borderLeftColor: accentColor, borderLeftWidth: 3 }}
       testID={`request-row-${item.id}`}
     >
       {/* Header — month + relative time on the left, status pill on the right */}

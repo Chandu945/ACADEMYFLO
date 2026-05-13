@@ -59,18 +59,19 @@ export class GetDailyStaffAttendanceViewUseCase {
     const holiday = await this.holidayRepo.findByAcademyAndDate(actor.academyId, input.date);
     const isHoliday = holiday !== null;
 
-    // Fetch ACTIVE staff paginated
-    const { users: staffUsers, total } = await this.userRepo.listByAcademyAndRole(
+    // H1 fix (attendance audit): push the ACTIVE status filter into the repo
+    // so `total` reflects the filtered set and the page itself is correctly
+    // sized. Prior code post-filtered in memory (uneven page sizes — page
+    // of 20 might surface only 14 ACTIVE staff because 6 INACTIVE got
+    // filtered out after pagination) and asked for a separate active count.
+    // Mirrors the list-staff M4 fix.
+    const { users: activeStaff, total: activeTotal } = await this.userRepo.listByAcademyAndRole(
       actor.academyId,
       'STAFF',
       input.page,
       input.pageSize,
+      'ACTIVE',
     );
-
-    const activeStaff = staffUsers.filter((u) => u.isActive());
-    // Use a proper active-only count — `total` above also includes INACTIVE
-    // staff (filter is role + deletedAt only), which would inflate pagination.
-    const activeTotal = await this.userRepo.countActiveByAcademyAndRole(actor.academyId, 'STAFF');
 
     const staffIds = activeStaff.map((s) => s.id.toString());
 

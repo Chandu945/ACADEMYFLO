@@ -51,7 +51,8 @@ export class GetAcademySettingsUseCase {
       lateFeeEnabled: academy.lateFeeEnabled ?? DEFAULT_LATE_FEE_ENABLED,
       gracePeriodDays: academy.gracePeriodDays ?? DEFAULT_GRACE_PERIOD_DAYS,
       lateFeeAmountInr: academy.lateFeeAmountInr ?? DEFAULT_LATE_FEE_AMOUNT_INR,
-      lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays ?? DEFAULT_LATE_FEE_REPEAT_INTERVAL_DAYS,
+      lateFeeRepeatIntervalDays:
+        academy.lateFeeRepeatIntervalDays ?? DEFAULT_LATE_FEE_REPEAT_INTERVAL_DAYS,
     });
   }
 }

@@ -33,7 +33,11 @@ export class ListGalleryPhotosUseCase {
   ) {}
 
   async execute(input: ListGalleryPhotosInput): Promise<Result<GalleryPhotoOutput[], AppError>> {
-    if (input.actorRole !== 'OWNER' && input.actorRole !== 'STAFF' && input.actorRole !== 'PARENT') {
+    if (
+      input.actorRole !== 'OWNER' &&
+      input.actorRole !== 'STAFF' &&
+      input.actorRole !== 'PARENT'
+    ) {
       return err(GalleryErrors.notAllowed());
     }
 

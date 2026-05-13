@@ -28,6 +28,7 @@ describe('CreatePaymentRequestUseCase', () => {
       incrementTokenVersionByUserId: jest.fn(),
       listByAcademyId: jest.fn(),
       anonymizeAndSoftDelete: jest.fn(),
+      listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
     } as jest.Mocked<UserRepository>;
 
     studentRepo = {
@@ -36,6 +37,7 @@ describe('CreatePaymentRequestUseCase', () => {
       list: jest.fn(),
       listActiveByAcademy: jest.fn(),
       countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
       findByIds: jest.fn(),
       findBirthdaysByAcademy: jest.fn(),
       findByEmailInAcademy: jest.fn(),
@@ -68,6 +70,7 @@ describe('CreatePaymentRequestUseCase', () => {
       sumUnpaidAmountByAcademyAndMonth: jest.fn(),
       countOverdueByAcademy: jest.fn(),
       listOverdueByAcademy: jest.fn(),
+      saveSnapshotIfStillDue: jest.fn(),
     } as jest.Mocked<FeeDueRepository>;
 
     prRepo = {
@@ -76,8 +79,13 @@ describe('CreatePaymentRequestUseCase', () => {
       findPendingByFeeDue: jest.fn(),
       listByAcademyAndStatuses: jest.fn(),
       listByStaffAndAcademy: jest.fn(),
+      countPendingByStaffAndAcademy: jest.fn(),
       countPendingByAcademy: jest.fn(),
+      countPendingByAuthorAndAcademySince: jest.fn(),
+      listByAcademyAndStudent: jest.fn(),
+      listPendingByStudentAndAcademy: jest.fn(),
       deleteAllByAcademyAndStudent: jest.fn(),
+      deletePendingByAcademyAndStudent: jest.fn(),
     } as jest.Mocked<PaymentRequestRepository>;
 
     const auditRecorder = { record: jest.fn() };

@@ -20,6 +20,16 @@ export interface DeviceTokenRepository {
    * Returns the number of tokens removed (for logging / audit context).
    */
   removeByUserIds(userIds: string[]): Promise<number>;
+  /**
+   * Drop any rows that bind the given fcmToken to a user OTHER than
+   * `currentUserId`. Used by the register handler (M1 notifications fix)
+   * to make device-token registration authoritative: a fresh registrant
+   * inherits the device, the previous user's claim is cleared. Closes
+   * the shared-family-device hijack where pushes for user A kept landing
+   * on a device that had since been claimed by user B. Returns the
+   * number of rows removed.
+   */
+  removeOthersByToken(currentUserId: string, fcmToken: string): Promise<number>;
   findByUserId(userId: string): Promise<DeviceToken[]>;
   findByUserIds(userIds: string[]): Promise<DeviceToken[]>;
 }

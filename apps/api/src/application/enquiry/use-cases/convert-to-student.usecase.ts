@@ -7,8 +7,15 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { EnquiryRepository } from '@domain/enquiry/ports/enquiry.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import { Student } from '@domain/student/entities/student.entity';
+import {
+  validateMonthlyFee,
+  validatePincode,
+  validateAddressLine,
+  validateCityOrState,
+  validateDateOfBirth,
+} from '@domain/student/rules/student.rules';
 import type { TransactionPort } from '../../common/transaction.port';
-import { EnquiryErrors } from '../../common/errors';
+import { EnquiryErrors, StudentErrors } from '../../common/errors';
 import { toEnquiryDetail } from './get-enquiry-detail.usecase';
 import type { EnquiryDetailOutput } from './get-enquiry-detail.usecase';
 import type { UserRole } from '@academyflo/contracts';
@@ -82,7 +89,9 @@ export class ConvertToStudentUseCase {
     const dob = new Date(input.dateOfBirth);
     const joining = new Date(input.joiningDate);
     if (Number.isNaN(dob.getTime()) || Number.isNaN(joining.getTime())) {
-      return err(AppErrorClass.validation('dateOfBirth and joiningDate must be valid YYYY-MM-DD dates'));
+      return err(
+        AppErrorClass.validation('dateOfBirth and joiningDate must be valid YYYY-MM-DD dates'),
+      );
     }
     if (dob.getTime() >= joining.getTime()) {
       return err(AppErrorClass.validation('dateOfBirth must be before joiningDate'));
@@ -92,10 +101,49 @@ export class ConvertToStudentUseCase {
     const oneYearAhead = new Date();
     oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
     if (joining.getTime() > oneYearAhead.getTime()) {
-      return err(AppErrorClass.validation('joiningDate cannot be more than one year in the future'));
+      return err(
+        AppErrorClass.validation('joiningDate cannot be more than one year in the future'),
+      );
     }
-    if (!Number.isFinite(input.monthlyFee) || input.monthlyFee <= 0) {
-      return err(AppErrorClass.validation('monthlyFee must be a positive number'));
+
+    // H1 fix: apply the same student.rules validators that create-student
+    // and update-student use. Prior code only checked `monthlyFee > 0`,
+    // accepting fractions and bypassing the integer invariant. Free-text
+    // address fields had no length cap, so a 5MB addressLine1 would
+    // silently bloat the student doc. The convert path is no longer a
+    // bypass for the L4 field-length validators we shipped earlier.
+    const dobCheck = validateDateOfBirth(dob);
+    if (!dobCheck.valid) return err(AppErrorClass.validation(dobCheck.reason!));
+    const feeCheck = validateMonthlyFee(input.monthlyFee);
+    if (!feeCheck.valid) return err(AppErrorClass.validation(feeCheck.reason!));
+    const pincodeCheck = validatePincode(input.pincode);
+    if (!pincodeCheck.valid) return err(AppErrorClass.validation(pincodeCheck.reason!));
+    const addrLine1Check = validateAddressLine(input.addressLine1, 'Address line 1');
+    if (!addrLine1Check.valid) return err(AppErrorClass.validation(addrLine1Check.reason!));
+    const cityCheck = validateCityOrState(input.city, 'City');
+    if (!cityCheck.valid) return err(AppErrorClass.validation(cityCheck.reason!));
+    const stateCheck = validateCityOrState(input.state, 'State');
+    if (!stateCheck.valid) return err(AppErrorClass.validation(stateCheck.reason!));
+
+    // H2 fix: dedup check against existing students in the academy. Prior
+    // code skipped this — create-student does it but convert bypassed it,
+    // so a re-converted enquiry or a sibling sharing a parent phone would
+    // silently create a duplicate student record.
+    const emailToCheck = enquiry.email?.trim().toLowerCase();
+    if (emailToCheck) {
+      const existingByEmail = await this.studentRepo.findByEmailInAcademy(
+        actor.academyId,
+        emailToCheck,
+      );
+      if (existingByEmail) return err(StudentErrors.duplicateEmail());
+    }
+    const phoneToCheck = enquiry.mobileNumber;
+    if (phoneToCheck) {
+      const existingByPhone = await this.studentRepo.findByPhoneInAcademy(
+        actor.academyId,
+        phoneToCheck,
+      );
+      if (existingByPhone) return err(StudentErrors.duplicatePhone());
     }
 
     const studentId = randomUUID();
@@ -128,17 +176,19 @@ export class ConvertToStudentUseCase {
     const closed = enquiry.close('CONVERTED', input.actorUserId, new Date(), studentId);
 
     let conflicted = false;
-    await this.transaction.run(async () => {
-      await this.studentRepo.save(student);
-      const saved = await this.enquiryRepo.saveWithVersionPrecondition(closed, loadedVersion);
-      if (!saved) {
-        conflicted = true;
-        throw new Error('CONCURRENCY_CONFLICT');
-      }
-    }).catch((e: unknown) => {
-      if (e instanceof Error && e.message === 'CONCURRENCY_CONFLICT') return;
-      throw e;
-    });
+    await this.transaction
+      .run(async () => {
+        await this.studentRepo.save(student);
+        const saved = await this.enquiryRepo.saveWithVersionPrecondition(closed, loadedVersion);
+        if (!saved) {
+          conflicted = true;
+          throw new Error('CONCURRENCY_CONFLICT');
+        }
+      })
+      .catch((e: unknown) => {
+        if (e instanceof Error && e.message === 'CONCURRENCY_CONFLICT') return;
+        throw e;
+      });
 
     if (conflicted) return err(EnquiryErrors.concurrencyConflict());
 

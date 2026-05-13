@@ -59,9 +59,7 @@ export class RequestPasswordResetUseCase {
     const existing = await this.challengeRepo.findLatestActiveByUserId(userId);
 
     if (existing) {
-      const cooldownEnd = new Date(
-        existing.createdAt.getTime() + this.otpCooldownSeconds * 1000,
-      );
+      const cooldownEnd = new Date(existing.createdAt.getTime() + this.otpCooldownSeconds * 1000);
       if (new Date() < cooldownEnd) {
         return ok({ message: GENERIC_MESSAGE });
       }
@@ -97,14 +95,16 @@ export class RequestPasswordResetUseCase {
     // rather than invent a fake tenant and keep the generic-response branch
     // (no user) silent so we don't create an enumeration oracle.
     if (user.academyId && this.audit) {
-      await this.audit.record({
-        academyId: user.academyId.toString(),
-        actorUserId: userId,
-        action: 'PASSWORD_RESET_REQUESTED',
-        entityType: 'USER',
-        entityId: userId,
-        context: { role: user.role },
-      }).catch(() => {});
+      await this.audit
+        .record({
+          academyId: user.academyId.toString(),
+          actorUserId: userId,
+          action: 'PASSWORD_RESET_REQUESTED',
+          entityType: 'USER',
+          entityId: userId,
+          context: { role: user.role },
+        })
+        .catch(() => {});
     }
 
     return ok({ message: GENERIC_MESSAGE });

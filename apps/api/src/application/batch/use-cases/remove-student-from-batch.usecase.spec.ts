@@ -60,6 +60,7 @@ function buildDeps() {
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
     anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const studentRepo: jest.Mocked<StudentRepository> = {
@@ -68,6 +69,7 @@ function buildDeps() {
     list: jest.fn(),
     listActiveByAcademy: jest.fn(),
     countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
     findByIds: jest.fn(),
     findBirthdaysByAcademy: jest.fn(),
     findByEmailInAcademy: jest.fn(),
@@ -89,6 +91,7 @@ function buildDeps() {
   const studentBatchRepo: jest.Mocked<StudentBatchRepository> = {
     replaceForStudent: jest.fn(),
     findByStudentId: jest.fn().mockResolvedValue([]),
+    findByStudentIds: jest.fn().mockResolvedValue([]),
     findByBatchId: jest.fn(),
     deleteByBatchId: jest.fn(),
     countByBatchId: jest.fn(),
@@ -114,8 +117,18 @@ describe('RemoveStudentFromBatchUseCase', () => {
     deps.batchRepo.findById.mockResolvedValue(createMockBatch());
     deps.studentRepo.findById.mockResolvedValue(createMockStudent());
     deps.studentBatchRepo.findByStudentId.mockResolvedValue([
-      StudentBatch.create({ id: 'sb-1', studentId: 'student-1', batchId: 'batch-1', academyId: 'academy-1' }),
-      StudentBatch.create({ id: 'sb-2', studentId: 'student-1', batchId: 'batch-2', academyId: 'academy-1' }),
+      StudentBatch.create({
+        id: 'sb-1',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        academyId: 'academy-1',
+      }),
+      StudentBatch.create({
+        id: 'sb-2',
+        studentId: 'student-1',
+        batchId: 'batch-2',
+        academyId: 'academy-1',
+      }),
     ]);
 
     const result = await makeUc(deps).execute({

@@ -8,6 +8,7 @@ import type { DeviceTokenRepository } from '@domain/notification/ports/device-to
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderAcademyLoginDisabledEmail } from '../../notifications/templates/academy-login-disabled-template';
+import type { UserAuthCachePort } from '../../identity/ports/user-auth-cache.port';
 import { AdminErrors } from '../../common/errors';
 
 interface SetAcademyLoginDisabledInput {
@@ -41,6 +42,9 @@ export class SetAcademyLoginDisabledUseCase {
     private readonly auditRecorder: AuditRecorderPort,
     private readonly emailSender?: EmailSenderPort,
     private readonly deviceTokenRepo?: DeviceTokenRepository,
+    /** H1 identity-audit fix: bust auth cache for every academy user when
+     *  disabling so old access tokens can't keep working for ~5min. */
+    private readonly userAuthCache?: UserAuthCachePort,
   ) {}
 
   async execute(
@@ -61,15 +65,15 @@ export class SetAcademyLoginDisabledUseCase {
     let affectedUsers = 0;
 
     // When disabling: force logout all academy users immediately.
-    // Note: user auth cache entries (user:auth:{userId}) for affected users will be
-    // invalidated on next JWT check via tokenVersion mismatch, and expire within 5 min TTL.
     if (input.disabled) {
-      const affectedUserIds = await this.userRepo.incrementTokenVersionByAcademyId(
-        input.academyId,
-      );
+      const affectedUserIds = await this.userRepo.incrementTokenVersionByAcademyId(input.academyId);
       if (affectedUserIds.length > 0) {
         await this.sessionRepo.revokeAllByUserIds(affectedUserIds);
         await this.deviceTokenRepo?.removeByUserIds(affectedUserIds);
+        // H1 identity-audit fix: bust the JwtAuthGuard cache for every
+        // user in this academy so the disable takes effect immediately
+        // (otherwise old access tokens survive for up to 5 min).
+        await this.userAuthCache?.invalidateMany(affectedUserIds);
       }
       affectedUsers = affectedUserIds.length;
     }
@@ -90,15 +94,17 @@ export class SetAcademyLoginDisabledUseCase {
     if (this.emailSender) {
       const owner = await this.userRepo.findById(academy.ownerUserId);
       if (owner) {
-        this.emailSender.send({
-          to: owner.emailNormalized,
-          subject: `Academy Login ${input.disabled ? 'Disabled' : 'Re-Enabled'}`,
-          html: renderAcademyLoginDisabledEmail({
-            recipientName: owner.fullName,
-            academyName: academy.academyName,
-            disabled: input.disabled,
-          }),
-        }).catch(() => {});
+        this.emailSender
+          .send({
+            to: owner.emailNormalized,
+            subject: `Academy Login ${input.disabled ? 'Disabled' : 'Re-Enabled'}`,
+            html: renderAcademyLoginDisabledEmail({
+              recipientName: owner.fullName,
+              academyName: academy.academyName,
+              disabled: input.disabled,
+            }),
+          })
+          .catch(() => {});
       }
     }
 

@@ -34,10 +34,16 @@ import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { LOGGER_PORT } from '@shared/logging/logger.port';
+import type { LoggerPort } from '@shared/logging/logger.port';
 
 @Module({
   imports: [
     AuthModule,
+    AuditLogsModule,
     MongooseModule.forFeature([
       { name: BatchModel.name, schema: BatchSchema },
       { name: StudentModel.name, schema: StudentSchema },
@@ -53,15 +59,22 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
     { provide: TRANSACTION_PORT, useClass: MongoTransactionService },
     {
       provide: 'CREATE_BATCH_USE_CASE',
-      useFactory: (userRepo: UserRepository, batchRepo: BatchRepository) =>
-        new CreateBatchUseCase(userRepo, batchRepo),
-      inject: [USER_REPOSITORY, BATCH_REPOSITORY],
+      useFactory: (
+        userRepo: UserRepository,
+        batchRepo: BatchRepository,
+        audit: AuditRecorderPort,
+      ) => new CreateBatchUseCase(userRepo, batchRepo, audit),
+      inject: [USER_REPOSITORY, BATCH_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'UPDATE_BATCH_USE_CASE',
-      useFactory: (userRepo: UserRepository, batchRepo: BatchRepository) =>
-        new UpdateBatchUseCase(userRepo, batchRepo),
-      inject: [USER_REPOSITORY, BATCH_REPOSITORY],
+      useFactory: (
+        userRepo: UserRepository,
+        batchRepo: BatchRepository,
+        studentBatchRepo: StudentBatchRepository,
+        audit: AuditRecorderPort,
+      ) => new UpdateBatchUseCase(userRepo, batchRepo, studentBatchRepo, audit),
+      inject: [USER_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'LIST_BATCHES_USE_CASE',
@@ -95,8 +108,15 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
         batchRepo: BatchRepository,
         studentBatchRepo: StudentBatchRepository,
         studentRepo: StudentRepository,
-      ) => new AddStudentToBatchUseCase(userRepo, batchRepo, studentBatchRepo, studentRepo),
-      inject: [USER_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY, STUDENT_REPOSITORY],
+        audit: AuditRecorderPort,
+      ) => new AddStudentToBatchUseCase(userRepo, batchRepo, studentBatchRepo, studentRepo, audit),
+      inject: [
+        USER_REPOSITORY,
+        BATCH_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+        STUDENT_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'REMOVE_STUDENT_FROM_BATCH_USE_CASE',
@@ -105,8 +125,22 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
         batchRepo: BatchRepository,
         studentBatchRepo: StudentBatchRepository,
         studentRepo: StudentRepository,
-      ) => new RemoveStudentFromBatchUseCase(userRepo, batchRepo, studentBatchRepo, studentRepo),
-      inject: [USER_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY, STUDENT_REPOSITORY],
+        audit: AuditRecorderPort,
+      ) =>
+        new RemoveStudentFromBatchUseCase(
+          userRepo,
+          batchRepo,
+          studentBatchRepo,
+          studentRepo,
+          audit,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        BATCH_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+        STUDENT_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'DELETE_BATCH_USE_CASE',
@@ -115,8 +149,15 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
         batchRepo: BatchRepository,
         studentBatchRepo: StudentBatchRepository,
         transaction: TransactionPort,
-      ) => new DeleteBatchUseCase(userRepo, batchRepo, studentBatchRepo, transaction),
-      inject: [USER_REPOSITORY, BATCH_REPOSITORY, STUDENT_BATCH_REPOSITORY, TRANSACTION_PORT],
+        audit: AuditRecorderPort,
+      ) => new DeleteBatchUseCase(userRepo, batchRepo, studentBatchRepo, transaction, audit),
+      inject: [
+        USER_REPOSITORY,
+        BATCH_REPOSITORY,
+        STUDENT_BATCH_REPOSITORY,
+        TRANSACTION_PORT,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'UPLOAD_BATCH_PHOTO_USE_CASE',
@@ -124,8 +165,16 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
         userRepo: UserRepository,
         batchRepo: BatchRepository,
         fileStorage: FileStoragePort,
-      ) => new UploadBatchPhotoUseCase(userRepo, batchRepo, fileStorage),
-      inject: [USER_REPOSITORY, BATCH_REPOSITORY, FILE_STORAGE_PORT],
+        audit: AuditRecorderPort,
+        logger: LoggerPort,
+      ) => new UploadBatchPhotoUseCase(userRepo, batchRepo, fileStorage, audit, logger),
+      inject: [
+        USER_REPOSITORY,
+        BATCH_REPOSITORY,
+        FILE_STORAGE_PORT,
+        AUDIT_RECORDER_PORT,
+        LOGGER_PORT,
+      ],
     },
   ],
 })

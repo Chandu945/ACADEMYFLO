@@ -118,7 +118,13 @@ export class SendFeeRemindersUseCase {
           continue;
         }
 
-        const recipient = student.email || student.guardian?.email || null;
+        // M2 notifications fix: prefer the guardian's email over the
+        // student's. Fee reminders are about money — the audience is the
+        // financially-responsible adult, not the (often minor) student.
+        // Pre-fix code emailed the student first and only fell back to
+        // the guardian when the student record had no email, which routed
+        // payment requests to the wrong inbox for any record with both.
+        const recipient = student.guardian?.email || student.email || null;
         if (!recipient) {
           summary.studentsSkippedNoEmail++;
           continue;

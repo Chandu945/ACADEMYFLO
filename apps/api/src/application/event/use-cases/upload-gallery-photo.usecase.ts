@@ -19,6 +19,13 @@ import {
   extensionForMime,
 } from '@shared/utils/image-validation';
 
+/**
+ * Cap on gallery photos per event. L3 fix: was previously a hardcoded `50`
+ * in two places + the user-facing error message — easy to drift. Centralised
+ * here so the cap, the checks, and the error message stay in lockstep.
+ */
+export const MAX_PHOTOS_PER_EVENT = 50;
+
 export interface UploadGalleryPhotoInput {
   actorUserId: string;
   actorRole: UserRole;
@@ -50,7 +57,9 @@ export class UploadGalleryPhotoUseCase {
     private readonly logger: LoggerPort,
   ) {}
 
-  async execute(input: UploadGalleryPhotoInput): Promise<Result<UploadGalleryPhotoOutput, AppError>> {
+  async execute(
+    input: UploadGalleryPhotoInput,
+  ): Promise<Result<UploadGalleryPhotoOutput, AppError>> {
     if (input.actorRole !== 'OWNER' && input.actorRole !== 'STAFF') {
       return err(GalleryErrors.notAllowed());
     }
@@ -64,12 +73,12 @@ export class UploadGalleryPhotoUseCase {
     if (!event) return err(GalleryErrors.eventNotFound());
     if (event.academyId !== actor.academyId) return err(EventErrors.notInAcademy());
 
-    // Pre-flight max-photos check (UX): bail early if we're already at 50
-    // so we don't burn an upload+audit cycle. The post-save check below is
-    // the actual race-safe guard.
+    // Pre-flight max-photos check (UX): bail early if we're already at the
+    // cap so we don't burn an upload+audit cycle. The post-save check below
+    // is the actual race-safe guard.
     const photoCount = await this.galleryPhotoRepo.countByEventId(input.eventId);
-    if (photoCount >= 50) {
-      return err(GalleryErrors.maxPhotosReached());
+    if (photoCount >= MAX_PHOTOS_PER_EVENT) {
+      return err(GalleryErrors.maxPhotosReached(MAX_PHOTOS_PER_EVENT));
     }
 
     // Validate file
@@ -84,11 +93,18 @@ export class UploadGalleryPhotoUseCase {
       actualMime = 'image/png';
     } else if (header[0] === 0xff && header[1] === 0xd8) {
       actualMime = 'image/jpeg';
-    } else if (header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46) {
+    } else if (
+      header[0] === 0x52 &&
+      header[1] === 0x49 &&
+      header[2] === 0x46 &&
+      header[3] === 0x46
+    ) {
       actualMime = 'image/webp';
     }
 
-    if (!ALLOWED_IMAGE_MIME_TYPES.includes(actualMime as typeof ALLOWED_IMAGE_MIME_TYPES[number])) {
+    if (
+      !ALLOWED_IMAGE_MIME_TYPES.includes(actualMime as (typeof ALLOWED_IMAGE_MIME_TYPES)[number])
+    ) {
       return err(AppErrorClass.validation('Only JPEG, PNG, and WebP images are allowed'));
     }
 
@@ -108,16 +124,15 @@ export class UploadGalleryPhotoUseCase {
       const code = (errLike.code ?? errLike.name ?? '').toLowerCase();
       const message = errLike.message ?? '';
       if (code.includes('timeout') || code.includes('econn') || code.includes('network')) {
-        return err(new AppErrorClass(
-          'NETWORK',
-          'Could not reach storage service. Please retry.',
-        ));
+        return err(new AppErrorClass('NETWORK', 'Could not reach storage service. Please retry.'));
       }
       if (code.includes('accessdenied') || code.includes('forbidden')) {
-        return err(new AppErrorClass(
-          'UPLOAD_FAILED',
-          'Storage service rejected the upload (permissions). Contact support.',
-        ));
+        return err(
+          new AppErrorClass(
+            'UPLOAD_FAILED',
+            'Storage service rejected the upload (permissions). Contact support.',
+          ),
+        );
       }
       // Surface root cause to structured logs (not raw console) so ops can
       // diagnose without leaking provider internals to the API consumer.
@@ -139,23 +154,55 @@ export class UploadGalleryPhotoUseCase {
 
     await this.galleryPhotoRepo.save(photo);
 
-    // Race-safe cap enforcement: re-count after save and if we've gone over,
-    // roll back this insertion + remove the just-uploaded blob. Two parallel
-    // requests can both pass the pre-flight count, so we need a post-write
-    // check too. Whichever request finds itself > 50 cleans up after itself.
-    const finalCount = await this.galleryPhotoRepo.countByEventId(input.eventId);
-    if (finalCount > 50) {
-      await this.galleryPhotoRepo.delete(photoId).catch(() => { /* best-effort */ });
-      await this.fileStorage.delete(url).catch(() => { /* best-effort */ });
-      return err(GalleryErrors.maxPhotosReached());
+    // H1 fix: race-safe cap enforcement with a deterministic winner.
+    //
+    // Prior bug: both code paths used `count > MAX`, so two concurrent
+    // requests at count=N-1 would BOTH save (count → N+1), BOTH see
+    // `finalCount > MAX`, BOTH roll back. Net result: zero photos saved,
+    // two failures, two orphan blobs cleaned up. The cap held but the
+    // legitimate uploaders both lost.
+    //
+    // Fixed approach: list all photos sorted ASC by (createdAt, id) and
+    // keep the first MAX_PHOTOS_PER_EVENT — first-to-save wins. If THIS
+    // photo is beyond position MAX-1 it's the over-quota straggler and
+    // rolls back. Repo returns DESC by createdAt for UI use, so we sort
+    // a local copy ASC for fairness reasoning. The id tiebreaker handles
+    // same-millisecond saves.
+    //
+    //   - 49 photos exist, two racers both insert → 51 total. Sorted ASC,
+    //     the late racer is at index 50 (>= MAX). Only it rolls back.
+    //     One success, one error — the right outcome.
+    //   - Single uploader at count=49 is at index 49 (< MAX), keeps it.
+    const allPhotos = await this.galleryPhotoRepo.listByEventId(input.eventId);
+    const sortedAsc = [...allPhotos].sort((a, b) => {
+      const t = a.audit.createdAt.getTime() - b.audit.createdAt.getTime();
+      if (t !== 0) return t;
+      return a.id.toString().localeCompare(b.id.toString());
+    });
+    const myIndex = sortedAsc.findIndex((p) => p.id.toString() === photoId);
+    if (myIndex === -1 || myIndex >= MAX_PHOTOS_PER_EVENT) {
+      await this.galleryPhotoRepo.delete(photoId).catch(() => {
+        /* best-effort */
+      });
+      await this.fileStorage.delete(url).catch(() => {
+        /* best-effort */
+      });
+      return err(GalleryErrors.maxPhotosReached(MAX_PHOTOS_PER_EVENT));
     }
 
+    // M6 fix: include eventId + filename so the audit trail is navigable
+    // ("who uploaded what to which event"). URL deliberately omitted —
+    // gallery photos can include minors so we keep the path out of audit.
     await this.auditRecorder.record({
       academyId: actor.academyId,
       actorUserId: input.actorUserId,
       action: 'GALLERY_PHOTO_UPLOADED',
       entityType: 'GALLERY_PHOTO',
       entityId: photoId,
+      context: {
+        eventId: input.eventId,
+        originalName: input.originalName,
+      },
     });
 
     return ok({

@@ -9,6 +9,7 @@ import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderSubscriptionDeactivatedEmail } from '../../notifications/templates/subscription-deactivated-template';
 import { AdminErrors } from '../../common/errors';
+import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 
 interface DeactivateSubscriptionInput {
   actorRole: string;
@@ -63,7 +64,19 @@ export class DeactivateSubscriptionUseCase {
       audit: updateAuditFields(sub.audit),
     });
 
-    await this.subscriptionRepo.save(updated);
+    // M2 admin audit fix: map ConcurrentModificationError → typed CONFLICT.
+    // Same shape as set-subscription-manual. Deactivate is a one-shot write
+    // so the race is narrow, but a fresh activate-from-webhook landing
+    // between our read and write would otherwise wipe out the webhook's
+    // commit silently.
+    try {
+      await this.subscriptionRepo.save(updated);
+    } catch (e) {
+      if (e instanceof ConcurrentModificationError) {
+        return err(AdminErrors.concurrencyConflict());
+      }
+      throw e;
+    }
 
     await this.auditRecorder.record({
       academyId: input.academyId,
@@ -85,14 +98,16 @@ export class DeactivateSubscriptionUseCase {
       if (academy) {
         const owner = await this.userRepo.findById(academy.ownerUserId);
         if (owner) {
-          this.emailSender.send({
-            to: owner.emailNormalized,
-            subject: 'Subscription Deactivated - ' + academy.academyName,
-            html: renderSubscriptionDeactivatedEmail({
-              ownerName: owner.fullName,
-              academyName: academy.academyName,
-            }),
-          }).catch(() => {});
+          this.emailSender
+            .send({
+              to: owner.emailNormalized,
+              subject: 'Subscription Deactivated - ' + academy.academyName,
+              html: renderSubscriptionDeactivatedEmail({
+                ownerName: owner.fullName,
+                academyName: academy.academyName,
+              }),
+            })
+            .catch(() => {});
         }
       }
     }

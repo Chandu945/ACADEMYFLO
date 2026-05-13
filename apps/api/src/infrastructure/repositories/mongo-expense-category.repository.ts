@@ -8,6 +8,12 @@ import type { ExpenseCategoryDocument } from '../database/schemas/expense-catego
 import { getTransactionSession } from '../database/transaction-context';
 import { escapeRegex } from '@shared/utils/escape-regex';
 
+/** M1 fix: shared name-normalization (trim + lowercase). Co-located with the
+ *  save and lookup paths so both produce the same key. */
+function normalize(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 @Injectable()
 export class MongoExpenseCategoryRepository implements ExpenseCategoryRepository {
   constructor(
@@ -22,6 +28,11 @@ export class MongoExpenseCategoryRepository implements ExpenseCategoryRepository
         _id: category.id.toString(),
         academyId: category.academyId,
         name: category.name,
+        // M1 fix (expense audit): write the normalized form alongside name
+        // so the (academyId, nameNormalized) partial-unique index can
+        // enforce case-insensitive uniqueness at the DB layer. Pre-fix the
+        // JS-only check was TOCTOU-vulnerable.
+        nameNormalized: normalize(category.name),
         createdBy: category.createdBy,
       },
       { upsert: true, session: getTransactionSession() },
@@ -34,11 +45,23 @@ export class MongoExpenseCategoryRepository implements ExpenseCategoryRepository
   }
 
   async findByAcademyAndName(academyId: string, name: string): Promise<ExpenseCategory | null> {
-    const doc = await this.model
+    // M1 fix: prefer the indexed nameNormalized lookup. Falls back to the
+    // pre-fix case-insensitive regex when no normalized match (covers rows
+    // written before this fix that haven't been backfilled yet). The regex
+    // path uses escapeRegex so name is safe from regex injection.
+    const normalized = normalize(name);
+    const byNormalized = await this.model
+      .findOne({ academyId, nameNormalized: normalized })
+      .lean()
+      .exec();
+    if (byNormalized) {
+      return this.toDomain(byNormalized as unknown as Record<string, unknown>);
+    }
+    const byRegex = await this.model
       .findOne({ academyId, name: { $regex: new RegExp(`^${escapeRegex(name.trim())}$`, 'i') } })
       .lean()
       .exec();
-    return doc ? this.toDomain(doc as unknown as Record<string, unknown>) : null;
+    return byRegex ? this.toDomain(byRegex as unknown as Record<string, unknown>) : null;
   }
 
   async listByAcademy(academyId: string): Promise<ExpenseCategory[]> {

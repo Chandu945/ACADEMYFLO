@@ -4,10 +4,13 @@ import type { AppError } from '@shared/kernel';
 import { AppError as AppErrorClass } from '@shared/kernel';
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import { canDeclareHoliday, validateLocalDate } from '@domain/attendance/rules/attendance.rules';
 import { AttendanceErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import type { PushNotificationService } from '../../notifications/push-notification.service';
+import { buildHolidayRemovedPush } from '../../notifications/templates/holiday-removed-push-template';
 
 export interface RemoveHolidayInput {
   actorUserId: string;
@@ -20,6 +23,17 @@ export class RemoveHolidayUseCase {
     private readonly userRepo: UserRepository,
     private readonly holidayRepo: HolidayRepository,
     private readonly auditRecorder: AuditRecorderPort,
+    /**
+     * Used to notify parents that a previously-declared holiday has been
+     * cancelled (M4 attendance audit fix). Optional so legacy fixtures keep
+     * working; production wiring always passes it.
+     */
+    private readonly academyRepo?: AcademyRepository,
+    /**
+     * Used to send the holiday-cancelled push. Best-effort: a push failure
+     * doesn't roll back the holiday removal.
+     */
+    private readonly pushService?: PushNotificationService,
   ) {}
 
   async execute(input: RemoveHolidayInput): Promise<Result<{ date: string }, AppError>> {
@@ -55,6 +69,34 @@ export class RemoveHolidayUseCase {
           reason: existing.reason ?? '',
         },
       });
+
+      // M4 fix (attendance audit): push parents that the holiday has been
+      // cancelled. Pairs with the declare-holiday push so a mistaken
+      // declaration → quick removal sequence ends with parents knowing
+      // classes ARE running. Without this, parents who got the original
+      // "closed" push have no correction. Best-effort: a push failure
+      // doesn't roll back the removal (it's already committed and audited).
+      if (this.pushService && this.academyRepo) {
+        try {
+          const academy = await this.academyRepo.findById(actor.academyId);
+          if (academy) {
+            // M1 holidays audit fix: ID-only fan-out (no pagination cap).
+            // See declare-holiday for the full rationale.
+            const parentIds = await this.userRepo.listParentIdsByAcademy(actor.academyId);
+            if (parentIds.length > 0) {
+              const message = buildHolidayRemovedPush({
+                academyName: academy.academyName,
+                academyId: actor.academyId,
+                date: existing.date,
+              });
+              await this.pushService.sendToUsers(parentIds, message);
+            }
+          }
+        } catch {
+          // Swallow — removal is already committed + audited. Parents can
+          // refresh the holidays list in-app to see the correction.
+        }
+      }
     }
 
     return ok({ date: input.date });

@@ -58,9 +58,11 @@ export class EditPaymentRequestUseCase {
 
     const student = await this.studentRepo.findById(updated.studentId);
 
-    return ok(toPaymentRequestDto(updated, {
-      staffName: user.fullName,
-      studentName: student?.fullName,
-    }));
+    return ok(
+      toPaymentRequestDto(updated, {
+        staffName: user.fullName,
+        studentName: student?.fullName,
+      }),
+    );
   }
 }

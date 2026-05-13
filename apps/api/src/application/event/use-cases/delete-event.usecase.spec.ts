@@ -59,6 +59,7 @@ function buildDeps() {
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
     anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
   const eventRepo: jest.Mocked<EventRepository> = {
     save: jest.fn(),
@@ -144,7 +145,9 @@ describe('DeleteEventUseCase', () => {
       createPhoto('photo-1'),
       createPhoto('photo-2'),
     ]);
-    const txnRun: TransactionPort['run'] = jest.fn(<T>(fn: () => Promise<T>) => fn()) as unknown as TransactionPort['run'];
+    const txnRun: TransactionPort['run'] = jest.fn(<T>(fn: () => Promise<T>) =>
+      fn(),
+    ) as unknown as TransactionPort['run'];
     deps.transaction = { run: txnRun };
 
     const result = await makeUc(deps).execute({

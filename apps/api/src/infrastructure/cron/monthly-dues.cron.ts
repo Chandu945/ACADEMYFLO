@@ -35,22 +35,79 @@ export class MonthlyDuesCronService {
 
       let totalCreated = 0;
       let totalFlipped = 0;
+      let totalSnapshotted = 0;
+      let totalBackfilled = 0;
+      let totalFailed = 0;
+      const failedAcademyIds: string[] = [];
+      const backfilledAcademyIds: string[] = [];
 
       for (const academyId of academyIds) {
-        const result = await this.engine.execute({ academyId, now });
-        if (result.ok) {
-          totalCreated += result.value.created;
-          totalFlipped += result.value.flippedToDue;
-          await this.auditRecorder.record({
+        // Per-academy try/catch: one corrupt student record (or a transient
+        // DB error) must not poison the rest of the run. Without this,
+        // a thrown exception unwinds the for-loop and the remaining
+        // academies silently miss their dues generation for the day —
+        // exactly the failure mode H2 fixes.
+        try {
+          const result = await this.engine.execute({ academyId, now });
+          if (result.ok) {
+            totalCreated += result.value.created;
+            totalFlipped += result.value.flippedToDue;
+            totalSnapshotted += result.value.snapshotted;
+            totalBackfilled += result.value.backfilled;
+            if (result.value.backfilled > 0) {
+              backfilledAcademyIds.push(academyId);
+            }
+
+            // M4 fix: skip the audit entry when nothing changed. The cron
+            // runs daily, but for most academies most days nothing happens
+            // (dues already created, not a flip day, no backfill needed).
+            // Recording an audit row for every no-op buries the real events
+            // — owners reviewing their audit log see ~94% noise. The
+            // per-run telemetry stays in the structured `cron completed`
+            // log below, which still fires every run.
+            const hasStateChange =
+              result.value.created +
+                result.value.flippedToDue +
+                result.value.snapshotted +
+                result.value.backfilled >
+              0;
+            if (hasStateChange) {
+              await this.auditRecorder.record({
+                academyId,
+                actorUserId: 'SYSTEM',
+                action: 'MONTHLY_DUES_ENGINE_RAN',
+                entityType: 'FEE_DUE',
+                entityId: academyId,
+                context: {
+                  created: String(result.value.created),
+                  flippedToDue: String(result.value.flippedToDue),
+                  snapshotted: String(result.value.snapshotted),
+                  backfilled: String(result.value.backfilled),
+                },
+              });
+            }
+          } else {
+            // Result-err path. Today the engine doesn't return err for any
+            // known case, but log defensively so future error returns
+            // surface here too.
+            totalFailed++;
+            failedAcademyIds.push(academyId);
+            this.logger.error('Monthly dues failed (result err)', {
+              academyId,
+              errorCode: result.error.code,
+              errorMessage: result.error.message,
+            });
+          }
+        } catch (e) {
+          // Thrown path — corrupt data, repo error, schema validation, etc.
+          // Logged at error level with structured context so ops can find
+          // and remediate the offending academy.
+          totalFailed++;
+          failedAcademyIds.push(academyId);
+          this.logger.error('Monthly dues threw', {
             academyId,
-            actorUserId: 'SYSTEM',
-            action: 'MONTHLY_DUES_ENGINE_RAN',
-            entityType: 'FEE_DUE',
-            entityId: academyId,
-            context: {
-              created: String(result.value.created),
-              flippedToDue: String(result.value.flippedToDue),
-            },
+            error: e instanceof Error ? e.message : 'unknown',
+            stack: e instanceof Error ? e.stack : undefined,
           });
         }
       }
@@ -59,6 +116,16 @@ export class MonthlyDuesCronService {
         academyCount: academyIds.length,
         totalCreated,
         totalFlipped,
+        totalSnapshotted,
+        totalBackfilled,
+        totalFailed,
+        // Cap the lists at 50 so the log line stays readable on platforms
+        // with line-length limits. If counts > 50, ops can grep for the
+        // per-academy logs instead.
+        failedAcademyIds: failedAcademyIds.slice(0, 50),
+        // backfilledAcademyIds being non-empty is a signal worth alerting
+        // on — it means M2's safety net caught a real cron skip.
+        backfilledAcademyIds: backfilledAcademyIds.slice(0, 50),
       });
     });
   }

@@ -13,16 +13,16 @@ import {
   type ParentPaymentMethod,
 } from '@domain/fee/entities/payment-request.entity';
 import { PaymentRequestErrors } from '../../common/errors';
-import {
-  toPaymentRequestDto,
-  type PaymentRequestDto,
-} from '../../fee/dtos/payment-request.dto';
+import { toPaymentRequestDto, type PaymentRequestDto } from '../../fee/dtos/payment-request.dto';
 import type { UserRole } from '@academyflo/contracts';
 import { computeLateFee } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { ClockPort } from '../../common/clock.port';
 import { formatLocalDate } from '../../../shared/date-utils';
-import { buildLateFeeConfigFromAcademy } from '../../fee/common/late-fee';
+import {
+  buildLateFeeConfigFromAcademy,
+  buildEffectiveLateFeeConfig,
+} from '../../fee/common/late-fee';
 
 export interface CreateParentPaymentRequestInput {
   actorUserId: string;
@@ -72,7 +72,10 @@ export class CreateParentPaymentRequestUseCase {
     if (!Number.isFinite(input.amount) || input.amount <= 0) {
       return err(AppError.validation('Amount must be greater than zero'));
     }
-    if (input.paymentMethod === 'UPI' && (!input.paymentRefNumber || !input.paymentRefNumber.trim())) {
+    if (
+      input.paymentMethod === 'UPI' &&
+      (!input.paymentRefNumber || !input.paymentRefNumber.trim())
+    ) {
       return err(AppError.validation('UPI reference / transaction number is required'));
     }
     if (input.paymentRefNumber && input.paymentRefNumber.length > MAX_REF_LEN) {
@@ -125,7 +128,7 @@ export class CreateParentPaymentRequestUseCase {
     // 0 for unpaid dues \u2014 which caused parents who'd been told to pay
     // base+late-fee to fail validation against just the base amount.
     const liveConfig = buildLateFeeConfigFromAcademy(academy);
-    const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+    const effectiveConfig = buildEffectiveLateFeeConfig(due.lateFeeConfigSnapshot, liveConfig);
     let computedLateFee = 0;
     if (effectiveConfig) {
       const todayStr = formatLocalDate(this.clock.now());
@@ -141,7 +144,9 @@ export class CreateParentPaymentRequestUseCase {
     // the remainder until the owner manually intervened).
     if (input.amount !== maxPayable) {
       if (input.amount > maxPayable) {
-        return err(AppError.validation(`Amount cannot exceed the payable amount of \u20B9${maxPayable}`));
+        return err(
+          AppError.validation(`Amount cannot exceed the payable amount of \u20B9${maxPayable}`),
+        );
       }
       return err(
         AppError.validation(
@@ -155,21 +160,22 @@ export class CreateParentPaymentRequestUseCase {
     if (existingPending) return err(PaymentRequestErrors.duplicatePending());
 
     // Rate limit — cap concurrent PENDING parent requests in a rolling 24h
-    // window. Uses listByStaffAndAcademy (staffUserId stores the parent's
-    // userId for PARENT-sourced requests), filtered in memory; the per-parent
-    // record count is always tiny so a dedicated index/count is overkill.
-    const recent = await this.paymentRequestRepo.listByStaffAndAcademy(
+    // window. M1 fix (fee/payments audit): switched from list-then-filter
+    // to a direct count query. Prior code loaded the parent's ENTIRE PR
+    // history (across all time) into memory just to count the ones from
+    // the last 24 hours — unbounded as the parent accumulates history.
+    // The new repo method scopes by author + academy + PENDING + createdAt
+    // >= since, all server-side.
+    const cutoff = new Date(Date.now() - DAY_MS);
+    const recentPendingCount = await this.paymentRequestRepo.countPendingByAuthorAndAcademySince(
       input.actorUserId,
       user.academyId,
+      cutoff,
     );
-    const cutoff = Date.now() - DAY_MS;
-    const recentPending = recent.filter(
-      (pr) => pr.status === 'PENDING' && pr.audit.createdAt.getTime() >= cutoff,
-    );
-    if (recentPending.length >= MAX_PENDING_PER_DAY) {
+    if (recentPendingCount >= MAX_PENDING_PER_DAY) {
       return err(
         AppError.validation(
-          `You already have ${recentPending.length} pending payment requests. Please wait for the owner to review them before submitting another.`,
+          `You already have ${recentPendingCount} pending payment requests. Please wait for the owner to review them before submitting another.`,
         ),
       );
     }

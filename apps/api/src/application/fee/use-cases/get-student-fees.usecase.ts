@@ -52,12 +52,7 @@ export class GetStudentFeesUseCase {
     if (student.academyId !== user.academyId) return err(FeeErrors.studentNotInAcademy());
 
     const [dues, academy] = await Promise.all([
-      this.feeDueRepo.listByStudentAndRange(
-        user.academyId,
-        input.studentId,
-        input.from,
-        input.to,
-      ),
+      this.feeDueRepo.listByStudentAndRange(user.academyId, input.studentId, input.from, input.to),
       this.academyRepo.findById(user.academyId),
     ]);
 

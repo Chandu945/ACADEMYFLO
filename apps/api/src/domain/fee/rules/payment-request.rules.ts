@@ -15,8 +15,13 @@ export function canReviewPaymentRequest(role: UserRole): { allowed: boolean; rea
 }
 
 export function canCancelPaymentRequest(role: UserRole): { allowed: boolean; reason?: string } {
-  if (role !== 'STAFF') {
-    return { allowed: false, reason: 'Only staff can cancel their own payment requests' };
+  // STAFF: cancel cash-collection PRs they authored (miskeyed amount, etc.)
+  // PARENT: cancel their own UPI/bank proof submissions before owner reviews
+  //   them — typically when they uploaded the wrong screenshot or reference
+  //   number. The use case's ownership check enforces "only your own"; this
+  //   rule just gates the role.
+  if (role !== 'STAFF' && role !== 'PARENT') {
+    return { allowed: false, reason: 'Only staff or parents can cancel a payment request' };
   }
   return { allowed: true };
 }

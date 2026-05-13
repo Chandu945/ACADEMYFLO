@@ -2,7 +2,10 @@ import type { Result } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
-import type { EnquiryRepository, EnquirySummaryResult } from '@domain/enquiry/ports/enquiry.repository';
+import type {
+  EnquiryRepository,
+  EnquirySummaryResult,
+} from '@domain/enquiry/ports/enquiry.repository';
 import { EnquiryErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
 

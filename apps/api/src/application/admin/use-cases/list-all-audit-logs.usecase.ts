@@ -7,7 +7,10 @@ import { AdminErrors } from '../../common/errors';
 import { isValidLocalDate } from '@domain/attendance/value-objects/local-date.vo';
 import type { AuditLogDto } from '../../audit/dto/audit-log.dto';
 import { toAuditLogDto } from '../../audit/dto/audit-log.dto';
-import type { AdminAuditLogReader, AdminAuditLogFilter } from '../ports/admin-audit-log-reader.port';
+import type {
+  AdminAuditLogReader,
+  AdminAuditLogFilter,
+} from '../ports/admin-audit-log-reader.port';
 
 interface ListAllAuditLogsInput {
   actorRole: string;
@@ -32,7 +35,9 @@ export class ListAllAuditLogsUseCase {
     private readonly academyRepo: AcademyRepository,
   ) {}
 
-  async execute(input: ListAllAuditLogsInput): Promise<Result<Paginated<AdminAuditLogDto>, AppError>> {
+  async execute(
+    input: ListAllAuditLogsInput,
+  ): Promise<Result<Paginated<AdminAuditLogDto>, AppError>> {
     if (input.actorRole !== 'SUPER_ADMIN') {
       return err(AdminErrors.notSuperAdmin());
     }

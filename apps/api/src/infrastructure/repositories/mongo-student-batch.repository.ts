@@ -34,13 +34,24 @@ export class MongoStudentBatchRepository implements StudentBatchRepository {
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
+  async findByStudentIds(studentIds: string[]): Promise<StudentBatch[]> {
+    if (studentIds.length === 0) return [];
+    const docs = await this.model
+      .find({ studentId: { $in: studentIds } })
+      .lean()
+      .exec();
+    return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
+  }
+
   async findByBatchId(batchId: string): Promise<StudentBatch[]> {
     const docs = await this.model.find({ batchId }).lean().exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
   async deleteByBatchId(batchId: string): Promise<number> {
-    const result = await this.model.deleteMany({ batchId }, { session: getTransactionSession() }).exec();
+    const result = await this.model
+      .deleteMany({ batchId }, { session: getTransactionSession() })
+      .exec();
     return result.deletedCount;
   }
 
@@ -52,10 +63,10 @@ export class MongoStudentBatchRepository implements StudentBatchRepository {
     const map = new Map<string, number>();
     if (batchIds.length === 0) return map;
     const rows = await this.model
-      .aggregate<{ _id: string; count: number }>([
-        { $match: { batchId: { $in: batchIds } } },
-        { $group: { _id: '$batchId', count: { $sum: 1 } } },
-      ])
+      .aggregate<{
+        _id: string;
+        count: number;
+      }>([{ $match: { batchId: { $in: batchIds } } }, { $group: { _id: '$batchId', count: { $sum: 1 } } }])
       .exec();
     for (const row of rows) map.set(row._id, row.count);
     return map;

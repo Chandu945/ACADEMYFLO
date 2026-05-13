@@ -17,6 +17,7 @@ import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-stud
 import { STUDENT_REPOSITORY } from '@domain/student/ports/student.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
+import { LOGGER_PORT } from '@shared/logging/logger.port';
 
 import { UploadProfilePhotoUseCase } from '@application/identity/use-cases/upload-profile-photo.usecase';
 
@@ -24,6 +25,7 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
+import type { LoggerPort } from '@shared/logging/logger.port';
 
 @Module({
   imports: [
@@ -45,8 +47,16 @@ import type { StudentRepository } from '@domain/student/ports/student.repository
         fileStorage: FileStoragePort,
         parentLinkRepo: ParentStudentLinkRepository,
         studentRepo: StudentRepository,
-      ) => new UploadProfilePhotoUseCase(userRepo, fileStorage, parentLinkRepo, studentRepo),
-      inject: [USER_REPOSITORY, FILE_STORAGE_PORT, PARENT_STUDENT_LINK_REPOSITORY, STUDENT_REPOSITORY],
+        logger: LoggerPort,
+      ) =>
+        new UploadProfilePhotoUseCase(userRepo, fileStorage, parentLinkRepo, studentRepo, logger),
+      inject: [
+        USER_REPOSITORY,
+        FILE_STORAGE_PORT,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        STUDENT_REPOSITORY,
+        LOGGER_PORT,
+      ],
     },
   ],
 })

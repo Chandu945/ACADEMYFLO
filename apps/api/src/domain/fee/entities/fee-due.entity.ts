@@ -133,7 +133,12 @@ export class FeeDue extends Entity<FeeDueProps> {
     });
   }
 
-  markPaid(userId: string, paidAt: Date, paymentLabel: PaymentLabel = 'CASH', lateFeeApplied?: number): FeeDue {
+  markPaid(
+    userId: string,
+    paidAt: Date,
+    paymentLabel: PaymentLabel = 'CASH',
+    lateFeeApplied?: number,
+  ): FeeDue {
     if (this.props.status === 'UPCOMING') {
       throw new Error('Cannot mark an UPCOMING fee as paid');
     }
@@ -200,6 +205,17 @@ export class FeeDue extends Entity<FeeDueProps> {
     });
   }
 
+  /**
+   * Undo a payment-related state and restore the fee to DUE. Intended for
+   * refund/unwind flows that need to fully reset paid-fields.
+   *
+   * The `lateFeeConfigSnapshot` is intentionally preserved (H1 fix). The
+   * snapshot represents "the rate that was locked in when the fee first
+   * became DUE" — it predates any payment, so unwinding a payment doesn't
+   * invalidate it. Nulling it here would re-expose the fee to the cron's
+   * legacy-backfill loop, which would re-snapshot using the current live
+   * config and silently retroactively re-price the fee.
+   */
   revertToDue(): FeeDue {
     return FeeDue.reconstitute(this.id.toString(), {
       ...this.props,
@@ -212,7 +228,6 @@ export class FeeDue extends Entity<FeeDueProps> {
       approvedByUserId: null,
       paymentRequestId: null,
       lateFeeApplied: null,
-      lateFeeConfigSnapshot: null,
       audit: updateAuditFields(this.props.audit),
     });
   }

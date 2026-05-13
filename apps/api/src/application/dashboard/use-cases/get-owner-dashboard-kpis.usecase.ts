@@ -16,7 +16,10 @@ import { formatLocalDate, toMonthKeyFromDate } from '@shared/date-utils';
 import type { OwnerDashboardKpisDto } from '../dtos/owner-dashboard.dto';
 import type { UserRole } from '@academyflo/contracts';
 import { computeLateFee } from '@academyflo/contracts';
-import { buildLateFeeConfigFromAcademy } from '../../fee/common/late-fee';
+import {
+  buildLateFeeConfigFromAcademy,
+  buildEffectiveLateFeeConfig,
+} from '../../fee/common/late-fee';
 
 export interface GetOwnerDashboardKpisInput {
   actorUserId: string;
@@ -60,7 +63,8 @@ export class GetOwnerDashboardKpisUseCase {
       dueStudentsCount,
       unpaidDuesForMonth,
       academy,
-      todayPresentCount,
+      todayScheduledCountRaw,
+      todayAbsentRecordedCount,
       totalExpenses,
       lateFeeCollected,
       overdueCount,
@@ -77,10 +81,17 @@ export class GetOwnerDashboardKpisUseCase {
       // returned base only, leaving the dashboard tile inconsistent with the
       // parent-facing total and the overdue-students report. Per-month list is
       // small (low hundreds even at scale) so JS-side iteration is fine.
-      this.feeDueRepo.listByAcademyMonthAndStatuses(academyId, currentMonthKey, ['UPCOMING', 'DUE']),
+      this.feeDueRepo.listByAcademyMonthAndStatuses(academyId, currentMonthKey, [
+        'UPCOMING',
+        'DUE',
+      ]),
       this.academyRepo.findById(academyId),
-      // Distinct students — a two-batch student is one human, not two presences.
-      this.attendanceRepo.countDistinctStudentsPresentByAcademyAndDate(academyId, today),
+      // Default-present model: scheduled = students whose batch runs today.
+      // Drives the % present tile so it starts at 100% (= scheduled / scheduled)
+      // before anyone is marked absent, and drops only on explicit ABSENT marks.
+      this.studentRepo.countScheduledStudentsByAcademyAndDate(academyId, today),
+      // Distinct students with at least one explicit ABSENT record today.
+      this.attendanceRepo.countDistinctStudentsAbsentByAcademyAndDate(academyId, today),
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
       // Cash bucketing: late fee collected during the picked range, regardless
       // of which due-month it was for. Mirrors `totalCollected` (transaction
@@ -90,13 +101,13 @@ export class GetOwnerDashboardKpisUseCase {
       this.holidayRepo.findByAcademyAndDate(academyId, today).then((h) => h !== null),
     ]);
 
-    // Compute total pending = base + current late fee per due. Snapshotted
-    // config wins for dues that have crossed grace; live config is the
-    // fallback for not-yet-overdue UPCOMING rows.
+    // Compute total pending = base + current late fee per due. The helper
+    // enforces L1 (live disable kills late fee for everyone) and M1 (when
+    // late fee is enabled, snapshot locks the amount).
     const liveConfig = buildLateFeeConfigFromAcademy(academy);
     let totalPendingAmount = 0;
     for (const due of unpaidDuesForMonth) {
-      const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+      const effectiveConfig = buildEffectiveLateFeeConfig(due.lateFeeConfigSnapshot, liveConfig);
       let lateFee = 0;
       if (effectiveConfig) {
         const computed = computeLateFee(due.dueDate, today, effectiveConfig);
@@ -105,7 +116,23 @@ export class GetOwnerDashboardKpisUseCase {
       totalPendingAmount += due.amount + lateFee;
     }
 
-    const todayAbsentCount = Math.max(0, totalStudents - todayPresentCount);
+    // Default-present model: the denominator is "students scheduled today"
+    // (`todayScheduledCount`). On a declared holiday no student is scheduled,
+    // so both scheduled and absent collapse to 0 and the tile reads as
+    // "Holiday today" rather than a panic-grade absent count.
+    //
+    // Pre-fix the dashboard reported `absent = totalStudents - present`,
+    // which on a Sunday-batch academy with no Sunday classes still claimed
+    // every active student was absent. The scheduled-today query bakes the
+    // batch.days intersection in, fixing both the weekend and holiday cases
+    // with the same expression. (Replaces the old "Known limitation" note.)
+    const todayScheduledCount = isHolidayToday ? 0 : todayScheduledCountRaw;
+    const todayAbsentCount = isHolidayToday
+      ? 0
+      : Math.min(todayAbsentRecordedCount, todayScheduledCount);
+    // Default-present: unmarked + scheduled students are assumed present.
+    // Subtract only the explicit ABSENT records from the scheduled pool.
+    const todayPresentCount = Math.max(0, todayScheduledCount - todayAbsentCount);
 
     return ok({
       totalStudents,
@@ -117,6 +144,7 @@ export class GetOwnerDashboardKpisUseCase {
       todayAbsentCount,
       dueStudentsCount,
       todayPresentCount,
+      todayScheduledCount,
       totalExpenses,
       lateFeeCollected,
       overdueCount,

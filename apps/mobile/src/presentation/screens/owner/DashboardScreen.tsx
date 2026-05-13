@@ -221,9 +221,14 @@ export function DashboardScreen() {
                   onStudentPress={() => navigation.navigate('Attendance')}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nested stack navigation
                   onStaffPress={() => navigation.navigate('More', { screen: 'StaffAttendance' } as any)}
+                  // Default-present model: denominator is "students scheduled
+                  // today" (todayScheduledCount). Fall back to present+absent
+                  // when running against an older API build that doesn't yet
+                  // return todayScheduledCount — matches the previous tile
+                  // math so the rollout is incremental.
                   initialStudentData={data ? {
                     present: data.todayPresentCount,
-                    total: data.todayPresentCount + data.todayAbsentCount,
+                    total: data.todayScheduledCount ?? data.todayPresentCount + data.todayAbsentCount,
                   } : null}
                 />
                 <AttendanceSummaryWidget

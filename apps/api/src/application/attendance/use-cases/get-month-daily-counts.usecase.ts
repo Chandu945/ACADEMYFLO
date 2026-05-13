@@ -25,9 +25,7 @@ export class GetMonthDailyCountsUseCase {
     private readonly holidayRepo: HolidayRepository,
   ) {}
 
-  async execute(
-    input: GetMonthDailyCountsInput,
-  ): Promise<Result<MonthDailyCountsDto, AppError>> {
+  async execute(input: GetMonthDailyCountsInput): Promise<Result<MonthDailyCountsDto, AppError>> {
     const roleCheck = canViewAttendance(input.actorRole);
     if (!roleCheck.allowed) {
       return err(AttendanceErrors.viewNotAllowed());
@@ -51,37 +49,44 @@ export class GetMonthDailyCountsUseCase {
     const monthNum = parseInt(parts[1]!, 10);
     const totalDaysInMonth = new Date(year, monthNum, 0).getDate();
 
-    // Fetch all data in parallel (3 queries instead of 30+)
-    const [totalStudents, presentRecords, holidays] = await Promise.all([
+    // Default-present model for the monthly bar chart. Pre-fix the chart
+    // reported `absent = totalStudents - present` per day, which on every
+    // unmarked day inflated red bars to ~totalStudents (139), giving owners
+    // a panic-grade view even though attendance simply hadn't been recorded
+    // yet. The new contract: absent = number of distinct students with an
+    // explicit ABSENT record that day. Unmarked = implicitly present.
+    const [totalStudents, absentRecords, holidays] = await Promise.all([
       this.studentRepo.countActiveByAcademy(academyId),
-      this.attendanceRepo.findPresentByAcademyAndMonth(academyId, input.month),
+      this.attendanceRepo.findAbsentByAcademyAndMonth(academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(academyId, input.month),
     ]);
 
-    // Build distinct-student set per date — a two-batch student must NOT
-    // count twice when computing how many students were present.
-    const presentByDate = new Map<string, Set<string>>();
-    for (const record of presentRecords) {
-      let set = presentByDate.get(record.date);
+    // Distinct-student set per date — a student absent in two batches on the
+    // same day must count once toward "students absent today".
+    const absentByDate = new Map<string, Set<string>>();
+    for (const record of absentRecords) {
+      let set = absentByDate.get(record.date);
       if (!set) {
         set = new Set<string>();
-        presentByDate.set(record.date, set);
+        absentByDate.set(record.date, set);
       }
       set.add(record.studentId);
     }
 
-    // Build holiday set
     const holidaySet = new Set(holidays.map((h) => h.date));
 
-    // Build day-by-day response
+    // Build day-by-day response. Holiday days short-circuit absent → 0 so the
+    // chart renders the holiday flag without a misleading red bar (the
+    // pre-existing isHoliday consumer already handles the gray bucket).
     const days: MonthDailyCountDay[] = [];
     for (let d = 1; d <= totalDaysInMonth; d++) {
       const dateStr = `${input.month}-${String(d).padStart(2, '0')}`;
-      const presentCountForDay = presentByDate.get(dateStr)?.size ?? 0;
+      const isHoliday = holidaySet.has(dateStr);
+      const absentCountForDay = isHoliday ? 0 : (absentByDate.get(dateStr)?.size ?? 0);
       days.push({
         date: dateStr,
-        absentCount: Math.max(0, totalStudents - presentCountForDay),
-        isHoliday: holidaySet.has(dateStr),
+        absentCount: absentCountForDay,
+        isHoliday,
       });
     }
 

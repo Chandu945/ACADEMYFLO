@@ -5,7 +5,10 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canManageStaff, staffBelongsToAcademy } from '@domain/identity/rules/staff.rules';
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
-import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import type {
+  StaffQualificationInfo,
+  StaffSalaryConfig,
+} from '@domain/identity/entities/user.entity';
 
 export interface GetStaffInput {
   ownerUserId: string;
@@ -21,7 +24,8 @@ export interface GetStaffOutput {
   role: string;
   status: string;
   academyId: string | null;
-  startDate: Date | null;
+  // ISO 8601 wire format (see list-staff.usecase.ts for rationale).
+  startDate: string | null;
   gender: 'MALE' | 'FEMALE' | null;
   whatsappNumber: string | null;
   mobileNumber: string | null;
@@ -29,8 +33,8 @@ export interface GetStaffOutput {
   qualificationInfo: StaffQualificationInfo | null;
   salaryConfig: StaffSalaryConfig | null;
   profilePhotoUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export class GetStaffUseCase {
@@ -69,7 +73,7 @@ export class GetStaffUseCase {
       role: staff.role,
       status: staff.status,
       academyId: staff.academyId,
-      startDate: staff.startDate,
+      startDate: staff.startDate?.toISOString() ?? null,
       gender: staff.gender,
       whatsappNumber: staff.whatsappNumber,
       mobileNumber: staff.mobileNumber,
@@ -77,8 +81,8 @@ export class GetStaffUseCase {
       qualificationInfo: staff.qualificationInfo,
       salaryConfig: staff.salaryConfig,
       profilePhotoUrl: staff.profilePhotoUrl,
-      createdAt: staff.audit.createdAt,
-      updatedAt: staff.audit.updatedAt,
+      createdAt: staff.audit.createdAt.toISOString(),
+      updatedAt: staff.audit.updatedAt.toISOString(),
     });
   }
 }

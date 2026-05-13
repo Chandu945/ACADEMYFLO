@@ -27,3 +27,33 @@ export function buildLateFeeConfigFromAcademy(
     lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
   };
 }
+
+/**
+ * Resolve the late-fee config to use when computing the late fee for a
+ * specific fee_due. Encodes the two invariants that drive how snapshots
+ * interact with live academy config:
+ *
+ *   1. **Live "enabled" is the kill-switch (L1 fix).** If the academy has
+ *      late-fee toggled OFF (liveConfig undefined), no late fee applies —
+ *      regardless of any snapshot the fee may carry. The owner's toggle is
+ *      their immediate intent and ALWAYS wins. This prevents the surprise
+ *      where an owner disables late fee in settings but parents continue
+ *      to see late-fee charges on already-snapshotted overdue fees.
+ *
+ *   2. **Snapshot locks the amounts (M1 invariant).** When late fee is
+ *      enabled, the snapshot wins for amount/grace/interval — the rate
+ *      that was live when the fee became DUE is what the parent owes.
+ *      Protects against retroactive re-pricing if the owner raises the
+ *      rate mid-cycle.
+ *
+ * Re-enable semantics: an owner who disables then re-enables late fee
+ * resumes accrual on snapshotted fees at the SAME rate as before — the
+ * snapshot is still on the record, just gated by the live toggle.
+ */
+export function buildEffectiveLateFeeConfig(
+  snapshot: LateFeeConfig | null,
+  liveConfig: LateFeeConfig | undefined,
+): LateFeeConfig | undefined {
+  if (!liveConfig) return undefined;
+  return snapshot ?? liveConfig;
+}

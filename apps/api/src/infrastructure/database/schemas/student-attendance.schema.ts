@@ -4,9 +4,17 @@ import { type HydratedDocument } from 'mongoose';
 export type StudentAttendanceDocument = HydratedDocument<StudentAttendanceModel>;
 
 /**
- * PRESENT-only records keyed by (academy, student, batch, date).
- * No record = the student was absent from that batch's session on that date.
- * A two-session student in morning + evening batches has up to two records/day.
+ * Attendance records keyed by (academy, student, batch, date).
+ *
+ * Stores PRESENT or ABSENT explicitly. Pre-default-present-model rows had
+ * no `status` field — Mongoose backfills them to `'PRESENT'` via the default
+ * below so historical data reads unchanged. "No record" still means
+ * "unmarked" (neither marked PRESENT nor explicitly marked ABSENT) — the
+ * dashboard's default-present logic treats unmarked + scheduled-today as
+ * present until someone explicitly marks them ABSENT.
+ *
+ * A two-session student in morning + evening batches has up to two records
+ * per day, one per batch.
  */
 @Schema({
   collection: 'studentAttendance',
@@ -31,6 +39,12 @@ export class StudentAttendanceModel {
 
   @Prop({ required: true })
   markedByUserId!: string;
+
+  // Default 'PRESENT' so all pre-existing rows (written before ABSENT was
+  // explicitly stored) read as PRESENT — preserves the meaning of every
+  // historical row without a migration. New ABSENT marks write 'ABSENT'.
+  @Prop({ required: true, enum: ['PRESENT', 'ABSENT'], default: 'PRESENT' })
+  status!: 'PRESENT' | 'ABSENT';
 
   @Prop({ default: 1 })
   version!: number;

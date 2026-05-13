@@ -67,6 +67,8 @@ import { ABSENCE_NOTIFICATION_SCHEDULER_PORT } from '@application/notifications/
 import type { AbsenceNotificationSchedulerPort } from '@application/notifications/ports/absence-notification-scheduler.port';
 import { TRANSACTION_PORT } from '@application/common/transaction.port';
 import type { TransactionPort } from '@application/common/transaction.port';
+import { PUSH_NOTIFICATION_SERVICE } from '../device-tokens/device-tokens.module';
+import type { PushNotificationService } from '@application/notifications/push-notification.service';
 
 @Module({
   imports: [
@@ -168,21 +170,34 @@ import type { TransactionPort } from '@application/common/transaction.port';
       useFactory: (
         ur: UserRepository,
         hr: HolidayRepository,
-        ar: StudentAttendanceRepository,
+        academyRepo: AcademyRepository,
         audit: AuditRecorderPort,
-      ) => new DeclareHolidayUseCase(ur, hr, ar, audit),
+        push: PushNotificationService,
+      ) => new DeclareHolidayUseCase(ur, hr, academyRepo, audit, push),
       inject: [
         USER_REPOSITORY,
         HOLIDAY_REPOSITORY,
-        STUDENT_ATTENDANCE_REPOSITORY,
+        ACADEMY_REPOSITORY,
         AUDIT_RECORDER_PORT,
+        PUSH_NOTIFICATION_SERVICE,
       ],
     },
     {
       provide: 'REMOVE_HOLIDAY_USE_CASE',
-      useFactory: (ur: UserRepository, hr: HolidayRepository, audit: AuditRecorderPort) =>
-        new RemoveHolidayUseCase(ur, hr, audit),
-      inject: [USER_REPOSITORY, HOLIDAY_REPOSITORY, AUDIT_RECORDER_PORT],
+      useFactory: (
+        ur: UserRepository,
+        hr: HolidayRepository,
+        audit: AuditRecorderPort,
+        academyRepo: AcademyRepository,
+        push: PushNotificationService,
+      ) => new RemoveHolidayUseCase(ur, hr, audit, academyRepo, push),
+      inject: [
+        USER_REPOSITORY,
+        HOLIDAY_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        ACADEMY_REPOSITORY,
+        PUSH_NOTIFICATION_SERVICE,
+      ],
     },
     {
       provide: 'LIST_HOLIDAYS_USE_CASE',

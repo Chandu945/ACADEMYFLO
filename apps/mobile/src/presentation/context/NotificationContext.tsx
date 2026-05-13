@@ -89,6 +89,53 @@ const ROUTE_BY_TYPE: Record<NotificationType, Partial<Record<UserRole, string>>>
     OWNER: 'More',
     STAFF: 'More',
   },
+  // G2 mobile-alignment fix: route entries for the new push types the
+  // backend already emits. Pre-fix these collapsed to 'SYSTEM' → 'More'
+  // tab, so tapping (for instance) a holiday notification dumped the
+  // parent on the More menu instead of the Children tab where the
+  // updated holiday/attendance state is visible.
+  //
+  // Owner used mark-fee-paid while a parent payment request was pending.
+  // The parent's submitted request was auto-cancelled; the matching push
+  // sends them to Payments where the resolved entry sits with its receipt.
+  MANUAL_PAYMENT_AUTO_RESOLVED: {
+    PARENT: 'Payments',
+  },
+  // Owner declared a holiday — parents land on the Children tab where
+  // tomorrow's attendance + holidays for the linked kids are visible.
+  // Owners/staff land on Attendance for the calendar / holiday list.
+  HOLIDAY_DECLARED: {
+    PARENT: 'Children',
+    OWNER: 'Attendance',
+    STAFF: 'Attendance',
+  },
+  // Holiday cancelled — same surfaces as HOLIDAY_DECLARED. The push body
+  // tells the user "classes are running"; the landing screen shows the
+  // restored schedule.
+  HOLIDAY_REMOVED: {
+    PARENT: 'Children',
+    OWNER: 'Attendance',
+    STAFF: 'Attendance',
+  },
+  // Event cancelled — push goes to all linked parents. They don't have a
+  // dedicated events tab, so land on Children (their home stack root). The
+  // toast body conveys the cancellation; the tab is just a sensible focus.
+  EVENT_CANCELLED: {
+    PARENT: 'Children',
+  },
+  // Parent withdrew their own manual-payment request — only owners (and
+  // optionally staff who help triage the queue) receive this push so they
+  // know why the entry vanished. Lands on Fees where the queue lives.
+  MANUAL_PAYMENT_WITHDRAWN: {
+    OWNER: 'Fees',
+    STAFF: 'Fees',
+  },
+  // Student status changed by owner — parents linked to the student get
+  // the push. Children tab is the parent's home; the status change shows
+  // on each ChildSummary card and in ChildDetail.
+  STUDENT_STATUS_CHANGED: {
+    PARENT: 'Children',
+  },
 };
 
 // Whitelist of route names the backend may target via `data.route`. Limited

@@ -21,6 +21,7 @@ describe('CreateEnquiryUseCase', () => {
       incrementTokenVersionByUserId: jest.fn(),
       listByAcademyId: jest.fn(),
       anonymizeAndSoftDelete: jest.fn(),
+      listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
     } as jest.Mocked<UserRepository>;
 
     enquiryRepo = {

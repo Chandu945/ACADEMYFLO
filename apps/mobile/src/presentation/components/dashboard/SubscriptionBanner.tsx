@@ -49,6 +49,21 @@ export function SubscriptionBanner() {
     } else {
       message = 'Your free trial ends tomorrow. Subscribe now to continue.';
     }
+  } else if (status === 'EXPIRED_GRACE') {
+    // Grace period: paid sub has expired but the 3-day buffer hasn't run
+    // out yet. Backend (subscription.rules.ts) caps daysRemaining at 3
+    // via Math.ceil, but `>= 3` is defensive in case that ever changes —
+    // we'd rather show the banner than have it silently disappear.
+    icon = 'clock-alert-outline';
+    if (daysRemaining >= 3) {
+      message = 'Your subscription expired. Grace ends in 3 days — renew now to keep access.';
+    } else if (daysRemaining === 2) {
+      message = 'Your subscription expired. Grace ends in 2 days — renew now to keep access.';
+    } else if (daysRemaining === 1) {
+      message = 'Your subscription expired. Grace ends tomorrow — renew now to keep access.';
+    } else {
+      message = 'Your subscription expired. Grace ends today — renew now to keep access.';
+    }
   } else if (status === 'BLOCKED') {
     icon = 'lock-outline';
     message = 'Your access has been blocked. Please renew your subscription.';
@@ -62,7 +77,14 @@ export function SubscriptionBanner() {
 
   return (
     <TouchableOpacity
-      style={[styles.banner, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.warningAccent }]}
+      style={[
+        styles.banner,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          borderLeftColor: colors.warningAccent,
+        },
+      ]}
       onPress={handlePress}
       activeOpacity={0.7}
       accessibilityRole="button"

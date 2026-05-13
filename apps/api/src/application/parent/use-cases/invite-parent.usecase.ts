@@ -13,6 +13,7 @@ import { AuthErrors, ParentErrors, StudentErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderParentInviteEmail } from '../../notifications/templates/parent-invite-template';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { randomUUID } from 'crypto';
 
 export interface InviteParentInput {
@@ -37,6 +38,14 @@ export class InviteParentUseCase {
     private readonly academyRepo: AcademyRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly emailSender?: EmailSenderPort,
+    /**
+     * Records PARENT_INVITED in the audit feed (M3 parent-flows audit fix).
+     * The temp password is never logged — only the (parentId, studentId,
+     * isExistingUser) facts so owners can answer "who linked Rahul to my
+     * son in May?" from the audit feed alone. Optional so legacy fixtures
+     * keep compiling.
+     */
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: InviteParentInput): Promise<Result<InviteParentOutput, AppError>> {
@@ -54,15 +63,22 @@ export class InviteParentUseCase {
     // Email: prefer guardian.email, fall back to student.email (Contact Information field)
     let parentEmail = (guardian?.email || student.email || '').trim().toLowerCase();
 
-    // If no email, generate a dummy login email based on student name
+    // If no email, generate a dummy login email based on student name.
+    //
+    // L1 fix: previously used a 4-digit random suffix (9000 options),
+    // which hit birthday-paradox collision at ~95 same-name students per
+    // academy. The Mongo unique-email index would catch the collision
+    // (11000), but the use case didn't handle it cleanly. Switched to an
+    // 8-hex-char suffix from randomUUID (~4 billion options) — collision
+    // is now effectively impossible at any realistic scale.
     if (!parentEmail) {
       const cleanName = student.fullName
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
         .trim()
         .replace(/\s+/g, '_');
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      parentEmail = `${cleanName}_${rand}@academyflo.com`;
+      const suffix = randomUUID().replace(/-/g, '').slice(0, 8);
+      parentEmail = `${cleanName}_${suffix}@academyflo.com`;
     }
 
     const guardianPhone = (guardian?.mobile || '').trim();
@@ -88,13 +104,26 @@ export class InviteParentUseCase {
         if (existingByPhone) return err(AuthErrors.duplicatePhone());
       }
 
-      tempPassword = randomUUID().substring(0, 8);
+      // L3 fix: extend temp password from 8 hex chars (32 bits of entropy
+      // — brute-forceable on modern hardware) to 16 hex chars (64 bits).
+      // The password is emailed to the parent who logs in once and resets,
+      // so we don't need symbol/case complexity — just enough entropy that
+      // the one-time use window is safe.
+      tempPassword = randomUUID().replace(/-/g, '').slice(0, 16);
       const passwordHash = await this.passwordHasher.hash(tempPassword);
       parentUserId = randomUUID();
 
       // User.create requires a valid E.164 phone — generate a placeholder
       // if guardian didn't provide one. The parent can update it later.
-      const phoneForAccount = guardianPhone || `+91${Date.now().toString().slice(-10)}`;
+      //
+      // L2 fix: previously used `Date.now().slice(-10)` which produced the
+      // same number for two invites in the same millisecond → 11000
+      // collision. Switched to randomUUID-derived digits — collision
+      // probability is now ~1 in 10^9 instead of ~100% under load.
+      // The leading "9" makes the placeholder a valid Indian mobile
+      // (must start with 6/7/8/9 per TRAI).
+      const phoneForAccount =
+        guardianPhone || `+919${randomUUID().replace(/\D/g, '').slice(0, 9).padEnd(9, '0')}`;
 
       const parent = User.create({
         id: parentUserId,
@@ -166,7 +195,35 @@ export class InviteParentUseCase {
             tempPassword,
           }),
         })
-        .catch(() => {/* best-effort — credentials also returned in API response */});
+        .catch(() => {
+          /* best-effort — credentials also returned in API response */
+        });
+    }
+
+    // M3 fix (parent-flows audit): record the link creation. Skipped on the
+    // idempotent retry path above so a double-click doesn't produce two
+    // audit rows for one link. The tempPassword is intentionally excluded
+    // from the audit context — it goes only in the API response (where the
+    // owner needs to see it once to share with the parent) and the email
+    // body. Recording it in the audit feed would defeat the rotation.
+    if (this.auditRecorder) {
+      await this.auditRecorder
+        .record({
+          academyId: owner.academyId,
+          actorUserId: input.ownerUserId,
+          action: 'PARENT_INVITED',
+          entityType: 'PARENT_STUDENT_LINK',
+          entityId: link.id.toString(),
+          context: {
+            parentUserId,
+            studentId: input.studentId,
+            isExistingUser: String(isExistingUser),
+            // Track whether a real email was used vs. a placeholder so support
+            // can quickly tell which parents won't get the invite email.
+            hasRealEmail: String(!parentEmail.endsWith('@academyflo.com')),
+          },
+        })
+        .catch(() => {});
     }
 
     return ok({

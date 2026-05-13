@@ -13,7 +13,10 @@ import type { UserRole } from '@academyflo/contracts';
 import { computeLateFee } from '@academyflo/contracts';
 import type { ClockPort } from '../../common/clock.port';
 import { formatLocalDate } from '../../../shared/date-utils';
-import { buildLateFeeConfigFromAcademy } from '../../fee/common/late-fee';
+import {
+  buildLateFeeConfigFromAcademy,
+  buildEffectiveLateFeeConfig,
+} from '../../fee/common/late-fee';
 
 export interface GetMonthWiseDuesReportInput {
   actorUserId: string;
@@ -71,7 +74,7 @@ export class GetMonthWiseDuesReportUseCase {
         // Snapshotted at approval — same value the parent paid.
         lateFee = due.lateFeeApplied ?? 0;
       } else {
-        const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+        const effectiveConfig = buildEffectiveLateFeeConfig(due.lateFeeConfigSnapshot, liveConfig);
         if (effectiveConfig) {
           const computed = computeLateFee(due.dueDate, todayStr, effectiveConfig);
           if (Number.isFinite(computed)) lateFee = computed;

@@ -82,9 +82,13 @@ export class InMemoryUserRepository implements UserRepository {
     role: UserRole,
     page: number,
     pageSize: number,
+    status?: 'ACTIVE' | 'INACTIVE',
   ): Promise<{ users: User[]; total: number }> {
     const filtered = Array.from(this.users.values()).filter(
-      (u) => u.academyId === academyId && u.role === role,
+      (u) =>
+        u.academyId === academyId &&
+        u.role === role &&
+        (status === undefined || u.status === status),
     );
     // Sort newest first
     filtered.sort((a, b) => b.audit.createdAt.getTime() - a.audit.createdAt.getTime());
@@ -97,6 +101,12 @@ export class InMemoryUserRepository implements UserRepository {
     return Array.from(this.users.values()).filter(
       (u) => u.academyId === academyId && u.role === role && u.status === 'ACTIVE',
     ).length;
+  }
+
+  async listParentIdsByAcademy(academyId: string): Promise<string[]> {
+    return Array.from(this.users.values())
+      .filter((u) => u.academyId === academyId && u.role === 'PARENT' && u.status === 'ACTIVE')
+      .map((u) => u.id.toString());
   }
 
   async incrementTokenVersionByAcademyId(academyId: string): Promise<string[]> {
@@ -213,7 +223,12 @@ export class InMemorySessionRepository implements SessionRepository {
     }
   }
 
-  async updateRefreshToken(sessionId: string, newHash: string, expiresAt: Date, expectedCurrentHash?: string): Promise<boolean> {
+  async updateRefreshToken(
+    sessionId: string,
+    newHash: string,
+    expiresAt: Date,
+    expectedCurrentHash?: string,
+  ): Promise<boolean> {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
     if (expectedCurrentHash && session.refreshTokenHash !== expectedCurrentHash) {
@@ -275,9 +290,7 @@ export class InMemorySessionRepository implements SessionRepository {
 import type { PasswordResetChallengeRepository } from '../../src/domain/identity/ports/password-reset-challenge.repository';
 import type { PasswordResetChallenge } from '../../src/domain/identity/entities/password-reset-challenge.entity';
 
-export class InMemoryPasswordResetChallengeRepository
-  implements PasswordResetChallengeRepository
-{
+export class InMemoryPasswordResetChallengeRepository implements PasswordResetChallengeRepository {
   private challenges: Map<string, PasswordResetChallenge> = new Map();
 
   async save(challenge: PasswordResetChallenge): Promise<void> {
@@ -286,12 +299,7 @@ export class InMemoryPasswordResetChallengeRepository
 
   async findLatestActiveByUserId(userId: string): Promise<PasswordResetChallenge | null> {
     const active = Array.from(this.challenges.values())
-      .filter(
-        (c) =>
-          c.userId === userId &&
-          c.usedAt === null &&
-          c.expiresAt > new Date(),
-      )
+      .filter((c) => c.userId === userId && c.usedAt === null && c.expiresAt > new Date())
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return active[0] ?? null;
   }
@@ -300,9 +308,8 @@ export class InMemoryPasswordResetChallengeRepository
     const now = new Date();
     for (const [id, challenge] of this.challenges) {
       if (challenge.userId === userId && challenge.usedAt === null && challenge.expiresAt > now) {
-        const { PasswordResetChallenge: Cls } = await import(
-          '../../src/domain/identity/entities/password-reset-challenge.entity'
-        );
+        const { PasswordResetChallenge: Cls } =
+          await import('../../src/domain/identity/entities/password-reset-challenge.entity');
         const updated = Cls.reconstitute(id, {
           userId: challenge.userId,
           otpHash: challenge.otpHash,
@@ -320,9 +327,8 @@ export class InMemoryPasswordResetChallengeRepository
   async markUsed(challengeId: string): Promise<void> {
     const challenge = this.challenges.get(challengeId);
     if (challenge) {
-      const { PasswordResetChallenge: Cls } = await import(
-        '../../src/domain/identity/entities/password-reset-challenge.entity'
-      );
+      const { PasswordResetChallenge: Cls } =
+        await import('../../src/domain/identity/entities/password-reset-challenge.entity');
       const updated = Cls.reconstitute(challengeId, {
         userId: challenge.userId,
         otpHash: challenge.otpHash,
@@ -339,9 +345,8 @@ export class InMemoryPasswordResetChallengeRepository
   async incrementAttempts(challengeId: string): Promise<void> {
     const challenge = this.challenges.get(challengeId);
     if (challenge) {
-      const { PasswordResetChallenge: Cls } = await import(
-        '../../src/domain/identity/entities/password-reset-challenge.entity'
-      );
+      const { PasswordResetChallenge: Cls } =
+        await import('../../src/domain/identity/entities/password-reset-challenge.entity');
       const updated = Cls.reconstitute(challengeId, {
         userId: challenge.userId,
         otpHash: challenge.otpHash,
@@ -385,6 +390,11 @@ export class InMemoryStudentBatchRepository implements StudentBatchRepository {
     return Array.from(this.assignments.values()).filter((a) => a.studentId === studentId);
   }
 
+  async findByStudentIds(studentIds: string[]): Promise<StudentBatch[]> {
+    const idSet = new Set(studentIds);
+    return Array.from(this.assignments.values()).filter((a) => idSet.has(a.studentId));
+  }
+
   async findByBatchId(batchId: string): Promise<StudentBatch[]> {
     return Array.from(this.assignments.values()).filter((a) => a.batchId === batchId);
   }
@@ -426,6 +436,14 @@ export class InMemoryAcademyRepository implements AcademyRepository {
 
   async save(academy: Academy): Promise<void> {
     this.academies.set(academy.id.toString(), academy);
+  }
+
+  async saveWithVersionPrecondition(academy: Academy, loadedVersion: number): Promise<boolean> {
+    const id = academy.id.toString();
+    const existing = this.academies.get(id);
+    if (existing && existing.audit.version !== loadedVersion) return false;
+    this.academies.set(id, academy);
+    return true;
   }
 
   async findById(id: string): Promise<Academy | null> {
@@ -483,9 +501,7 @@ export class InMemoryBatchRepository implements BatchRepository {
   }
 
   async findByIds(ids: string[]): Promise<Batch[]> {
-    return ids
-      .map((id) => this.batches.get(id))
-      .filter((b): b is Batch => b !== undefined);
+    return ids.map((id) => this.batches.get(id)).filter((b): b is Batch => b !== undefined);
   }
 
   async findByAcademyAndName(
@@ -541,21 +557,39 @@ export class InMemoryStudentRepository implements StudentRepository {
     return this.students.get(id) ?? null;
   }
 
-  async findByEmailInAcademy(academyId: string, email: string, excludeId?: string): Promise<Student | null> {
+  async findByEmailInAcademy(
+    academyId: string,
+    email: string,
+    excludeId?: string,
+  ): Promise<Student | null> {
     const normalizedEmail = email.toLowerCase();
-    return Array.from(this.students.values()).find(
-      (s) => s.academyId === academyId && !s.isDeleted() &&
-        s.email?.toLowerCase() === normalizedEmail &&
-        (!excludeId || s.id.toString() !== excludeId),
-    ) ?? null;
+    return (
+      Array.from(this.students.values()).find(
+        (s) =>
+          s.academyId === academyId &&
+          !s.isDeleted() &&
+          s.email?.toLowerCase() === normalizedEmail &&
+          (!excludeId || s.id.toString() !== excludeId),
+      ) ?? null
+    );
   }
 
-  async findByPhoneInAcademy(academyId: string, phone: string, excludeId?: string): Promise<Student | null> {
-    return Array.from(this.students.values()).find(
-      (s) => s.academyId === academyId && !s.isDeleted() &&
-        (s.mobileNumber === phone || s.whatsappNumber === phone || s.guardian?.mobile === phone) &&
-        (!excludeId || s.id.toString() !== excludeId),
-    ) ?? null;
+  async findByPhoneInAcademy(
+    academyId: string,
+    phone: string,
+    excludeId?: string,
+  ): Promise<Student | null> {
+    return (
+      Array.from(this.students.values()).find(
+        (s) =>
+          s.academyId === academyId &&
+          !s.isDeleted() &&
+          (s.mobileNumber === phone ||
+            s.whatsappNumber === phone ||
+            s.guardian?.mobile === phone) &&
+          (!excludeId || s.id.toString() !== excludeId),
+      ) ?? null
+    );
   }
 
   async list(
@@ -594,6 +628,18 @@ export class InMemoryStudentRepository implements StudentRepository {
   }
 
   async countActiveByAcademy(academyId: string): Promise<number> {
+    return Array.from(this.students.values()).filter(
+      (s) => s.academyId === academyId && s.status === 'ACTIVE' && !s.isDeleted(),
+    ).length;
+  }
+
+  // In-memory stub: tests that don't seed batch enrollments mirror the
+  // legacy "all active = all scheduled" assumption. Suites that exercise
+  // batch-day scheduling override this method directly via Object.assign.
+  async countScheduledStudentsByAcademyAndDate(
+    academyId: string,
+    _date: string,
+  ): Promise<number> {
     return Array.from(this.students.values()).filter(
       (s) => s.academyId === academyId && s.status === 'ACTIVE' && !s.isDeleted(),
     ).length;
@@ -767,9 +813,33 @@ export class InMemoryStudentAttendanceRepository implements StudentAttendanceRep
   ): Promise<number> {
     const ids = new Set<string>();
     for (const r of this.records.values()) {
-      if (r.academyId === academyId && r.date === date) ids.add(r.studentId);
+      if (r.academyId === academyId && r.date === date && r.status === 'PRESENT') {
+        ids.add(r.studentId);
+      }
     }
     return ids.size;
+  }
+
+  async countDistinctStudentsAbsentByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number> {
+    const ids = new Set<string>();
+    for (const r of this.records.values()) {
+      if (r.academyId === academyId && r.date === date && r.status === 'ABSENT') {
+        ids.add(r.studentId);
+      }
+    }
+    return ids.size;
+  }
+
+  async findAbsentByAcademyAndMonth(
+    academyId: string,
+    monthPrefix: string,
+  ): Promise<StudentAttendance[]> {
+    return Array.from(this.records.values()).filter(
+      (r) => r.academyId === academyId && r.date.startsWith(monthPrefix) && r.status === 'ABSENT',
+    );
   }
 
   clear(): void {
@@ -951,10 +1021,28 @@ export class InMemoryFeeDueRepository implements FeeDueRepository {
     );
   }
 
+  async saveSnapshotIfStillDue(
+    id: string,
+    snapshot: import('@academyflo/contracts').LateFeeConfig,
+  ): Promise<boolean> {
+    const due = this.dues.get(id);
+    if (!due) return false;
+    // Match the Mongo filter: skip if not DUE or already snapshotted.
+    if (due.status !== 'DUE' || due.lateFeeConfigSnapshot !== null) return false;
+    this.dues.set(id, due.snapshotLateFeeConfig(snapshot));
+    return true;
+  }
+
   async sumLateFeeCollectedByAcademyAndMonth(academyId: string, monthKey: string): Promise<number> {
     let total = 0;
     for (const d of this.dues.values()) {
-      if (d.academyId === academyId && d.monthKey === monthKey && d.status === 'PAID' && d.lateFeeApplied && d.lateFeeApplied > 0) {
+      if (
+        d.academyId === academyId &&
+        d.monthKey === monthKey &&
+        d.status === 'PAID' &&
+        d.lateFeeApplied &&
+        d.lateFeeApplied > 0
+      ) {
         total += d.lateFeeApplied;
       }
     }
@@ -1071,10 +1159,52 @@ export class InMemoryPaymentRequestRepository implements PaymentRequestRepositor
     return count;
   }
 
+  async deletePendingByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
+    let count = 0;
+    for (const [id, req] of this.requests) {
+      if (req.academyId === academyId && req.studentId === studentId && req.status === 'PENDING') {
+        this.requests.delete(id);
+        count++;
+      }
+    }
+    return count;
+  }
+
   async countPendingByAcademy(academyId: string): Promise<number> {
     return Array.from(this.requests.values()).filter(
       (r) => r.academyId === academyId && r.status === 'PENDING',
     ).length;
+  }
+
+  async countPendingByStaffAndAcademy(staffUserId: string, academyId: string): Promise<number> {
+    return Array.from(this.requests.values()).filter(
+      (r) => r.academyId === academyId && r.staffUserId === staffUserId && r.status === 'PENDING',
+    ).length;
+  }
+
+  async countPendingByAuthorAndAcademySince(
+    authorUserId: string,
+    academyId: string,
+    since: Date,
+  ): Promise<number> {
+    return Array.from(this.requests.values()).filter(
+      (r) =>
+        r.academyId === academyId &&
+        r.staffUserId === authorUserId &&
+        r.status === 'PENDING' &&
+        r.audit.createdAt.getTime() >= since.getTime(),
+    ).length;
+  }
+
+  async listPendingByStudentAndAcademy(
+    studentId: string,
+    academyId: string,
+  ): Promise<PaymentRequest[]> {
+    return Array.from(this.requests.values())
+      .filter(
+        (r) => r.studentId === studentId && r.academyId === academyId && r.status === 'PENDING',
+      )
+      .sort((a, b) => b.audit.createdAt.getTime() - a.audit.createdAt.getTime());
   }
 
   clear(): void {
@@ -1285,11 +1415,7 @@ export class InMemoryEnquiryRepository implements EnquiryRepository {
     mobileNumber: string,
   ): Promise<Enquiry | null> {
     for (const e of this.enquiries.values()) {
-      if (
-        e.academyId === academyId &&
-        e.mobileNumber === mobileNumber &&
-        e.status === 'ACTIVE'
-      ) {
+      if (e.academyId === academyId && e.mobileNumber === mobileNumber && e.status === 'ACTIVE') {
         return e;
       }
     }
@@ -1301,9 +1427,7 @@ export class InMemoryEnquiryRepository implements EnquiryRepository {
     page: number,
     pageSize: number,
   ): Promise<{ enquiries: Enquiry[]; total: number }> {
-    let items = Array.from(this.enquiries.values()).filter(
-      (e) => e.academyId === filter.academyId,
-    );
+    let items = Array.from(this.enquiries.values()).filter((e) => e.academyId === filter.academyId);
 
     if (filter.status) {
       items = items.filter((e) => e.status === filter.status);
@@ -1312,9 +1436,7 @@ export class InMemoryEnquiryRepository implements EnquiryRepository {
     if (filter.search) {
       const s = filter.search.toLowerCase();
       items = items.filter(
-        (e) =>
-          e.prospectName.toLowerCase().includes(s) ||
-          e.mobileNumber.includes(s),
+        (e) => e.prospectName.toLowerCase().includes(s) || e.mobileNumber.includes(s),
       );
     }
 
@@ -1334,9 +1456,7 @@ export class InMemoryEnquiryRepository implements EnquiryRepository {
   }
 
   async summary(academyId: string): Promise<EnquirySummaryResult> {
-    const all = Array.from(this.enquiries.values()).filter(
-      (e) => e.academyId === academyId,
-    );
+    const all = Array.from(this.enquiries.values()).filter((e) => e.academyId === academyId);
     const today = new Date().toISOString().slice(0, 10);
     return {
       total: all.length,
@@ -1544,7 +1664,10 @@ export class InMemoryExpenseRepository implements ExpenseRepository {
     filter: { month: string; categoryId?: string; page: number; pageSize: number },
   ): Promise<{ data: Expense[]; total: number }> {
     let items = this.expenses.filter(
-      (e) => e.academyId === academyId && e.softDelete.deletedAt === null && e.date.startsWith(filter.month),
+      (e) =>
+        e.academyId === academyId &&
+        e.softDelete.deletedAt === null &&
+        e.date.startsWith(filter.month),
     );
     if (filter.categoryId) {
       items = items.filter((e) => e.categoryId === filter.categoryId);
@@ -1556,7 +1679,10 @@ export class InMemoryExpenseRepository implements ExpenseRepository {
 
   async sumByAcademyAndMonth(academyId: string, month: string): Promise<number> {
     return this.expenses
-      .filter((e) => e.academyId === academyId && e.softDelete.deletedAt === null && e.date.startsWith(month))
+      .filter(
+        (e) =>
+          e.academyId === academyId && e.softDelete.deletedAt === null && e.date.startsWith(month),
+      )
       .reduce((sum, e) => sum + e.amount, 0);
   }
 
@@ -1580,7 +1706,10 @@ export class InMemoryExpenseRepository implements ExpenseRepository {
   ): Promise<{ category: string; total: number }[]> {
     const map = new Map<string, number>();
     this.expenses
-      .filter((e) => e.academyId === academyId && e.softDelete.deletedAt === null && e.date.startsWith(month))
+      .filter(
+        (e) =>
+          e.academyId === academyId && e.softDelete.deletedAt === null && e.date.startsWith(month),
+      )
       .forEach((e) => {
         map.set(e.categoryName, (map.get(e.categoryName) ?? 0) + e.amount);
       });
@@ -1589,7 +1718,8 @@ export class InMemoryExpenseRepository implements ExpenseRepository {
 
   async countByCategoryId(academyId: string, categoryId: string): Promise<number> {
     return this.expenses.filter(
-      (e) => e.academyId === academyId && e.categoryId === categoryId && e.softDelete.deletedAt === null,
+      (e) =>
+        e.academyId === academyId && e.categoryId === categoryId && e.softDelete.deletedAt === null,
     ).length;
   }
 
@@ -1647,6 +1777,14 @@ export class InMemoryDeviceTokenRepository implements DeviceTokenRepository {
   async removeByUserIds(userIds: string[]): Promise<number> {
     const before = this.tokens.length;
     this.tokens = this.tokens.filter((t) => !userIds.includes(t.userId));
+    return before - this.tokens.length;
+  }
+
+  async removeOthersByToken(currentUserId: string, fcmToken: string): Promise<number> {
+    const before = this.tokens.length;
+    this.tokens = this.tokens.filter(
+      (t) => !(t.fcmToken === fcmToken && t.userId !== currentUserId),
+    );
     return before - this.tokens.length;
   }
 

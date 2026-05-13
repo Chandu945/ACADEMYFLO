@@ -4,10 +4,17 @@ import type { AppError } from '@shared/kernel';
 import { Student } from '@domain/student/entities/student.entity';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
-import { canChangeStudentStatus } from '@domain/student/rules/student.rules';
+import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import {
+  canChangeStudentStatus,
+  validateStatusChangeReason,
+} from '@domain/student/rules/student.rules';
+import { AppError as AppErrorClass } from '@shared/kernel';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
 import { renderStudentStatusChangedEmail } from '../../notifications/templates/student-status-changed-template';
+import type { PushNotificationService } from '../../notifications/push-notification.service';
+import { buildStudentStatusChangedPush } from '../../notifications/templates/student-status-changed-push-template';
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
 import { toStudentDto } from '../dtos/student.dto';
@@ -38,9 +45,24 @@ export class ChangeStudentStatusUseCase {
     private readonly transaction?: TransactionPort,
     private readonly emailSender?: EmailSenderPort,
     private readonly academyRepo?: AcademyRepository,
+    /**
+     * Used to find parent userIds linked to the student so we can push them
+     * (M2 fix). Optional so legacy fixtures keep working — without it the
+     * push is skipped and only the email backup channel fires.
+     */
+    private readonly parentLinkRepo?: ParentStudentLinkRepository,
+    /**
+     * Used to notify parents about status changes via push (M2 fix). Push
+     * is the primary channel; email stays as the backup for parents who
+     * haven't installed the app. Optional; push failures don't roll back
+     * the status change.
+     */
+    private readonly pushService?: PushNotificationService,
   ) {}
 
-  async execute(input: ChangeStudentStatusInput): Promise<Result<ChangeStudentStatusOutput, AppError>> {
+  async execute(
+    input: ChangeStudentStatusInput,
+  ): Promise<Result<ChangeStudentStatusOutput, AppError>> {
     const roleCheck = canChangeStudentStatus(input.actorRole);
     if (!roleCheck.allowed) {
       return err(StudentErrors.statusChangeNotAllowed());
@@ -64,6 +86,20 @@ export class ChangeStudentStatusUseCase {
       return ok({ student: toStudentDto(student), deletedUpcomingDuesCount: 0 });
     }
 
+    // L5 fix: validate reason length up-front instead of silently truncating.
+    // The prior `slice(0, 500)` was both a data-loss bug (callers thought
+    // they recorded a long reason) and a consistency bug (audit log stored
+    // the truncated prefix while push / email templates used the full
+    // untruncated value). Normalize to a single trimmed value used by every
+    // downstream consumer.
+    const trimmedReason = input.reason?.trim() ?? null;
+    if (trimmedReason !== null) {
+      const reasonCheck = validateStatusChangeReason(trimmedReason);
+      if (!reasonCheck.valid) {
+        return err(AppErrorClass.validation(reasonCheck.reason!));
+      }
+    }
+
     const loadedVersion = student.audit.version;
 
     const academyId = actor.academyId;
@@ -74,7 +110,7 @@ export class ChangeStudentStatusUseCase {
       toStatus: input.status,
       changedBy: input.actorUserId,
       changedAt: now,
-      reason: input.reason?.trim().slice(0, 500) ?? null,
+      reason: trimmedReason,
     };
 
     const updated = Student.reconstitute(input.studentId, {
@@ -149,26 +185,56 @@ export class ChangeStudentStatusUseCase {
         fromStatus: student.status,
         newStatus: input.status,
         deletedUpcomingDuesCount: String(deletedDues),
-        ...(input.reason ? { reason: input.reason } : {}),
+        ...(trimmedReason ? { reason: trimmedReason } : {}),
       },
     });
+
+    // M2 fix: push notification to all linked parents. Primary channel —
+    // immediate and reliable for parents with the app installed. The email
+    // below stays as the backup channel for parents who haven't installed.
+    // Best-effort: a push failure must not roll back the status change.
+    if (this.pushService && this.parentLinkRepo) {
+      try {
+        const links = await this.parentLinkRepo.findByStudentId(input.studentId);
+        const parentUserIds = links.map((l) => l.parentUserId);
+        if (parentUserIds.length > 0) {
+          const message = buildStudentStatusChangedPush({
+            studentName: student.fullName,
+            academyId,
+            studentId: input.studentId,
+            newStatus: input.status,
+            reason: trimmedReason,
+          });
+          await this.pushService.sendToUsers(parentUserIds, message);
+        }
+      } catch {
+        // Swallow — status change is already saved + audited. Email backup
+        // (below) still fires for parents with email on file.
+      }
+    }
 
     // Fire-and-forget: notify parent/guardian about student status change
     if (this.emailSender && this.academyRepo) {
       const parentEmail = student.guardian?.email || student.email;
       if (parentEmail) {
-        const academy = await this.academyRepo.findById(actor.academyId ?? '');
-        this.emailSender.send({
-          to: parentEmail,
-          subject: `Student Status Update - ${student.fullName}`,
-          html: renderStudentStatusChangedEmail({
-            parentName: student.guardian?.name ?? 'Parent/Guardian',
-            studentName: student.fullName,
-            academyName: academy?.academyName ?? 'Your Academy',
-            newStatus: input.status,
-            reason: input.reason ?? null,
-          }),
-        }).catch(() => {});
+        // L6 fix: `actor.academyId` was guarded with `?? ''` here even though
+        // we already returned an error at line ~70 if it was null. Reuse the
+        // local `academyId` (extracted on line ~95) which is unambiguously
+        // a non-empty string at this point.
+        const academy = await this.academyRepo.findById(academyId);
+        this.emailSender
+          .send({
+            to: parentEmail,
+            subject: `Student Status Update - ${student.fullName}`,
+            html: renderStudentStatusChangedEmail({
+              parentName: student.guardian?.name ?? 'Parent/Guardian',
+              studentName: student.fullName,
+              academyName: academy?.academyName ?? 'Your Academy',
+              newStatus: input.status,
+              reason: trimmedReason,
+            }),
+          })
+          .catch(() => {});
       }
     }
 

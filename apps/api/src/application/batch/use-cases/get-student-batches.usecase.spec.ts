@@ -47,7 +47,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const studentRepo: jest.Mocked<StudentRepository> = {
@@ -56,6 +57,7 @@ function buildDeps() {
     list: jest.fn(),
     listActiveByAcademy: jest.fn(),
     countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
     findByIds: jest.fn(),
     findBirthdaysByAcademy: jest.fn(),
     findByEmailInAcademy: jest.fn(),
@@ -68,7 +70,9 @@ function buildDeps() {
   const batchRepo: jest.Mocked<BatchRepository> = {
     save: jest.fn(),
     findById: jest.fn(),
-    findByIds: jest.fn(),
+    // Default to empty so the use-case's `batches.map(...)` doesn't null-deref
+    // for tests that don't seed batches. Per-case overrides set real values.
+    findByIds: jest.fn().mockResolvedValue([]),
     findByAcademyAndName: jest.fn(),
     listByAcademy: jest.fn(),
     deleteById: jest.fn(),
@@ -76,7 +80,10 @@ function buildDeps() {
 
   const studentBatchRepo: jest.Mocked<StudentBatchRepository> = {
     replaceForStudent: jest.fn(),
-    findByStudentId: jest.fn(),
+    // Default to empty so unseeded tests don't null-deref the .map() call in
+    // the use-case. Tests that need real assignments override per-case.
+    findByStudentId: jest.fn().mockResolvedValue([]),
+    findByStudentIds: jest.fn().mockResolvedValue([]),
     findByBatchId: jest.fn(),
     deleteByBatchId: jest.fn(),
     countByBatchId: jest.fn(),
@@ -92,12 +99,35 @@ describe('GetStudentBatchesUseCase', () => {
     deps.userRepo.findById.mockResolvedValue(createMockUser());
     deps.studentRepo.findById.mockResolvedValue(createMockStudent());
     deps.studentBatchRepo.findByStudentId.mockResolvedValue([
-      StudentBatch.create({ id: 'sb-1', studentId: 'student-1', batchId: 'batch-1', academyId: 'academy-1' }),
-      StudentBatch.create({ id: 'sb-2', studentId: 'student-1', batchId: 'batch-2', academyId: 'academy-1' }),
+      StudentBatch.create({
+        id: 'sb-1',
+        studentId: 'student-1',
+        batchId: 'batch-1',
+        academyId: 'academy-1',
+      }),
+      StudentBatch.create({
+        id: 'sb-2',
+        studentId: 'student-1',
+        batchId: 'batch-2',
+        academyId: 'academy-1',
+      }),
     ]);
-    deps.batchRepo.findById.mockImplementation(async (id) =>
-      Batch.create({ id, academyId: 'academy-1', batchName: `Batch ${id}`, days: ['MON'] }),
-    );
+    // Use-case batches the lookup into a single `findByIds(...)` call (was
+    // per-id round-trips before the N+1 fix). Seed that method directly.
+    deps.batchRepo.findByIds.mockResolvedValue([
+      Batch.create({
+        id: 'batch-1',
+        academyId: 'academy-1',
+        batchName: 'Batch batch-1',
+        days: ['MON'],
+      }),
+      Batch.create({
+        id: 'batch-2',
+        academyId: 'academy-1',
+        batchName: 'Batch batch-2',
+        days: ['MON'],
+      }),
+    ]);
 
     const uc = new GetStudentBatchesUseCase(
       deps.userRepo,

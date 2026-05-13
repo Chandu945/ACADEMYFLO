@@ -62,15 +62,17 @@ export class GetDailyStaffAttendanceReportUseCase {
     // those who have a present record.
     const presentStaffIdSet = new Set(presentRecords.map((r) => r.staffUserId));
 
-    // Fetch all active staff (page through with a large page size to avoid
-    // pagination complexity — staff counts are typically small).
-    const { users: allStaffUsers } = await this.userRepo.listByAcademyAndRole(
+    // Fetch all active staff. H1 fix (attendance audit): push the status
+    // filter into the repo so the page returns only ACTIVE rows — prior code
+    // post-filtered, which was both wasteful and made the page-size hint
+    // less honest (asked for 10000, got 10000 mixed, kept the active subset).
+    const { users: activeStaffUsers } = await this.userRepo.listByAcademyAndRole(
       actor.academyId,
       'STAFF',
       1,
       10000,
+      'ACTIVE',
     );
-    const activeStaffUsers = allStaffUsers.filter((u) => u.isActive());
 
     const absentStaff = activeStaffUsers
       .filter((u) => !presentStaffIdSet.has(u.id.toString()))

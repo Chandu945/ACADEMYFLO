@@ -22,7 +22,7 @@ export type StaffListItem = {
   status: StaffStatus;
   academyId: string;
   startDate: string | null;
-  gender: 'MALE' | 'FEMALE' | 'OTHER' | null;
+  gender: 'MALE' | 'FEMALE' | null;
   whatsappNumber: string | null;
   mobileNumber: string | null;
   address: string | null;
@@ -39,7 +39,7 @@ export type CreateStaffInput = {
   phoneNumber: string;
   password: string;
   startDate?: string | null;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER' | null;
+  gender?: 'MALE' | 'FEMALE' | null;
   whatsappNumber?: string | null;
   mobileNumber?: string | null;
   address?: string | null;
@@ -54,7 +54,7 @@ export type UpdateStaffInput = {
   phoneNumber?: string;
   password?: string;
   startDate?: string | null;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER' | null;
+  gender?: 'MALE' | 'FEMALE' | null;
   whatsappNumber?: string | null;
   mobileNumber?: string | null;
   address?: string | null;

@@ -45,7 +45,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const sessionRepo: jest.Mocked<SessionRepository> = {
@@ -82,6 +83,7 @@ function buildDeps() {
     removeByUserIds: jest.fn().mockResolvedValue(0),
     findByUserId: jest.fn(),
     findByUserIds: jest.fn(),
+    removeOthersByToken: jest.fn(),
   };
 
   const otpAttemptTracker: jest.Mocked<OtpAttemptTrackerPort> = {
@@ -90,7 +92,15 @@ function buildDeps() {
     recordSuccess: jest.fn().mockResolvedValue(undefined),
   };
 
-  return { userRepo, sessionRepo, challengeRepo, otpHasher, passwordHasher, deviceTokenRepo, otpAttemptTracker };
+  return {
+    userRepo,
+    sessionRepo,
+    challengeRepo,
+    otpHasher,
+    passwordHasher,
+    deviceTokenRepo,
+    otpAttemptTracker,
+  };
 }
 
 describe('ConfirmPasswordResetUseCase', () => {
@@ -369,5 +379,43 @@ describe('ConfirmPasswordResetUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('UNAUTHORIZED');
     }
+  });
+
+  it('H1: invalidates the user:auth cache so old access tokens stop working immediately', async () => {
+    // Without explicit cache busting, an old access token in an attacker's
+    // hands keeps working for up to 5 min (cache TTL) because cache and
+    // payload both still report the OLD tokenVersion. Explicit invalidate
+    // forces the guard to re-fetch from DB on the next request, where it
+    // sees the new tokenVersion and rejects.
+    const deps = buildDeps();
+    deps.userRepo.findByEmail.mockResolvedValue(createMockUser());
+    deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(createActiveChallenge());
+    deps.otpHasher.compare.mockResolvedValue(true);
+    const userAuthCache = {
+      invalidate: jest.fn().mockResolvedValue(undefined),
+      invalidateMany: jest.fn(),
+    };
+
+    const uc = new ConfirmPasswordResetUseCase(
+      deps.userRepo,
+      deps.sessionRepo,
+      deps.challengeRepo,
+      deps.otpHasher,
+      deps.passwordHasher,
+      deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
+      undefined,
+      undefined,
+      userAuthCache,
+    );
+    const result = await uc.execute({
+      email: 'test@example.com',
+      otp: '123456',
+      newPassword: 'NewPass123!',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(userAuthCache.invalidate).toHaveBeenCalledTimes(1);
+    expect(userAuthCache.invalidate).toHaveBeenCalledWith('user-1');
   });
 });

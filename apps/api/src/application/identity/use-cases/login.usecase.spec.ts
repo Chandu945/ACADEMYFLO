@@ -45,7 +45,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const sessionRepo: jest.Mocked<SessionRepository> = {
@@ -128,9 +129,16 @@ describe('LoginUseCase', () => {
     }
   });
 
-  it('should block inactive staff from login', async () => {
+  it('should block inactive staff from login when password is correct', async () => {
+    // H2 identity-audit fix: canLogin now runs AFTER password verification
+    // (was BEFORE, leaking inactive-account status to anyone who knew the
+    // email). Test the new ordering — inactive user with correct password
+    // still gets FORBIDDEN, but with WRONG password gets UNAUTHORIZED like
+    // any other failed login. The next test covers that wrong-password
+    // path explicitly.
     const { userRepo, sessionRepo, hasher, tokenService } = buildDeps();
     userRepo.findByEmail.mockResolvedValue(createInactiveStaff());
+    hasher.compare.mockResolvedValue(true);
 
     const uc = new LoginUseCase(userRepo, sessionRepo, hasher, tokenService);
     const result = await uc.execute({
@@ -141,6 +149,30 @@ describe('LoginUseCase', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe('FORBIDDEN');
+    }
+  });
+
+  it('H2: inactive staff with WRONG password gets UNAUTHORIZED (no status leak)', async () => {
+    // The enumeration vector that H2 closed: pre-fix code surfaced
+    // "Inactive user: <reason>" the moment the email matched a deactivated
+    // account, regardless of whether the password was correct. An attacker
+    // could probe any known email to learn its account status without
+    // ever knowing the password. Post-fix: wrong password is always
+    // "Invalid credentials" (UNAUTHORIZED) — the status check only runs
+    // after password verification.
+    const { userRepo, sessionRepo, hasher, tokenService } = buildDeps();
+    userRepo.findByEmail.mockResolvedValue(createInactiveStaff());
+    hasher.compare.mockResolvedValue(false);
+
+    const uc = new LoginUseCase(userRepo, sessionRepo, hasher, tokenService);
+    const result = await uc.execute({
+      identifier: 'staff@example.com',
+      password: 'wrong',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('UNAUTHORIZED');
     }
   });
 

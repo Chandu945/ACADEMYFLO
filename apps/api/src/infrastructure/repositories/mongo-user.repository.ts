@@ -10,7 +10,10 @@ import { UserModel } from '../database/schemas/user.schema';
 import type { UserDocument } from '../database/schemas/user.schema';
 import { getTransactionSession } from '../database/transaction-context';
 import type { UserRole } from '@academyflo/contracts';
-import type { StaffQualificationInfo, SalaryFrequency } from '@domain/identity/entities/user.entity';
+import type {
+  StaffQualificationInfo,
+  SalaryFrequency,
+} from '@domain/identity/entities/user.entity';
 
 @Injectable()
 export class MongoUserRepository implements UserRepository {
@@ -52,7 +55,10 @@ export class MongoUserRepository implements UserRepository {
 
   async findByIds(ids: string[]): Promise<User[]> {
     if (ids.length === 0) return [];
-    const docs = await this.model.find({ _id: { $in: ids } }).lean().exec();
+    const docs = await this.model
+      .find({ _id: { $in: ids } })
+      .lean()
+      .exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
@@ -70,7 +76,11 @@ export class MongoUserRepository implements UserRepository {
   }
 
   async updateAcademyId(userId: string, academyId: string): Promise<void> {
-    await this.model.updateOne({ _id: userId }, { $set: { academyId } }, { session: getTransactionSession() });
+    await this.model.updateOne(
+      { _id: userId },
+      { $set: { academyId } },
+      { session: getTransactionSession() },
+    );
   }
 
   async listByAcademyAndRole(
@@ -78,8 +88,10 @@ export class MongoUserRepository implements UserRepository {
     role: UserRole,
     page: number,
     pageSize: number,
+    status?: 'ACTIVE' | 'INACTIVE',
   ): Promise<{ users: User[]; total: number }> {
-    const filter = { academyId, role, deletedAt: null };
+    const filter: Record<string, unknown> = { academyId, role, deletedAt: null };
+    if (status) filter['status'] = status;
     const skip = (page - 1) * pageSize;
 
     const [docs, total] = await Promise.all([
@@ -92,13 +104,28 @@ export class MongoUserRepository implements UserRepository {
   }
 
   async countActiveByAcademyAndRole(academyId: string, role: UserRole): Promise<number> {
-    return this.model
-      .countDocuments({ academyId, role, status: 'ACTIVE', deletedAt: null })
+    return this.model.countDocuments({ academyId, role, status: 'ACTIVE', deletedAt: null }).exec();
+  }
+
+  async listParentIdsByAcademy(academyId: string): Promise<string[]> {
+    // M1 holidays audit fix: project to _id only and skip pagination so the
+    // push fan-out reaches every active parent. Cheap because the query
+    // returns IDs only (no PII, no joins). Order doesn't matter here —
+    // fan-out is unordered.
+    const docs = await this.model
+      .find({ academyId, role: 'PARENT', status: 'ACTIVE', deletedAt: null })
+      .select('_id')
+      .lean()
       .exec();
+    return docs.map((d) => String(d._id));
   }
 
   async incrementTokenVersionByAcademyId(academyId: string): Promise<string[]> {
-    await this.model.updateMany({ academyId, deletedAt: null }, { $inc: { tokenVersion: 1 } }, { session: getTransactionSession() });
+    await this.model.updateMany(
+      { academyId, deletedAt: null },
+      { $inc: { tokenVersion: 1 } },
+      { session: getTransactionSession() },
+    );
     const docs = await this.model.find({ academyId, deletedAt: null }).select('_id').lean().exec();
     return docs.map((d) => String(d._id));
   }
@@ -186,7 +213,7 @@ export class MongoUserRepository implements UserRepository {
       whatsappNumber: d.whatsappNumber ?? null,
       mobileNumber: d.mobileNumber ?? null,
       address: d.address ?? null,
-      qualificationInfo: d.qualificationInfo as StaffQualificationInfo ?? null,
+      qualificationInfo: (d.qualificationInfo as StaffQualificationInfo) ?? null,
       salaryConfig: d.salaryConfig
         ? { amount: d.salaryConfig.amount, frequency: d.salaryConfig.frequency as SalaryFrequency }
         : null,

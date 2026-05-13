@@ -60,6 +60,28 @@ export interface StudentAttendanceRepository {
     date: string,
   ): Promise<number>;
 
+  /**
+   * Default-present model: count distinct students with at least one explicit
+   * ABSENT record on a date. Mirrors the PRESENT version above. Drives the
+   * dashboard "x of n scheduled present" tile so the metric defaults to 100%
+   * (no ABSENT rows = nobody marked absent) and falls as absences accrue.
+   */
+  countDistinctStudentsAbsentByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number>;
+
+  /**
+   * All ABSENT records academy-wide in a month. Mirrors
+   * `findPresentByAcademyAndMonth` so the monthly summary can compute the
+   * per-day Present = scheduled_that_day − distinct_absent_that_day under
+   * the default-present model.
+   */
+  findAbsentByAcademyAndMonth(
+    academyId: string,
+    monthPrefix: string,
+  ): Promise<StudentAttendance[]>;
+
   /** Cascade-delete all attendance records for a student. Returns count removed. */
   deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number>;
 }

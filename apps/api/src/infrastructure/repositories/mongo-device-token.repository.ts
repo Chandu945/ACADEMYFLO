@@ -40,6 +40,19 @@ export class MongoDeviceTokenRepository implements DeviceTokenRepository {
     return result.deletedCount ?? 0;
   }
 
+  async removeOthersByToken(currentUserId: string, fcmToken: string): Promise<number> {
+    // M1 notifications fix: clear any prior user's claim to this same
+    // physical device (FCM token) so the latest registrant authoritatively
+    // owns it. Without this, the composite (userId, fcmToken) unique index
+    // happily lets two rows coexist on a shared family device, leaving
+    // pushes for the previous user landing on the new user's screen.
+    const result = await this.model.deleteMany({
+      fcmToken,
+      userId: { $ne: currentUserId },
+    });
+    return result.deletedCount ?? 0;
+  }
+
   async findByUserId(userId: string): Promise<DeviceToken[]> {
     const docs = await this.model.find({ userId }).lean();
     return docs.map(this.toDomain);

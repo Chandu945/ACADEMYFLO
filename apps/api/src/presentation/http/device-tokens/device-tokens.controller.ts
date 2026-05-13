@@ -42,7 +42,11 @@ class UnregisterTokenDto {
 @ApiBearerAuth()
 @Controller('device-tokens')
 @UseGuards(JwtAuthGuard)
-@Throttle({ short: { limit: 20, ttl: 10_000 }, medium: { limit: 60, ttl: 60_000 }, long: { limit: 300, ttl: 900_000 } })
+@Throttle({
+  short: { limit: 20, ttl: 10_000 },
+  medium: { limit: 60, ttl: 60_000 },
+  long: { limit: 300, ttl: 900_000 },
+})
 export class DeviceTokensController {
   constructor(
     @Inject(DEVICE_TOKEN_REPOSITORY)
@@ -56,6 +60,13 @@ export class DeviceTokensController {
     @Body() dto: RegisterTokenDto,
     @Req() req: Request,
   ) {
+    // M1 notifications fix: sweep any prior user's claim to this FCM token
+    // before binding it to the caller. The composite (userId, fcmToken)
+    // unique index allowed two rows to coexist on a shared family device —
+    // so pushes to the previous user kept landing on the new user's
+    // screen. After the sweep, registration is authoritative: this
+    // physical device is now owned by the calling user.
+    await this.deviceTokenRepo.removeOthersByToken(user.userId, dto.fcmToken);
     await this.deviceTokenRepo.upsert(user.userId, dto.fcmToken, dto.platform);
     return {
       success: true,

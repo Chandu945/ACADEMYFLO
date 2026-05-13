@@ -1,4 +1,4 @@
-import type { Result , AppError } from '@shared/kernel';
+import type { Result, AppError } from '@shared/kernel';
 import { ok, err } from '@shared/kernel';
 import { AdminErrors } from '../../common/errors';
 import type { AdminRevenueReader, TierSlice } from '../ports/admin-revenue-reader.port';

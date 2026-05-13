@@ -7,6 +7,7 @@ import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import { StudentBatch } from '@domain/batch/entities/student-batch.entity';
 import type { TransactionPort } from '../../common/transaction.port';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { BatchErrors, StudentBatchErrors } from '../../common/errors';
 import type { BatchDto } from '../dtos/batch.dto';
 import { toBatchDto } from '../dtos/batch.dto';
@@ -20,6 +21,35 @@ export interface SetStudentBatchesInput {
   batchIds: string[];
 }
 
+/**
+ * KNOWN LIMITATION (M6 student-management audit — accepted as wontfix):
+ *
+ * The capacity check at line ~72 (`countByBatchId(batchId) >= maxStudents`)
+ * reads BEFORE the transaction starts. Two concurrent enrollments into the
+ * same near-full batch can both pass the check and both insert, leaving the
+ * batch slightly over capacity:
+ *
+ *   1. Batch has maxStudents=10, currentCount=9 (one slot left).
+ *   2. Staff A starts enrolling Student S1. Reads count=9. Passes check.
+ *   3. Staff B starts enrolling Student S2 100ms later. Reads count=9
+ *      (A's insert hasn't committed yet for B's transaction). Passes check.
+ *   4. Both transactions commit. Final count = 11.
+ *
+ * Why this is left in place:
+ *   - Requires two staff editing different students for the SAME batch
+ *     within the SAME millisecond. Rare even at multi-staff academies.
+ *   - Failure mode is owner-visible (batch shows "11 / 10" on dashboard)
+ *     and recoverable in seconds — remove one student or bump maxStudents.
+ *   - No data loss, no money impact.
+ *
+ * Proper fix if this becomes a real support burden:
+ *   - Maintain a `batch_counters` collection per batch.
+ *   - Replace the read-then-check with an atomic `findOneAndUpdate` using
+ *     a `$where` or pipeline condition `count < maxStudents` + `$inc`.
+ *   - Sync the counter on student-move and soft-delete cascade paths.
+ *   - Significant new infrastructure (~80-100 lines + migration) — not
+ *     justified by the current race frequency.
+ */
 export class SetStudentBatchesUseCase {
   constructor(
     private readonly userRepo: UserRepository,
@@ -27,6 +57,12 @@ export class SetStudentBatchesUseCase {
     private readonly batchRepo: BatchRepository,
     private readonly studentBatchRepo: StudentBatchRepository,
     private readonly transaction: TransactionPort,
+    /**
+     * Required (M3 fix). Batch reassignments must be auditable — owners
+     * need to answer "who moved my child to the wrong batch and when".
+     * Optional so legacy fixtures keep working; production always wires it.
+     */
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: SetStudentBatchesInput): Promise<Result<BatchDto[], AppError>> {
@@ -106,6 +142,33 @@ export class SetStudentBatchesUseCase {
     await this.transaction.run(async () => {
       await this.studentBatchRepo.replaceForStudent(input.studentId, assignments);
     });
+
+    // M3 fix: record an audit entry with the diff (added/removed batch IDs).
+    // Owners can now answer "who moved this student between batches and when"
+    // from a single audit-log lookup, matching the pattern used by every
+    // other student-touching use case. Skipped when nothing actually
+    // changed (owner re-submitting the same set) — no point logging a no-op.
+    if (this.auditRecorder) {
+      const currentBatchIds = new Set(currentAssignments.map((a) => a.batchId));
+      const newBatchIds = new Set(uniqueBatchIds);
+      const addedBatchIds = uniqueBatchIds.filter((id) => !currentBatchIds.has(id));
+      const removedBatchIds = [...currentBatchIds].filter((id) => !newBatchIds.has(id));
+
+      if (addedBatchIds.length > 0 || removedBatchIds.length > 0) {
+        await this.auditRecorder.record({
+          academyId,
+          actorUserId: input.actorUserId,
+          action: 'STUDENT_BATCHES_CHANGED',
+          entityType: 'STUDENT',
+          entityId: input.studentId,
+          context: {
+            studentId: input.studentId,
+            addedBatchIds: addedBatchIds.join(','),
+            removedBatchIds: removedBatchIds.join(','),
+          },
+        });
+      }
+    }
 
     return ok(batches.map(toBatchDto));
   }

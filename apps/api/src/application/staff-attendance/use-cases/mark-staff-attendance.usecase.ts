@@ -96,7 +96,18 @@ export class MarkStaffAttendanceUseCase {
           date: input.date,
           markedByUserId: input.actorUserId,
         });
-        await this.staffAttendanceRepo.save(record);
+        try {
+          await this.staffAttendanceRepo.save(record);
+        } catch (e) {
+          // M1 fix: concurrent PRESENT marks (two owners on different
+          // devices tapping the same staff member within milliseconds) both
+          // pass the existence check and both attempt insert. The second
+          // hits the unique index on (academyId, staffUserId, date) and
+          // throws Mongo 11000. The desired state — staff is PRESENT — is
+          // already achieved by the other call. Treat as idempotent success
+          // instead of letting the bare error surface as 500.
+          if ((e as { code?: number })?.code !== 11000) throw e;
+        }
       }
     } else {
       // ABSENT: delete present record if exists (idempotent)

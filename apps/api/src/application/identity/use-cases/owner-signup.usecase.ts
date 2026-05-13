@@ -102,14 +102,16 @@ export class OwnerSignupUseCase {
     });
 
     // Fire-and-forget: send welcome email to new owner
-    this.emailSender?.send({
-      to: user.emailNormalized,
-      subject: 'Welcome to Academyflo!',
-      html: renderOwnerWelcomeEmail({
-        ownerName: user.fullName,
-        email: user.emailNormalized,
-      }),
-    }).catch(() => {});
+    this.emailSender
+      ?.send({
+        to: user.emailNormalized,
+        subject: 'Welcome to Academyflo!',
+        html: renderOwnerWelcomeEmail({
+          ownerName: user.fullName,
+          email: user.emailNormalized,
+        }),
+      })
+      .catch(() => {});
 
     return ok({
       accessToken,

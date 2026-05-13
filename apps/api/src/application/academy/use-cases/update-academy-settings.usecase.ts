@@ -12,8 +12,9 @@ import {
   validateLateFeeAmountInr,
   validateLateFeeRepeatIntervalDays,
 } from '@domain/academy/rules/academy.rules';
-import { FeeErrors } from '../../common/errors';
+import { FeeErrors, InstituteInfoErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import {
   DEFAULT_DUE_DATE_DAY,
   DEFAULT_RECEIPT_PREFIX,
@@ -47,6 +48,8 @@ export class UpdateAcademySettingsUseCase {
   constructor(
     private readonly userRepo: UserRepository,
     private readonly academyRepo: AcademyRepository,
+    /** M3 academy-onboarding fix: records ACADEMY_SETTINGS_UPDATED. */
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: UpdateAcademySettingsInput): Promise<Result<AcademySettingsDto, AppError>> {
@@ -84,6 +87,20 @@ export class UpdateAcademySettingsUseCase {
       if (!check.valid) return err(AppErrorClass.validation(check.reason!));
     }
 
+    // M5 academy-onboarding fix: capture the version BEFORE mutation for
+    // the CAS save, and snapshot the previous values so the audit row can
+    // report a real diff. Late-fee config changes are policy-grade — a
+    // silent lost-write here could revert a deliberate rate change.
+    const loadedVersion = academy.audit.version;
+    const previous = {
+      defaultDueDateDay: academy.defaultDueDateDay,
+      receiptPrefix: academy.receiptPrefix,
+      lateFeeEnabled: academy.lateFeeEnabled,
+      gracePeriodDays: academy.gracePeriodDays,
+      lateFeeAmountInr: academy.lateFeeAmountInr,
+      lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays,
+    };
+
     const updated = academy.updateSettings({
       defaultDueDateDay: input.defaultDueDateDay,
       receiptPrefix: input.receiptPrefix,
@@ -93,7 +110,41 @@ export class UpdateAcademySettingsUseCase {
       lateFeeRepeatIntervalDays: input.lateFeeRepeatIntervalDays,
     });
 
-    await this.academyRepo.save(updated);
+    // M5: CAS write — same shape as update-institute-info. The version
+    // race here is more dangerous because the affected fields drive late-
+    // fee billing for every active student.
+    const saved = await this.academyRepo.saveWithVersionPrecondition(updated, loadedVersion);
+    if (!saved) return err(InstituteInfoErrors.concurrencyConflict());
+
+    // M3 audit: record the change with a self-describing context. Late-fee
+    // policy changes are the most forensically interesting writes in the
+    // section ("when did the rate flip to ₹50/day?"), so the new values
+    // are included directly rather than just a changed-fields list.
+    if (this.auditRecorder) {
+      await this.auditRecorder
+        .record({
+          academyId: user.academyId,
+          actorUserId: input.actorUserId,
+          action: 'ACADEMY_SETTINGS_UPDATED',
+          entityType: 'ACADEMY',
+          entityId: user.academyId,
+          context: {
+            defaultDueDateDay: String(updated.defaultDueDateDay ?? DEFAULT_DUE_DATE_DAY),
+            receiptPrefix: updated.receiptPrefix ?? DEFAULT_RECEIPT_PREFIX,
+            lateFeeEnabled: String(updated.lateFeeEnabled ?? DEFAULT_LATE_FEE_ENABLED),
+            gracePeriodDays: String(updated.gracePeriodDays ?? DEFAULT_GRACE_PERIOD_DAYS),
+            lateFeeAmountInr: String(updated.lateFeeAmountInr ?? DEFAULT_LATE_FEE_AMOUNT_INR),
+            lateFeeRepeatIntervalDays: String(
+              updated.lateFeeRepeatIntervalDays ?? DEFAULT_LATE_FEE_REPEAT_INTERVAL_DAYS,
+            ),
+            previousLateFeeAmountInr: String(
+              previous.lateFeeAmountInr ?? DEFAULT_LATE_FEE_AMOUNT_INR,
+            ),
+            previousLateFeeEnabled: String(previous.lateFeeEnabled ?? DEFAULT_LATE_FEE_ENABLED),
+          },
+        })
+        .catch(() => {});
+    }
 
     return ok({
       defaultDueDateDay: updated.defaultDueDateDay ?? DEFAULT_DUE_DATE_DAY,
@@ -101,7 +152,8 @@ export class UpdateAcademySettingsUseCase {
       lateFeeEnabled: updated.lateFeeEnabled ?? DEFAULT_LATE_FEE_ENABLED,
       gracePeriodDays: updated.gracePeriodDays ?? DEFAULT_GRACE_PERIOD_DAYS,
       lateFeeAmountInr: updated.lateFeeAmountInr ?? DEFAULT_LATE_FEE_AMOUNT_INR,
-      lateFeeRepeatIntervalDays: updated.lateFeeRepeatIntervalDays ?? DEFAULT_LATE_FEE_REPEAT_INTERVAL_DAYS,
+      lateFeeRepeatIntervalDays:
+        updated.lateFeeRepeatIntervalDays ?? DEFAULT_LATE_FEE_REPEAT_INTERVAL_DAYS,
     });
   }
 }

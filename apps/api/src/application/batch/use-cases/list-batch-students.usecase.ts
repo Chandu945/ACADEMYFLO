@@ -50,11 +50,7 @@ export class ListBatchStudentsUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batchResult = await requireBatchInAcademy(
-      this.batchRepo,
-      input.batchId,
-      actor.academyId,
-    );
+    const batchResult = await requireBatchInAcademy(this.batchRepo, input.batchId, actor.academyId);
     if (!batchResult.ok) return err(batchResult.error);
 
     const assignments = await this.studentBatchRepo.findByBatchId(input.batchId);

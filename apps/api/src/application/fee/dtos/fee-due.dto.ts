@@ -1,6 +1,7 @@
 import type { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import type { FeeDueStatus, PaidSource, PaymentLabel, LateFeeConfig } from '@academyflo/contracts';
 import { computeLateFee } from '@academyflo/contracts';
+import { buildEffectiveLateFeeConfig } from '../common/late-fee';
 
 export interface FeeDueDto {
   id: string;
@@ -35,8 +36,13 @@ export function toFeeDueDto(
     // For paid fees, use the snapshotted amount that was actually collected
     lateFee = feeDue.lateFeeApplied ?? 0;
   } else if (today) {
-    // For unpaid fees, compute dynamically — prefer snapshot config over live config
-    const effectiveConfig = feeDue.lateFeeConfigSnapshot ?? lateFeeConfig;
+    // For unpaid fees, compute dynamically. The helper enforces both:
+    //   - L1: live "disabled" toggle kills late fee regardless of snapshot
+    //   - M1: snapshot locks the amount/grace when late fee is enabled
+    const effectiveConfig = buildEffectiveLateFeeConfig(
+      feeDue.lateFeeConfigSnapshot,
+      lateFeeConfig,
+    );
     if (effectiveConfig) {
       lateFee = computeLateFee(feeDue.dueDate, today, effectiveConfig);
     }

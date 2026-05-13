@@ -8,10 +8,14 @@ import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request
 import { canViewOwnChildren } from '@domain/parent/rules/parent.rules';
 import { ParentErrors } from '../../common/errors';
 import type { ChildFeeDueDto } from '../dtos/parent.dto';
-import type { UserRole, LateFeeConfig, LateFeeRepeatInterval } from '@academyflo/contracts';
+import type { UserRole } from '@academyflo/contracts';
 import { computeLateFee } from '@academyflo/contracts';
 import type { ClockPort } from '../../common/clock.port';
 import { formatLocalDate } from '../../../shared/date-utils';
+import {
+  buildEffectiveLateFeeConfig,
+  buildLateFeeConfigFromAcademy,
+} from '../../fee/common/late-fee';
 
 export interface GetChildFeesInput {
   parentUserId: string;
@@ -37,54 +41,57 @@ export class GetChildFeesUseCase {
     const link = await this.linkRepo.findByParentAndStudent(input.parentUserId, input.studentId);
     if (!link) return err(ParentErrors.childNotLinked());
 
-    const [dues, academy, parentRequests] = await Promise.all([
-      this.feeDueRepo.listByStudentAndRange(
-        link.academyId,
-        input.studentId,
-        input.from,
-        input.to,
-      ),
+    // M1 fix (parent-flows audit): scoped (studentId, academyId, PENDING)
+    // query replaces an unbounded listByStaffAndAcademy that pulled the
+    // parent's ENTIRE PR history (all time, all statuses, all students)
+    // across every render of this screen. Cap is now the small number of
+    // in-flight requests for this one student (1 in practice).
+    const [dues, academy, pendingRequests] = await Promise.all([
+      this.feeDueRepo.listByStudentAndRange(link.academyId, input.studentId, input.from, input.to),
       this.academyRepo.findById(link.academyId),
-      // For PARENT-sourced payment requests the entity stores the parent's
-      // userId in `staffUserId`. Fetch all of this parent's requests in the
-      // academy and filter in-memory; per-parent count is tiny so this is
-      // cheaper than adding a dedicated index/query.
-      this.paymentRequestRepo.listByStaffAndAcademy(input.parentUserId, link.academyId),
+      this.paymentRequestRepo.listPendingByStudentAndAcademy(input.studentId, link.academyId),
     ]);
 
-    const pendingByFeeDueId = new Map<string, { id: string; amount: number; createdAt: string }>();
-    for (const pr of parentRequests) {
-      if (pr.status !== 'PENDING') continue;
-      if (pr.studentId !== input.studentId) continue;
+    // G4 mobile-alignment fix: include `source` so the parent UI can
+    // distinguish "Owner approving your payment" (PARENT) from "Recorded
+    // by Academy staff" (STAFF). Pre-fix, both surfaced as the same
+    // generic "pending" badge — confusing when the parent didn't submit
+    // anything but their academy recorded a cash collection.
+    const pendingByFeeDueId = new Map<
+      string,
+      { id: string; amount: number; createdAt: string; source: 'PARENT' | 'STAFF' }
+    >();
+    for (const pr of pendingRequests) {
+      // Show pending badges for any PENDING request against this student's
+      // fees, regardless of source — a staff-source request blocks parent
+      // submission too. (Pre-fix code only counted parent's own requests,
+      // hiding staff cash-in-hand entries from the parent's view.)
       pendingByFeeDueId.set(pr.feeDueId, {
         id: pr.id.toString(),
         amount: pr.amount,
         createdAt: pr.audit.createdAt.toISOString(),
+        source: pr.source,
       });
     }
 
     const today = formatLocalDate(this.clock.now());
-    const config: LateFeeConfig | undefined = academy?.lateFeeEnabled
-      ? {
-          lateFeeEnabled: academy.lateFeeEnabled,
-          gracePeriodDays: academy.gracePeriodDays,
-          lateFeeAmountInr: academy.lateFeeAmountInr,
-          lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
-        }
-      : undefined;
+    // Use the shared helper so all consumers of the fee snapshot/live-config
+    // resolution agree (L1 of the fee-payment audit — drop the inline build).
+    const config = buildLateFeeConfigFromAcademy(academy);
 
     const dtos: ChildFeeDueDto[] = dues.map((d) => {
       // Convert to YYYY-MM-DD string for computeLateFee (handle both Date and string)
       const rawDate = d.dueDate as unknown as Date | string;
-      const dueDateStr = typeof rawDate === 'string'
-        ? rawDate.slice(0, 10)
-        : new Date(rawDate).toISOString().slice(0, 10);
+      const dueDateStr =
+        typeof rawDate === 'string'
+          ? rawDate.slice(0, 10)
+          : new Date(rawDate).toISOString().slice(0, 10);
 
       let lateFee = 0;
       if (d.status === 'PAID') {
         lateFee = d.lateFeeApplied ?? 0;
       } else {
-        const effectiveConfig = d.lateFeeConfigSnapshot ?? config;
+        const effectiveConfig = buildEffectiveLateFeeConfig(d.lateFeeConfigSnapshot, config);
         if (effectiveConfig) {
           const computed = computeLateFee(dueDateStr, today, effectiveConfig);
           lateFee = Number.isFinite(computed) ? computed : 0;

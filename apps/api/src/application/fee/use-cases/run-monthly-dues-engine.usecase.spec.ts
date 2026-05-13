@@ -6,6 +6,7 @@ import {
 } from '../../../../test/helpers/in-memory-repos';
 import { Academy } from '@domain/academy/entities/academy.entity';
 import { Student } from '@domain/student/entities/student.entity';
+import { FeeDue } from '@domain/fee/entities/fee-due.entity';
 
 function createAcademy(id = 'academy-1', dueDateDay: number | null = null): Academy {
   const academy = Academy.create({
@@ -145,5 +146,468 @@ describe('RunMonthlyDuesEngineUseCase', () => {
       expect(result.value.created).toBe(1);
       expect(result.value.flippedToDue).toBe(0);
     }
+  });
+
+  describe('late-fee snapshot phase', () => {
+    function academyWithLateFee(): Academy {
+      // dueDateDay=5, grace=5, late fee enabled at ₹100 / 5 days.
+      return createAcademy('academy-1', 5).updateSettings({
+        lateFeeEnabled: true,
+        gracePeriodDays: 5,
+        lateFeeAmountInr: 100,
+        lateFeeRepeatIntervalDays: 5,
+      });
+    }
+
+    async function seedDueFee(monthKey: string, dueDate: string): Promise<FeeDue> {
+      const due = FeeDue.create({
+        id: 'due-1',
+        academyId: 'academy-1',
+        studentId: 's1',
+        monthKey,
+        dueDate,
+        amount: 500,
+      }).flipToDue(); // status: DUE, no snapshot
+      await feeDueRepo.bulkSave([due]);
+      return due;
+    }
+
+    it('snapshots an overdue fee when past grace period', async () => {
+      await academyRepo.save(academyWithLateFee());
+      // Student joined mid-February. By eligibility rule, they don't get a
+      // Feb fee (first fee is March) — so the M2 previous-month backfill
+      // doesn't trigger, keeping this test focused purely on the snapshot.
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-02-15')));
+      // Due on 2024-03-05; today is 2024-03-12 (7 days past, > grace=5).
+      await seedDueFee('2024-03', '2024-03-05');
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-12T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.snapshotted).toBe(1);
+
+      const stored = await feeDueRepo.findById('due-1');
+      expect(stored?.lateFeeConfigSnapshot).toEqual({
+        lateFeeEnabled: true,
+        gracePeriodDays: 5,
+        lateFeeAmountInr: 100,
+        lateFeeRepeatIntervalDays: 5,
+      });
+    });
+
+    it('does NOT snapshot a fee still within grace period', async () => {
+      await academyRepo.save(academyWithLateFee());
+      // Feb-joining student → no M2 backfill, isolating the grace-window check.
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-02-15')));
+      // Due on 2024-03-05; today is 2024-03-09 (4 days past, < grace=5).
+      await seedDueFee('2024-03', '2024-03-05');
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-09T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.snapshotted).toBe(0);
+
+      const stored = await feeDueRepo.findById('due-1');
+      expect(stored?.lateFeeConfigSnapshot).toBeNull();
+    });
+
+    it('snapshots at flip time (M1): rate change after dueDateDay does not re-price already-DUE fees', async () => {
+      // The M1 scenario: fee flips to DUE on dueDateDay with the live
+      // config at that moment. If the owner later raises the rate, the
+      // already-flipped fee keeps its original snapshot — the new rate
+      // applies only to fees that flip AFTER the change.
+      await academyRepo.save(academyWithLateFee());
+      // Feb-joining student → no M2 backfill, isolating the M1 assertion.
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-02-15')));
+
+      // Day 5 (dueDateDay): cron creates the fee + flips it + snapshots
+      // with the original ₹100 rate.
+      const flipDayResult = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-05T00:10:00.000+05:30'),
+      });
+      expect(flipDayResult.ok).toBe(true);
+      if (!flipDayResult.ok) return;
+      expect(flipDayResult.value.flippedToDue).toBe(1);
+      expect(flipDayResult.value.snapshotted).toBe(1);
+
+      const afterFlip = (await feeDueRepo.listUpcomingByAcademyAndMonth('academy-1', '2024-03'))[0];
+      // The flipped fee is no longer UPCOMING; refetch via month lookup.
+      const allMonth = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-03');
+      const flippedFee = allMonth[0];
+      expect(afterFlip).toBeUndefined();
+      expect(flippedFee?.status).toBe('DUE');
+      expect(flippedFee?.lateFeeConfigSnapshot?.lateFeeAmountInr).toBe(100);
+
+      // Owner changes the rate to ₹150 a day later.
+      const updated = academyWithLateFee().updateSettings({ lateFeeAmountInr: 150 });
+      await academyRepo.save(updated);
+
+      // Day 12 (past grace): cron runs again. The legacy-backfill loop
+      // should find nothing to snapshot — the fee already has its ₹100
+      // snapshot from day 5 and is left untouched.
+      const laterRun = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-12T00:10:00.000+05:30'),
+      });
+      expect(laterRun.ok).toBe(true);
+      if (!laterRun.ok) return;
+      expect(laterRun.value.snapshotted).toBe(0);
+
+      const finalFee = (await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-03'))[0];
+      // Snapshot is STILL ₹100 — not retroactively bumped to ₹150.
+      expect(finalFee?.lateFeeConfigSnapshot?.lateFeeAmountInr).toBe(100);
+    });
+
+    it('snapshots at flip time even for fees still within their grace period', async () => {
+      // Pre-M1 behavior: a fee that just flipped today (day = dueDateDay)
+      // had no snapshot, only got one once daysPastDue crossed grace.
+      // Post-M1: the snapshot is taken at flip, regardless of grace.
+      // Locks the rate to flip-day, not "first day past grace".
+      await academyRepo.save(academyWithLateFee());
+      // Feb-joining student → no M2 backfill, isolating the flip-time check.
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-02-15')));
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-05T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.snapshotted).toBe(1);
+
+      const fee = (await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-03'))[0];
+      expect(fee?.status).toBe('DUE');
+      expect(fee?.lateFeeConfigSnapshot).not.toBeNull();
+    });
+
+    it('snapshots backfilled previous-month records when past grace (M2)', async () => {
+      // M2 backfill emits a DUE record with the late-fee snapshot baked in
+      // when the previous month's grace window has already closed.
+      await academyRepo.save(academyWithLateFee());
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-01-01')));
+
+      // No February record exists — simulate a missed cron boundary.
+      // Today is 2024-03-05. Feb dueDate is 2024-02-05, so daysPastDue=29 >> grace=5.
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-05T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.backfilled).toBe(1);
+      // The current-month flip on day 5 produces one snapshot, the M2
+      // backfill produces another.
+      expect(result.value.snapshotted).toBe(2);
+
+      const febDues = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-02');
+      expect(febDues).toHaveLength(1);
+      expect(febDues[0]?.status).toBe('DUE');
+      expect(febDues[0]?.dueDate).toBe('2024-02-05');
+      expect(febDues[0]?.lateFeeConfigSnapshot?.lateFeeAmountInr).toBe(100);
+    });
+
+    it('does NOT snapshot backfilled records that landed within a long grace period (M2)', async () => {
+      // Owner has set a 60-day grace period. Feb 5 dueDate → today Mar 4
+      // is only 28 days past, still within grace. Record is backfilled
+      // but stays un-snapshotted; legacy-backfill will pick it up on a
+      // later run once it crosses grace.
+      //
+      // Today is Mar 4 (one day before dueDateDay=5) so no current-month
+      // flip happens — keeps the assertion focused on backfill behavior
+      // alone, without an M1 flip-time snapshot bleeding in.
+      const longGraceAcademy = createAcademy('academy-1', 5).updateSettings({
+        lateFeeEnabled: true,
+        gracePeriodDays: 60,
+        lateFeeAmountInr: 100,
+        lateFeeRepeatIntervalDays: 5,
+      });
+      await academyRepo.save(longGraceAcademy);
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-01-01')));
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-04T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.backfilled).toBe(1);
+      expect(result.value.flippedToDue).toBe(0);
+      expect(result.value.snapshotted).toBe(0);
+
+      const febDues = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-02');
+      expect(febDues[0]?.lateFeeConfigSnapshot).toBeNull();
+    });
+
+    it('race-safe: does NOT overwrite a fee marked PAID between cron read and cron write', async () => {
+      // This is the H1 fix verification — the "midnight collision". Cron's
+      // findDueWithoutSnapshot loads the fee while still DUE; before
+      // saveSnapshotIfStillDue runs, an external mark-paid transitions the
+      // fee to PAID. The cron must NOT overwrite that PAID state.
+      await academyRepo.save(academyWithLateFee());
+      // Feb-joining student → no M2 backfill, isolating the H1 race check.
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-02-15')));
+      const due = await seedDueFee('2024-03', '2024-03-05');
+
+      // Simulate the race by hooking findDueWithoutSnapshot: it returns the
+      // DUE fee (as the cron expects), but a moment later — before the
+      // engine iterates and calls saveSnapshotIfStillDue — we externally
+      // mutate the stored fee to PAID. The cron's per-fee conditional
+      // updateOne should then no-op and leave PAID intact.
+      const realFind = feeDueRepo.findDueWithoutSnapshot.bind(feeDueRepo);
+      jest.spyOn(feeDueRepo, 'findDueWithoutSnapshot').mockImplementation(async (academyId) => {
+        const out = await realFind(academyId);
+        // Concurrent mark-paid lands here:
+        const paid = due.markPaid('owner-1', new Date('2024-03-12T00:11:00.000+05:30'));
+        await feeDueRepo.bulkSave([paid]);
+        return out;
+      });
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-12T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      // Snapshot count reports zero — the cron tried but the conditional
+      // write didn't match because the fee was no longer DUE.
+      expect(result.value.snapshotted).toBe(0);
+
+      const stored = await feeDueRepo.findById('due-1');
+      // PAID state is preserved; no late-fee config was forced onto it.
+      expect(stored?.status).toBe('PAID');
+      expect(stored?.paidByUserId).toBe('owner-1');
+      expect(stored?.lateFeeConfigSnapshot).toBeNull();
+    });
+  });
+
+  describe('previous-month backfill (M2)', () => {
+    it('backfills missing previous-month dues when cron skipped the boundary', async () => {
+      // The M2 failure mode: cron didn't run during February, so no Feb
+      // fee_due records exist. On March 1, the engine should detect the
+      // gap and create the missing Feb records as DUE.
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-01-01')));
+      await studentRepo.save(createStudent('s2', 'academy-1', new Date('2024-01-15')));
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-01T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.backfilled).toBe(2);
+
+      const febDues = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-02');
+      expect(febDues).toHaveLength(2);
+      // All backfilled records are DUE (dueDate is in the past).
+      for (const due of febDues) {
+        expect(due.status).toBe('DUE');
+        expect(due.dueDate).toBe('2024-02-05');
+        expect(due.monthKey).toBe('2024-02');
+      }
+    });
+
+    it('does not duplicate previous-month dues when they already exist', async () => {
+      // Idempotency guard: if Feb dues were already created normally,
+      // the M2 backfill must not re-create them.
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-01-01')));
+
+      // Run on Feb 10 to create Feb dues normally.
+      await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-02-10T00:10:00.000+05:30'),
+      });
+      const febBefore = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-02');
+      expect(febBefore).toHaveLength(1);
+
+      // Now run on Mar 1 — the backfill should look at Feb, find an
+      // existing record, and skip.
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-01T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.backfilled).toBe(0);
+
+      const febAfter = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-02');
+      expect(febAfter).toHaveLength(1);
+      // Same record, not a re-creation.
+      expect(febAfter[0]?.id.toString()).toBe(febBefore[0]?.id.toString());
+    });
+
+    it('skips backfill for students who joined in the previous month', async () => {
+      // Eligibility rule still applies during backfill: a student who joined
+      // in Feb is not eligible for a Feb fee (their first fee is March).
+      // So no Feb backfill record should be created for them.
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-02-10')));
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-01T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.backfilled).toBe(0);
+
+      const febDues = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-02');
+      expect(febDues).toHaveLength(0);
+    });
+
+    it('backfills correctly across a year boundary (Jan → Dec)', async () => {
+      // Year-boundary safety: running on Jan N must look at Dec of the
+      // previous year, not Jan of last year or something else broken by
+      // off-by-one month math.
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      await studentRepo.save(createStudent('s1', 'academy-1', new Date('2024-06-01')));
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2025-01-03T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.backfilled).toBe(1);
+
+      const decDues = await feeDueRepo.listByAcademyAndMonth('academy-1', '2024-12');
+      expect(decDues).toHaveLength(1);
+      expect(decDues[0]?.dueDate).toBe('2024-12-05');
+      expect(decDues[0]?.monthKey).toBe('2024-12');
+    });
+
+    it('does not backfill for an inactive student (known M2 limitation)', async () => {
+      // Documented limitation: backfill uses `listActiveByAcademy`, so a
+      // student who became inactive between the previous month and now
+      // is not backfilled. Test pins the behavior so it doesn't drift
+      // silently if the eligibility surface changes.
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      const student = createStudent('s1', 'academy-1', new Date('2024-01-01'));
+      const inactive = Student.reconstitute('s1', {
+        ...student['props'],
+        status: 'INACTIVE',
+      });
+      await studentRepo.save(inactive);
+
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-01T00:10:00.000+05:30'),
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.backfilled).toBe(0);
+    });
+  });
+
+  describe('M3 audit recording (fee/payments audit)', () => {
+    it('records MONTHLY_DUES_ENGINE_RAN with summary when any counter is non-zero', async () => {
+      // Setup that guarantees `created > 0`. The audit is the only assertion
+      // here — counter semantics are covered by the tests above.
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      const student = createStudent('s1', 'academy-1', new Date('2024-01-01'), 500);
+      await studentRepo.save(student);
+
+      const auditRecorder = { record: jest.fn().mockResolvedValue(undefined) };
+      const uc = new RunMonthlyDuesEngineUseCase(
+        academyRepo,
+        studentRepo,
+        feeDueRepo,
+        auditRecorder,
+      );
+
+      const result = await uc.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-10'),
+      });
+      expect(result.ok).toBe(true);
+
+      expect(auditRecorder.record).toHaveBeenCalledTimes(1);
+      const entry = auditRecorder.record.mock.calls[0][0];
+      expect(entry).toEqual(
+        expect.objectContaining({
+          academyId: 'academy-1',
+          actorUserId: 'SYSTEM',
+          action: 'MONTHLY_DUES_ENGINE_RAN',
+          entityType: 'FEE_DUE',
+          entityId: '2024-03',
+          context: expect.objectContaining({
+            monthKey: '2024-03',
+            created: expect.any(String),
+            flippedToDue: expect.any(String),
+            snapshotted: expect.any(String),
+            backfilled: expect.any(String),
+          }),
+        }),
+      );
+      // Counters are stringified for the context Record<string,string> shape.
+      expect(entry.context.created).toBe('1');
+    });
+
+    it('does NOT record when nothing changed (idempotent second run on a quiet day)', async () => {
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      const student = createStudent('s1', 'academy-1', new Date('2024-01-01'), 500);
+      await studentRepo.save(student);
+
+      const auditRecorder = { record: jest.fn().mockResolvedValue(undefined) };
+      const uc = new RunMonthlyDuesEngineUseCase(
+        academyRepo,
+        studentRepo,
+        feeDueRepo,
+        auditRecorder,
+      );
+
+      // First run creates dues + records audit.
+      await uc.execute({ academyId: 'academy-1', now: new Date('2024-03-03') });
+      expect(auditRecorder.record).toHaveBeenCalledTimes(1);
+
+      // Second run on the same day should be a full no-op: nothing created
+      // (idempotent), no flip (todayDay 3 < dueDateDay 5), no snapshot, no
+      // backfill. The audit feed shouldn't fill with rows that have all-zero
+      // counters — they're pure noise for forensic queries.
+      auditRecorder.record.mockClear();
+      await uc.execute({ academyId: 'academy-1', now: new Date('2024-03-03') });
+      expect(auditRecorder.record).not.toHaveBeenCalled();
+    });
+
+    it('runs without auditRecorder (legacy constructor) without crashing', async () => {
+      const academy = createAcademy('academy-1', 5);
+      await academyRepo.save(academy);
+      const student = createStudent('s1', 'academy-1', new Date('2024-01-01'), 500);
+      await studentRepo.save(student);
+
+      // `useCase` (the suite default) is constructed without an audit recorder.
+      // Asserts the optional dep stays optional — no crash, just no audit row.
+      const result = await useCase.execute({
+        academyId: 'academy-1',
+        now: new Date('2024-03-10'),
+      });
+      expect(result.ok).toBe(true);
+    });
   });
 });

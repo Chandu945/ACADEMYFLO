@@ -2,20 +2,15 @@ import { RejectPaymentRequestUseCase } from './reject-payment-request.usecase';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
-import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { ClockPort } from '../../common/clock.port';
-import type { TransactionPort } from '../../common/transaction.port';
 import { PaymentRequest } from '@domain/fee/entities/payment-request.entity';
-import { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import { User } from '@domain/identity/entities/user.entity';
 
 describe('RejectPaymentRequestUseCase', () => {
   let userRepo: jest.Mocked<UserRepository>;
   let studentRepo: jest.Mocked<StudentRepository>;
   let prRepo: jest.Mocked<PaymentRequestRepository>;
-  let feeDueRepo: jest.Mocked<FeeDueRepository>;
   let clock: ClockPort;
-  let tx: TransactionPort;
 
   const fixedNow = new Date('2024-03-10T10:00:00.000Z');
 
@@ -33,6 +28,7 @@ describe('RejectPaymentRequestUseCase', () => {
       incrementTokenVersionByUserId: jest.fn(),
       listByAcademyId: jest.fn(),
       anonymizeAndSoftDelete: jest.fn(),
+      listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
     } as jest.Mocked<UserRepository>;
 
     studentRepo = {
@@ -41,6 +37,7 @@ describe('RejectPaymentRequestUseCase', () => {
       list: jest.fn(),
       listActiveByAcademy: jest.fn(),
       countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
       findByIds: jest.fn(),
       findBirthdaysByAcademy: jest.fn(),
       findByEmailInAcademy: jest.fn(),
@@ -56,37 +53,16 @@ describe('RejectPaymentRequestUseCase', () => {
       findPendingByFeeDue: jest.fn(),
       listByAcademyAndStatuses: jest.fn(),
       listByStaffAndAcademy: jest.fn(),
+      countPendingByStaffAndAcademy: jest.fn(),
       countPendingByAcademy: jest.fn(),
+      countPendingByAuthorAndAcademySince: jest.fn(),
+      listByAcademyAndStudent: jest.fn(),
+      listPendingByStudentAndAcademy: jest.fn(),
       deleteAllByAcademyAndStudent: jest.fn(),
+      deletePendingByAcademyAndStudent: jest.fn(),
     } as jest.Mocked<PaymentRequestRepository>;
 
-    feeDueRepo = {
-      save: jest.fn(),
-      bulkSave: jest.fn(),
-      bulkUpdateStatus: jest.fn(),
-      findById: jest.fn(),
-      findByAcademyStudentMonth: jest.fn(),
-      listByAcademyMonthAndStatuses: jest.fn(),
-      listByAcademyMonthPaid: jest.fn(),
-      listByStudentAndRange: jest.fn(),
-      listUpcomingByAcademyAndMonth: jest.fn(),
-      listByAcademyAndMonth: jest.fn(),
-      listUnpaidByAcademy: jest.fn(),
-      sumUnpaidAmountByAcademy: jest.fn(),
-      countDistinctUnpaidStudentsByAcademyAndMonth: jest.fn(),
-      findUnpaidByDueDate: jest.fn(),
-      findOverdueDues: jest.fn(),
-      findDueWithoutSnapshot: jest.fn(),
-      deleteUpcomingByStudent: jest.fn(),
-      sumLateFeeCollectedByAcademyAndMonth: jest.fn(),
-      sumLateFeeCollectedByAcademyAndDateRange: jest.fn(),
-      sumUnpaidAmountByAcademyAndMonth: jest.fn(),
-      countOverdueByAcademy: jest.fn(),
-      listOverdueByAcademy: jest.fn(),
-    } as jest.Mocked<FeeDueRepository>;
-
     clock = { now: () => fixedNow };
-    tx = { run: jest.fn().mockImplementation((fn) => fn()) };
   });
 
   function makeOwner() {
@@ -99,20 +75,6 @@ describe('RejectPaymentRequestUseCase', () => {
       passwordHash: 'h',
     });
     return User.reconstitute('owner-1', { ...u['props'], academyId: 'academy-1' });
-  }
-
-  function makeFeeDueDue() {
-    const due = FeeDue.create({
-      id: 'due-1',
-      academyId: 'academy-1',
-      studentId: 's1',
-      monthKey: '2024-03',
-      dueDate: '2024-03-05',
-      amount: 500,
-    });
-    // The reject path checks status !== 'PAID' before re-saving as DUE.
-    // Any non-PAID status exercises that branch; DUE is the simplest.
-    return FeeDue.reconstitute('due-1', { ...due['props'], status: 'DUE' });
   }
 
   function makeStaffSourceRequest() {
@@ -155,19 +117,21 @@ describe('RejectPaymentRequestUseCase', () => {
       userRepo,
       studentRepo,
       prRepo,
-      feeDueRepo,
       clock,
       auditRecorder,
-      tx,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pushService as any,
     );
   }
 
-  it('rejects a pending request and reverts the fee due to DUE', async () => {
+  it('rejects a pending request and saves only the PaymentRequest (H1: FeeDue untouched)', async () => {
+    // H1 fix: a rejection should ONLY transition the PaymentRequest to
+    // REJECTED. The FeeDue must not be re-saved — previously the use-case
+    // called `revertToDue()` which silently wiped the lateFeeConfigSnapshot,
+    // exposing the fee to the cron's legacy backfill loop. With H1 in
+    // place, the use-case no longer touches the FeeDue at all.
     userRepo.findById.mockResolvedValue(makeOwner());
     prRepo.findById.mockResolvedValue(makeStaffSourceRequest());
-    feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDueDue());
     studentRepo.findById.mockResolvedValue(makeStudentEntity());
 
     const uc = makeUseCase();
@@ -179,9 +143,10 @@ describe('RejectPaymentRequestUseCase', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(prRepo.save).toHaveBeenCalled();
-    expect(feeDueRepo.save).toHaveBeenCalled(); // due reverted
-    expect(tx.run).toHaveBeenCalled();
+    expect(prRepo.save).toHaveBeenCalledTimes(1);
+    const savedRequest = prRepo.save.mock.calls[0]![0];
+    expect(savedRequest.status).toBe('REJECTED');
+    expect(savedRequest.rejectionReason).toBe('Proof unclear');
   });
 
   it('rejects non-OWNER role', async () => {
@@ -231,7 +196,6 @@ describe('RejectPaymentRequestUseCase', () => {
     it('pushes to the parent (staffUserId) when source === PARENT', async () => {
       userRepo.findById.mockResolvedValue(makeOwner());
       prRepo.findById.mockResolvedValue(makeParentSourceRequest());
-      feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDueDue());
       studentRepo.findById.mockResolvedValue(makeStudentEntity());
 
       const pushService = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
@@ -257,7 +221,6 @@ describe('RejectPaymentRequestUseCase', () => {
     it('does NOT push when source === STAFF', async () => {
       userRepo.findById.mockResolvedValue(makeOwner());
       prRepo.findById.mockResolvedValue(makeStaffSourceRequest());
-      feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDueDue());
       studentRepo.findById.mockResolvedValue(makeStudentEntity());
 
       const pushService = { sendToUsers: jest.fn().mockResolvedValue(undefined) };
@@ -277,7 +240,6 @@ describe('RejectPaymentRequestUseCase', () => {
     it('returns ok even when push throws — rejection must not fail', async () => {
       userRepo.findById.mockResolvedValue(makeOwner());
       prRepo.findById.mockResolvedValue(makeParentSourceRequest());
-      feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDueDue());
       studentRepo.findById.mockResolvedValue(makeStudentEntity());
 
       const pushService = {

@@ -4,9 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
-import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { ClockPort } from '../../common/clock.port';
-import type { TransactionPort } from '../../common/transaction.port';
 import {
   canReviewPaymentRequest,
   validateRejectionReason,
@@ -31,10 +29,8 @@ export class RejectPaymentRequestUseCase {
     private readonly userRepo: UserRepository,
     private readonly studentRepo: StudentRepository,
     private readonly paymentRequestRepo: PaymentRequestRepository,
-    private readonly feeDueRepo: FeeDueRepository,
     private readonly clock: ClockPort,
     private readonly auditRecorder: AuditRecorderPort,
-    private readonly transaction: TransactionPort,
     /**
      * Optional so legacy fixtures keep working. Production wiring always
      * passes the push service. Push failures never roll back the rejection.
@@ -66,27 +62,19 @@ export class RejectPaymentRequestUseCase {
 
     const now = this.clock.now();
     const rejected = request.reject(input.actorUserId, now, input.reason.trim());
-    const academyId = user.academyId;
 
-    // Revert the fee due status back to DUE in the same transaction as the
-    // rejected-request save so concurrent rejects can't leave an orphaned
-    // AWAITING fee due (or double-revert it).
-    await this.transaction.run(async () => {
-      await this.paymentRequestRepo.save(rejected);
+    // H1 fix: previously this path also called `feeDue.revertToDue()` and
+    // re-saved the fee. That was a leftover from an old workflow where the
+    // FeeDue moved into an "AWAITING" state on PR creation. The current
+    // entity has no such state — a pending PR doesn't change the FeeDue at
+    // all — so the revert was a no-op for status. But `revertToDue` was
+    // also nulling `lateFeeConfigSnapshot`, which meant rejecting a request
+    // silently stripped the M1 rate-lock from the fee. The cron's
+    // legacy-backfill scan would then re-snapshot at the current live rate,
+    // retroactively re-pricing parents who got a rejection between rate
+    // changes. Now the rejection touches only the PaymentRequest.
+    await this.paymentRequestRepo.save(rejected);
 
-      const feeDue = await this.feeDueRepo.findByAcademyStudentMonth(
-        academyId,
-        request.studentId,
-        request.monthKey,
-      );
-      if (feeDue && feeDue.status !== 'PAID') {
-        const reverted = feeDue.revertToDue();
-        await this.feeDueRepo.save(reverted);
-      }
-    });
-
-    // Audit is recorded outside the transaction per codebase convention for
-    // reject/others (fail-the-action semantics apply to the main save only).
     await this.auditRecorder.record({
       academyId: user.academyId,
       actorUserId: input.actorUserId,

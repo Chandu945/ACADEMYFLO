@@ -6,12 +6,15 @@ describe('markAttendanceUseCase', () => {
     const mockApi = {
       markAttendance: jest
         .fn()
-        .mockResolvedValue(ok({ studentId: 's1', date: '2026-03-04', status: 'ABSENT' })),
+        .mockResolvedValue(
+          ok({ studentId: 's1', batchId: 'b1', date: '2026-03-04', status: 'ABSENT' }),
+        ),
     };
 
     const result = await markAttendanceUseCase(
       { attendanceApi: mockApi },
       's1',
+      'b1',
       '2026-03-04',
       'ABSENT',
     );
@@ -21,7 +24,7 @@ describe('markAttendanceUseCase', () => {
       expect(result.value.studentId).toBe('s1');
       expect(result.value.status).toBe('ABSENT');
     }
-    expect(mockApi.markAttendance).toHaveBeenCalledWith('s1', '2026-03-04', 'ABSENT');
+    expect(mockApi.markAttendance).toHaveBeenCalledWith('s1', 'b1', '2026-03-04', 'ABSENT');
   });
 
   it('propagates API errors', async () => {
@@ -34,6 +37,7 @@ describe('markAttendanceUseCase', () => {
     const result = await markAttendanceUseCase(
       { attendanceApi: mockApi },
       's1',
+      'b1',
       '2026-03-04',
       'ABSENT',
     );
@@ -52,6 +56,7 @@ describe('markAttendanceUseCase', () => {
     const result = await markAttendanceUseCase(
       { attendanceApi: mockApi },
       's1',
+      'b1',
       '2026-03-04',
       'ABSENT',
     );

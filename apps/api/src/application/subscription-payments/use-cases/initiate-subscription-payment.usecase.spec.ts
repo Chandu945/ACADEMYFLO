@@ -47,6 +47,8 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     paymentRepo: {
       findPendingByAcademyId: jest.fn().mockResolvedValue(null),
       save: jest.fn().mockResolvedValue(undefined),
+      // M1 fix (subscription audit): failure paths now go through CAS save.
+      saveWithStatusPrecondition: jest.fn().mockResolvedValue(true),
     },
     cashfreeGateway: {
       createOrder: jest.fn().mockResolvedValue({

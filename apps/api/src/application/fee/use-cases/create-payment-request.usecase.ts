@@ -21,7 +21,7 @@ import type { ClockPort } from '../../common/clock.port';
 import type { PushNotificationService } from '../../notifications/push-notification.service';
 import { buildPaymentRequestPendingPush } from '../../notifications/templates/payment-request-pending-template';
 import { formatLocalDate } from '../../../shared/date-utils';
-import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
+import { buildLateFeeConfigFromAcademy, buildEffectiveLateFeeConfig } from '../common/late-fee';
 import { randomUUID } from 'crypto';
 
 export interface CreatePaymentRequestInput {
@@ -83,7 +83,7 @@ export class CreatePaymentRequestUseCase {
     const academy = await this.academyRepo.findById(user.academyId);
     if (!academy) return err(PaymentRequestErrors.academyRequired());
     const liveConfig = buildLateFeeConfigFromAcademy(academy);
-    const effectiveConfig = due.lateFeeConfigSnapshot ?? liveConfig;
+    const effectiveConfig = buildEffectiveLateFeeConfig(due.lateFeeConfigSnapshot, liveConfig);
     let lateFee = 0;
     if (effectiveConfig) {
       const todayStr = formatLocalDate(this.clock.now());

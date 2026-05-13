@@ -12,6 +12,7 @@ import type { StudentDocument } from '../database/schemas/student.schema';
 import type { Gender, StudentStatus } from '@academyflo/contracts';
 import { getTransactionSession } from '../database/transaction-context';
 import { escapeRegex } from '@shared/utils/escape-regex';
+import { weekdayLabelFromDate } from '@shared/date-utils';
 
 @Injectable()
 export class MongoStudentRepository implements StudentRepository {
@@ -155,6 +156,55 @@ export class MongoStudentRepository implements StudentRepository {
 
   async countActiveByAcademy(academyId: string): Promise<number> {
     return this.model.countDocuments({ academyId, status: 'ACTIVE', deletedAt: null });
+  }
+
+  async countScheduledStudentsByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number> {
+    // Default-present dashboard denominator: distinct students with a session
+    // on `date`. Single aggregation, runs inside the StudentModel (joiningDate
+    // + status filter is the most selective stage and stays on the indexed
+    // (academyId, status) compound). $lookup pulls enrollments → batches; we
+    // unwind both and keep only rows whose batch.days includes the weekday
+    // of the input date. The final $group dedupes a student in two batches
+    // both running that day.
+    const weekday = weekdayLabelFromDate(date);
+    // joiningDate is stored as Date at midnight; compare against end-of-day
+    // in UTC so a student who joined today is counted as scheduled today.
+    const endOfDay = new Date(`${date}T23:59:59.999Z`);
+    const result = await this.model.aggregate<{ count: number }>([
+      {
+        $match: {
+          academyId,
+          status: 'ACTIVE',
+          deletedAt: null,
+          joiningDate: { $lte: endOfDay },
+        },
+      },
+      {
+        $lookup: {
+          from: 'student_batches',
+          localField: '_id',
+          foreignField: 'studentId',
+          as: 'enrollments',
+        },
+      },
+      { $unwind: '$enrollments' },
+      {
+        $lookup: {
+          from: 'batches',
+          localField: 'enrollments.batchId',
+          foreignField: '_id',
+          as: 'batch',
+        },
+      },
+      { $unwind: '$batch' },
+      { $match: { 'batch.days': weekday } },
+      { $group: { _id: '$_id' } },
+      { $count: 'count' },
+    ]);
+    return result[0]?.count ?? 0;
   }
 
   async findByIds(ids: string[]): Promise<Student[]> {

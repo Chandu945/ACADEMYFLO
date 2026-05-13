@@ -37,6 +37,36 @@ export class MongoAcademyRepository implements AcademyRepository {
     );
   }
 
+  async saveWithVersionPrecondition(academy: Academy, loadedVersion: number): Promise<boolean> {
+    // M5 academy-onboarding fix: CAS write. The entity bumps `audit.version`
+    // every mutation, so a concurrent edit that already incremented past
+    // `loadedVersion` will fail this match clause and the use case can
+    // surface a typed CONFLICT instead of silently losing one of the writes.
+    const result = await this.model.findOneAndUpdate(
+      { _id: academy.id.toString(), version: loadedVersion },
+      {
+        _id: academy.id.toString(),
+        ownerUserId: academy.ownerUserId,
+        academyName: academy.academyName,
+        address: academy.address,
+        loginDisabled: academy.loginDisabled,
+        deactivatedAt: academy.deactivatedAt,
+        defaultDueDateDay: academy.defaultDueDateDay,
+        receiptPrefix: academy.receiptPrefix,
+        lateFeeEnabled: academy.lateFeeEnabled,
+        gracePeriodDays: academy.gracePeriodDays,
+        lateFeeAmountInr: academy.lateFeeAmountInr,
+        lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays,
+        instituteInfo: academy.instituteInfo,
+        version: academy.audit.version,
+        deletedAt: academy.softDelete.deletedAt,
+        deletedBy: academy.softDelete.deletedBy,
+      },
+      { session: getTransactionSession(), new: true },
+    );
+    return result !== null;
+  }
+
   async findById(id: string): Promise<Academy | null> {
     const doc = await this.model.findById(id).lean().exec();
     return doc ? this.toDomain(doc) : null;

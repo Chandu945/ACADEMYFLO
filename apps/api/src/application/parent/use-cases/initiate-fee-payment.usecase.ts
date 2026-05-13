@@ -11,12 +11,16 @@ import type { LoggerPort } from '@shared/logging/logger.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import type { ClockPort } from '../../common/clock.port';
 import { formatLocalDate } from '../../../shared/date-utils';
+import {
+  buildEffectiveLateFeeConfig,
+  buildLateFeeConfigFromAcademy,
+} from '../../fee/common/late-fee';
 import { canPayFeeOnline } from '@domain/parent/rules/parent.rules';
 import { generateFeeOrderId } from '@domain/parent/rules/parent.rules';
 import { FeePayment } from '@domain/parent/entities/fee-payment.entity';
 import { ParentErrors } from '../../common/errors';
 import type { InitiateFeePaymentOutput } from '../dtos/parent.dto';
-import { type UserRole, type LateFeeConfig, type LateFeeRepeatInterval, computeConvenienceFee, computeLateFee } from '@academyflo/contracts';
+import { type UserRole, computeConvenienceFee, computeLateFee } from '@academyflo/contracts';
 import { randomUUID } from 'node:crypto';
 
 export interface InitiateFeePaymentInput {
@@ -74,19 +78,16 @@ export class InitiateFeePaymentUseCase {
     const existingPending = await this.feePaymentRepo.findPendingByFeeDueId(input.feeDueId);
     if (existingPending) return err(ParentErrors.paymentAlreadyPending());
 
-    // Compute late fee — prefer snapshotted config, fall back to live academy config
+    // Compute late fee — prefer snapshotted config, fall back to live
+    // academy config. The helper enforces L1 of the late-fee audit (live
+    // disable kills it) and M1 (snapshot locks the amount). Uses the
+    // shared buildLateFeeConfigFromAcademy so the inline-build duplication
+    // from the parent payment paths is gone.
     const academy = await this.academyRepo.findById(foundDue.academyId);
     const todayStr = formatLocalDate(this.clock.now());
     let lateFee = 0;
-    const liveConfig: LateFeeConfig | undefined = academy?.lateFeeEnabled
-      ? {
-          lateFeeEnabled: academy.lateFeeEnabled,
-          gracePeriodDays: academy.gracePeriodDays,
-          lateFeeAmountInr: academy.lateFeeAmountInr,
-          lateFeeRepeatIntervalDays: academy.lateFeeRepeatIntervalDays as LateFeeRepeatInterval,
-        }
-      : undefined;
-    const effectiveConfig = foundDue.lateFeeConfigSnapshot ?? liveConfig;
+    const liveConfig = buildLateFeeConfigFromAcademy(academy);
+    const effectiveConfig = buildEffectiveLateFeeConfig(foundDue.lateFeeConfigSnapshot, liveConfig);
     if (effectiveConfig) {
       lateFee = computeLateFee(foundDue.dueDate, todayStr, effectiveConfig);
     }

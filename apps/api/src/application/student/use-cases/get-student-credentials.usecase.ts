@@ -34,7 +34,9 @@ export class GetStudentCredentialsUseCase {
     private readonly passwordHasher: PasswordHasher,
   ) {}
 
-  async execute(input: GetStudentCredentialsInput): Promise<Result<StudentCredentialsOutput, AppError>> {
+  async execute(
+    input: GetStudentCredentialsInput,
+  ): Promise<Result<StudentCredentialsOutput, AppError>> {
     if (input.actorRole !== 'OWNER' && input.actorRole !== 'STAFF') {
       return err(StudentErrors.manageNotAllowed());
     }
@@ -78,8 +80,13 @@ export class GetStudentCredentialsUseCase {
       });
     }
 
-    // Generate a new temporary password and reset the parent's password
-    const tempPassword = randomUUID().substring(0, 8);
+    // Generate a new temporary password and reset the parent's password.
+    //
+    // L3b fix (mirrors L3 in invite-parent): the prior 8-hex-char password
+    // (32 bits of entropy) was brute-forceable on modern hardware. 16 hex
+    // chars from randomUUID gives 64 bits — safe in the one-time-use window
+    // before the parent logs in and resets.
+    const tempPassword = randomUUID().replace(/-/g, '').slice(0, 16);
     const passwordHash = await this.passwordHasher.hash(tempPassword);
     const updatedUser = parentUser.changePassword(passwordHash);
     await this.userRepo.save(updatedUser);

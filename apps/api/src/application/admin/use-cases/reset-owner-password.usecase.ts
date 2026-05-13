@@ -9,6 +9,7 @@ import type { PasswordHasher } from '../../identity/ports/password-hasher.port';
 import type { PasswordGeneratorPort } from '../../common/password-generator.port';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { EmailSenderPort } from '../../notifications/ports/email-sender.port';
+import type { UserAuthCachePort } from '../../identity/ports/user-auth-cache.port';
 import { renderAdminPasswordResetEmail } from '../../notifications/templates/admin-password-reset-template';
 import { AdminErrors } from '../../common/errors';
 
@@ -33,6 +34,10 @@ export class ResetOwnerPasswordUseCase {
     private readonly auditRecorder: AuditRecorderPort,
     private readonly deviceTokenRepo: DeviceTokenRepository,
     private readonly emailSender?: EmailSenderPort,
+    /** H1 identity-audit fix: bust the JwtAuthGuard auth cache so the
+     *  owner's old access token stops working immediately rather than
+     *  surviving the 5-min cache TTL. Optional for legacy fixtures. */
+    private readonly userAuthCache?: UserAuthCachePort,
   ) {}
 
   async execute(
@@ -58,8 +63,9 @@ export class ResetOwnerPasswordUseCase {
     // Domain method bumps tokenVersion and updates audit fields.
     const updated = owner.changePassword(newHash);
     await this.userRepo.save(updated);
-    // Note: user auth cache (user:auth:{userId}) will be invalidated on next
-    // JWT check via tokenVersion mismatch, and expires naturally within 5 min TTL.
+    // H1 identity-audit fix: explicit cache bust so the owner's old access
+    // token can't survive the 5-min cache TTL.
+    await this.userAuthCache?.invalidate(owner.id.toString());
 
     // Revoke all sessions for the owner
     await this.sessionRepo.revokeAllByUserIds([owner.id.toString()]);
@@ -89,7 +95,9 @@ export class ResetOwnerPasswordUseCase {
           tempPassword,
         }),
       })
-      .catch(() => {/* best-effort — temp password also returned in API response */});
+      .catch(() => {
+        /* best-effort — temp password also returned in API response */
+      });
 
     return ok({
       temporaryPassword: tempPassword,

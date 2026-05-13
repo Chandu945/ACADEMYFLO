@@ -8,6 +8,7 @@ import type { SessionRepository } from '@domain/identity/ports/session.repositor
 import type { PasswordHasher } from '../ports/password-hasher.port';
 import type { TokenService } from '../ports/token-service.port';
 import type { LoginAttemptTrackerPort } from '../services/login-attempt-tracker';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { canLogin } from '@domain/identity/rules/auth.rules';
 import { AuthErrors } from '../../common/errors';
 import { randomUUID } from 'crypto';
@@ -44,6 +45,13 @@ export class LoginUseCase {
     private readonly tokenService: TokenService,
     private readonly refreshTtlSeconds: number = 2_592_000,
     private readonly loginAttemptTracker?: LoginAttemptTrackerPort,
+    /**
+     * M3 identity-audit fix: records USER_LOGGED_IN in the audit feed.
+     * Skipped when the user has no academyId (super-admin / mid-onboarding)
+     * since the audit feed is academy-scoped. Optional so legacy fixtures
+     * compile without the new wiring.
+     */
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: LoginInput): Promise<Result<LoginOutput, AppError>> {
@@ -70,15 +78,23 @@ export class LoginUseCase {
       return err(AuthErrors.invalidCredentials());
     }
 
-    const loginCheck = canLogin(user);
-    if (!loginCheck.allowed) {
-      return err(AuthErrors.inactiveUser(loginCheck.reason!));
-    }
-
+    // H2 identity-audit fix: verify the password BEFORE surfacing
+    // account-status information. Pre-fix code returned the distinct
+    // "Inactive user: <reason>" error whenever a known email belonged to
+    // an INACTIVE account — letting an attacker probe the status of any
+    // email they had. Now: wrong password is always "Invalid credentials"
+    // regardless of account state. Only after a correct password do we
+    // tell the user their account is inactive (which they're entitled
+    // to know).
     const passwordValid = await this.passwordHasher.compare(input.password, user.passwordHash);
     if (!passwordValid) {
       await this.loginAttemptTracker?.recordFailure(identifierLower);
       return err(AuthErrors.invalidCredentials());
+    }
+
+    const loginCheck = canLogin(user);
+    if (!loginCheck.allowed) {
+      return err(AuthErrors.inactiveUser(loginCheck.reason!));
     }
 
     const deviceId = input.deviceId || randomUUID();
@@ -110,6 +126,23 @@ export class LoginUseCase {
       academyId: user.academyId,
       tokenVersion: user.tokenVersion,
     });
+
+    // M3 identity-audit fix: record the login. Skipped for users without
+    // an academy (super-admin or pre-onboarding owner) since audit rows
+    // are academy-scoped. Fire-and-forget so audit infra hiccup never
+    // blocks the user's login.
+    if (this.auditRecorder && user.academyId) {
+      await this.auditRecorder
+        .record({
+          academyId: user.academyId,
+          actorUserId: user.id.toString(),
+          action: 'USER_LOGGED_IN',
+          entityType: 'USER',
+          entityId: user.id.toString(),
+          context: { role: user.role, source: 'password', deviceId },
+        })
+        .catch(() => {});
+    }
 
     return ok({
       accessToken,

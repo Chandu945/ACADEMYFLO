@@ -54,7 +54,20 @@ export type ChildFeeDue = {
   paidAt: string | null;
   paidSource: PaidSource | null;
   paymentLabel: PaymentLabel | null;
-  pendingRequest: { id: string; amount: number; createdAt: string } | null;
+  /**
+   * Open manual-payment request on this fee. `source` distinguishes a
+   * parent-submitted proof from a staff-recorded cash collection so the UI
+   * copy can match: "Owner approving your payment" vs "Recorded by Academy
+   * staff" (G4 mobile-alignment fix). Pre-fix both surfaced as the same
+   * generic pending badge — confusing when the parent hadn't submitted
+   * anything but staff had recorded a cash collection.
+   */
+  pendingRequest: {
+    id: string;
+    amount: number;
+    createdAt: string;
+    source: 'PARENT' | 'STAFF';
+  } | null;
 };
 
 export type FeePaymentFlowStatus =

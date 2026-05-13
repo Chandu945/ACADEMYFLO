@@ -34,11 +34,19 @@ import { OTP_HASHER } from '@application/identity/ports/otp-hasher.port';
 import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
 import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
 import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { USER_AUTH_CACHE_PORT } from '@application/identity/ports/user-auth-cache.port';
+import type { UserAuthCachePort } from '@application/identity/ports/user-auth-cache.port';
 import { OwnerSignupUseCase } from '@application/identity/use-cases/owner-signup.usecase';
 import { LoginUseCase } from '@application/identity/use-cases/login.usecase';
-import { LoginAttemptTracker, LOGIN_ATTEMPT_TRACKER } from '@application/identity/services/login-attempt-tracker';
+import {
+  LoginAttemptTracker,
+  LOGIN_ATTEMPT_TRACKER,
+} from '@application/identity/services/login-attempt-tracker';
 import type { LoginAttemptTrackerPort } from '@application/identity/services/login-attempt-tracker';
-import { OtpAttemptTracker, OTP_ATTEMPT_TRACKER } from '@application/identity/services/otp-attempt-tracker';
+import {
+  OtpAttemptTracker,
+  OTP_ATTEMPT_TRACKER,
+} from '@application/identity/services/otp-attempt-tracker';
 import type { OtpAttemptTrackerPort } from '@application/identity/services/otp-attempt-tracker';
 import { RefreshUseCase } from '@application/identity/use-cases/refresh.usecase';
 import { LogoutUseCase } from '@application/identity/use-cases/logout.usecase';
@@ -77,7 +85,10 @@ import { AppConfigService } from '@shared/config/config.service';
     // Infrastructure bindings
     { provide: USER_REPOSITORY, useClass: MongoUserRepository },
     { provide: SESSION_REPOSITORY, useClass: MongoSessionRepository },
-    { provide: PASSWORD_RESET_CHALLENGE_REPOSITORY, useClass: MongoPasswordResetChallengeRepository },
+    {
+      provide: PASSWORD_RESET_CHALLENGE_REPOSITORY,
+      useClass: MongoPasswordResetChallengeRepository,
+    },
     { provide: DEVICE_TOKEN_REPOSITORY, useClass: MongoDeviceTokenRepository },
     { provide: PASSWORD_HASHER, useClass: BcryptPasswordHasher },
     { provide: TOKEN_SERVICE, useClass: JwtTokenService },
@@ -98,8 +109,23 @@ import { AppConfigService } from '@shared/config/config.service';
         tokenSvc: TokenService,
         config: AppConfigService,
         emailSender: EmailSenderPort,
-      ) => new OwnerSignupUseCase(userRepo, sessionRepo, hasher, tokenSvc, config.jwtRefreshTtl, emailSender),
-      inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, TOKEN_SERVICE, AppConfigService, EMAIL_SENDER_PORT],
+      ) =>
+        new OwnerSignupUseCase(
+          userRepo,
+          sessionRepo,
+          hasher,
+          tokenSvc,
+          config.jwtRefreshTtl,
+          emailSender,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        SESSION_REPOSITORY,
+        PASSWORD_HASHER,
+        TOKEN_SERVICE,
+        AppConfigService,
+        EMAIL_SENDER_PORT,
+      ],
     },
     {
       provide: 'LOGIN_USE_CASE',
@@ -110,8 +136,26 @@ import { AppConfigService } from '@shared/config/config.service';
         tokenSvc: TokenService,
         config: AppConfigService,
         tracker: LoginAttemptTrackerPort,
-      ) => new LoginUseCase(userRepo, sessionRepo, hasher, tokenSvc, config.jwtRefreshTtl, tracker),
-      inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, TOKEN_SERVICE, AppConfigService, LOGIN_ATTEMPT_TRACKER],
+        audit: AuditRecorderPort,
+      ) =>
+        new LoginUseCase(
+          userRepo,
+          sessionRepo,
+          hasher,
+          tokenSvc,
+          config.jwtRefreshTtl,
+          tracker,
+          audit,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        SESSION_REPOSITORY,
+        PASSWORD_HASHER,
+        TOKEN_SERVICE,
+        AppConfigService,
+        LOGIN_ATTEMPT_TRACKER,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'REFRESH_USE_CASE',
@@ -125,15 +169,23 @@ import { AppConfigService } from '@shared/config/config.service';
     },
     {
       provide: 'LOGOUT_USE_CASE',
-      useFactory: (sessionRepo: SessionRepository, deviceTokenRepo: DeviceTokenRepository) =>
-        new LogoutUseCase(sessionRepo, deviceTokenRepo),
-      inject: [SESSION_REPOSITORY, DEVICE_TOKEN_REPOSITORY],
+      useFactory: (
+        sessionRepo: SessionRepository,
+        deviceTokenRepo: DeviceTokenRepository,
+        userRepo: UserRepository,
+        audit: AuditRecorderPort,
+      ) => new LogoutUseCase(sessionRepo, deviceTokenRepo, userRepo, audit),
+      inject: [SESSION_REPOSITORY, DEVICE_TOKEN_REPOSITORY, USER_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'LOGOUT_ALL_USE_CASE',
-      useFactory: (sessionRepo: SessionRepository, deviceTokenRepo: DeviceTokenRepository) =>
-        new LogoutAllUseCase(sessionRepo, deviceTokenRepo),
-      inject: [SESSION_REPOSITORY, DEVICE_TOKEN_REPOSITORY],
+      useFactory: (
+        sessionRepo: SessionRepository,
+        deviceTokenRepo: DeviceTokenRepository,
+        userRepo: UserRepository,
+        audit: AuditRecorderPort,
+      ) => new LogoutAllUseCase(sessionRepo, deviceTokenRepo, userRepo, audit),
+      inject: [SESSION_REPOSITORY, DEVICE_TOKEN_REPOSITORY, USER_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'REQUEST_PASSWORD_RESET_USE_CASE',
@@ -182,6 +234,7 @@ import { AppConfigService } from '@shared/config/config.service';
         otpTracker: OtpAttemptTrackerPort,
         emailSender: EmailSenderPort,
         audit: AuditRecorderPort,
+        userAuthCache: UserAuthCachePort,
       ) =>
         new ConfirmPasswordResetUseCase(
           userRepo,
@@ -193,6 +246,7 @@ import { AppConfigService } from '@shared/config/config.service';
           otpTracker,
           emailSender,
           audit,
+          userAuthCache,
         ),
       inject: [
         USER_REPOSITORY,
@@ -204,6 +258,7 @@ import { AppConfigService } from '@shared/config/config.service';
         OTP_ATTEMPT_TRACKER,
         EMAIL_SENDER_PORT,
         AUDIT_RECORDER_PORT,
+        USER_AUTH_CACHE_PORT,
       ],
     },
     {
@@ -214,10 +269,33 @@ import { AppConfigService } from '@shared/config/config.service';
         sessionRepo: SessionRepository,
         tokenSvc: TokenService,
         config: AppConfigService,
-      ) => new GoogleLoginUseCase(googleVerifier, userRepo, sessionRepo, tokenSvc, config.jwtRefreshTtl),
-      inject: [GOOGLE_TOKEN_VERIFIER, USER_REPOSITORY, SESSION_REPOSITORY, TOKEN_SERVICE, AppConfigService],
+        audit: AuditRecorderPort,
+      ) =>
+        new GoogleLoginUseCase(
+          googleVerifier,
+          userRepo,
+          sessionRepo,
+          tokenSvc,
+          config.jwtRefreshTtl,
+          audit,
+        ),
+      inject: [
+        GOOGLE_TOKEN_VERIFIER,
+        USER_REPOSITORY,
+        SESSION_REPOSITORY,
+        TOKEN_SERVICE,
+        AppConfigService,
+        AUDIT_RECORDER_PORT,
+      ],
     },
   ],
-  exports: [TOKEN_SERVICE, USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, LOGIN_ATTEMPT_TRACKER, DEVICE_TOKEN_REPOSITORY],
+  exports: [
+    TOKEN_SERVICE,
+    USER_REPOSITORY,
+    SESSION_REPOSITORY,
+    PASSWORD_HASHER,
+    LOGIN_ATTEMPT_TRACKER,
+    DEVICE_TOKEN_REPOSITORY,
+  ],
 })
 export class AuthModule {}

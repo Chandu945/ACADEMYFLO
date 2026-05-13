@@ -61,9 +61,7 @@ export class GetStaffMonthlyAttendanceUseCase {
 
     const today = getTodayLocalDate();
     // Past holidays only — future holidays shouldn't shrink past absences.
-    const pastHolidayDates = holidays
-      .filter((h) => h.date <= today)
-      .map((h) => h.date);
+    const pastHolidayDates = holidays.filter((h) => h.date <= today).map((h) => h.date);
     const holidaySet = new Set(pastHolidayDates);
 
     // Expected dates = all calendar dates in month up to today, minus past

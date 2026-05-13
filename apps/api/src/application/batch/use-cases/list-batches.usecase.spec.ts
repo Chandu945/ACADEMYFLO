@@ -33,7 +33,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const batchRepo: jest.Mocked<BatchRepository> = {
@@ -48,6 +49,7 @@ function buildDeps() {
   const studentBatchRepo: jest.Mocked<StudentBatchRepository> = {
     replaceForStudent: jest.fn(),
     findByStudentId: jest.fn(),
+    findByStudentIds: jest.fn().mockResolvedValue([]),
     findByBatchId: jest.fn(),
     deleteByBatchId: jest.fn(),
     countByBatchId: jest.fn().mockResolvedValue(0),

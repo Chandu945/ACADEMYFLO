@@ -19,7 +19,8 @@ export interface CreateCategoryInput {
 export interface CreateCategoryOutput {
   id: string;
   name: string;
-  createdAt: Date;
+  // ISO 8601 wire format (see list-staff.usecase.ts for rationale).
+  createdAt: string;
 }
 
 export class CreateCategoryUseCase {
@@ -51,7 +52,21 @@ export class CreateCategoryUseCase {
       createdBy: input.actorUserId,
     });
 
-    await this.categoryRepo.save(category);
+    // M1 fix (expense audit): pre-fix code relied solely on the JS-side
+    // findByAcademyAndName check above, which is TOCTOU-vulnerable — two
+    // concurrent requests both pass the check and both succeed against the
+    // case-sensitive Mongo unique index ("Travel" and "travel" land as
+    // separate rows). The new (academyId, nameNormalized) partial unique
+    // closes that, but we still need to map the resulting 11000 to a
+    // user-facing duplicateCategory rather than a 500.
+    try {
+      await this.categoryRepo.save(category);
+    } catch (e) {
+      if ((e as { code?: number })?.code === 11000) {
+        return err(ExpenseErrors.duplicateCategory());
+      }
+      throw e;
+    }
 
     await this.auditRecorder.record({
       academyId: user.academyId,
@@ -65,7 +80,7 @@ export class CreateCategoryUseCase {
     return ok({
       id: category.id.toString(),
       name: category.name,
-      createdAt: category.audit.createdAt,
+      createdAt: category.audit.createdAt.toISOString(),
     });
   }
 }

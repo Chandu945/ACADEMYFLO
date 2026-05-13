@@ -15,6 +15,12 @@ import {
   validateDateOfBirth,
   validateGuardianMobile,
   validateGuardianEmail,
+  validateAddressLine,
+  validateCityOrState,
+  validateAddressText,
+  validateOptionalName,
+  validateOptionalPhone,
+  validateStudentEmail,
 } from '@domain/student/rules/student.rules';
 import { StudentErrors } from '../../common/errors';
 import type { StudentDto } from '../dtos/student.dto';
@@ -131,17 +137,75 @@ export class UpdateStudentUseCase {
       }
     }
 
-    if (input.guardian?.email !== undefined) {
+    if (input.guardian?.email !== undefined && input.guardian.email !== '') {
       const emailCheck = validateGuardianEmail(input.guardian.email);
       if (!emailCheck.valid) {
         return err(AppErrorClass.validation(emailCheck.reason!));
       }
     }
 
+    // L4 fix: length / format validation for the remaining free-text fields.
+    // Each `!== undefined` guard preserves the partial-update contract — a
+    // PATCH that doesn't touch a field doesn't have to re-supply it. Empty
+    // strings are allowed for the optional name/text fields (they collapse
+    // to null on storage); only non-empty values are validated.
+    if (input.address?.line1 !== undefined) {
+      const c = validateAddressLine(input.address.line1, 'Address line 1');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.address?.line2 !== undefined && input.address.line2 !== null) {
+      const c = validateAddressLine(input.address.line2, 'Address line 2');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.address?.city !== undefined) {
+      const c = validateCityOrState(input.address.city, 'City');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.address?.state !== undefined) {
+      const c = validateCityOrState(input.address.state, 'State');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.guardian?.name !== undefined && input.guardian.name !== '') {
+      const c = validateOptionalName(input.guardian.name, 'Guardian name');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.fatherName !== undefined && input.fatherName !== null && input.fatherName !== '') {
+      const c = validateOptionalName(input.fatherName, 'Father name');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.motherName !== undefined && input.motherName !== null && input.motherName !== '') {
+      const c = validateOptionalName(input.motherName, 'Mother name');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.addressText !== undefined && input.addressText !== null && input.addressText !== '') {
+      const c = validateAddressText(input.addressText);
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (input.email !== undefined && input.email !== null && input.email !== '') {
+      const c = validateStudentEmail(input.email);
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (
+      input.mobileNumber !== undefined &&
+      input.mobileNumber !== null &&
+      input.mobileNumber !== ''
+    ) {
+      const c = validateOptionalPhone(input.mobileNumber, 'Mobile number');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+    if (
+      input.whatsappNumber !== undefined &&
+      input.whatsappNumber !== null &&
+      input.whatsappNumber !== ''
+    ) {
+      const c = validateOptionalPhone(input.whatsappNumber, 'WhatsApp number');
+      if (!c.valid) return err(AppErrorClass.validation(c.reason!));
+    }
+
     // Normalize email-like fields to a single canonical (lowercased, trimmed)
     // representation so dedup, storage, and downstream comparisons all agree.
     const normEmail = (e: string | null | undefined): string | null =>
-      e ? e.trim().toLowerCase() : (e === '' ? null : e ?? null);
+      e ? e.trim().toLowerCase() : e === '' ? null : (e ?? null);
 
     const newEmailRaw = input.email !== undefined ? input.email : student.email;
     const newGuardianEmailRaw =
@@ -150,7 +214,11 @@ export class UpdateStudentUseCase {
     const newGuardianEmail = normEmail(newGuardianEmailRaw);
     const emailToCheck = newEmail || newGuardianEmail;
     if (emailToCheck) {
-      const existingByEmail = await this.studentRepo.findByEmailInAcademy(actor.academyId, emailToCheck, input.studentId);
+      const existingByEmail = await this.studentRepo.findByEmailInAcademy(
+        actor.academyId,
+        emailToCheck,
+        input.studentId,
+      );
       if (existingByEmail) {
         return err(StudentErrors.duplicateEmail());
       }
@@ -158,10 +226,15 @@ export class UpdateStudentUseCase {
 
     // Duplicate phone check (exclude current student)
     const newMobile = input.mobileNumber !== undefined ? input.mobileNumber : student.mobileNumber;
-    const newGuardianMobile = input.guardian?.mobile !== undefined ? input.guardian.mobile : student.guardian?.mobile;
+    const newGuardianMobile =
+      input.guardian?.mobile !== undefined ? input.guardian.mobile : student.guardian?.mobile;
     const phoneToCheck = newMobile || newGuardianMobile;
     if (phoneToCheck) {
-      const existingByPhone = await this.studentRepo.findByPhoneInAcademy(actor.academyId, phoneToCheck, input.studentId);
+      const existingByPhone = await this.studentRepo.findByPhoneInAcademy(
+        actor.academyId,
+        phoneToCheck,
+        input.studentId,
+      );
       if (existingByPhone) {
         return err(StudentErrors.duplicatePhone());
       }
@@ -182,9 +255,10 @@ export class UpdateStudentUseCase {
       ? {
           name: input.guardian.name ?? student.guardian?.name ?? '',
           mobile: input.guardian.mobile ?? student.guardian?.mobile ?? '',
-          email: (input.guardian.email !== undefined
-            ? normEmail(input.guardian.email) ?? ''
-            : student.guardian?.email ?? ''),
+          email:
+            input.guardian.email !== undefined
+              ? (normEmail(input.guardian.email) ?? '')
+              : (student.guardian?.email ?? ''),
         }
       : student.guardian;
 
@@ -206,8 +280,12 @@ export class UpdateStudentUseCase {
       profilePhotoUrl: student.profilePhotoUrl,
       fatherName: input.fatherName !== undefined ? (input.fatherName ?? null) : student.fatherName,
       motherName: input.motherName !== undefined ? (input.motherName ?? null) : student.motherName,
-      whatsappNumber: input.whatsappNumber !== undefined ? (input.whatsappNumber ?? null) : student.whatsappNumber,
-      addressText: input.addressText !== undefined ? (input.addressText ?? null) : student.addressText,
+      whatsappNumber:
+        input.whatsappNumber !== undefined
+          ? (input.whatsappNumber ?? null)
+          : student.whatsappNumber,
+      addressText:
+        input.addressText !== undefined ? (input.addressText ?? null) : student.addressText,
       status: student.status,
       statusChangedAt: student.statusChangedAt,
       statusChangedBy: student.statusChangedBy,
@@ -215,6 +293,23 @@ export class UpdateStudentUseCase {
       audit: updateAuditFields(student.audit),
       softDelete: student.softDelete,
     });
+
+    // M1 fix: compute the diff between the current student and the merged
+    // `updated` entity so the audit log records WHICH fields changed (not
+    // just "something changed"). For monthlyFee specifically — the most
+    // dispute-prone field — also record old + new values directly in the
+    // audit context. Other fields are PII (addresses, phones, emails) and
+    // are tracked by name only to avoid long-term PII retention in the
+    // audit log.
+    const changedFields = diffChangedFields(student, updated);
+
+    // No-op skip: if the request changed nothing (all input fields match
+    // current state, or no fields were provided), don't save and don't
+    // audit. A noise-free audit log is more useful than one cluttered with
+    // "STUDENT_UPDATED" entries that didn't actually update anything.
+    if (changedFields.length === 0) {
+      return ok(toStudentDto(student));
+    }
 
     try {
       const saved = await this.studentRepo.saveWithVersionPrecondition(updated, loadedVersion);
@@ -231,15 +326,64 @@ export class UpdateStudentUseCase {
       throw error;
     }
 
+    const auditContext: Record<string, string> = {
+      studentId: input.studentId,
+      changedFields: changedFields.join(','),
+    };
+    if (changedFields.includes('monthlyFee')) {
+      auditContext['oldMonthlyFee'] = String(student.monthlyFee);
+      auditContext['newMonthlyFee'] = String(updated.monthlyFee);
+    }
+
     await this.auditRecorder.record({
       academyId: actor.academyId,
       actorUserId: input.actorUserId,
       action: 'STUDENT_UPDATED',
       entityType: 'STUDENT',
       entityId: input.studentId,
-      context: { studentId: input.studentId },
+      context: auditContext,
     });
 
     return ok(toStudentDto(updated));
   }
+}
+
+/**
+ * M1 helper: returns the list of field names that differ between the original
+ * student and the merged update. Nested-object sub-fields are flattened with
+ * dotted notation (e.g., `address.line1`, `guardian.email`). Optional
+ * fields are normalized to `null` before comparison so undefined-vs-null
+ * doesn't falsely register as a change.
+ */
+function diffChangedFields(old: Student, updated: Student): string[] {
+  const changed: string[] = [];
+
+  if (updated.fullName !== old.fullName) changed.push('fullName');
+  if (updated.dateOfBirth.getTime() !== old.dateOfBirth.getTime()) changed.push('dateOfBirth');
+  if (updated.gender !== old.gender) changed.push('gender');
+
+  if (updated.address.line1 !== old.address.line1) changed.push('address.line1');
+  if ((updated.address.line2 ?? null) !== (old.address.line2 ?? null))
+    changed.push('address.line2');
+  if (updated.address.city !== old.address.city) changed.push('address.city');
+  if (updated.address.state !== old.address.state) changed.push('address.state');
+  if (updated.address.pincode !== old.address.pincode) changed.push('address.pincode');
+
+  const oldG = old.guardian;
+  const newG = updated.guardian;
+  if ((oldG?.name ?? null) !== (newG?.name ?? null)) changed.push('guardian.name');
+  if ((oldG?.mobile ?? null) !== (newG?.mobile ?? null)) changed.push('guardian.mobile');
+  if ((oldG?.email ?? null) !== (newG?.email ?? null)) changed.push('guardian.email');
+
+  if (updated.joiningDate.getTime() !== old.joiningDate.getTime()) changed.push('joiningDate');
+  if (updated.monthlyFee !== old.monthlyFee) changed.push('monthlyFee');
+  if ((updated.mobileNumber ?? null) !== (old.mobileNumber ?? null)) changed.push('mobileNumber');
+  if ((updated.email ?? null) !== (old.email ?? null)) changed.push('email');
+  if ((updated.fatherName ?? null) !== (old.fatherName ?? null)) changed.push('fatherName');
+  if ((updated.motherName ?? null) !== (old.motherName ?? null)) changed.push('motherName');
+  if ((updated.whatsappNumber ?? null) !== (old.whatsappNumber ?? null))
+    changed.push('whatsappNumber');
+  if ((updated.addressText ?? null) !== (old.addressText ?? null)) changed.push('addressText');
+
+  return changed;
 }

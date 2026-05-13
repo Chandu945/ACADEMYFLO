@@ -74,3 +74,29 @@ export const FeeDueSchema = SchemaFactory.createForClass(FeeDueModel);
 FeeDueSchema.index({ academyId: 1, studentId: 1, monthKey: 1 }, { unique: true });
 FeeDueSchema.index({ academyId: 1, monthKey: 1, status: 1 });
 FeeDueSchema.index({ dueDate: 1, status: 1 });
+
+// Partial sparse index for the late-fee snapshot legacy-backfill scan
+// (`findDueWithoutSnapshot` in MongoFeeDueRepository).
+//
+// Before this index, that query had no good index match: Mongo would use
+// `{academyId, monthKey, status}` to fetch ALL records for the academy
+// across all months, then filter `status: 'DUE'` and
+// `lateFeeConfigSnapshot: null` in memory. That scan cost grows linearly
+// with the size of the `fee_dues` collection and was the dominant cost of
+// the monthly-dues cron at scale.
+//
+// The partial filter restricts this index to exactly the records the
+// query is looking for — DUE fees that still need a snapshot. As fees
+// get snapshotted (by M1's flip-time path or the backfill itself), they
+// fall out of the index automatically. So the index size stays
+// proportional to the work that's actually left to do, not the size of
+// the collection.
+FeeDueSchema.index(
+  { academyId: 1, dueDate: 1 },
+  {
+    partialFilterExpression: {
+      status: 'DUE',
+      lateFeeConfigSnapshot: null,
+    },
+  },
+);

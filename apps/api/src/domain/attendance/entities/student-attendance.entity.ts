@@ -1,10 +1,13 @@
 import type { AuditFields } from '@shared/kernel';
 import { Entity, UniqueId, createAuditFields } from '@shared/kernel';
+import type { StudentAttendanceStatus } from '@academyflo/contracts';
 
 /**
- * Represents a PRESENT record for a student, in a specific batch, on a date.
- * Absence is implicit: no record for (academyId, studentId, batchId, date) =
- * the student was ABSENT from that batch's session that day.
+ * Represents a PRESENT or ABSENT record for a student in a specific batch on
+ * a date. The status field is explicit (was implicit-via-deletion in earlier
+ * versions; see schema docstring for migration notes). "No record at all"
+ * still means "unmarked" — the dashboard treats unmarked + scheduled-today
+ * as present until someone explicitly marks them ABSENT.
  *
  * A student in two batches (morning + evening) has up to two records per day —
  * one per batch — letting us track each session independently.
@@ -15,6 +18,7 @@ export interface StudentAttendanceProps {
   batchId: string;
   date: string; // YYYY-MM-DD (IST local date)
   markedByUserId: string;
+  status: StudentAttendanceStatus;
   audit: AuditFields;
 }
 
@@ -30,6 +34,10 @@ export class StudentAttendance extends Entity<StudentAttendanceProps> {
     batchId: string;
     date: string;
     markedByUserId: string;
+    /** Defaults to PRESENT so existing callers (legacy create-PRESENT-record
+     *  path) keep working without touching every call-site. The new mark
+     *  use-case passes ABSENT explicitly when recording an absence. */
+    status?: StudentAttendanceStatus;
   }): StudentAttendance {
     return new StudentAttendance(new UniqueId(params.id), {
       academyId: params.academyId,
@@ -37,6 +45,7 @@ export class StudentAttendance extends Entity<StudentAttendanceProps> {
       batchId: params.batchId,
       date: params.date,
       markedByUserId: params.markedByUserId,
+      status: params.status ?? 'PRESENT',
       audit: createAuditFields(),
     });
   }
@@ -63,6 +72,10 @@ export class StudentAttendance extends Entity<StudentAttendanceProps> {
 
   get markedByUserId(): string {
     return this.props.markedByUserId;
+  }
+
+  get status(): StudentAttendanceStatus {
+    return this.props.status;
   }
 
   get audit(): AuditFields {

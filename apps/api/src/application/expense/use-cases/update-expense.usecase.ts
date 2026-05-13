@@ -85,6 +85,14 @@ export class UpdateExpenseUseCase {
       categoryName = category.name;
     }
 
+    // M2 fix (expense audit): capture the pre-update snapshot BEFORE we
+    // mutate so the audit context can report a real diff (what changed).
+    // Forensic question: "this owner's totals don't match — who changed
+    // expense E from ₹500 to ₹50000?" — answered from the audit row alone.
+    const previousAmount = expense.amount;
+    const previousCategoryId = expense.categoryId;
+    const previousDate = expense.date;
+
     const loadedVersion = expense.audit.version;
     const updated = expense.update({
       date: input.date,
@@ -103,6 +111,15 @@ export class UpdateExpenseUseCase {
       action: 'EXPENSE_UPDATED',
       entityType: 'EXPENSE',
       entityId: updated.id.toString(),
+      context: {
+        categoryId: updated.categoryId,
+        categoryName: updated.categoryName,
+        amount: String(updated.amount),
+        date: updated.date,
+        previousCategoryId,
+        previousAmount: String(previousAmount),
+        previousDate,
+      },
     });
 
     return ok({

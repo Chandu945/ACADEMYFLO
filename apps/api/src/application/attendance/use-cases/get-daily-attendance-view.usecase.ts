@@ -108,8 +108,10 @@ export class GetDailyAttendanceViewUseCase {
 
       const allBatchStudents = await this.studentRepo.findByIds(studentIds);
       let activeStudents = allBatchStudents.filter(
-        (s) => s.status === 'ACTIVE' && s.academyId === actor.academyId
-          && (!s.joiningDate || formatLocalDate(s.joiningDate) <= input.date),
+        (s) =>
+          s.status === 'ACTIVE' &&
+          s.academyId === actor.academyId &&
+          (!s.joiningDate || formatLocalDate(s.joiningDate) <= input.date),
       );
 
       if (input.search) {
@@ -185,11 +187,12 @@ export class GetDailyAttendanceViewUseCase {
     // Without a batchId we can't safely answer "has this roll been touched?"
     // — the audit log keys touches per (batch, date). Default to `true` so
     // batch-less callers (e.g. academy-wide overview) don't auto-fill.
-    const rollOpened: boolean = input.batchId && this.auditLogRepo
-      ? presentSet.size > 0
-        ? true
-        : await this.auditLogRepo.existsForBatchDate(actor.academyId, input.batchId, input.date)
-      : true;
+    const rollOpened: boolean =
+      input.batchId && this.auditLogRepo
+        ? presentSet.size > 0
+          ? true
+          : await this.auditLogRepo.existsForBatchDate(actor.academyId, input.batchId, input.date)
+        : true;
 
     return ok({
       date: input.date,

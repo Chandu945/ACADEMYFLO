@@ -30,6 +30,11 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
         batchId: record.batchId,
         date: record.date,
         markedByUserId: record.markedByUserId,
+        // Default-present model: persist status explicitly. Upsert means a
+        // toggle (PRESENT → ABSENT → PRESENT) overwrites the prior status on
+        // the same (academy, student, batch, date) row rather than creating
+        // duplicate rows or relying on delete-to-mean-absent.
+        status: record.status,
         version: record.audit.version,
       },
       { upsert: true, session: getTransactionSession() },
@@ -66,7 +71,12 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     batchId: string,
     date: string,
   ): Promise<StudentAttendance[]> {
-    const docs = await this.model.find({ academyId, batchId, date }).lean().exec();
+    // status: 'PRESENT' filter keeps the semantic of this method ("present
+    // records only") intact now that the schema stores ABSENT rows too.
+    const docs = await this.model
+      .find({ academyId, batchId, date, status: 'PRESENT' })
+      .lean()
+      .exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
@@ -74,7 +84,10 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     academyId: string,
     date: string,
   ): Promise<StudentAttendance[]> {
-    const docs = await this.model.find({ academyId, date }).lean().exec();
+    const docs = await this.model
+      .find({ academyId, date, status: 'PRESENT' })
+      .lean()
+      .exec();
     return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
   }
 
@@ -88,6 +101,7 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
         academyId,
         studentId,
         date: { $regex: `^${escapeRegex(monthPrefix)}` },
+        status: 'PRESENT',
       })
       .lean()
       .exec();
@@ -102,6 +116,25 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
       .find({
         academyId,
         date: { $regex: `^${escapeRegex(monthPrefix)}` },
+        status: 'PRESENT',
+      })
+      .lean()
+      .exec();
+    return docs.map((doc) => this.toDomain(doc as unknown as Record<string, unknown>));
+  }
+
+  async findAbsentByAcademyAndMonth(
+    academyId: string,
+    monthPrefix: string,
+  ): Promise<StudentAttendance[]> {
+    // Mirror of findPresentByAcademyAndMonth for the default-present chart.
+    // Same index hits (academyId + date prefix); status filter is selective
+    // enough at scale that an extra index isn't needed.
+    const docs = await this.model
+      .find({
+        academyId,
+        date: { $regex: `^${escapeRegex(monthPrefix)}` },
+        status: 'ABSENT',
       })
       .lean()
       .exec();
@@ -113,7 +146,7 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
   }
 
   async countPresentByAcademyAndDate(academyId: string, date: string): Promise<number> {
-    return this.model.countDocuments({ academyId, date });
+    return this.model.countDocuments({ academyId, date, status: 'PRESENT' });
   }
 
   async countDistinctStudentsPresentByAcademyAndDate(
@@ -121,7 +154,26 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
     date: string,
   ): Promise<number> {
     // DB-side distinct so a two-batch student doesn't double the KPI.
-    const distinctIds = await this.model.distinct('studentId', { academyId, date });
+    const distinctIds = await this.model.distinct('studentId', {
+      academyId,
+      date,
+      status: 'PRESENT',
+    });
+    return distinctIds.length;
+  }
+
+  async countDistinctStudentsAbsentByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number> {
+    // Mirror of the PRESENT count for the default-present dashboard metric.
+    // Distinct ensures a student absent in two batches the same day counts
+    // once toward "students marked absent today".
+    const distinctIds = await this.model.distinct('studentId', {
+      academyId,
+      date,
+      status: 'ABSENT',
+    });
     return distinctIds.length;
   }
 
@@ -144,6 +196,7 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
       batchId: string;
       date: string;
       markedByUserId: string;
+      status?: 'PRESENT' | 'ABSENT';
       createdAt: Date;
       updatedAt: Date;
       version: number;
@@ -155,6 +208,10 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
       batchId: d.batchId,
       date: d.date,
       markedByUserId: d.markedByUserId,
+      // Pre-status rows (written before the schema gained `status`) read as
+      // PRESENT — same default the schema enforces for new rows. This makes
+      // the migration a no-op for existing data.
+      status: d.status ?? 'PRESENT',
       audit: {
         createdAt: d.createdAt,
         updatedAt: d.updatedAt,

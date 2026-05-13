@@ -33,6 +33,7 @@ function buildDeps() {
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
       anonymizeAndSoftDelete: jest.fn(),
+      listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const auditLogRepo: jest.Mocked<AuditLogRepository> = {

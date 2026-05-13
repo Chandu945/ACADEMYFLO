@@ -5,6 +5,7 @@ import type { SubscriptionRepository } from '@domain/subscription/ports/subscrip
 import { Subscription } from '@domain/subscription/entities/subscription.entity';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { AdminErrors } from '../../common/errors';
+import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 import type { TierKey } from '@academyflo/contracts';
 
 interface SetSubscriptionManualInput {
@@ -68,7 +69,21 @@ export class SetSubscriptionManualUseCase {
       audit: updateAuditFields(sub.audit),
     });
 
-    await this.subscriptionRepo.save(updated);
+    // M2 admin audit fix: the existing save already enforces optimistic
+    // concurrency at the Mongo layer (filter on `version = current - 1`),
+    // throwing ConcurrentModificationError on stale-version writes. Pre-fix
+    // code let that bubble as a generic 500. Map it to a typed CONFLICT so
+    // the admin UI can prompt "reload and retry" rather than showing an
+    // opaque error. Subscription edits are policy/financial state, so the
+    // distinction matters for incident handling.
+    try {
+      await this.subscriptionRepo.save(updated);
+    } catch (e) {
+      if (e instanceof ConcurrentModificationError) {
+        return err(AdminErrors.concurrencyConflict());
+      }
+      throw e;
+    }
 
     await this.auditRecorder.record({
       academyId: input.academyId,

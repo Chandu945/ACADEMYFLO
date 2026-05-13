@@ -4,6 +4,7 @@ import type { AppError } from '@shared/kernel';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { TokenService } from '../ports/token-service.port';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
+import { canLogin } from '@domain/identity/rules/auth.rules';
 import { AuthErrors } from '../../common/errors';
 
 export interface RefreshInput {
@@ -68,6 +69,17 @@ export class RefreshUseCase {
     const user = await this.userRepo.findById(session.userId);
     if (!user) {
       return err(AuthErrors.invalidRefreshToken());
+    }
+
+    // M1 identity-audit fix: re-check user status. A user deactivated /
+    // login-disabled between login and refresh could otherwise keep
+    // minting access tokens via the refresh endpoint for the lifetime of
+    // their refresh token (30d default). canLogin centralises the rules
+    // for inactive accounts, login-disabled academies, soft-deleted
+    // users, etc. — the same gate login.usecase enforces.
+    const loginCheck = canLogin(user);
+    if (!loginCheck.allowed) {
+      return err(AuthErrors.inactiveUser(loginCheck.reason!));
     }
 
     // Atomically increment tokenVersion to prevent race conditions.

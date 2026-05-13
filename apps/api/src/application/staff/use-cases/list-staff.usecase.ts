@@ -5,7 +5,10 @@ import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { canManageStaff } from '@domain/identity/rules/staff.rules';
 import { AuthErrors, StaffErrors } from '../../common/errors';
 import type { UserRole } from '@academyflo/contracts';
-import type { StaffQualificationInfo, StaffSalaryConfig } from '@domain/identity/entities/user.entity';
+import type {
+  StaffQualificationInfo,
+  StaffSalaryConfig,
+} from '@domain/identity/entities/user.entity';
 
 export interface ListStaffInput {
   ownerUserId: string;
@@ -24,7 +27,10 @@ export interface StaffListItem {
   role: string;
   status: string;
   academyId: string | null;
-  startDate: Date | null;
+  // ISO 8601 wire format — JSON.stringify always emits these as strings and
+  // mobile zod parses them as strings. Construction site below converts at
+  // the boundary so the use-case output type matches the actual wire shape.
+  startDate: string | null;
   gender: 'MALE' | 'FEMALE' | null;
   whatsappNumber: string | null;
   mobileNumber: string | null;
@@ -32,8 +38,8 @@ export interface StaffListItem {
   qualificationInfo: StaffQualificationInfo | null;
   salaryConfig: StaffSalaryConfig | null;
   profilePhotoUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ListStaffOutput {
@@ -60,21 +66,20 @@ export class ListStaffUseCase {
       return err(StaffErrors.academyRequired());
     }
 
+    // M4 fix: push the status filter into the repo so `total` reflects the
+    // filtered set. Prior code filtered the current page in memory, which
+    // left `total = full count` while `data.length = filtered subset` —
+    // pagination UI showed misleading page counts and would render empty
+    // pages mid-walk.
     const { users, total } = await this.userRepo.listByAcademyAndRole(
       owner.academyId,
       'STAFF',
       input.page,
       input.pageSize,
+      input.status,
     );
 
-    // In-memory status filter: the repository's listByAcademyAndRole returns
-    // both ACTIVE and INACTIVE staff, and we don't want to add a new repo
-    // method just for this. Page-local filter is acceptable since `total`
-    // still reflects the full set; UI can decide whether to keep paginating.
-    const filteredUsers =
-      input.status === undefined ? users : users.filter((u) => u.status === input.status);
-
-    const data: StaffListItem[] = filteredUsers.map((u) => ({
+    const data: StaffListItem[] = users.map((u) => ({
       id: u.id.toString(),
       fullName: u.fullName,
       email: u.emailNormalized,
@@ -82,7 +87,7 @@ export class ListStaffUseCase {
       role: u.role,
       status: u.status,
       academyId: u.academyId,
-      startDate: u.startDate,
+      startDate: u.startDate?.toISOString() ?? null,
       gender: u.gender,
       whatsappNumber: u.whatsappNumber,
       mobileNumber: u.mobileNumber,
@@ -90,8 +95,8 @@ export class ListStaffUseCase {
       qualificationInfo: u.qualificationInfo,
       salaryConfig: u.salaryConfig,
       profilePhotoUrl: u.profilePhotoUrl,
-      createdAt: u.audit.createdAt,
-      updatedAt: u.audit.updatedAt,
+      createdAt: u.audit.createdAt.toISOString(),
+      updatedAt: u.audit.updatedAt.toISOString(),
     }));
 
     return ok({

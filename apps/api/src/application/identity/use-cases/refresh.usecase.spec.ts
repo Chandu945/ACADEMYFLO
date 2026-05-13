@@ -51,7 +51,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const tokenService: jest.Mocked<TokenService> = {
@@ -92,10 +93,7 @@ describe('RefreshUseCase', () => {
       expect.any(Date),
       'stored-hash',
     );
-    expect(userRepo.incrementTokenVersionByUserId).toHaveBeenCalledWith(
-      expect.any(String),
-      0,
-    );
+    expect(userRepo.incrementTokenVersionByUserId).toHaveBeenCalledWith(expect.any(String), 0);
   });
 
   it('should fail when tokenVersion CAS fails (race condition)', async () => {
@@ -186,5 +184,36 @@ describe('RefreshUseCase', () => {
     });
 
     expect(result.ok).toBe(false);
+  });
+
+  it('M1: rejects refresh for an INACTIVE user (canLogin re-check)', async () => {
+    // Pre-fix: refresh.usecase didn't re-check user status, so a user
+    // deactivated between login and the next refresh could keep minting
+    // access tokens for the lifetime of their refresh token (30d default).
+    // Post-fix: canLogin runs on the freshly-loaded user record, returning
+    // FORBIDDEN if status flipped to INACTIVE.
+    const { sessionRepo, userRepo, tokenService } = buildDeps();
+    sessionRepo.findActiveByDeviceId.mockResolvedValue(createMockSession());
+    tokenService.compareRefreshToken.mockReturnValue(true);
+    sessionRepo.updateRefreshToken.mockResolvedValue(true);
+    userRepo.incrementTokenVersionByUserId.mockResolvedValue(true);
+
+    const inactiveUser = User.reconstitute('user-1', {
+      ...createMockUser()['props'],
+      status: 'INACTIVE',
+    });
+    userRepo.findById.mockResolvedValue(inactiveUser);
+
+    const uc = new RefreshUseCase(sessionRepo, userRepo, tokenService);
+    const result = await uc.execute({
+      refreshToken: 'refresh-token',
+      deviceId: 'device-1',
+      userId: 'user-1',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('FORBIDDEN');
+    }
   });
 });

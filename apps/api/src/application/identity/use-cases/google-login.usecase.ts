@@ -6,6 +6,7 @@ import { Session } from '@domain/identity/entities/session.entity';
 import type { SessionRepository } from '@domain/identity/ports/session.repository';
 import type { TokenService } from '../ports/token-service.port';
 import type { GoogleTokenVerifierPort } from '../ports/google-token-verifier.port';
+import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import { canLogin } from '@domain/identity/rules/auth.rules';
 import { AuthErrors } from '../../common/errors';
 import { randomUUID } from 'crypto';
@@ -23,6 +24,8 @@ export class GoogleLoginUseCase {
     private readonly sessionRepo: SessionRepository,
     private readonly tokenService: TokenService,
     private readonly refreshTtlSeconds: number = 2_592_000,
+    /** M3 identity-audit fix: records USER_LOGGED_IN with source='google'. */
+    private readonly auditRecorder?: AuditRecorderPort,
   ) {}
 
   async execute(input: GoogleLoginInput): Promise<Result<LoginOutput, AppError>> {
@@ -67,6 +70,19 @@ export class GoogleLoginUseCase {
       academyId: user.academyId,
       tokenVersion: user.tokenVersion,
     });
+
+    if (this.auditRecorder && user.academyId) {
+      await this.auditRecorder
+        .record({
+          academyId: user.academyId,
+          actorUserId: user.id.toString(),
+          action: 'USER_LOGGED_IN',
+          entityType: 'USER',
+          entityId: user.id.toString(),
+          context: { role: user.role, source: 'google', deviceId },
+        })
+        .catch(() => {});
+    }
 
     return ok({
       accessToken,

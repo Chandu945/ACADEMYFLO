@@ -96,13 +96,58 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
     return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
   }
 
+  async listPendingByStudentAndAcademy(
+    studentId: string,
+    academyId: string,
+  ): Promise<PaymentRequest[]> {
+    // Bounded by (studentId, academyId, status='PENDING') — cap is the small
+    // number of in-flight requests a student can have concurrently, which is
+    // 1 in practice (per-feeDue partial unique index). Far cheaper than
+    // loading the parent's entire PR history just to filter PENDING in JS.
+    const docs = await this.model
+      .find({ studentId, academyId, status: 'PENDING' })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    return docs.map((d) => this.toDomain(d as unknown as Record<string, unknown>));
+  }
+
   async countPendingByAcademy(academyId: string): Promise<number> {
     return this.model.countDocuments({ academyId, status: 'PENDING' });
+  }
+
+  async countPendingByStaffAndAcademy(staffUserId: string, academyId: string): Promise<number> {
+    return this.model.countDocuments({ staffUserId, academyId, status: 'PENDING' });
+  }
+
+  async countPendingByAuthorAndAcademySince(
+    authorUserId: string,
+    academyId: string,
+    since: Date,
+  ): Promise<number> {
+    return this.model.countDocuments({
+      staffUserId: authorUserId,
+      academyId,
+      status: 'PENDING',
+      createdAt: { $gte: since },
+    });
   }
 
   async deleteAllByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
     const res = await this.model.deleteMany(
       { academyId, studentId },
+      { session: getTransactionSession() },
+    );
+    return res.deletedCount ?? 0;
+  }
+
+  async deletePendingByAcademyAndStudent(academyId: string, studentId: string): Promise<number> {
+    // M4 fix: cascade for student soft-delete only clears PENDING (in-flight)
+    // PRs from the owner's queue. APPROVED/REJECTED/CANCELLED PRs are
+    // preserved as immutable history — APPROVED ones are referenced by
+    // TransactionLog records, deleting them would leave dangling refs.
+    const res = await this.model.deleteMany(
+      { academyId, studentId, status: 'PENDING' },
       { session: getTransactionSession() },
     );
     return res.deletedCount ?? 0;
@@ -131,8 +176,7 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
       version: number;
     };
 
-    const source: PaymentRequestSource =
-      d.source === 'PARENT' ? 'PARENT' : 'STAFF';
+    const source: PaymentRequestSource = d.source === 'PARENT' ? 'PARENT' : 'STAFF';
     const method: ParentPaymentMethod | null =
       d.paymentMethod === 'UPI' ||
       d.paymentMethod === 'BANK' ||

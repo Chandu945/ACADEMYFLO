@@ -33,11 +33,7 @@ export class GetBatchUseCase {
       return err(BatchErrors.academyRequired());
     }
 
-    const batchResult = await requireBatchInAcademy(
-      this.batchRepo,
-      input.batchId,
-      actor.academyId,
-    );
+    const batchResult = await requireBatchInAcademy(this.batchRepo, input.batchId, actor.academyId);
     if (!batchResult.ok) return err(batchResult.error);
 
     return ok(toBatchDto(batchResult.value));

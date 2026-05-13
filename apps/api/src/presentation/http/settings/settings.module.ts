@@ -16,9 +16,14 @@ import { DeleteInstituteImageUseCase } from '@application/academy/use-cases/dele
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { FileStoragePort } from '@application/common/ports/file-storage.port';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
+import { LOGGER_PORT } from '@shared/logging/logger.port';
+import type { LoggerPort } from '@shared/logging/logger.port';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
 @Module({
-  imports: [AuthModule, AcademyOnboardingModule],
+  imports: [AuthModule, AcademyOnboardingModule, AuditLogsModule],
   controllers: [SettingsController, InstituteInfoController],
   providers: [
     { provide: FILE_STORAGE_PORT, useClass: R2StorageService },
@@ -30,9 +35,12 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
     },
     {
       provide: 'UPDATE_ACADEMY_SETTINGS_USE_CASE',
-      useFactory: (userRepo: UserRepository, academyRepo: AcademyRepository) =>
-        new UpdateAcademySettingsUseCase(userRepo, academyRepo),
-      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY],
+      useFactory: (
+        userRepo: UserRepository,
+        academyRepo: AcademyRepository,
+        audit: AuditRecorderPort,
+      ) => new UpdateAcademySettingsUseCase(userRepo, academyRepo, audit),
+      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'GET_INSTITUTE_INFO_USE_CASE',
@@ -42,9 +50,12 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
     },
     {
       provide: 'UPDATE_INSTITUTE_INFO_USE_CASE',
-      useFactory: (userRepo: UserRepository, academyRepo: AcademyRepository) =>
-        new UpdateInstituteInfoUseCase(userRepo, academyRepo),
-      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY],
+      useFactory: (
+        userRepo: UserRepository,
+        academyRepo: AcademyRepository,
+        audit: AuditRecorderPort,
+      ) => new UpdateInstituteInfoUseCase(userRepo, academyRepo, audit),
+      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'UPLOAD_INSTITUTE_IMAGE_USE_CASE',
@@ -52,8 +63,16 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
         userRepo: UserRepository,
         academyRepo: AcademyRepository,
         fileStorage: FileStoragePort,
-      ) => new UploadInstituteImageUseCase(userRepo, academyRepo, fileStorage),
-      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY, FILE_STORAGE_PORT],
+        logger: LoggerPort,
+        audit: AuditRecorderPort,
+      ) => new UploadInstituteImageUseCase(userRepo, academyRepo, fileStorage, logger, audit),
+      inject: [
+        USER_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        FILE_STORAGE_PORT,
+        LOGGER_PORT,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'DELETE_INSTITUTE_IMAGE_USE_CASE',
@@ -61,8 +80,9 @@ import type { FileStoragePort } from '@application/common/ports/file-storage.por
         userRepo: UserRepository,
         academyRepo: AcademyRepository,
         fileStorage: FileStoragePort,
-      ) => new DeleteInstituteImageUseCase(userRepo, academyRepo, fileStorage),
-      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY, FILE_STORAGE_PORT],
+        audit: AuditRecorderPort,
+      ) => new DeleteInstituteImageUseCase(userRepo, academyRepo, fileStorage, audit),
+      inject: [USER_REPOSITORY, ACADEMY_REPOSITORY, FILE_STORAGE_PORT, AUDIT_RECORDER_PORT],
     },
   ],
 })

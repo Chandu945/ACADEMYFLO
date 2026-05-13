@@ -75,7 +75,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
 
   const studentRepo: jest.Mocked<StudentRepository> = {
@@ -84,6 +85,7 @@ function buildDeps() {
     list: jest.fn(),
     listActiveByAcademy: jest.fn(),
     countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
     findByIds: jest.fn(),
     findBirthdaysByAcademy: jest.fn(),
     findByEmailInAcademy: jest.fn(),
@@ -110,9 +112,13 @@ function buildDeps() {
     deleteAllByAcademyAndStudent: jest.fn().mockResolvedValue(0),
   };
   const paymentRequestRepo: jest.Mocked<
-    Pick<PaymentRequestRepository, 'deleteAllByAcademyAndStudent'>
+    Pick<
+      PaymentRequestRepository,
+      'deleteAllByAcademyAndStudent' | 'deletePendingByAcademyAndStudent'
+    >
   > = {
     deleteAllByAcademyAndStudent: jest.fn().mockResolvedValue(0),
+    deletePendingByAcademyAndStudent: jest.fn().mockResolvedValue(0),
   };
   // Passthrough transaction — runs the body inline.
   const transaction: TransactionPort = {
@@ -240,5 +246,52 @@ describe('SoftDeleteStudentUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('NOT_FOUND');
     }
+  });
+
+  describe('M4: cascade only deletes PENDING payment requests', () => {
+    it('calls deletePendingByAcademyAndStudent (not the blanket deleteAll)', async () => {
+      // The M4 invariant: APPROVED PRs must be preserved because TransactionLog
+      // records reference them. Cascade must use the targeted delete, not the
+      // blanket one. This test pins the behavior so a future refactor can't
+      // silently regress to deleting all PRs.
+      const deps = buildDeps();
+      const { userRepo, studentRepo, paymentRequestRepo } = deps;
+      userRepo.findById.mockResolvedValue(createOwner());
+      studentRepo.findById.mockResolvedValue(createStudent());
+
+      const uc = makeUseCase(deps);
+      const result = await uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(paymentRequestRepo.deletePendingByAcademyAndStudent).toHaveBeenCalledWith(
+        'academy-1',
+        'student-1',
+      );
+      // Blanket deleteAll must NOT be called — that's the regression we're
+      // guarding against.
+      expect(paymentRequestRepo.deleteAllByAcademyAndStudent).not.toHaveBeenCalled();
+    });
+
+    it('records audit context with cascadePendingPaymentRequests count (renamed for clarity)', async () => {
+      const deps = buildDeps();
+      const { userRepo, studentRepo, paymentRequestRepo, auditRecorder } = deps;
+      userRepo.findById.mockResolvedValue(createOwner());
+      studentRepo.findById.mockResolvedValue(createStudent());
+      paymentRequestRepo.deletePendingByAcademyAndStudent.mockResolvedValue(3);
+
+      const uc = makeUseCase(deps);
+      await uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        studentId: 'student-1',
+      });
+
+      const auditCall = auditRecorder.record.mock.calls[0]![0];
+      expect(auditCall.context.cascadePendingPaymentRequests).toBe('3');
+    });
   });
 });

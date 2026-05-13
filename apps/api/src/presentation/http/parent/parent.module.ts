@@ -6,7 +6,10 @@ import { FeePaymentTestController } from './fee-payment-test.controller';
 import { AuthModule } from '../auth/auth.module';
 import { AcademyOnboardingModule } from '../academy-onboarding/academy-onboarding.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
-import { DeviceTokensModule, PUSH_NOTIFICATION_SERVICE } from '../device-tokens/device-tokens.module';
+import {
+  DeviceTokensModule,
+  PUSH_NOTIFICATION_SERVICE,
+} from '../device-tokens/device-tokens.module';
 import type { PushNotificationService } from '@application/notifications/push-notification.service';
 
 // Schemas
@@ -68,6 +71,12 @@ import { BATCH_REPOSITORY } from '@domain/batch/ports/batch.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
 import type { BatchRepository } from '@domain/batch/ports/batch.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import { SESSION_REPOSITORY } from '@domain/identity/ports/session.repository';
+import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '@domain/notification/ports/device-token.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
+import { USER_AUTH_CACHE_PORT } from '@application/identity/ports/user-auth-cache.port';
+import type { UserAuthCachePort } from '@application/identity/ports/user-auth-cache.port';
 import { ACADEMY_REPOSITORY } from '@domain/academy/ports/academy.repository';
 import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
 import { FILE_STORAGE_PORT } from '@application/common/ports/file-storage.port';
@@ -177,7 +186,11 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     // Cashfree
     {
       provide: CashfreeHttpClient,
-      useFactory: (config: AppConfigService, logger: LoggerPort, callPolicy: ExternalCallPolicyPort) =>
+      useFactory: (
+        config: AppConfigService,
+        logger: LoggerPort,
+        callPolicy: ExternalCallPolicyPort,
+      ) =>
         new CashfreeHttpClient(
           {
             clientId: config.cashfreeClientId,
@@ -215,8 +228,26 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         academyRepo: AcademyRepository,
         hasher: PasswordHasher,
         emailSender: EmailSenderPort,
-      ) => new InviteParentUseCase(userRepo, studentRepo, linkRepo, academyRepo, hasher, emailSender),
-      inject: [USER_REPOSITORY, STUDENT_REPOSITORY, PARENT_STUDENT_LINK_REPOSITORY, ACADEMY_REPOSITORY, PASSWORD_HASHER, EMAIL_SENDER_PORT],
+        auditRecorder: AuditRecorderPort,
+      ) =>
+        new InviteParentUseCase(
+          userRepo,
+          studentRepo,
+          linkRepo,
+          academyRepo,
+          hasher,
+          emailSender,
+          auditRecorder,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        STUDENT_REPOSITORY,
+        PARENT_STUDENT_LINK_REPOSITORY,
+        ACADEMY_REPOSITORY,
+        PASSWORD_HASHER,
+        EMAIL_SENDER_PORT,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'GET_MY_CHILDREN_USE_CASE',
@@ -228,6 +259,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         feeDueRepo: FeeDueRepository,
         sbr: StudentBatchRepository,
         br: BatchRepository,
+        academyRepo: AcademyRepository,
       ) =>
         new GetMyChildrenUseCase(
           linkRepo,
@@ -237,6 +269,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
           feeDueRepo,
           sbr,
           br,
+          academyRepo,
         ),
       inject: [
         PARENT_STUDENT_LINK_REPOSITORY,
@@ -246,6 +279,7 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
         FEE_DUE_REPOSITORY,
         STUDENT_BATCH_REPOSITORY,
         BATCH_REPOSITORY,
+        ACADEMY_REPOSITORY,
       ],
     },
     {
@@ -415,14 +449,36 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     },
     {
       provide: 'UPDATE_PARENT_PROFILE_USE_CASE',
-      useFactory: (userRepo: UserRepository) => new UpdateParentProfileUseCase(userRepo),
-      inject: [USER_REPOSITORY],
+      useFactory: (userRepo: UserRepository, auditRecorder: AuditRecorderPort) =>
+        new UpdateParentProfileUseCase(userRepo, auditRecorder),
+      inject: [USER_REPOSITORY, AUDIT_RECORDER_PORT],
     },
     {
       provide: 'CHANGE_PASSWORD_USE_CASE',
-      useFactory: (userRepo: UserRepository, hasher: PasswordHasher) =>
-        new ChangePasswordUseCase(userRepo, hasher),
-      inject: [USER_REPOSITORY, PASSWORD_HASHER],
+      useFactory: (
+        userRepo: UserRepository,
+        hasher: PasswordHasher,
+        sessionRepo: SessionRepository,
+        deviceTokenRepo: DeviceTokenRepository,
+        auditRecorder: AuditRecorderPort,
+        userAuthCache: UserAuthCachePort,
+      ) =>
+        new ChangePasswordUseCase(
+          userRepo,
+          hasher,
+          sessionRepo,
+          deviceTokenRepo,
+          auditRecorder,
+          userAuthCache,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        PASSWORD_HASHER,
+        SESSION_REPOSITORY,
+        DEVICE_TOKEN_REPOSITORY,
+        AUDIT_RECORDER_PORT,
+        USER_AUTH_CACHE_PORT,
+      ],
     },
     {
       provide: 'GET_ACADEMY_INFO_USE_CASE',
@@ -447,9 +503,9 @@ const FEE_WEBHOOK_SIGNATURE_VERIFIER = Symbol('FEE_WEBHOOK_SIGNATURE_VERIFIER');
     },
     {
       provide: 'UPLOAD_PAYMENT_PROOF_USE_CASE',
-      useFactory: (userRepo: UserRepository, fileStorage: FileStoragePort) =>
-        new UploadPaymentProofUseCase(userRepo, fileStorage),
-      inject: [USER_REPOSITORY, FILE_STORAGE_PORT],
+      useFactory: (userRepo: UserRepository, fileStorage: FileStoragePort, logger: LoggerPort) =>
+        new UploadPaymentProofUseCase(userRepo, fileStorage, logger),
+      inject: [USER_REPOSITORY, FILE_STORAGE_PORT, LOGGER_PORT],
     },
     {
       provide: 'CREATE_PARENT_PAYMENT_REQUEST_USE_CASE',

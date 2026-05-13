@@ -19,6 +19,7 @@ import { AttendanceErrors } from '../../common/errors';
 import type { StudentAttendanceStatus, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
 import type { AbsenceNotificationSchedulerPort } from '../../notifications/ports/absence-notification-scheduler.port';
+import { formatLocalDate } from '@shared/date-utils';
 import { randomUUID } from 'crypto';
 
 export interface MarkStudentAttendanceInput {
@@ -91,8 +92,21 @@ export class MarkStudentAttendanceUseCase {
       return err(AttendanceErrors.studentNotInAcademy());
     }
 
+    // H2 fix (attendance audit): allow attendance edits for INACTIVE/LEFT
+    // students if the target date predates their status change. Real
+    // scenario: owner forgets to mark May 20 for a student who departed
+    // June 1 — they need to backfill May after the status change. Prior
+    // code blocked the backfill outright with `studentNotActive`. The
+    // student WAS active on the target date, which is what matters for
+    // attendance. We use `statusChangedAt` as the cutoff — anything strictly
+    // before it was during the prior status (ACTIVE).
     if (student.status !== 'ACTIVE') {
-      return err(AttendanceErrors.studentNotActive(input.studentId));
+      const statusChangedAt = student.statusChangedAt;
+      const wasActiveOnDate =
+        statusChangedAt !== null && input.date < formatLocalDate(statusChangedAt);
+      if (!wasActiveOnDate) {
+        return err(AttendanceErrors.studentNotActive(input.studentId));
+      }
     }
 
     const batch = await this.batchRepo.findById(input.batchId);
@@ -115,33 +129,42 @@ export class MarkStudentAttendanceUseCase {
       return err(AttendanceErrors.holidayDeclared());
     }
 
-    if (input.status === 'PRESENT') {
-      // Upsert present record (idempotent)
-      const existing = await this.attendanceRepo.findByAcademyStudentBatchDate(
-        actor.academyId,
-        input.studentId,
-        input.batchId,
-        input.date,
-      );
-      if (!existing) {
-        const record = StudentAttendance.create({
-          id: randomUUID(),
-          academyId: actor.academyId,
-          studentId: input.studentId,
-          batchId: input.batchId,
-          date: input.date,
-          markedByUserId: input.actorUserId,
-        });
+    // Default-present model: both PRESENT and ABSENT are explicit rows.
+    // Upserting on (academyId, studentId, batchId, date) means a toggle
+    // (PRESENT ↔ ABSENT) overwrites the prior row's status rather than
+    // creating duplicates. The save() helper already does upsert under the
+    // unique index, so a fresh row is created on first mark and the status
+    // flips on subsequent marks. ABSENT used to be modelled as deletion;
+    // see schema docstring for migration notes.
+    const existing = await this.attendanceRepo.findByAcademyStudentBatchDate(
+      actor.academyId,
+      input.studentId,
+      input.batchId,
+      input.date,
+    );
+    const desiredStatus = input.status as 'PRESENT' | 'ABSENT';
+    const needsWrite = !existing || existing.status !== desiredStatus;
+    if (needsWrite) {
+      const record = StudentAttendance.create({
+        id: existing?.id.toString() ?? randomUUID(),
+        academyId: actor.academyId,
+        studentId: input.studentId,
+        batchId: input.batchId,
+        date: input.date,
+        markedByUserId: input.actorUserId,
+        status: desiredStatus,
+      });
+      try {
         await this.attendanceRepo.save(record);
+      } catch (e) {
+        // Concurrent marks (two coaches tapping the same student within
+        // milliseconds) both pass the existence check and both attempt the
+        // upsert. The unique index on (academyId, studentId, batchId, date)
+        // serialises them — the second hits 11000 if it tried to insert a
+        // duplicate. The desired state is already achieved by the other
+        // call, so treat as idempotent success.
+        if ((e as { code?: number })?.code !== 11000) throw e;
       }
-    } else {
-      // ABSENT: delete present record if exists (idempotent)
-      await this.attendanceRepo.deleteByAcademyStudentBatchDate(
-        actor.academyId,
-        input.studentId,
-        input.batchId,
-        input.date,
-      );
     }
 
     await this.auditRecorder.record({

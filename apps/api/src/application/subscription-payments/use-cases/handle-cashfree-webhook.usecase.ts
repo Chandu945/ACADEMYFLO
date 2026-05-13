@@ -14,7 +14,10 @@ import type { TierKey } from '@academyflo/contracts';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import type { AcademyRepository } from '@domain/academy/ports/academy.repository';
 import type { EmailSenderPort } from '@application/notifications/ports/email-sender.port';
-import { renderSubscriptionPaymentSuccessEmail, renderSubscriptionPaymentFailedEmail } from '@application/notifications/templates/subscription-payment-template';
+import {
+  renderSubscriptionPaymentSuccessEmail,
+  renderSubscriptionPaymentFailedEmail,
+} from '@application/notifications/templates/subscription-payment-template';
 
 export interface WebhookSignatureVerifier {
   verify(rawBody: Buffer, signature: string, timestamp: string): boolean;
@@ -40,11 +43,7 @@ export class HandleCashfreeWebhookUseCase {
     headers: { signature: string; timestamp: string },
   ): Promise<Result<void, AppError>> {
     // 1. Verify signature on raw body BEFORE parsing
-    const valid = this.signatureVerifier.verify(
-      rawBody,
-      headers.signature,
-      headers.timestamp,
-    );
+    const valid = this.signatureVerifier.verify(rawBody, headers.signature, headers.timestamp);
     if (!valid) {
       this.logger.error('Invalid webhook signature');
       return err(AppError.unauthorized('Invalid webhook signature'));
@@ -111,7 +110,13 @@ export class HandleCashfreeWebhookUseCase {
       return ok(undefined);
     }
 
-    // 5. Amount cross-validation: Cashfree order_amount must match stored amountInr
+    // 5. Amount + currency cross-validation. Cashfree order_amount must match
+    // stored amountInr, and order_currency (when present) must match the
+    // stored currency. The currency check is M2 defense-in-depth: in normal
+    // operation Cashfree only returns INR for an INR-configured account,
+    // but a provider misconfig that paired an INR order with a USD payment
+    // (or any other currency-confusion bug) would otherwise be silently
+    // accepted because the numeric amount happened to match.
     const webhookAmount = payload.data?.order?.order_amount;
     if (webhookAmount !== undefined && webhookAmount !== payment.amountInr) {
       this.logger.error('Webhook amount mismatch', {
@@ -121,15 +126,23 @@ export class HandleCashfreeWebhookUseCase {
       });
       return err(AppError.validation('Payment amount mismatch between provider and stored record'));
     }
+    const webhookCurrency = payload.data?.order?.order_currency;
+    if (webhookCurrency !== undefined && webhookCurrency !== payment.currency) {
+      this.logger.error('Webhook currency mismatch', {
+        orderId,
+        webhookCurrency,
+        storedCurrency: payment.currency,
+      });
+      return err(
+        AppError.validation('Payment currency mismatch between provider and stored record'),
+      );
+    }
 
     const now = this.clock.now();
 
     if (paymentStatus === 'SUCCESS') {
       // Mark payment as SUCCESS and activate subscription atomically
-      const updated = payment.markSuccess(
-        cfPaymentId ? String(cfPaymentId) : orderId,
-        now,
-      );
+      const updated = payment.markSuccess(cfPaymentId ? String(cfPaymentId) : orderId, now);
 
       let didTransition = false;
       const saveAndActivate = async () => {
@@ -140,7 +153,13 @@ export class HandleCashfreeWebhookUseCase {
           return;
         }
         didTransition = true;
-        await this.activateSubscription(payment.academyId, payment.tierKey, orderId, cfPaymentId, now);
+        await this.activateSubscription(
+          payment.academyId,
+          payment.tierKey,
+          orderId,
+          cfPaymentId,
+          now,
+        );
       };
 
       await this.transaction.run(saveAndActivate);
@@ -174,23 +193,37 @@ export class HandleCashfreeWebhookUseCase {
         const owner = await this.userRepo.findById(payment.ownerUserId);
         const academy = await this.academyRepo.findById(payment.academyId);
         if (owner && academy) {
-          this.emailSender.send({
-            to: owner.emailNormalized,
-            subject: 'Subscription Payment Successful - ' + academy.academyName,
-            html: renderSubscriptionPaymentSuccessEmail({
-              ownerName: owner.fullName,
-              academyName: academy.academyName,
-              tierKey: payment.tierKey,
-              amountInr: payment.amountInr,
-              orderId,
-            }),
-          }).catch(() => {});
+          this.emailSender
+            .send({
+              to: owner.emailNormalized,
+              subject: 'Subscription Payment Successful - ' + academy.academyName,
+              html: renderSubscriptionPaymentSuccessEmail({
+                ownerName: owner.fullName,
+                academyName: academy.academyName,
+                tierKey: payment.tierKey,
+                amountInr: payment.amountInr,
+                orderId,
+              }),
+            })
+            .catch(() => {});
         }
       }
     } else if (paymentStatus === 'FAILED' || paymentStatus === 'USER_DROPPED') {
-      // payment.status !== 'SUCCESS' is guaranteed by the early return above (line 66)
+      // payment.status !== 'SUCCESS' is guaranteed by the early return above.
+      // M1 fix (subscription audit): write only if still PENDING. Pre-fix code
+      // used unconditional save, so a flapping provider that sent SUCCESS
+      // first and then FAILED (or two concurrent webhooks for the same
+      // orderId) could clobber a committed SUCCESS to FAILED — losing the
+      // billed cycle. saveWithStatusPrecondition treats the no-op return
+      // as "someone else got here first; stop writing".
       const updated = payment.markFailed(paymentStatus);
-      await this.paymentRepo.save(updated);
+      const transitioned = await this.paymentRepo.saveWithStatusPrecondition(updated, 'PENDING');
+      if (!transitioned) {
+        this.logger.info('Skipping FAILED write — payment already transitioned out of PENDING', {
+          orderId,
+        });
+        return ok(undefined);
+      }
       this.logger.info('Payment FAILED', { orderId, reason: paymentStatus });
 
       await this.auditRecorder.record({
@@ -211,18 +244,20 @@ export class HandleCashfreeWebhookUseCase {
         const owner = await this.userRepo.findById(payment.ownerUserId);
         const academy = await this.academyRepo.findById(payment.academyId);
         if (owner && academy) {
-          this.emailSender.send({
-            to: owner.emailNormalized,
-            subject: 'Subscription Payment Failed - ' + academy.academyName,
-            html: renderSubscriptionPaymentFailedEmail({
-              ownerName: owner.fullName,
-              academyName: academy.academyName,
-              tierKey: payment.tierKey,
-              amountInr: payment.amountInr,
-              orderId,
-              reason: paymentStatus,
-            }),
-          }).catch(() => {});
+          this.emailSender
+            .send({
+              to: owner.emailNormalized,
+              subject: 'Subscription Payment Failed - ' + academy.academyName,
+              html: renderSubscriptionPaymentFailedEmail({
+                ownerName: owner.fullName,
+                academyName: academy.academyName,
+                tierKey: payment.tierKey,
+                amountInr: payment.amountInr,
+                orderId,
+                reason: paymentStatus,
+              }),
+            })
+            .catch(() => {});
         }
       }
     }
@@ -239,8 +274,20 @@ export class HandleCashfreeWebhookUseCase {
   ): Promise<void> {
     const subscription = await this.subscriptionRepo.findByAcademyId(academyId);
     if (!subscription) {
-      this.logger.error('No subscription found for academy during activation', { academyId });
-      return;
+      // H1 fix (subscription audit): pre-fix code logger.error'd and silently
+      // returned here, while the outer transaction had already flipped the
+      // payment PENDING→SUCCESS. Net effect: owner billed but tier never
+      // updated. By throwing, the Mongo transaction aborts and the payment
+      // stays PENDING — Cashfree retries the webhook later, by which time
+      // either the subscription has been provisioned or an operator has
+      // intervened. The owner can't be charged-without-activated state.
+      this.logger.error('No subscription found for academy during activation', {
+        academyId,
+        orderId,
+      });
+      throw new Error(
+        `No subscription found for academy ${academyId} — aborting activation to roll back payment`,
+      );
     }
 
     let effectiveNow = now;
@@ -308,6 +355,7 @@ interface WebhookPayload {
     order?: {
       order_id?: string;
       order_amount?: number;
+      order_currency?: string;
     };
     payment?: {
       payment_status?: string;

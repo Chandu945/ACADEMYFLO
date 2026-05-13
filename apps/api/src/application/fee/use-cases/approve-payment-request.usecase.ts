@@ -22,6 +22,7 @@ import type { UserRole } from '@academyflo/contracts';
 import { DEFAULT_RECEIPT_PREFIX } from '@academyflo/contracts';
 import type { PushNotificationService } from '../../notifications/push-notification.service';
 import { buildManualPaymentApprovedPush } from '../../notifications/templates/manual-payment-result-templates';
+import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 import { randomUUID } from 'crypto';
 
 export interface ApprovePaymentRequestInput {
@@ -177,6 +178,17 @@ export class ApprovePaymentRequestUseCase {
     } catch (e) {
       if (e instanceof ConcurrentApprovalError) {
         return err(PaymentRequestErrors.notPending());
+      }
+      // M2 fix: an optimistic-concurrency clash on FeeDue.save (or any
+      // other repo save inside the transaction) means a concurrent path
+      // already mutated the fee — almost always another approval, a
+      // direct mark-paid, or a Cashfree webhook completing online payment
+      // for the same fee. The transaction rolled back cleanly; the right
+      // response is a domain-shaped CONFLICT ("already paid"), not the
+      // generic 'ConcurrentModification' 409 that GlobalExceptionFilter
+      // would otherwise produce by catching the bare error.
+      if (e instanceof ConcurrentModificationError) {
+        return err(PaymentRequestErrors.alreadyPaid());
       }
       throw e;
     }

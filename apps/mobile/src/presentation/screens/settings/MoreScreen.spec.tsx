@@ -8,6 +8,13 @@ const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
+  // MoreScreen consumes the pending deep-link queue inside a `useFocusEffect`.
+  // Without a stub the hook is undefined and the screen throws on render.
+  // Run the callback synchronously so the deep-link path is exercised.
+  useFocusEffect: (cb: () => void | (() => void)) => {
+    const cleanup = cb();
+    if (typeof cleanup === 'function') return cleanup;
+  },
 }));
 
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');

@@ -8,8 +8,38 @@ const STATUS_MAP: Record<number, AppErrorCode> = {
   409: 'CONFLICT',
   422: 'VALIDATION',
   429: 'RATE_LIMITED',
-  503: 'UNKNOWN',
+  // G1 mobile-alignment fix: 503 was UNKNOWN, which made every storage
+  // failure (UPLOAD_FAILED/NETWORK) look like a generic "something went
+  // wrong." With body.code now flowing through the envelope, the status
+  // fallback only matters when the body is malformed or comes from a
+  // non-AppError path (NestJS framework exception). NETWORK is the safer
+  // 503 default — it tells the user to retry; codes that ride on top
+  // (UPLOAD_FAILED, PAYMENT_PROVIDER_UNAVAILABLE) override via body.code.
+  503: 'NETWORK',
 };
+
+/**
+ * G1: the contract's AppErrorCode union. We accept any value the server
+ * sends in body.code, but only known codes get a SAFE_MESSAGES entry —
+ * unknown codes fall back to status-code mapping so a forward-compatible
+ * older client never crashes on a newer-server code.
+ */
+const KNOWN_APP_CODES: ReadonlySet<AppErrorCode> = new Set<AppErrorCode>([
+  'VALIDATION',
+  'UNAUTHORIZED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'CONFLICT',
+  'RATE_LIMITED',
+  'NETWORK',
+  'UNKNOWN',
+  'UPLOAD_FAILED',
+  'PAYMENT_PROVIDER_UNAVAILABLE',
+  'ACADEMY_SETUP_REQUIRED',
+  'COOLDOWN_ACTIVE',
+  'SUBSCRIPTION_BLOCKED',
+  'FEATURE_DISABLED',
+]);
 
 /**
  * Safe fallback messages for each error code.
@@ -23,7 +53,18 @@ const SAFE_MESSAGES: Record<AppErrorCode, string> = {
   CONFLICT: 'This action conflicts with the current state.',
   RATE_LIMITED: 'Too many requests. Please wait a moment and try again.',
   NETWORK: 'Unable to connect. Please check your internet connection and try again.',
-  UNKNOWN: 'Something unexpected happened. Please try again or contact support if the issue persists.',
+  UNKNOWN:
+    'Something unexpected happened. Please try again or contact support if the issue persists.',
+  // G1 mobile-alignment fix: messages for the new contract codes. These
+  // are safe defaults — backend always writes a more specific message
+  // and the passthrough set below means we prefer the server copy.
+  UPLOAD_FAILED: 'Failed to upload. Please try again.',
+  PAYMENT_PROVIDER_UNAVAILABLE:
+    'Payment service is temporarily unavailable. Please try again in a moment.',
+  ACADEMY_SETUP_REQUIRED: 'Please complete academy setup before continuing.',
+  COOLDOWN_ACTIVE: 'Please wait before retrying.',
+  SUBSCRIPTION_BLOCKED: 'Your academy subscription is not active. Renew to continue.',
+  FEATURE_DISABLED: 'This feature is currently unavailable.',
 };
 
 /** Codes where we trust the server-provided message for display. */
@@ -33,6 +74,15 @@ const PASSTHROUGH_CODES = new Set<AppErrorCode>([
   'FORBIDDEN',
   'NOT_FOUND',
   'CONFLICT',
+  // G1: pass server copy for the new codes too — the backend writes the
+  // real user-facing message and the safe fallback is only useful when
+  // it's missing.
+  'UPLOAD_FAILED',
+  'PAYMENT_PROVIDER_UNAVAILABLE',
+  'ACADEMY_SETUP_REQUIRED',
+  'COOLDOWN_ACTIVE',
+  'SUBSCRIPTION_BLOCKED',
+  'FEATURE_DISABLED',
 ]);
 
 const MAX_MESSAGE_LENGTH = 500;
@@ -64,8 +114,7 @@ function extractFieldErrors(details: unknown[]): Record<string, string> | undefi
       const shortField = rawField.includes('.') ? rawField.split('.').pop()! : rawField;
 
       // Capitalize the constraint message for display
-      const displayMessage =
-        constraintMessage.charAt(0).toUpperCase() + constraintMessage.slice(1);
+      const displayMessage = constraintMessage.charAt(0).toUpperCase() + constraintMessage.slice(1);
 
       // Store under both the short and full field name
       if (!fieldErrors[shortField]) {
@@ -109,7 +158,21 @@ export function mapHttpError(
   retryAfterHeader?: string | null,
   requestId?: string | null,
 ): AppError {
-  const code: AppErrorCode = STATUS_MAP[status] ?? 'UNKNOWN';
+  // G1 mobile-alignment fix: prefer the typed AppError code emitted in the
+  // response envelope. The status-code path only fires when the body is
+  // malformed or comes from a non-AppError exception (NestJS framework
+  // path, e.g. DTO validation, which doesn't carry our typed code). This
+  // also lets the same HTTP status carry distinct semantics — 503 might
+  // be NETWORK (retryable) or UPLOAD_FAILED (terminal); only body.code
+  // distinguishes them.
+  let serverCode: AppErrorCode | undefined;
+  if (body && typeof body === 'object') {
+    const rawCode = (body as Record<string, unknown>)['code'];
+    if (typeof rawCode === 'string' && KNOWN_APP_CODES.has(rawCode as AppErrorCode)) {
+      serverCode = rawCode as AppErrorCode;
+    }
+  }
+  const code: AppErrorCode = serverCode ?? STATUS_MAP[status] ?? 'UNKNOWN';
 
   let serverMessage: string | undefined;
   let fieldErrors: Record<string, string> | undefined;
@@ -145,14 +208,15 @@ export function mapHttpError(
     message = SAFE_MESSAGES[code];
   }
 
-  const retryAfterSeconds =
-    code === 'RATE_LIMITED' ? parseRetryAfter(retryAfterHeader) : undefined;
+  const retryAfterSeconds = code === 'RATE_LIMITED' ? parseRetryAfter(retryAfterHeader) : undefined;
 
   // Prefer the server's X-Request-Id response header; fall back to the
   // `requestId` field the NestJS error envelope emits.
   const rid =
     requestId ??
-    (body && typeof body === 'object' && typeof (body as Record<string, unknown>)['requestId'] === 'string'
+    (body &&
+    typeof body === 'object' &&
+    typeof (body as Record<string, unknown>)['requestId'] === 'string'
       ? ((body as Record<string, unknown>)['requestId'] as string)
       : undefined);
 

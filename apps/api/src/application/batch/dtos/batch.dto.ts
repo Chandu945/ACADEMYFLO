@@ -12,8 +12,11 @@ export interface BatchDto {
   endTime: string | null;
   maxStudents: number | null;
   status: BatchStatus;
-  createdAt: Date;
-  updatedAt: Date;
+  // ISO 8601 wire format. Declared `string` here (not `Date`) because JSON
+  // serialization always produces an ISO string and mobile zod parses it as
+  // a string. Construction site below calls .toISOString() at the boundary.
+  createdAt: string;
+  updatedAt: string;
 }
 
 export function toBatchDto(batch: Batch): BatchDto {
@@ -28,7 +31,7 @@ export function toBatchDto(batch: Batch): BatchDto {
     endTime: batch.endTime,
     maxStudents: batch.maxStudents,
     status: batch.status,
-    createdAt: batch.audit.createdAt,
-    updatedAt: batch.audit.updatedAt,
+    createdAt: batch.audit.createdAt.toISOString(),
+    updatedAt: batch.audit.updatedAt.toISOString(),
   };
 }

@@ -51,3 +51,47 @@ jest.mock('react-native-screens', () => ({
   ScreenStack: 'ScreenStack',
   ScreenStackHeaderConfig: 'ScreenStackHeaderConfig',
 }));
+
+// Default mock for @react-navigation/native. Many screen specs render their
+// component outside a real NavigationContainer, so the hooks (useNavigation,
+// useRoute, useFocusEffect, useIsFocused) need stubs that return safe values
+// rather than null contexts. Specs that need custom navigation behavior
+// override this with their own jest.mock() at the top of the spec file.
+jest.mock('@react-navigation/native', () => {
+  const noop = () => {};
+  return {
+    useNavigation: () => ({
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      replace: jest.fn(),
+      push: jest.fn(),
+      dispatch: jest.fn(),
+      addListener: jest.fn(() => noop),
+      setOptions: jest.fn(),
+      canGoBack: jest.fn(() => false),
+      reset: jest.fn(),
+    }),
+    useRoute: () => ({ params: {}, name: 'TestScreen', key: 'test' }),
+    // Run the focus callback synchronously so screens with first-mount side
+    // effects (deep-link consumption, list refresh) actually exercise that
+    // code path. A no-op would silently skip those branches and hide bugs.
+    useFocusEffect: (cb) => {
+      const cleanup = cb();
+      if (typeof cleanup === 'function') return cleanup;
+    },
+    useIsFocused: () => true,
+    NavigationContainer: ({ children }) => children,
+    DefaultTheme: { colors: {} },
+    DarkTheme: { colors: {} },
+    StackActions: {
+      push: jest.fn(),
+      pop: jest.fn(),
+      replace: jest.fn(),
+    },
+    CommonActions: {
+      navigate: jest.fn(),
+      reset: jest.fn(),
+      goBack: jest.fn(),
+    },
+  };
+});

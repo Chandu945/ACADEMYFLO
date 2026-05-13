@@ -16,10 +16,13 @@ import type { LoginAttemptTrackerPort } from '@application/identity/services/log
 import { LOGIN_ATTEMPT_TRACKER } from '@application/identity/services/login-attempt-tracker';
 import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
 import { DEVICE_TOKEN_REPOSITORY } from '@domain/notification/ports/device-token.repository';
+import { AUDIT_RECORDER_PORT } from '@application/audit/ports/audit-recorder.port';
+import type { AuditRecorderPort } from '@application/audit/ports/audit-recorder.port';
 import { AppConfigService } from '@shared/config/config.service';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, AuditLogsModule],
   controllers: [AdminAuthController],
   providers: [
     {
@@ -31,8 +34,26 @@ import { AppConfigService } from '@shared/config/config.service';
         tokenSvc: TokenService,
         config: AppConfigService,
         loginTracker: LoginAttemptTrackerPort,
-      ) => new AdminLoginUseCase(userRepo, sessionRepo, hasher, tokenSvc, config.jwtRefreshTtl, loginTracker),
-      inject: [USER_REPOSITORY, SESSION_REPOSITORY, PASSWORD_HASHER, TOKEN_SERVICE, AppConfigService, LOGIN_ATTEMPT_TRACKER],
+        audit: AuditRecorderPort,
+      ) =>
+        new AdminLoginUseCase(
+          userRepo,
+          sessionRepo,
+          hasher,
+          tokenSvc,
+          config.jwtRefreshTtl,
+          loginTracker,
+          audit,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        SESSION_REPOSITORY,
+        PASSWORD_HASHER,
+        TOKEN_SERVICE,
+        AppConfigService,
+        LOGIN_ATTEMPT_TRACKER,
+        AUDIT_RECORDER_PORT,
+      ],
     },
     {
       provide: 'ADMIN_REFRESH_USE_CASE',

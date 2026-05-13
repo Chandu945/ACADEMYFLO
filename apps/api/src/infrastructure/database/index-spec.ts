@@ -88,3 +88,17 @@ export const INDEX_SPEC: IndexDefinition[] = [
   // ── subscriptions ──
   { collection: 'subscriptions', keys: { paidEndAt: 1 } },
 ];
+
+// This module is a data spec (the INDEX_SPEC constant above), not a Jest
+// suite. The `-spec.ts` filename matches Jest's default test pattern, so
+// without a real test the suite fails with "must contain at least one test".
+// Add a sanity assertion rather than renaming the file (which would force
+// imports across the infra layer to chase the rename).
+if (typeof describe === 'function') {
+  describe('INDEX_SPEC', () => {
+    it('is a non-empty list of index definitions', () => {
+      expect(Array.isArray(INDEX_SPEC)).toBe(true);
+      expect(INDEX_SPEC.length).toBeGreaterThan(0);
+    });
+  });
+}

@@ -12,6 +12,10 @@ export type OwnerDashboardKpis = {
   todayAbsentCount: number;
   dueStudentsCount: number;
   todayPresentCount: number;
+  // Default-present model: scheduled = denominator of the attendance tile.
+  // `null` when running against an older API build that doesn't yet return
+  // the field — DashboardScreen falls back to present+absent in that case.
+  todayScheduledCount: number | null;
   totalExpenses: number;
   lateFeeCollected: number;
   overdueCount: number;

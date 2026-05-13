@@ -12,6 +12,7 @@ import { PaymentRequest } from '@domain/fee/entities/payment-request.entity';
 import { FeeDue } from '@domain/fee/entities/fee-due.entity';
 import { User } from '@domain/identity/entities/user.entity';
 import { Academy } from '@domain/academy/entities/academy.entity';
+import { ConcurrentModificationError } from '@shared/errors/concurrent-modification.error';
 
 describe('ApprovePaymentRequestUseCase', () => {
   let useCase: ApprovePaymentRequestUseCase;
@@ -41,6 +42,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       incrementTokenVersionByUserId: jest.fn(),
       listByAcademyId: jest.fn(),
       anonymizeAndSoftDelete: jest.fn(),
+      listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
     } as jest.Mocked<UserRepository>;
 
     academyRepo = {
@@ -48,6 +50,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       findByOwnerUserId: jest.fn(),
       save: jest.fn(),
       findAllIds: jest.fn(),
+      saveWithVersionPrecondition: jest.fn(),
     } as jest.Mocked<AcademyRepository>;
 
     feeDueRepo = {
@@ -73,6 +76,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       sumUnpaidAmountByAcademyAndMonth: jest.fn(),
       countOverdueByAcademy: jest.fn(),
       listOverdueByAcademy: jest.fn(),
+      saveSnapshotIfStillDue: jest.fn(),
     } as jest.Mocked<FeeDueRepository>;
 
     prRepo = {
@@ -81,8 +85,13 @@ describe('ApprovePaymentRequestUseCase', () => {
       findPendingByFeeDue: jest.fn(),
       listByAcademyAndStatuses: jest.fn(),
       listByStaffAndAcademy: jest.fn(),
+      countPendingByStaffAndAcademy: jest.fn(),
       countPendingByAcademy: jest.fn(),
+      countPendingByAuthorAndAcademySince: jest.fn(),
+      listByAcademyAndStudent: jest.fn(),
+      listPendingByStudentAndAcademy: jest.fn(),
       deleteAllByAcademyAndStudent: jest.fn(),
+      deletePendingByAcademyAndStudent: jest.fn(),
     } as jest.Mocked<PaymentRequestRepository>;
 
     txLogRepo = {
@@ -106,6 +115,7 @@ describe('ApprovePaymentRequestUseCase', () => {
       list: jest.fn(),
       listActiveByAcademy: jest.fn(),
       countActiveByAcademy: jest.fn(),
+    countScheduledStudentsByAcademyAndDate: jest.fn().mockResolvedValue(0),
       findByIds: jest.fn(),
       countInactiveByAcademy: jest.fn(),
       countNewAdmissionsByAcademyAndDateRange: jest.fn(),
@@ -251,6 +261,38 @@ describe('ApprovePaymentRequestUseCase', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe('CONFLICT');
+    }
+  });
+
+  it('M2: maps ConcurrentModificationError on FeeDue.save to a domain CONFLICT', async () => {
+    // The race we're closing: the in-transaction PR-status pre-check passed
+    // (so we're not hitting ConcurrentApprovalError), but somewhere between
+    // load and write a concurrent path (direct mark-paid, Cashfree webhook,
+    // cron snapshot, etc.) bumped the FeeDue version. feeDueRepo.save throws
+    // ConcurrentModificationError. Previously this bubbled to the
+    // GlobalExceptionFilter and surfaced as a generic 'ConcurrentModification'
+    // 409. With M2 the use-case maps it to a domain-specific 'alreadyPaid()'
+    // CONFLICT so the frontend can show a meaningful message.
+    userRepo.findById.mockResolvedValue(makeOwner());
+    prRepo.findById.mockResolvedValue(makePendingRequest());
+    feeDueRepo.findByAcademyStudentMonth.mockResolvedValue(makeFeeDue());
+    academyRepo.findById.mockResolvedValue(makeAcademy());
+    txLogRepo.incrementReceiptCounter.mockResolvedValue(1);
+    feeDueRepo.save.mockRejectedValueOnce(new ConcurrentModificationError('FeeDue'));
+
+    const result = await useCase.execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      requestId: 'pr-1',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('CONFLICT');
+      // alreadyPaid() carries a stable "...already been paid" phrase — pin
+      // a substring of it so a future error-text change doesn't silently
+      // drift the user-facing message.
+      expect(result.error.message.toLowerCase()).toContain('already been paid');
     }
   });
 

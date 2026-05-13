@@ -41,7 +41,16 @@ export async function getOwnerDashboard(
   range: OwnerDashboardRange,
 ): Promise<Result<OwnerDashboardApiPayload, AppError>> {
   const result = await apiGet<unknown>(buildPath(range));
-  return validateResponse(ownerDashboardApiSchema, result, 'getOwnerDashboard');
+  // Cast: ownerDashboardApiSchema now uses `.optional().transform(v => v ?? null)`
+  // for todayScheduledCount, which makes input/output types diverge. The other
+  // dashboard schemas already use this same `as unknown as ZodSchema<T>` cast
+  // for the same reason — keeps the helper generic over both transforming and
+  // non-transforming schemas without weakening the call-site type.
+  return validateResponse(
+    ownerDashboardApiSchema as unknown as ZodSchema<OwnerDashboardApiPayload>,
+    result,
+    'getOwnerDashboard',
+  );
 }
 
 export async function getMonthlyChart(

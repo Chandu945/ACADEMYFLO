@@ -32,12 +32,14 @@ function makeSubscription() {
 }
 
 function makeWebhookPayload(orderId: string, status: string, cfPaymentId = '12345') {
-  return Buffer.from(JSON.stringify({
-    data: {
-      order: { order_id: orderId, order_amount: 299 },
-      payment: { payment_status: status, cf_payment_id: cfPaymentId },
-    },
-  }));
+  return Buffer.from(
+    JSON.stringify({
+      data: {
+        order: { order_id: orderId, order_amount: 299 },
+        payment: { payment_status: status, cf_payment_id: cfPaymentId },
+      },
+    }),
+  );
 }
 
 function makeDeps(overrides: Record<string, unknown> = {}) {
@@ -69,6 +71,7 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     },
     studentCounter: {
       countActiveStudents: jest.fn().mockResolvedValue(10),
+      countEligibleStudents: jest.fn().mockResolvedValue(10),
     },
     ...overrides,
   };
@@ -90,10 +93,10 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const result = await uc.execute(
-      makeWebhookPayload('order-1', 'SUCCESS'),
-      { signature: 'bad', timestamp: freshTimestamp() },
-    );
+    const result = await uc.execute(makeWebhookPayload('order-1', 'SUCCESS'), {
+      signature: 'bad',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('UNAUTHORIZED');
@@ -112,10 +115,10 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const result = await uc.execute(
-      makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'),
-      { signature: 'valid', timestamp: freshTimestamp() },
-    );
+    const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'), {
+      signature: 'valid',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(true);
     expect(deps.paymentRepo.saveWithStatusPrecondition).toHaveBeenCalledTimes(1);
@@ -151,10 +154,10 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const result = await uc.execute(
-      makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'),
-      { signature: 'valid', timestamp: freshTimestamp() },
-    );
+    const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'), {
+      signature: 'valid',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(true);
     // Should NOT save again
@@ -175,15 +178,18 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const result = await uc.execute(
-      makeWebhookPayload('pc_sub_20260315_abc', 'FAILED'),
-      { signature: 'valid', timestamp: freshTimestamp() },
-    );
+    const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'FAILED'), {
+      signature: 'valid',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(true);
-    expect(deps.paymentRepo.save).toHaveBeenCalledTimes(1);
-    const savedPayment = deps.paymentRepo.save.mock.calls[0][0];
+    // M1 fix (subscription audit): FAILED writes now go through
+    // saveWithStatusPrecondition so a concurrent SUCCESS isn't clobbered.
+    expect(deps.paymentRepo.saveWithStatusPrecondition).toHaveBeenCalledTimes(1);
+    const savedPayment = deps.paymentRepo.saveWithStatusPrecondition.mock.calls[0][0];
     expect(savedPayment.status).toBe('FAILED');
+    expect(deps.paymentRepo.saveWithStatusPrecondition.mock.calls[0][1]).toBe('PENDING');
     // Subscription should NOT be modified
     expect(deps.subscriptionRepo.save).not.toHaveBeenCalled();
   });
@@ -201,13 +207,14 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const result = await uc.execute(
-      makeWebhookPayload('pc_sub_20260315_abc', 'USER_DROPPED'),
-      { signature: 'valid', timestamp: freshTimestamp() },
-    );
+    const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'USER_DROPPED'), {
+      signature: 'valid',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(true);
-    const savedPayment = deps.paymentRepo.save.mock.calls[0][0];
+    // M1 fix: USER_DROPPED takes the same CAS write path as FAILED.
+    const savedPayment = deps.paymentRepo.saveWithStatusPrecondition.mock.calls[0][0];
     expect(savedPayment.status).toBe('FAILED');
   });
 
@@ -229,10 +236,10 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const result = await uc.execute(
-      makeWebhookPayload('unknown-order', 'SUCCESS'),
-      { signature: 'valid', timestamp: freshTimestamp() },
-    );
+    const result = await uc.execute(makeWebhookPayload('unknown-order', 'SUCCESS'), {
+      signature: 'valid',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(true);
     expect(deps.paymentRepo.save).not.toHaveBeenCalled();
@@ -252,10 +259,10 @@ describe('HandleCashfreeWebhookUseCase', () => {
     );
 
     const staleTimestamp = String(Math.floor(Date.now() / 1000) - 600); // 10 minutes ago
-    const result = await uc.execute(
-      makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'),
-      { signature: 'valid', timestamp: staleTimestamp },
-    );
+    const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'), {
+      signature: 'valid',
+      timestamp: staleTimestamp,
+    });
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('UNAUTHORIZED');
@@ -276,11 +283,13 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const twoMinutesOld = String(Math.floor(Date.now() / 1000) - 120);
-    const result = await uc.execute(
-      makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'),
-      { signature: 'valid', timestamp: twoMinutesOld },
-    );
+    // Production tolerance is 120s with strict `skew > 120` — pick 121 so the
+    // rejection isn't riding the boundary.
+    const twoMinutesOld = String(Math.floor(Date.now() / 1000) - 121);
+    const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'), {
+      signature: 'valid',
+      timestamp: twoMinutesOld,
+    });
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('UNAUTHORIZED');
@@ -300,17 +309,19 @@ describe('HandleCashfreeWebhookUseCase', () => {
     );
 
     // Payment has amountInr=299, webhook sends order_amount=500
-    const mismatchPayload = Buffer.from(JSON.stringify({
-      data: {
-        order: { order_id: 'pc_sub_20260315_abc', order_amount: 500 },
-        payment: { payment_status: 'SUCCESS', cf_payment_id: '12345' },
-      },
-    }));
-
-    const result = await uc.execute(
-      mismatchPayload,
-      { signature: 'valid', timestamp: freshTimestamp() },
+    const mismatchPayload = Buffer.from(
+      JSON.stringify({
+        data: {
+          order: { order_id: 'pc_sub_20260315_abc', order_amount: 500 },
+          payment: { payment_status: 'SUCCESS', cf_payment_id: '12345' },
+        },
+      }),
     );
+
+    const result = await uc.execute(mismatchPayload, {
+      signature: 'valid',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('VALIDATION');
@@ -336,13 +347,155 @@ describe('HandleCashfreeWebhookUseCase', () => {
       deps.studentCounter as never,
     );
 
-    const result = await uc.execute(
-      makeWebhookPayload('pc_sub_20260315_abc', 'FAILED'),
-      { signature: 'valid', timestamp: freshTimestamp() },
-    );
+    const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'FAILED'), {
+      signature: 'valid',
+      timestamp: freshTimestamp(),
+    });
 
     expect(result.ok).toBe(true);
     // Should not save — already SUCCESS
     expect(deps.paymentRepo.save).not.toHaveBeenCalled();
+  });
+
+  describe('M1 fix: FAILED-path CAS keeps a committed SUCCESS intact', () => {
+    it('skips FAILED save when saveWithStatusPrecondition returns false', async () => {
+      // The race: SUCCESS webhook arrived first and atomically transitioned
+      // PENDING→SUCCESS via the CAS save. A late-arriving FAILED webhook
+      // then re-reads the payment and (under the pre-fix code) would have
+      // unconditionally written FAILED, clobbering the SUCCESS and losing
+      // the billed cycle. Post-fix, the CAS no-ops and we early-return
+      // without writing audit or sending the failed-payment email.
+      const deps = makeDeps({
+        paymentRepo: {
+          findByOrderId: jest.fn().mockResolvedValue(makePendingPayment()),
+          save: jest.fn().mockResolvedValue(undefined),
+          saveWithStatusPrecondition: jest.fn().mockResolvedValue(false),
+        },
+      });
+      const uc = new HandleCashfreeWebhookUseCase(
+        deps.paymentRepo as never,
+        deps.subscriptionRepo as never,
+        deps.signatureVerifier as never,
+        deps.clock,
+        deps.logger as never,
+        deps.auditRecorder as never,
+        deps.transaction as never,
+        deps.studentCounter as never,
+      );
+
+      const result = await uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'FAILED'), {
+        signature: 'valid',
+        timestamp: freshTimestamp(),
+      });
+
+      expect(result.ok).toBe(true);
+      expect(deps.paymentRepo.saveWithStatusPrecondition).toHaveBeenCalledTimes(1);
+      // No FAILED audit row when we no-op'd the write — the SUCCESS audit
+      // recorded by the winning webhook is the authoritative entry.
+      expect(deps.auditRecorder.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('M2 fix: currency cross-validation', () => {
+    function makePayloadWithCurrency(currency: string): Buffer {
+      return Buffer.from(
+        JSON.stringify({
+          data: {
+            order: {
+              order_id: 'pc_sub_20260315_abc',
+              order_amount: 299,
+              order_currency: currency,
+            },
+            payment: { payment_status: 'SUCCESS', cf_payment_id: '12345' },
+          },
+        }),
+      );
+    }
+
+    it('rejects webhook when order_currency does not match stored currency', async () => {
+      // Defense-in-depth: even if the numeric amount matches, a different
+      // currency means the provider mis-routed the order. Reject rather
+      // than activating a subscription against a USD-denominated payment.
+      const deps = makeDeps();
+      const uc = new HandleCashfreeWebhookUseCase(
+        deps.paymentRepo as never,
+        deps.subscriptionRepo as never,
+        deps.signatureVerifier as never,
+        deps.clock,
+        deps.logger as never,
+        deps.auditRecorder as never,
+        deps.transaction as never,
+        deps.studentCounter as never,
+      );
+
+      const result = await uc.execute(makePayloadWithCurrency('USD'), {
+        signature: 'valid',
+        timestamp: freshTimestamp(),
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe('VALIDATION');
+      // No payment / subscription mutation when we rejected at the gate.
+      expect(deps.paymentRepo.saveWithStatusPrecondition).not.toHaveBeenCalled();
+      expect(deps.subscriptionRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts webhook when order_currency matches stored currency', async () => {
+      const deps = makeDeps();
+      const uc = new HandleCashfreeWebhookUseCase(
+        deps.paymentRepo as never,
+        deps.subscriptionRepo as never,
+        deps.signatureVerifier as never,
+        deps.clock,
+        deps.logger as never,
+        deps.auditRecorder as never,
+        deps.transaction as never,
+        deps.studentCounter as never,
+      );
+
+      const result = await uc.execute(makePayloadWithCurrency('INR'), {
+        signature: 'valid',
+        timestamp: freshTimestamp(),
+      });
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('H1 fix: activation aborts when subscription is missing', () => {
+    it('throws inside the transaction so the SUCCESS write rolls back', async () => {
+      // Pre-fix: activateSubscription logger.error'd and silently returned
+      // on missing subscription. The outer transaction had already flipped
+      // the payment to SUCCESS, so the owner was billed but the tier never
+      // updated. Post-fix: we throw, the Mongo transaction aborts, payment
+      // stays PENDING, and Cashfree retries the webhook later.
+      const deps = makeDeps({
+        subscriptionRepo: {
+          findByAcademyId: jest.fn().mockResolvedValue(null),
+          save: jest.fn(),
+        },
+      });
+      const uc = new HandleCashfreeWebhookUseCase(
+        deps.paymentRepo as never,
+        deps.subscriptionRepo as never,
+        deps.signatureVerifier as never,
+        deps.clock,
+        deps.logger as never,
+        deps.auditRecorder as never,
+        deps.transaction as never,
+        deps.studentCounter as never,
+      );
+
+      await expect(
+        uc.execute(makeWebhookPayload('pc_sub_20260315_abc', 'SUCCESS'), {
+          signature: 'valid',
+          timestamp: freshTimestamp(),
+        }),
+      ).rejects.toThrow(/aborting activation/);
+
+      // Audit must NOT be recorded — a SUCCESS audit row paired with a
+      // rolled-back payment would mislead forensics. The audit only fires
+      // post-transaction in the use case, so the throw correctly skips it.
+      expect(deps.auditRecorder.record).not.toHaveBeenCalled();
+      expect(deps.subscriptionRepo.save).not.toHaveBeenCalled();
+    });
   });
 });

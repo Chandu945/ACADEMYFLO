@@ -28,9 +28,7 @@ export class ExportMonthlyAttendanceSummaryPdfUseCase {
     private readonly pdfRenderer: PdfRenderer,
   ) {}
 
-  async execute(
-    input: ExportMonthlyAttendanceSummaryPdfInput,
-  ): Promise<Result<Buffer, AppError>> {
+  async execute(input: ExportMonthlyAttendanceSummaryPdfInput): Promise<Result<Buffer, AppError>> {
     const actor = await this.userRepo.findById(input.actorUserId);
     if (!actor || !actor.academyId) return err(AttendanceErrors.academyRequired());
 
@@ -39,7 +37,13 @@ export class ExportMonthlyAttendanceSummaryPdfUseCase {
 
     // Page through to collect all students. The on-screen view paginates;
     // an export needs everyone in one document.
-    const rows: { fullName: string; expectedDays: number; presentDays: number; absentDays: number; percentage: number | null }[] = [];
+    const rows: {
+      fullName: string;
+      expectedDays: number;
+      presentDays: number;
+      absentDays: number;
+      percentage: number | null;
+    }[] = [];
     for (let page = 1; page <= MAX_PAGES; page++) {
       const pageResult = await this.getSummary.execute({
         actorUserId: input.actorUserId,

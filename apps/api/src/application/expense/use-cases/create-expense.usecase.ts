@@ -31,7 +31,8 @@ export interface CreateExpenseOutput {
   amount: number;
   notes: string | null;
   createdBy: string;
-  createdAt: Date;
+  // ISO 8601 wire format (see list-staff.usecase.ts for rationale).
+  createdAt: string;
 }
 
 export class CreateExpenseUseCase {
@@ -85,12 +86,23 @@ export class CreateExpenseUseCase {
 
     await this.expenseRepo.save(expense);
 
+    // M2 fix (expense audit): context lets forensic queries reconstruct
+    // "expenses in category X for this month" or "what was the amount when
+    // this row was created" without joining against the (possibly soft-
+    // deleted) expense table. categoryName is snapshotted so the audit
+    // row stays meaningful after a category is renamed or deleted.
     await this.auditRecorder.record({
       academyId: user.academyId,
       actorUserId: input.actorUserId,
       action: 'EXPENSE_CREATED',
       entityType: 'EXPENSE',
       entityId: expense.id.toString(),
+      context: {
+        categoryId: expense.categoryId,
+        categoryName: expense.categoryName,
+        amount: String(expense.amount),
+        date: expense.date,
+      },
     });
 
     return ok({
@@ -101,7 +113,7 @@ export class CreateExpenseUseCase {
       amount: expense.amount,
       notes: expense.notes,
       createdBy: expense.createdBy,
-      createdAt: expense.audit.createdAt,
+      createdAt: expense.audit.createdAt.toISOString(),
     });
   }
 }

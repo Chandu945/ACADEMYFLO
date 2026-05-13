@@ -54,7 +54,8 @@ function buildDeps() {
     incrementTokenVersionByAcademyId: jest.fn(),
     incrementTokenVersionByUserId: jest.fn(),
     listByAcademyId: jest.fn(),
-      anonymizeAndSoftDelete: jest.fn(),
+    anonymizeAndSoftDelete: jest.fn(),
+    listParentIdsByAcademy: jest.fn().mockResolvedValue([]),
   };
   const staffAttendanceRepo: jest.Mocked<StaffAttendanceRepository> = {
     save: jest.fn(),
@@ -94,6 +95,63 @@ describe('MarkStaffAttendanceUseCase', () => {
       expect(result.value.date).toBe(TODAY);
     }
     expect(staffAttendanceRepo.save).toHaveBeenCalled();
+  });
+
+  it('M1: concurrent PRESENT marks succeed idempotently when save hits duplicate-key', async () => {
+    // Two owners on different devices tap "Present" on the same staff
+    // member within milliseconds. Both pass the existence check (record not
+    // yet committed), both try to insert. The second insert hits the
+    // unique index on (academyId, staffUserId, date) and Mongo throws a
+    // duplicate-key error (code 11000). Without M1 this surfaced as a 500;
+    // with M1 it's treated as idempotent success.
+    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    userRepo.findById.mockImplementation(async (id: string) => {
+      if (id === 'owner-1') return createOwner();
+      if (id === 'staff-1') return createStaff();
+      return null;
+    });
+    // Existence check returns empty — race window open.
+    staffAttendanceRepo.findPresentByAcademyDateAndStaffIds.mockResolvedValue([]);
+    const dupErr = Object.assign(new Error('E11000 duplicate key error'), { code: 11000 });
+    staffAttendanceRepo.save.mockRejectedValueOnce(dupErr);
+
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    const result = await uc.execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      staffUserId: 'staff-1',
+      date: TODAY,
+      status: 'PRESENT',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.status).toBe('PRESENT');
+    }
+  });
+
+  it('M1: non-duplicate errors from save still propagate (not swallowed)', async () => {
+    // Defensive: only error code 11000 is treated as idempotent. Other
+    // errors (real DB outage, validation failure, etc.) must still bubble.
+    const { userRepo, staffAttendanceRepo, auditRecorder } = buildDeps();
+    userRepo.findById.mockImplementation(async (id: string) => {
+      if (id === 'owner-1') return createOwner();
+      if (id === 'staff-1') return createStaff();
+      return null;
+    });
+    staffAttendanceRepo.findPresentByAcademyDateAndStaffIds.mockResolvedValue([]);
+    staffAttendanceRepo.save.mockRejectedValueOnce(new Error('Connection refused'));
+
+    const uc = new MarkStaffAttendanceUseCase(userRepo, staffAttendanceRepo, auditRecorder);
+    await expect(
+      uc.execute({
+        actorUserId: 'owner-1',
+        actorRole: 'OWNER',
+        staffUserId: 'staff-1',
+        date: TODAY,
+        status: 'PRESENT',
+      }),
+    ).rejects.toThrow('Connection refused');
   });
 
   it('should delete the present record when marking ABSENT', async () => {
