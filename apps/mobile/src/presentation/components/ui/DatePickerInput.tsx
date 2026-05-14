@@ -373,12 +373,13 @@ const makeStyles = (colors: Colors) =>
       marginBottom: spacing.base,
     },
     label: {
+      // Match Input component label style (Title Case, not uppercase) so
+      // date pickers look identical to text inputs (BUG-017).
       fontSize: fontSizes.sm,
       fontWeight: fontWeights.semibold,
       color: colors.textSecondary,
       marginBottom: 6,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
+      letterSpacing: 0.2,
     },
     inputWrapper: {
       flexDirection: 'row',

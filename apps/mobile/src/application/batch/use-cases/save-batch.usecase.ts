@@ -23,7 +23,13 @@ export function validateBatchForm(fields: Record<string, string>): Record<string
     errors['batchName'] = 'Batch name must not exceed 60 characters';
   }
 
-  // days is optional — no validation required
+  // Days are required: a batch with no scheduled days can't be used for
+  // attendance, fees, or any time-based feature. Without this gate, the
+  // batch list shows "No days set" rows that look broken to owners.
+  const daysValue = fields['days']?.trim();
+  if (!daysValue) {
+    errors['days'] = 'Select at least one day';
+  }
 
   const timeRegex = /^\d{2}:\d{2}$/;
   const st = fields['startTime']?.trim();

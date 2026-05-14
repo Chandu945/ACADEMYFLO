@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!mountedRef.current) return null;
 
     if (!subResult.ok) {
-      if (subResult.error.code === 'CONFLICT') {
+      if (subResult.error.code === 'CONFLICT' || subResult.error.code === 'ACADEMY_SETUP_REQUIRED') {
         setState({ phase: 'needsAcademySetup', user, subscription: null, forceUpdate: null, sessionExpired: false });
       } else if (subResult.error.code === 'UNAUTHORIZED' || subResult.error.code === 'FORBIDDEN') {
         setState({ phase: 'unauthenticated', user: null, subscription: null, forceUpdate: null, sessionExpired: true });

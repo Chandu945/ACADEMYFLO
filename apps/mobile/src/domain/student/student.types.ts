@@ -48,7 +48,7 @@ export type StudentListFilters = {
 
 export type CreateStudentRequest = {
   fullName: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   gender: Gender;
   address: {
     line1: string;

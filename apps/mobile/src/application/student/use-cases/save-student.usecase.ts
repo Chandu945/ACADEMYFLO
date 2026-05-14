@@ -49,12 +49,21 @@ export function validateStudentForm(
     errors['guardianName'] = 'Name can only contain letters, spaces, and punctuation';
   }
 
-  if (fields['dateOfBirth'] && !isValidDate(fields['dateOfBirth'])) {
+  if (!fields['dateOfBirth']?.trim()) {
+    errors['dateOfBirth'] = 'Date of birth is required';
+  } else if (!isValidDate(fields['dateOfBirth'])) {
     errors['dateOfBirth'] = 'Enter a valid date (YYYY-MM-DD)';
   }
 
   if (!fields['gender']) {
     errors['gender'] = 'Gender is required';
+  }
+
+  // BUG-021: validate the student's own mobile too. Previously this field
+  // was wired but never checked, so users could submit junk like "86575"
+  // through the optional field.
+  if (fields['mobileNumber']?.trim() && !E164_RE.test(fields['mobileNumber'])) {
+    errors['mobileNumber'] = 'Please enter a valid 10-digit mobile number';
   }
 
   if (fields['guardianMobile']?.trim() && !E164_RE.test(fields['guardianMobile'])) {
@@ -65,7 +74,9 @@ export function validateStudentForm(
     errors['guardianEmail'] = 'Invalid email format';
   }
 
-  if (fields['joiningDate'] && !isValidDate(fields['joiningDate'])) {
+  if (!fields['joiningDate']?.trim()) {
+    errors['joiningDate'] = 'Joining date is required';
+  } else if (!isValidDate(fields['joiningDate'])) {
     errors['joiningDate'] = 'Enter a valid date (YYYY-MM-DD)';
   }
 

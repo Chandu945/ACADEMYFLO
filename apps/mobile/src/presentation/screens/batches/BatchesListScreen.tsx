@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Text,
-  Keyboard} from 'react-native';
+  Keyboard,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -79,10 +81,14 @@ export function BatchesListScreen() {
 
   const handleRowPress = useCallback(
     (batch: BatchListItem) => {
-      // Pass the URL-safe `batchId` plus the full `batch` for instant
-      // native render. On web URL refresh only the ID survives — the
-      // detail screen falls back to fetching by ID.
-      navigation.navigate('BatchDetail', { batchId: batch.id, batch });
+      // On native: pass the full batch object for instant render.
+      // On web: pass only the id — React Navigation serializes the object
+      // to "[object Object]" in the URL, which corrupts back-navigation
+      // state and crashes the app. The detail screen fetches by id.
+      navigation.navigate(
+        'BatchDetail',
+        Platform.OS === 'web' ? { batchId: batch.id } : { batchId: batch.id, batch },
+      );
     },
     [navigation],
   );

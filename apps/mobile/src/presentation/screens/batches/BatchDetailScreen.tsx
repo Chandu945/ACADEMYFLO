@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  Platform,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -290,7 +291,15 @@ export function BatchDetailScreen() {
 
   const handleEdit = useCallback(() => {
     if (!batch) return;
-    navigation.navigate('BatchForm', { mode: 'edit', batchId: batch.id, batch });
+    // On web: drop the `batch` object so it does not get serialized to
+    // "[object Object]" in the URL and crash back-navigation. The form
+    // re-fetches by batchId. On native: keep the object for fast paint.
+    navigation.navigate(
+      'BatchForm',
+      Platform.OS === 'web'
+        ? { mode: 'edit', batchId: batch.id }
+        : { mode: 'edit', batchId: batch.id, batch },
+    );
   }, [navigation, batch]);
 
   const handleDelete = useCallback(() => {
@@ -331,21 +340,16 @@ export function BatchDetailScreen() {
     });
   }, [navigation, batch?.id, students]);
 
-  // Early return guard — all hooks are above
-  if (!batch?.id) {
-    return (
-      <View style={styles.screen}>
-        <EmptyState
-          variant="empty"
-          icon="account-group-outline"
-          message="Batch data unavailable"
-          subtitle="Please go back and try again."
-        />
-      </View>
-    );
-  }
+  // NOTE: do NOT add an early-return guard here. There are useCallbacks
+  // below this point — bailing out before them violates Rules of Hooks
+  // (different hook count between renders when `batch` resolves from
+  // undefined → defined). The graceful guards at the end of the function
+  // (`bootstrapping` and `!batch`) fire AFTER every hook has been called.
 
-  const daysText = batch.days.length > 0
+  // Safe accessors — these run on every render including pre-fetch when
+  // `batch` is undefined. The downstream guards prevent them from being
+  // displayed in that state; values are only used inside `renderHeader`.
+  const daysText = batch?.days?.length
     ? batch.days.map((d: string) => DAY_SHORT[d] ?? d).join(', ')
     : 'No days set';
 
@@ -356,7 +360,7 @@ export function BatchDetailScreen() {
     return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
   };
 
-  const timeSlotText = batch.startTime && batch.endTime
+  const timeSlotText = batch?.startTime && batch?.endTime
     ? `${formatTime12h(batch.startTime)} – ${formatTime12h(batch.endTime)}`
     : null;
 

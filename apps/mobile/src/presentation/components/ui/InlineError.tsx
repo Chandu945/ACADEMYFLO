@@ -66,27 +66,29 @@ export function InlineError({ message, onRetry, severity = 'error', title, compa
 
   return (
     <View style={styles.container} accessibilityRole="alert" accessibilityLiveRegion="polite">
-      <AppIcon name={tone.icon} size={18} color={tone.iconColor} />
+      <View style={styles.iconWrap}>
+        <AppIcon name={tone.icon} size={18} color={tone.iconColor} />
+      </View>
       <View style={styles.body}>
         {hasTitle ? <Text style={styles.title} numberOfLines={2}>{title}</Text> : null}
-        <Text style={[styles.message, hasTitle && styles.messageSecondary]} numberOfLines={4}>
+        <Text style={[styles.message, hasTitle && styles.messageSecondary]} numberOfLines={6}>
           {message}
         </Text>
+        {onRetry ? (
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={onRetry}
+            hitSlop={8}
+            testID="retry-button"
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            activeOpacity={0.8}
+          >
+            <AppIcon name="refresh" size={14} color={tone.iconColor} />
+            <Text style={styles.retryText}>Try again</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
-      {onRetry ? (
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={onRetry}
-          hitSlop={8}
-          testID="retry-button"
-          accessibilityRole="button"
-          accessibilityLabel="Try again"
-          activeOpacity={0.8}
-        >
-          <AppIcon name="refresh" size={13} color={tone.iconColor} />
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
-      ) : null}
     </View>
   );
 }
@@ -94,51 +96,66 @@ export function InlineError({ message, onRetry, severity = 'error', title, compa
 const makeStyles = (colors: Colors, tone: Tone, compact: boolean) => StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    alignItems: 'flex-start',
+    gap: 12,
     backgroundColor: tone.bg,
     borderWidth: 1,
     borderColor: tone.border,
+    borderLeftWidth: 4,
     borderRadius: radius.lg,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     marginHorizontal: compact ? 0 : spacing.base,
     marginVertical: spacing.sm,
+  },
+  iconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    marginTop: 1,
   },
   body: {
     flex: 1,
     justifyContent: 'center',
+    paddingTop: 2,
   },
   title: {
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.base,
     color: tone.titleColor,
-    fontWeight: fontWeights.semibold,
-    letterSpacing: -0.1,
-    lineHeight: 18,
+    fontWeight: fontWeights.bold,
+    letterSpacing: -0.2,
+    lineHeight: 20,
+    marginBottom: 2,
   },
   message: {
     fontSize: fontSizes.sm,
     color: tone.textColor,
     fontWeight: fontWeights.medium,
-    lineHeight: 18,
+    lineHeight: 19,
+    textAlign: 'left',
   },
   messageSecondary: {
     fontWeight: fontWeights.normal,
-    opacity: 0.9,
+    opacity: 0.92,
   },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 9,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: tone.border,
+    alignSelf: 'flex-start',
+    marginTop: 10,
   },
   retryText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: fontWeights.semibold,
     color: tone.iconColor,
     letterSpacing: -0.1,

@@ -71,7 +71,17 @@ function AppInner() {
     <AppErrorBoundary>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <OfflineBanner />
-      <NavigationContainer ref={navigationRef} theme={navTheme} linking={linking}>
+      <NavigationContainer
+        ref={navigationRef}
+        theme={navTheme}
+        linking={linking}
+        documentTitle={{
+          formatter: (options, route) => {
+            const screenTitle = options?.title ?? route?.name;
+            return screenTitle ? `${screenTitle} | Academyflo` : 'Academyflo';
+          },
+        }}
+      >
         <RootNavigator />
       </NavigationContainer>
     </AppErrorBoundary>

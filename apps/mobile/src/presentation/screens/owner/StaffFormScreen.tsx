@@ -104,10 +104,11 @@ export function StaffFormScreen() {
     if (mode !== 'edit' || paramStaff || !staffUserId) return;
     let cancelled = false;
     setResolving(true);
-    // No dedicated GET-by-id endpoint for staff; pull a generous page
-    // and filter. Covers academies up to ~200 staff. Past that, the
-    // user should reopen the form from the staff list.
-    listStaff(1, 200)
+    // BUG-014: the API caps pageSize at 100 (200 → 400 Bad Request).
+    // Pull the max allowed page and filter for the target staff member.
+    // Covers academies up to ~100 staff; beyond that we'd need a
+    // dedicated GET-by-id endpoint (filed for backend follow-up).
+    listStaff(1, 100)
       .then((result) => {
         if (cancelled) return;
         if (result.ok) {
@@ -192,6 +193,18 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
   const [submitting, setSubmitting] = useState(false);
   const submittedRef = useRef(false);
 
+  // Clear an inline error for a specific field. Called from every setter
+  // so the "X is required" banner disappears the moment the user types a
+  // valid value, instead of lingering until the next submit (BUG-012).
+  const clearFieldError = useCallback((field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
   const initialRef = useRef({
     fullName,
     email,
@@ -231,10 +244,21 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
   const handleSalaryAmountChange = useCallback((text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, 10);
     setSalaryAmount(digits);
-  }, []);
+    clearFieldError('salaryAmount');
+  }, [clearFieldError]);
 
   const handleSubmit = useCallback(async () => {
-    const fields = { fullName, email, phoneNumber, password };
+    const fields = {
+      fullName,
+      email,
+      phoneNumber,
+      password,
+      gender,
+      startDate,
+      position,
+      salaryAmount,
+      salaryFrequency,
+    };
     const errors =
       mode === 'create' ? validateCreateStaffForm(fields) : validateUpdateStaffForm(fields);
 
@@ -398,9 +422,9 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
         </View>
         <View style={styles.formCard}>
           <Input
-            label="Full Name"
+            label="Full Name *"
             value={fullName}
-            onChangeText={(text) => setFullName(text.replace(/[^a-zA-Z\s'.,-]/g, ''))}
+            onChangeText={(text) => { setFullName(text.replace(/[^a-zA-Z\s'.,-]/g, '')); clearFieldError('fullName'); }}
             placeholder="e.g. Priya Sharma"
             error={fieldErrors['fullName']}
             autoCapitalize="words"
@@ -409,9 +433,9 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
           />
 
           <Input
-            label="Email"
+            label="Email *"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(t) => { setEmail(t); clearFieldError('email'); }}
             placeholder="e.g. priya@example.com"
             error={fieldErrors['email']}
             keyboardType="email-address"
@@ -420,13 +444,14 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
           />
 
           <Input
-            label="Phone Number"
+            label="Phone Number *"
             value={phoneNumber}
             onChangeText={(text) => {
               let digits = text.replace(/[^0-9]/g, '');
               if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
               if (digits.length > 0 && !/^[6-9]/.test(digits)) return;
               setPhoneNumber(digits.slice(0, 10));
+              clearFieldError('phoneNumber');
             }}
             prefix="+91"
             placeholder="9876543210"
@@ -439,9 +464,9 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
           />
 
           <Input
-            label={mode === 'create' ? 'Password' : 'New Password (optional)'}
+            label={mode === 'create' ? 'Password *' : 'New Password (optional)'}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(t) => { setPassword(t); clearFieldError('password'); }}
             placeholder={mode === 'create' ? 'Min 8 characters' : 'Leave blank to keep current'}
             error={fieldErrors['password']}
             secureTextEntry
@@ -458,13 +483,15 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
           </Text>
         </View>
         <View style={styles.formCard}>
-          <Text style={styles.pickerLabel}>Gender</Text>
+          <Text style={styles.pickerLabel}>
+            Gender <Text style={styles.requiredMark}>*</Text>
+          </Text>
           <View style={styles.chipRow}>
             {GENDER_OPTIONS.map((opt) => (
               <Pressable
                 key={opt.value}
                 style={[styles.chip, gender === opt.value && styles.chipActive]}
-                onPress={() => setGender(gender === opt.value ? '' : opt.value)}
+                onPress={() => { setGender(gender === opt.value ? '' : opt.value); clearFieldError('gender'); }}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: gender === opt.value }}
                 accessibilityLabel={`Gender: ${opt.label}`}
@@ -484,12 +511,16 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
               </Pressable>
             ))}
           </View>
+          {fieldErrors['gender'] ? (
+            <Text style={styles.fieldErrorText}>{fieldErrors['gender']}</Text>
+          ) : null}
 
           <DatePickerInput
-            label="Start Date"
+            label="Start Date *"
             value={startDate}
-            onChange={setStartDate}
+            onChange={(d) => { setStartDate(d); clearFieldError('startDate'); }}
             placeholder="Select start date"
+            error={fieldErrors['startDate']}
             testID="input-startDate"
           />
         </View>
@@ -503,7 +534,7 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
         </View>
         <View style={styles.formCard}>
           <Input
-            label="Address"
+            label="Address (optional)"
             value={address}
             onChangeText={setAddress}
             placeholder="Full address"
@@ -521,7 +552,7 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
         </View>
         <View style={styles.formCard}>
           <Input
-            label="Qualification"
+            label="Qualification (optional)"
             value={qualification}
             onChangeText={setQualification}
             placeholder="e.g. B.Ed, M.A."
@@ -530,9 +561,10 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
           />
 
           <Input
-            label="Position"
+            label="Position *"
             value={position}
-            onChangeText={setPosition}
+            onChangeText={(t) => { setPosition(t); clearFieldError('position'); }}
+            error={fieldErrors['position']}
             placeholder="e.g. Head Coach, Assistant"
             maxLength={100}
             testID="input-position"
@@ -548,22 +580,25 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
         </View>
         <View style={styles.formCard}>
           <Input
-            label="Salary Amount"
+            label="Salary Amount *"
             value={salaryAmount}
             onChangeText={handleSalaryAmountChange}
+            error={fieldErrors['salaryAmount']}
             placeholder="e.g. 25000"
             keyboardType="numeric"
             maxLength={10}
             testID="input-salaryAmount"
           />
 
-          <Text style={styles.pickerLabel}>Salary Frequency</Text>
+          <Text style={styles.pickerLabel}>
+            Salary Frequency <Text style={styles.requiredMark}>*</Text>
+          </Text>
           <View style={styles.chipRow}>
             {SALARY_FREQ_OPTIONS.map((opt) => (
               <Pressable
                 key={opt.value}
                 style={[styles.chip, salaryFrequency === opt.value && styles.chipActive]}
-                onPress={() => setSalaryFrequency(opt.value)}
+                onPress={() => { setSalaryFrequency(opt.value); clearFieldError('salaryFrequency'); }}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: salaryFrequency === opt.value }}
                 accessibilityLabel={`Salary frequency: ${opt.label}`}
@@ -585,6 +620,9 @@ function StaffFormBody({ mode, staff }: StaffFormBodyProps) {
               </Pressable>
             ))}
           </View>
+          {fieldErrors['salaryFrequency'] ? (
+            <Text style={styles.fieldErrorText}>{fieldErrors['salaryFrequency']}</Text>
+          ) : null}
         </View>
 
         <View style={styles.submitContainer}>
@@ -662,12 +700,26 @@ const makeStyles = (colors: Colors) =>
       ...shadows.sm,
     },
     pickerLabel: {
+      // Match Input component label style for consistency across the form.
+      // Previously this used textTransform:'uppercase' which made Gender /
+      // Start Date / Salary Frequency labels visually clash with the
+      // Title-Case Input labels (BUG-013).
       fontSize: fontSizes.sm,
       fontWeight: fontWeights.semibold,
       color: colors.textSecondary,
       marginBottom: 6,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.4,
+      letterSpacing: 0.2,
+    },
+    requiredMark: {
+      color: colors.danger,
+      fontWeight: fontWeights.bold,
+    },
+    fieldErrorText: {
+      fontSize: fontSizes.xs,
+      color: colors.danger,
+      marginTop: -spacing.sm,
+      marginBottom: spacing.sm,
+      fontWeight: fontWeights.medium,
     },
     chipRow: {
       flexDirection: 'row',

@@ -83,9 +83,9 @@ module.exports = {
     proxy: [
       {
         context: ['/api'],
-        target: 'https://academyflo.onrender.com',
+        target: 'http://localhost:3001',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
     ],
   },

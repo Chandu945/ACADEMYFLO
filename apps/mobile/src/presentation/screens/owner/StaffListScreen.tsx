@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -106,7 +106,15 @@ export function StaffListScreen() {
 
   const handleRowPress = useCallback(
     (staff: StaffListItem) => {
-      navigation.navigate('StaffForm', { mode: 'edit', staffUserId: staff.id, staff });
+      // On web: drop the staff object so it does not get serialized to
+      // "[object Object]" in the URL. The form fetches by staffUserId.
+      // On native: keep the object for instant render. See BUG-007/009.
+      navigation.navigate(
+        'StaffForm',
+        Platform.OS === 'web'
+          ? { mode: 'edit', staffUserId: staff.id }
+          : { mode: 'edit', staffUserId: staff.id, staff },
+      );
     },
     [navigation],
   );

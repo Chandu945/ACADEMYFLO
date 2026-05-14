@@ -199,6 +199,10 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
   const [today] = useState(() => new Date());
   const submittingGuardRef = useRef(false);
   const submittedRef = useRef(false);
+  // BUG-020: ref to the form's ScrollView so on validation failure we can
+  // jump back to the top — otherwise the first invalid field may be above
+  // the fold and the Save click looks like it did nothing.
+  const scrollRef = useRef<ScrollView>(null);
 
   // --- Refs for focus chain ---
   const fatherNameRef = useRef<TextInput>(null);
@@ -398,6 +402,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
       guardianName: f.guardianName,
       guardianMobile: f.guardianMobile ? normalizeToE164(f.guardianMobile.trim()) : '',
       guardianEmail: f.guardianEmail,
+      mobileNumber: f.mobileNumber ? normalizeToE164(f.mobileNumber.trim()) : '',
       joiningDate: f.joiningDate,
       monthlyFee: f.monthlyFee,
     };
@@ -405,13 +410,16 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
     const errors = validateStudentForm(fields, mode);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      // BUG-020: scroll back to top so the first inline error is visible.
+      // Without this, users submitting from the Save button at the bottom
+      // can't see what happened.
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
     setFieldErrors({});
 
     const data: CreateStudentRequest = {
       fullName: f.fullName.trim(),
-      dateOfBirth: f.dateOfBirth,
       gender: f.gender as Gender,
       // TODO: API should accept addressText directly instead of structured address.
       // These placeholder values are sent because the API requires structured fields
@@ -425,6 +433,12 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
       joiningDate: f.joiningDate,
       monthlyFee: Number(f.monthlyFee),
     };
+    // BUG-022: DOB is optional. The API's strict `YYYY-MM-DD` regex
+    // rejects `""`, so only include the field when the user actually
+    // picked a date.
+    if (f.dateOfBirth?.trim()) {
+      data.dateOfBirth = f.dateOfBirth;
+    }
 
     // Guardian — only include fields that have values; omit empty strings
     const guardianNameVal = f.guardianName.trim();
@@ -553,7 +567,21 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
         } else if (/email already exists/i.test(msg)) {
           setFieldErrors({ guardianEmail: msg });
         } else if (/phone.*already exists/i.test(msg)) {
-          setFieldErrors({ guardianMobile: msg });
+          // BUG-024: phone conflict can be on the student's own mobile or
+          // the guardian's. Map the error to whichever field is populated
+          // (or both) so the user actually sees the inline error. Fall
+          // through to serverError only when neither field is filled.
+          const studentMobileFilled = formRef.current.mobileNumber?.trim();
+          const guardianMobileFilled = formRef.current.guardianMobile?.trim();
+          const targetErrors: Record<string, string> = {};
+          if (studentMobileFilled) targetErrors['mobileNumber'] = msg;
+          if (guardianMobileFilled) targetErrors['guardianMobile'] = msg;
+          if (Object.keys(targetErrors).length === 0) {
+            setServerError(msg);
+          } else {
+            setFieldErrors(targetErrors);
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+          }
         } else {
           setServerError(msg);
         }
@@ -570,6 +598,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
       <ScrollView
+      ref={scrollRef}
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -592,7 +621,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
       <Text style={styles.sectionSubtitle}>Enter student personal details here.</Text>
 
       <Input
-        label="Student Name"
+        label="Student Name *"
         value={fullName}
         onChangeText={handleFullNameChange}
         error={fieldErrors['fullName']}
@@ -607,7 +636,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
 
       <Input
         ref={fatherNameRef}
-        label="Father Name"
+        label="Father Name (optional)"
         value={fatherName}
         onChangeText={handleFatherNameChange}
         error={fieldErrors['fatherName']}
@@ -620,7 +649,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
 
       <Input
         ref={motherNameRef}
-        label="Mother Name"
+        label="Mother Name (optional)"
         value={motherName}
         onChangeText={handleMotherNameChange}
         error={fieldErrors['motherName']}
@@ -632,7 +661,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
       />
 
       <DatePickerInput
-        label="Date of Birth"
+        label="Date of Birth *"
         value={dateOfBirth}
         onChange={handleDobChange}
         error={fieldErrors['dateOfBirth']}
@@ -641,7 +670,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
         testID="input-dateOfBirth"
       />
 
-      <Text style={styles.label}>Gender</Text>
+      <Text style={styles.label}>Gender *</Text>
       <View style={styles.genderRow}>
         {GENDER_OPTIONS.map((opt) => (
           <Pressable
@@ -678,6 +707,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
         label="Mobile Number (Optional)"
         value={mobileNumber}
         onChangeText={handleMobileChange}
+        error={fieldErrors['mobileNumber']}
         keyboardType="phone-pad"
         autoComplete="tel"
         textContentType="telephoneNumber"
@@ -720,7 +750,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
       <Text style={styles.sectionTitle} accessibilityRole="header">Enrollment</Text>
 
       <DatePickerInput
-        label="Joining Date"
+        label="Joining Date *"
         value={joiningDate}
         onChange={handleJoiningDateChange}
         error={fieldErrors['joiningDate']}
@@ -731,7 +761,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
       {showMonthlyFee && (
         <Input
           ref={monthlyFeeRef}
-          label="Monthly Fee"
+          label="Monthly Fee *"
           value={monthlyFee}
           onChangeText={handleMonthlyFeeChange}
           error={fieldErrors['monthlyFee']}

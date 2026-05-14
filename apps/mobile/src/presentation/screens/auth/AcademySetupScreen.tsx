@@ -89,7 +89,8 @@ export function AcademySetupScreen() {
   }, [clearFieldError, error]);
 
   const handlePincodeChange = useCallback((text: string) => {
-    setPincode(text);
+    const digitsOnly = text.replace(/\D/g, '').slice(0, 6);
+    setPincode(digitsOnly);
     clearFieldError('pincode');
     if (error) setError(null);
   }, [clearFieldError, error]);
@@ -104,9 +105,24 @@ export function AcademySetupScreen() {
     } else if (trimmedName.length < 2) {
       errors['academyName'] = 'Academy name must be at least 2 characters';
     }
-    if (!line1.trim()) errors['line1'] = 'Address line 1 is required';
-    if (!city.trim()) errors['city'] = 'City is required';
-    if (!stateName.trim()) errors['state'] = 'State is required';
+    const trimmedLine1 = line1.trim();
+    if (!trimmedLine1) {
+      errors['line1'] = 'Address line 1 is required';
+    } else if (trimmedLine1.length < 5) {
+      errors['line1'] = 'Address line 1 must be at least 5 characters';
+    }
+    const trimmedCity = city.trim();
+    if (!trimmedCity) {
+      errors['city'] = 'City is required';
+    } else if (trimmedCity.length < 2) {
+      errors['city'] = 'City must be at least 2 characters';
+    }
+    const trimmedState = stateName.trim();
+    if (!trimmedState) {
+      errors['state'] = 'State is required';
+    } else if (trimmedState.length < 2) {
+      errors['state'] = 'State must be at least 2 characters';
+    }
     const trimmedPincode = pincode.trim();
     if (!trimmedPincode) {
       errors['pincode'] = 'Pincode is required';
@@ -189,7 +205,17 @@ export function AcademySetupScreen() {
 
         {/* Form Card */}
         <View style={styles.card}>
-          {error ? <InlineError message={error} /> : null}
+          {error ? (
+            <InlineError
+              title="Couldn't set up your academy"
+              message={error}
+              onRetry={() => {
+                setError(null);
+                handleSetup();
+              }}
+              compact
+            />
+          ) : null}
 
           <View style={styles.sectionLabel}>
             <AppIcon name="school-outline" size={16} color={colors.textSecondary} />
