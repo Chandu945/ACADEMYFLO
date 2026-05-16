@@ -224,7 +224,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // token so the user isn't forced to re-login, and (b) re-evaluate
   // subscription so a mid-session flip (owner paid, admin deactivated, trial
   // expired) flows the user into the right navigation stack both directions.
+  //
+  // BUG-031: this is native-only. On web, AppState 'active' fires on every
+  // browser tab/window focus change (DevTools toggle, alt-tab, clicking back
+  // into the page) and each one triggers a /subscription/me round-trip — we
+  // observed 3 redundant calls in a normal QA session. The web build
+  // reloads on deploy and has no real "background" state to worry about, so
+  // skipping the listener entirely is safe.
   useEffect(() => {
+    if (APP_PLATFORM === 'web') return;
+
     const handleAppState = (nextState: AppStateStatus) => {
       if (nextState !== 'active') return;
       if (!mountedRef.current) return;

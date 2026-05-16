@@ -71,17 +71,17 @@ export class GenerateStudentReportUseCase {
       const doc = pdf.createDocument();
 
       // Header
-      doc.fontSize(18).font('Helvetica-Bold').text(academyName, { align: 'center' });
+      doc.fontSize(18).font('AppSans-Bold').text(academyName, { align: 'center' });
       doc.moveDown(0.3);
-      doc.fontSize(14).font('Helvetica').text('Student Report', { align: 'center' });
+      doc.fontSize(14).font('AppSans').text('Student Report', { align: 'center' });
       doc.moveDown(0.5);
       doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
       doc.moveDown(0.5);
 
       // Student Info
-      doc.fontSize(11).font('Helvetica-Bold').text('Student Information');
+      doc.fontSize(11).font('AppSans-Bold').text('Student Information');
       doc.moveDown(0.3);
-      doc.font('Helvetica').fontSize(10);
+      doc.font('AppSans').fontSize(10);
       const info = [
         ['Name', student.fullName],
         ['Guardian', student.guardian?.name ?? ''],
@@ -97,12 +97,12 @@ export class GenerateStudentReportUseCase {
       doc.moveDown(0.5);
 
       // Attendance Summary
-      doc.fontSize(11).font('Helvetica-Bold').text('Attendance Summary');
+      doc.fontSize(11).font('AppSans-Bold').text('Attendance Summary');
       doc.moveDown(0.3);
       if (attendanceByMonth.length === 0) {
-        doc.font('Helvetica').fontSize(10).text('No attendance records found for this period.');
+        doc.font('AppSans').fontSize(10).text('No attendance records found for this period.');
       } else {
-        doc.font('Helvetica').fontSize(10);
+        doc.font('AppSans').fontSize(10);
         // Table header
         const tableTop = doc.y;
         doc.text('Month', 50, tableTop, { width: 150 });
@@ -120,12 +120,12 @@ export class GenerateStudentReportUseCase {
       doc.moveDown(0.5);
 
       // Fee Summary
-      doc.fontSize(11).font('Helvetica-Bold').text('Fee Summary');
+      doc.fontSize(11).font('AppSans-Bold').text('Fee Summary');
       doc.moveDown(0.3);
       if (feeDues.length === 0) {
-        doc.font('Helvetica').fontSize(10).text('No fee records found for this period.');
+        doc.font('AppSans').fontSize(10).text('No fee records found for this period.');
       } else {
-        doc.font('Helvetica').fontSize(10);
+        doc.font('AppSans').fontSize(10);
         const feeTop = doc.y;
         doc.text('Month', 50, feeTop, { width: 100 });
         doc.text('Amount', 150, feeTop, { width: 100 });

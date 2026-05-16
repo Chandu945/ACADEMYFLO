@@ -119,8 +119,18 @@ export class MarkStudentAttendanceUseCase {
 
     // Confirm enrollment so a typo in batchId can't silently insert orphan rows.
     const studentBatches = await this.studentBatchRepo.findByStudentId(input.studentId);
-    if (!studentBatches.some((sb) => sb.batchId === input.batchId)) {
+    const enrollment = studentBatches.find((sb) => sb.batchId === input.batchId);
+    if (!enrollment) {
       return err(AttendanceErrors.studentNotInBatch());
+    }
+
+    // BUG-032: block writes for dates before the student's enrollment in
+    // this batch. The monthly summary computes "expected days" starting
+    // from `assignedAt`; allowing writes earlier than that produces orphan
+    // rows that never show up in any report.
+    const enrolledOn = formatLocalDate(enrollment.assignedAt);
+    if (input.date < enrolledOn) {
+      return err(AttendanceErrors.dateBeforeEnrollment(enrolledOn));
     }
 
     // Check holiday

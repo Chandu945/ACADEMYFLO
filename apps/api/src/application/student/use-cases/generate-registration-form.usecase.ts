@@ -42,18 +42,18 @@ export class GenerateRegistrationFormUseCase {
       const doc = pdf.createDocument();
 
       // Header
-      doc.fontSize(18).font('Helvetica-Bold').text(academyName, { align: 'center' });
+      doc.fontSize(18).font('AppSans-Bold').text(academyName, { align: 'center' });
       doc.moveDown(0.3);
-      doc.fontSize(14).font('Helvetica').text('Registration Form', { align: 'center' });
+      doc.fontSize(14).font('AppSans').text('Registration Form', { align: 'center' });
       doc.moveDown(0.5);
       doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
       doc.moveDown(0.5);
 
       const addSection = (title: string) => {
         doc.moveDown(0.3);
-        doc.fontSize(11).font('Helvetica-Bold').text(title);
+        doc.fontSize(11).font('AppSans-Bold').text(title);
         doc.moveDown(0.3);
-        doc.font('Helvetica').fontSize(10);
+        doc.font('AppSans').fontSize(10);
       };
 
       const addField = (label: string, value: string | null | undefined) => {

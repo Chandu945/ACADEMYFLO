@@ -56,6 +56,13 @@ export const AttendanceErrors = {
   batchNotInAcademy: () => AppError.forbidden('Batch does not belong to your academy'),
   batchNotFound: (id: string) => AppError.notFound('Batch', id),
   studentNotInBatch: () => AppError.validation('Student is not enrolled in this batch'),
+  // BUG-032: rejects attendance writes for dates strictly before the student
+  // was assigned to the batch, so the monthly summary (which expects rows
+  // only from the enrollment date forward) stays consistent with the write
+  // path. Without this guard, coaches could backfill attendance for past
+  // dates that the summary then silently ignored — orphan rows on disk.
+  dateBeforeEnrollment: (enrolledOn: string) =>
+    AppError.validation(`Student was not enrolled in this batch on this date (enrolled ${enrolledOn})`),
 } as const;
 
 export const FeeErrors = {
@@ -107,6 +114,13 @@ export const StaffAttendanceErrors = {
     AppError.conflict('Cannot mark staff attendance on a holiday. Remove the holiday first.'),
   markNotAllowed: () => AppError.forbidden('Only owners can mark staff attendance'),
   viewNotAllowed: () => AppError.forbidden('Only owners can view staff attendance'),
+  // BUG-037: rejects attendance writes for dates strictly before the staff
+  // member's startDate. Mirrors the per-batch enrollment guard for student
+  // attendance (BUG-032). Without this, monthly summaries silently expand
+  // back to the start of the month and report an incorrect attendance
+  // percentage for staff who joined mid-month.
+  dateBeforeStartDate: (startedOn: string) =>
+    AppError.validation(`Staff had not joined the academy on this date (started ${startedOn})`),
 } as const;
 
 export const AuthErrors = {

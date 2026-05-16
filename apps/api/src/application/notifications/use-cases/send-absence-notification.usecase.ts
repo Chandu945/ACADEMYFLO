@@ -75,13 +75,21 @@ export class SendAbsenceNotificationUseCase {
       return ok({ sent: false, reason: 'holiday_declared' });
     }
 
-    const presentRecord = await this.attendanceRepo.findByAcademyStudentBatchDate(
+    // BUG-033: must filter on status === 'PRESENT'. In the default-present
+    // model, both PRESENT and ABSENT are explicit rows on the unique
+    // (academyId, studentId, batchId, date) key. The ABSENT row that
+    // triggered the schedule still exists at fire time — treating any row
+    // as "now present" would short-circuit every dispatch with the wrong
+    // skip reason. The variable rename to `existingRecord` makes the
+    // intent of the row read explicit so future readers don't slide back
+    // into the old "row-exists-means-present" mental model.
+    const existingRecord = await this.attendanceRepo.findByAcademyStudentBatchDate(
       input.academyId,
       input.studentId,
       input.batchId,
       input.date,
     );
-    if (presentRecord) {
+    if (existingRecord && existingRecord.status === 'PRESENT') {
       // Coach toggled them back to PRESENT after the cancel was missed (or
       // raced). Defensive — the cancel should have removed the job, but
       // re-checking the DB is the source of truth.

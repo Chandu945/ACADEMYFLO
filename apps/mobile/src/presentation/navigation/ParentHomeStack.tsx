@@ -35,7 +35,12 @@ export function ParentHomeStack() {
       <Stack.Screen
         name="ChildrenList"
         component={ChildrenListScreen}
-        options={{ title: 'My Children' }}
+        // Title reflects the single-child default. When a parent has 2+
+        // children linked, ChildrenListScreen renders the list and the
+        // visible greeting block carries the context; the header title
+        // becomes a minor mismatch worth living with vs. plumbing child
+        // count into navigation options.
+        options={{ title: 'My Child' }}
       />
       <Stack.Screen
         name="ChildDetail"

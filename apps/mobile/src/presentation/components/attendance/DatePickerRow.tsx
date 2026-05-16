@@ -50,7 +50,7 @@ function DatePickerRowComponent({ date, onPrevious, onNext, onToday, isToday }: 
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
             />
-            <Text style={styles.todayChipText}>Today</Text>
+            <Text style={styles.todayChipText}>Jump to today</Text>
           </View>
         )}
       </Pressable>

@@ -6,13 +6,12 @@ import {
   Modal,
   ScrollView,
   TextInput,
-  Share,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import { crossAlert } from '../../utils/crossPlatformAlert';
+import { shareText, shareFile } from '../../utils/crossPlatformShare';
 import { AppIcon } from '../ui/AppIcon';
-import RNShare from 'react-native-share';
 import type { StudentListItem, StudentStatus } from '../../../domain/student/student.types';
 import * as studentApi from '../../../infra/student/student-api';
 import { getAccessToken, tryRefresh } from '../../../infra/http/api-client';
@@ -90,11 +89,7 @@ export function StudentActionMenu({
         setShowNoParentModal(true);
         return;
       }
-      try {
-        await Share.share({ message: result.value.shareText });
-      } catch {
-        // User cancelled share
-      }
+      await shareText({ message: result.value.shareText, title: 'Login Details' });
     } else {
       crossAlert('Error', result.error.message);
     }
@@ -132,13 +127,10 @@ export function StudentActionMenu({
                     {
                       text: 'Share',
                       onPress: async () => {
-                        try {
-                          await Share.share({
-                            message: `Login ID: ${parentEmail}\nPassword: ${tempPassword}`,
-                          });
-                        } catch {
-                          // User cancelled share
-                        }
+                        await shareText({
+                          message: `Login ID: ${parentEmail}\nPassword: ${tempPassword}`,
+                          title: 'Parent Login',
+                        });
                       },
                     },
                   ],
@@ -240,12 +232,12 @@ export function StudentActionMenu({
   }
 
   async function sharePdf(base64: string, filename: string, title: string) {
-    await RNShare.open({
+    await shareFile({
       url: `data:application/pdf;base64,${base64}`,
       filename,
-      type: 'application/pdf',
+      mimeType: 'application/pdf',
       title,
-    }).catch(() => {});
+    });
   }
 
   const actions: ActionItem[] = [

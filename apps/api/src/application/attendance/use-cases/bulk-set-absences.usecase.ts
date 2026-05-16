@@ -137,9 +137,21 @@ export class BulkSetAbsencesUseCase {
     const uniqueAbsent = [...new Set(input.absentStudentIds)];
     const enrollments = await this.studentBatchRepo.findByBatchId(input.batchId);
     const rosterIds = new Set(enrollments.map((e) => e.studentId));
+    // BUG-032: enrollment-date map for the per-batch start cutoff. Keyed by
+    // studentId so we can both (a) reject explicit absences for students
+    // who weren't yet enrolled on the target date and (b) filter the
+    // auto-fill PRESENT roster to mirror the monthly-summary logic.
+    const enrolledOnByStudent = new Map<string, string>();
+    for (const e of enrollments) {
+      enrolledOnByStudent.set(e.studentId, formatLocalDate(e.assignedAt));
+    }
     for (const sid of uniqueAbsent) {
       if (!rosterIds.has(sid)) {
         return err(AttendanceErrors.studentNotInBatch());
+      }
+      const enrolledOn = enrolledOnByStudent.get(sid)!;
+      if (input.date < enrolledOn) {
+        return err(AttendanceErrors.dateBeforeEnrollment(enrolledOn));
       }
     }
 
@@ -177,6 +189,18 @@ export class BulkSetAbsencesUseCase {
     const activeRosterIds = allRosterStudents
       .filter((s) => {
         if (s.isDeleted()) return false;
+        // BUG-026: must mirror the read-side joining-date filter in
+        // get-daily-attendance-view.usecase.ts. Without this, the auto-fill
+        // inserts PRESENT rows for students whose joiningDate is after the
+        // target date — the UI then hides them via the read filter but the
+        // orphan rows pollute reports and bulk-set diffs forever.
+        if (s.joiningDate && formatLocalDate(s.joiningDate) > input.date) return false;
+        // BUG-032: also drop students whose per-batch enrollment is later
+        // than the target date. The monthly summary keys "expected days"
+        // off `assignedAt`, so a PRESENT row inserted earlier than that
+        // would never be counted — an orphan write.
+        const enrolledOn = enrolledOnByStudent.get(s.id.toString());
+        if (enrolledOn && input.date < enrolledOn) return false;
         if (s.status === 'ACTIVE') return true;
         const statusChangedAt = s.statusChangedAt;
         return statusChangedAt !== null && input.date < formatLocalDate(statusChangedAt);
@@ -196,6 +220,7 @@ export class BulkSetAbsencesUseCase {
 
     // Wrap delete+create in a transaction so a mid-flight failure doesn't leave
     // the batch in a partial state.
+    let didChange = false;
     const bulkOps = async () => {
       // Delete present records for students no longer present.
       for (const record of currentPresent) {
@@ -206,6 +231,7 @@ export class BulkSetAbsencesUseCase {
             input.batchId,
             input.date,
           );
+          didChange = true;
         }
       }
 
@@ -221,24 +247,32 @@ export class BulkSetAbsencesUseCase {
             markedByUserId: input.actorUserId,
           });
           await this.attendanceRepo.save(record);
+          didChange = true;
         }
       }
     };
 
     await this.transaction.run(bulkOps);
 
-    await this.auditRecorder.record({
-      academyId,
-      actorUserId: input.actorUserId,
-      action: 'STUDENT_ATTENDANCE_EDITED',
-      entityType: 'STUDENT_ATTENDANCE',
-      entityId: input.batchId,
-      context: {
-        batchId: input.batchId,
-        date: input.date,
-        absentCount: String(uniqueAbsent.length),
-      },
-    });
+    // BUG-025: only audit when the call actually mutated state OR the caller
+    // declared at least one explicit absence. Without this guard, the mobile
+    // first-view auto-fill on an empty batch wrote an audit entry without
+    // touching any data, which permanently flipped `rollOpened` to true and
+    // caused students added later to default to ABSENT instead of PRESENT.
+    if (didChange || uniqueAbsent.length > 0) {
+      await this.auditRecorder.record({
+        academyId,
+        actorUserId: input.actorUserId,
+        action: 'STUDENT_ATTENDANCE_EDITED',
+        entityType: 'STUDENT_ATTENDANCE',
+        entityId: input.batchId,
+        context: {
+          batchId: input.batchId,
+          date: input.date,
+          absentCount: String(uniqueAbsent.length),
+        },
+      });
+    }
 
     // Compute scheduler work for parity with the per-tap path:
     //   Schedule a push for every student in the absent list. The per-tap

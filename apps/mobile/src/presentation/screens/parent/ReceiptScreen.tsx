@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { crossAlert } from '../../utils/crossPlatformAlert';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
-import Share from 'react-native-share';
+import { shareText } from '../../utils/crossPlatformShare';
 import { AppIcon } from '../../components/ui/AppIcon';
 import type { ReceiptInfo } from '../../../domain/parent/parent.types';
 import { getReceiptUseCase } from '../../../application/parent/use-cases/get-receipt.usecase';
@@ -140,15 +139,7 @@ export function ReceiptScreen() {
       '------------------------',
     );
     const message = lines.join('\n');
-
-    try {
-      await Share.open({ message, title: 'Payment Receipt' });
-    } catch (e: any) {
-      // User cancelled share - ignore
-      if (e?.message !== 'User did not share') {
-        crossAlert('Error', 'Could not share receipt. Please try again.');
-      }
-    }
+    await shareText({ message, title: 'Payment Receipt' });
   }, [receipt]);
 
   if (loading) {

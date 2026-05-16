@@ -15,7 +15,13 @@ export const ABSENCE_NOTIFY_QUEUE = 'absence-notifications';
 export type AbsenceNotificationJobData = AbsenceMark;
 
 function jobIdFor(mark: AbsenceMark): string {
-  return `absence:${mark.academyId}:${mark.studentId}:${mark.batchId}:${mark.date}`;
+  // BUG-034: BullMQ rejects custom job IDs containing ':' (it uses colons as
+  // a reserved separator in Redis keys, see Job.validateOptions). Every
+  // schedule() with the old colon-delimited shape was throwing, swallowed
+  // by the caller's try/catch, and silently dropped — the entire absence-
+  // notification feature was a no-op in production. Underscores are
+  // BullMQ-safe and keep the jobId deterministic for dedup.
+  return `absence_${mark.academyId}_${mark.studentId}_${mark.batchId}_${mark.date}`;
 }
 
 @Injectable()

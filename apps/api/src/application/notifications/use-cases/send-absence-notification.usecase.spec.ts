@@ -168,6 +168,7 @@ describe('SendAbsenceNotificationUseCase', () => {
         batchId: BATCH,
         date: DATE,
         markedByUserId: 'coach-1',
+        status: 'PRESENT',
       }),
     );
 
@@ -176,6 +177,33 @@ describe('SendAbsenceNotificationUseCase', () => {
     if (!result.ok) return;
     expect(result.value).toEqual({ sent: false, reason: 'now_present' });
     expect(pushService.sendToUsers).not.toHaveBeenCalled();
+  });
+
+  // BUG-033 regression guard: in the default-present model, ABSENT is stored
+  // as an explicit row on the same (academy, student, batch, date) key. The
+  // pre-fix code returned `now_present` for ANY row, so the dispatch never
+  // happened in production — the parent was never notified. This test
+  // locks in the intended behavior: when the row at fire time is ABSENT,
+  // dispatch must still proceed.
+  it('still dispatches when an explicit ABSENT row is present at fire time', async () => {
+    const { useCase, attendanceRepo, pushService } = makeUseCase();
+    attendanceRepo.findByAcademyStudentBatchDate.mockResolvedValue(
+      StudentAttendance.create({
+        id: 'a-2',
+        academyId: ACADEMY,
+        studentId: STUDENT,
+        batchId: BATCH,
+        date: DATE,
+        markedByUserId: 'coach-1',
+        status: 'ABSENT',
+      }),
+    );
+
+    const result = await useCase.execute(INPUT);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toEqual({ sent: true, parentCount: 1 });
+    expect(pushService.sendToUsers).toHaveBeenCalledTimes(1);
   });
 
   it('skips when there are no parent-student links', async () => {

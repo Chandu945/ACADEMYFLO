@@ -7,6 +7,7 @@ import type { StaffAttendanceRepository } from '@domain/staff-attendance/ports/s
 import type { HolidayRepository } from '@domain/attendance/ports/holiday.repository';
 import { canViewStaffAttendance } from '@domain/staff-attendance/rules/staff-attendance.rules';
 import { validateLocalDate } from '@domain/attendance/rules/attendance.rules';
+import { formatLocalDate } from '@shared/date-utils';
 import { StaffAttendanceErrors } from '../../common/errors';
 import type { DailyStaffAttendanceViewItem } from '../dtos/staff-attendance.dto';
 import type { UserRole } from '@academyflo/contracts';
@@ -65,12 +66,27 @@ export class GetDailyStaffAttendanceViewUseCase {
     // of 20 might surface only 14 ACTIVE staff because 6 INACTIVE got
     // filtered out after pagination) and asked for a separate active count.
     // Mirrors the list-staff M4 fix.
-    const { users: activeStaff, total: activeTotal } = await this.userRepo.listByAcademyAndRole(
+    const { users: activeStaffRaw, total: activeTotal } = await this.userRepo.listByAcademyAndRole(
       actor.academyId,
       'STAFF',
       input.page,
       input.pageSize,
       'ACTIVE',
+    );
+
+    // BUG-037: drop staff whose startDate is after the selected date — they
+    // hadn't joined yet, so the row should not be markable from the daily
+    // view. Mirrors the write-side guard in mark-staff-attendance and the
+    // per-batch joining filter for students (BUG-032 read-side).
+    // Known limitation: this filter runs AFTER repo pagination, so a page
+    // may surface fewer staff than `pageSize` when some of the paginated
+    // batch hadn't joined by the selected date. `totalItems` still reflects
+    // the unfiltered count. Pushing the cutoff into the repo query is the
+    // proper long-term fix (parallel to the H1 fix that did the same for
+    // ACTIVE status). For QA purposes the post-filter is acceptable;
+    // production with many mid-month-joining staff should follow up.
+    const activeStaff = activeStaffRaw.filter(
+      (s) => !s.startDate || formatLocalDate(s.startDate) <= input.date,
     );
 
     const staffIds = activeStaff.map((s) => s.id.toString());

@@ -105,6 +105,24 @@ export function ParentDashboardScreen() {
 
   const { children, payments } = data;
 
+  // The product reality today is one student per parent email, but the
+  // backend permits N children. We collapse the UX for the common case
+  // (singular labels, jump straight to ChildDetail) while still letting
+  // the list view appear automatically for a hypothetical sibling.
+  const isSingle = children.length === 1;
+  const onlyChild = isSingle ? children[0]! : null;
+
+  const goToChildren = useCallback(() => {
+    if (onlyChild) {
+      navigation.navigate('Children', {
+        screen: 'ChildDetail',
+        params: { studentId: onlyChild.studentId, fullName: onlyChild.fullName },
+      });
+    } else {
+      navigation.navigate('Children');
+    }
+  }, [navigation, onlyChild]);
+
   const avgAttendance = children.length > 0
     ? (() => {
         const withAttendance = children.filter((c) => c.currentMonthAttendancePercent != null);
@@ -177,7 +195,7 @@ export function ParentDashboardScreen() {
           <View style={styles.statsRow}>
             <TouchableOpacity
               style={styles.statCard}
-              onPress={() => navigation.navigate('Children')}
+              onPress={goToChildren}
               activeOpacity={0.7}
             >
               <View style={[styles.statIconCircle, { overflow: 'hidden' }]}>
@@ -190,7 +208,7 @@ export function ParentDashboardScreen() {
                 <AppIcon name="human-child" size={20} color="#FFFFFF" />
               </View>
               <Text style={styles.statValue}>{children.length}</Text>
-              <Text style={styles.statLabel}>Children</Text>
+              <Text style={styles.statLabel}>{isSingle ? 'Child' : 'Children'}</Text>
             </TouchableOpacity>
 
             <View style={styles.statCard}>
@@ -220,9 +238,9 @@ export function ParentDashboardScreen() {
             <View style={styles.quickActionsRow}>
               <TouchableOpacity
                 style={styles.quickAction}
-                onPress={() => navigation.navigate('Children')}
+                onPress={goToChildren}
                 activeOpacity={0.7}
-                accessibilityLabel="My Children"
+                accessibilityLabel={isSingle ? 'My Child' : 'My Children'}
                 accessibilityRole="button"
               >
                 <View style={[styles.quickActionIcon, { overflow: 'hidden' }]}>
@@ -234,7 +252,9 @@ export function ParentDashboardScreen() {
                   />
                   <AppIcon name="account-multiple-outline" size={20} color="#FFFFFF" />
                 </View>
-                <Text style={styles.quickActionLabel}>My{'\n'}Children</Text>
+                <Text style={styles.quickActionLabel}>
+                  My{'\n'}{isSingle ? 'Child' : 'Children'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -296,15 +316,17 @@ export function ParentDashboardScreen() {
                     minimumFontScale={0.85}
                     maxFontSizeMultiplier={1.2}
                   >
-                    My Children
+                    {isSingle ? 'My Child' : 'My Children'}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Children')}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={styles.viewAllLink}>View All</Text>
-                </TouchableOpacity>
+                {!isSingle && (
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('Children')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.viewAllLink}>View All</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {children.map((child, index) => {

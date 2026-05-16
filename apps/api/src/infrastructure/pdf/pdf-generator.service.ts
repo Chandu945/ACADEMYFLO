@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import { registerFonts } from './pdf-fonts';
 
 export interface PdfOptions {
   pageSize?: 'A4' | 'A5' | [number, number];
@@ -15,6 +16,10 @@ export class PdfGeneratorService {
       margin: options?.margin ?? 50,
       bufferPages: true,
     });
+    // Register the embedded NotoSans fonts and set regular as default so
+    // ₹ and other non-WinAnsi glyphs render correctly. Callers that need
+    // bold can switch with `.font('AppSans-Bold')`.
+    registerFonts(doc);
     return doc;
   }
 

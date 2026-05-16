@@ -27,6 +27,24 @@ type MenuItem = {
 
 type MenuSection = { title: string; items: MenuItem[] };
 
+/**
+ * Single "Help & Support" menu row that navigates to SupportScreen. The
+ * actual channels (email, call, WhatsApp) are listed on that screen — one
+ * entry here keeps the More tab uncluttered while the dedicated screen
+ * gives each channel breathing room.
+ */
+const SUPPORT_SECTION: MenuSection = {
+  title: 'Help & Support',
+  items: [
+    {
+      key: 'support',
+      icon: 'headset',
+      label: 'Contact Support',
+      screen: 'Support',
+    },
+  ],
+};
+
 const OWNER_SECTIONS: MenuSection[] = [
   {
     title: 'Manage',
@@ -99,8 +117,19 @@ const OWNER_SECTIONS: MenuSection[] = [
         label: 'Subscription',
         screen: 'Subscription',
       },
+      // BUG-040: explicit menu entry so owners can reach Change Password
+      // even without first noticing the profile card is tappable. The
+      // OwnerProfile screen also exposes the same destination — both paths
+      // are intentional, mirroring the system-settings convention.
+      {
+        key: 'change-password',
+        icon: 'key-outline',
+        label: 'Change Password',
+        screen: 'ChangePassword',
+      },
     ],
   },
+  SUPPORT_SECTION,
   {
     title: 'Account',
     items: [
@@ -217,44 +246,78 @@ export function MoreScreen() {
         </Text>
 
         {/* Profile Card */}
-        {user && (
-          <View style={styles.profileCard} testID="profile-card">
-            <View style={styles.profileAvatarWrap}>
-              <ProfilePhotoUploader
-                currentPhotoUrl={photoUrl}
-                uploadPath="/api/v1/profile/photo"
-                onPhotoUploaded={(url) => setPhotoUrl(url)}
-                size={56}
-                testID="profile-photo"
-                fallbackName={user.fullName}
-              />
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName} numberOfLines={1}>
-                {user.fullName}
-              </Text>
-              <View style={styles.profileRoleBadge}>
-                <LinearGradient
-                  colors={[gradient.start, gradient.end]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
+        {user && (() => {
+          // BUG-039: the profile card was a plain <View> with no tap handler,
+          // so owners had no way to reach their editable profile screen even
+          // though the backend supported it. Route owners to OwnerProfile,
+          // parents to ParentProfile, and skip the tap for STAFF (their
+          // profile editor doesn't exist yet — visual treatment also drops
+          // the chevron so the affordance is honest).
+          const profileScreen: keyof MoreStackParamList | null =
+            user.role === 'OWNER'
+              ? 'OwnerProfile'
+              : user.role === 'PARENT'
+                ? 'ParentProfile'
+                : null;
+
+          // ProfilePhotoUploader contains its own touch surface (tap to pick
+          // a new photo). Nesting it inside a TouchableOpacity that also
+          // navigates would steal those taps. We use a Pressable wrap on the
+          // *info* section only; the avatar stays an independent touch target.
+          const cardInner = (
+            <View style={styles.profileCard} testID="profile-card">
+              <View style={styles.profileAvatarWrap}>
+                <ProfilePhotoUploader
+                  currentPhotoUrl={photoUrl}
+                  uploadPath="/api/v1/profile/photo"
+                  onPhotoUploaded={(url) => setPhotoUrl(url)}
+                  size={56}
+                  testID="profile-photo"
+                  fallbackName={user.fullName}
                 />
-                <Text style={styles.profileRoleBadgeText}>{user.role}</Text>
               </View>
-              <View style={styles.profileContactRow}>
-                <AppIcon name="email-outline" size={14} color={colors.textSecondary} />
-                <Text style={styles.profileContactText} numberOfLines={1}>
-                  {user.email}
+              <TouchableOpacity
+                style={styles.profileInfo}
+                onPress={() => profileScreen && navigation.navigate(profileScreen)}
+                disabled={!profileScreen}
+                activeOpacity={profileScreen ? 0.7 : 1}
+                accessibilityRole={profileScreen ? 'button' : undefined}
+                accessibilityLabel={profileScreen ? 'Edit profile' : undefined}
+                testID="profile-card-tap"
+              >
+                <Text style={styles.profileName} numberOfLines={1}>
+                  {user.fullName}
                 </Text>
-              </View>
-              <View style={styles.profileContactRow}>
-                <AppIcon name="phone-outline" size={14} color={colors.textSecondary} />
-                <Text style={styles.profileContactText}>{user.phoneNumber}</Text>
-              </View>
+                <View style={styles.profileRoleBadge}>
+                  <LinearGradient
+                    colors={[gradient.start, gradient.end]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <Text style={styles.profileRoleBadgeText}>{user.role}</Text>
+                </View>
+                <View style={styles.profileContactRow}>
+                  <AppIcon name="email-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.profileContactText} numberOfLines={1}>
+                    {user.email}
+                  </Text>
+                </View>
+                <View style={styles.profileContactRow}>
+                  <AppIcon name="phone-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.profileContactText}>{user.phoneNumber}</Text>
+                </View>
+              </TouchableOpacity>
+              {profileScreen && (
+                <View style={styles.profileChevron}>
+                  <AppIcon name="chevron-right" size={20} color={colors.textDisabled} />
+                </View>
+              )}
             </View>
-          </View>
-        )}
+          );
+
+          return cardInner;
+        })()}
 
         {sections.map((section) => (
           <View key={section.title} style={styles.section}>
@@ -264,7 +327,7 @@ export function MoreScreen() {
                 <TouchableOpacity
                   key={item.key}
                   style={[styles.menuItem, idx < section.items.length - 1 && styles.menuItemBorder]}
-                  onPress={() => navigation.navigate(item.screen as any)}
+                  onPress={() => navigation.navigate(item.screen as keyof MoreStackParamList)}
                   accessibilityLabel={item.label}
                   accessibilityRole="link"
                   testID={`menu-${item.key}`}
@@ -411,6 +474,13 @@ const makeStyles = (colors: Colors) =>
       fontSize: fontSizes.sm,
       color: colors.textSecondary,
       flex: 1,
+    },
+    // BUG-039: chevron rendered only when the card is tappable (owner/parent).
+    // For roles without a profile screen we hide it so the affordance matches
+    // the actual behavior — no chevron, no implied "tap me".
+    profileChevron: {
+      paddingLeft: spacing.sm,
+      alignSelf: 'center',
     },
     section: {
       marginBottom: spacing.lg,

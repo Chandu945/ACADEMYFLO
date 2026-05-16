@@ -16,6 +16,13 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
   ) {}
 
   async save(record: StudentAttendance): Promise<void> {
+    // BUG-027: split _id into $setOnInsert so an upsert that matches an
+    // existing row (e.g. bulk-set crossing a row that's already ABSENT)
+    // doesn't try to overwrite the immutable _id. Previously the inline
+    // `_id: record.id.toString()` on the update body crashed with
+    // "Performing an update on the path '_id' would modify the immutable
+    // field '_id'" whenever the caller passed a fresh UUID for what was
+    // actually an update.
     await this.model.findOneAndUpdate(
       {
         academyId: record.academyId,
@@ -24,18 +31,22 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
         date: record.date,
       },
       {
-        _id: record.id.toString(),
-        academyId: record.academyId,
-        studentId: record.studentId,
-        batchId: record.batchId,
-        date: record.date,
-        markedByUserId: record.markedByUserId,
-        // Default-present model: persist status explicitly. Upsert means a
-        // toggle (PRESENT → ABSENT → PRESENT) overwrites the prior status on
-        // the same (academy, student, batch, date) row rather than creating
-        // duplicate rows or relying on delete-to-mean-absent.
-        status: record.status,
-        version: record.audit.version,
+        $setOnInsert: {
+          _id: record.id.toString(),
+        },
+        $set: {
+          academyId: record.academyId,
+          studentId: record.studentId,
+          batchId: record.batchId,
+          date: record.date,
+          markedByUserId: record.markedByUserId,
+          // Default-present model: persist status explicitly. Upsert means a
+          // toggle (PRESENT → ABSENT → PRESENT) overwrites the prior status
+          // on the same (academy, student, batch, date) row rather than
+          // creating duplicate rows or relying on delete-to-mean-absent.
+          status: record.status,
+          version: record.audit.version,
+        },
       },
       { upsert: true, session: getTransactionSession() },
     );

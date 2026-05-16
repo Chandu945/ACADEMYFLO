@@ -96,6 +96,11 @@ export const monthDailyCountDaySchema = z.object({
   date: z.string(),
   absentCount: z.number().int(),
   isHoliday: z.boolean(),
+  // BUG-038: per-day count of active students who had joined by that date.
+  // Default to 0 for backward-compat with API responses from older
+  // deployments that don't yet include this field — the widget falls back
+  // to the top-level totalStudents in that case (see AttendanceSummaryWidget).
+  expectedCount: z.number().int().default(0),
 });
 
 export const monthDailyCountsResponseSchema = z.object({

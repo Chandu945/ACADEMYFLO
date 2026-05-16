@@ -55,11 +55,28 @@ export class GetMonthDailyCountsUseCase {
     // a panic-grade view even though attendance simply hadn't been recorded
     // yet. The new contract: absent = number of distinct students with an
     // explicit ABSENT record that day. Unmarked = implicitly present.
-    const [totalStudents, absentRecords, holidays] = await Promise.all([
-      this.studentRepo.countActiveByAcademy(academyId),
+    //
+    // BUG-038: must compute the "expected" count per day from active students
+    // who had joined by that date — using a single countActive snapshot
+    // overcounts Present on days before a student joined (mirror of
+    // BUG-026/032 read-side joining-date filter).
+    const [activeStudents, absentRecords, holidays] = await Promise.all([
+      this.studentRepo.listActiveByAcademy(academyId),
       this.attendanceRepo.findAbsentByAcademyAndMonth(academyId, input.month),
       this.holidayRepo.findByAcademyAndMonth(academyId, input.month),
     ]);
+
+    // Sort joining keys ascending so we can sweep through the month and
+    // increment a running count without re-scanning the student list per day.
+    const joiningKeys = activeStudents
+      .map((s) => {
+        const jd = s.joiningDate;
+        const y = jd.getUTCFullYear();
+        const m = String(jd.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(jd.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      })
+      .sort();
 
     // Distinct-student set per date — a student absent in two batches on the
     // same day must count once toward "students absent today".
@@ -79,20 +96,32 @@ export class GetMonthDailyCountsUseCase {
     // chart renders the holiday flag without a misleading red bar (the
     // pre-existing isHoliday consumer already handles the gray bucket).
     const days: MonthDailyCountDay[] = [];
+    let joinIdx = 0;
+    let expectedCount = 0;
     for (let d = 1; d <= totalDaysInMonth; d++) {
       const dateStr = `${input.month}-${String(d).padStart(2, '0')}`;
+      // Advance the joining-date sweep: any student whose joining key is
+      // <= today's date contributes to the expected count from this day on.
+      while (joinIdx < joiningKeys.length && joiningKeys[joinIdx]! <= dateStr) {
+        expectedCount++;
+        joinIdx++;
+      }
       const isHoliday = holidaySet.has(dateStr);
       const absentCountForDay = isHoliday ? 0 : (absentByDate.get(dateStr)?.size ?? 0);
       days.push({
         date: dateStr,
         absentCount: absentCountForDay,
         isHoliday,
+        expectedCount,
       });
     }
 
     return ok({
       month: input.month,
-      totalStudents,
+      // Top-level totalStudents kept for backward-compat with any consumer
+      // that still reads it. The per-day `expectedCount` is the canonical
+      // source of truth for the chart math now.
+      totalStudents: activeStudents.length,
       days,
     });
   }

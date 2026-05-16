@@ -10,6 +10,8 @@ import { ExpensesHomeScreen } from '../screens/expenses/ExpensesHomeScreen';
 import { ExpenseFormScreen } from '../screens/expenses/ExpenseFormScreen';
 import { ParentProfileScreen } from '../screens/parent/ParentProfileScreen';
 import { ChangePasswordScreen } from '../screens/parent/ChangePasswordScreen';
+import { OwnerProfileScreen } from '../screens/settings/OwnerProfileScreen';
+import { SupportScreen } from '../screens/settings/SupportScreen';
 import { AcademyInfoScreen } from '../screens/parent/AcademyInfoScreen';
 import { PaymentHistoryScreen } from '../screens/parent/PaymentHistoryScreen';
 import { InstituteInfoScreen } from '../screens/settings/InstituteInfoScreen';
@@ -67,6 +69,8 @@ export type MoreStackParamList = {
   AuditLogs: undefined;
   Subscription: undefined;
   ParentProfile: undefined;
+  OwnerProfile: undefined;
+  Support: undefined;
   ChangePassword: undefined;
   AcademyInfo: undefined;
   PaymentHistory: undefined;
@@ -309,12 +313,38 @@ export function MoreStack() {
         })}
       />
       <Stack.Screen
+        name="OwnerProfile"
+        component={OwnerProfileScreen}
+        options={({ navigation }) => ({
+          title: 'My Profile',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="Support"
+        component={SupportScreen}
+        options={({ navigation }) => ({
+          title: 'Help & Support',
+          headerLeft: () => (
+            <HeaderBackButton onPress={() => navigation.navigate('MoreHome')} />
+          ),
+        })}
+      />
+      <Stack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}
         options={({ navigation }) => ({
           title: 'Change Password',
+          // BUG-040: back-button uses goBack() so the screen returns to whichever
+          // caller pushed it — could be ParentProfile, OwnerProfile, or MoreHome
+          // (via the SETTINGS menu item). Hardcoding to ParentProfile broke the
+          // owner flow once ChangePassword became role-shared.
           headerLeft: () => (
-            <HeaderBackButton onPress={() => navigation.navigate('ParentProfile')} />
+            <HeaderBackButton
+              onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('MoreHome'))}
+            />
           ),
         })}
       />

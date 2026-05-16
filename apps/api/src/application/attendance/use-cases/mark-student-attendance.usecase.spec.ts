@@ -62,11 +62,18 @@ function createEnrollment(
   batchId = 'batch-1',
   academyId = 'academy-1',
 ): StudentBatch {
-  return StudentBatch.create({
-    id: `${studentId}_${batchId}`,
+  // BUG-032: production enrollments are normally weeks/months in the past
+  // by the time anyone marks attendance. The default `StudentBatch.create()`
+  // stamps assignedAt = now(), which would make every backfill-date test
+  // trip the enrollment-date guard. reconstitute() lets us drop the stamp
+  // a year back so the fixture mirrors realistic data.
+  const yearAgo = new Date();
+  yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+  return StudentBatch.reconstitute(`${studentId}_${batchId}`, {
     studentId,
     batchId,
     academyId,
+    assignedAt: yearAgo,
   });
 }
 

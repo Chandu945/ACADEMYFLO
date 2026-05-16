@@ -19,7 +19,7 @@ export function HolidayBanner({ isOwner, onRemoveHoliday, removing }: HolidayBan
       <View style={styles.iconRow}>
         <AppIcon name="party-popper" size={24} color={colors.warningAccent} />
       </View>
-      <Text style={styles.title}>Holiday Today</Text>
+      <Text style={styles.title}>Holiday</Text>
       <Text style={styles.subtitle}>Attendance is not required for this day</Text>
       {isOwner && onRemoveHoliday && (
         <TouchableOpacity

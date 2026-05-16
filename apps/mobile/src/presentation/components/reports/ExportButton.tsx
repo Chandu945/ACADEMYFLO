@@ -96,38 +96,47 @@ export function ExportButton({ onExport, testID }: ExportButtonProps) {
   }
 
   if (state === 'success' && result) {
+    // Open + Share don't have meaningful semantics on web: the export
+    // path triggers an `<a download>` and revokes the blob URL, so
+    // there's no live file handle to re-open or share. The browser has
+    // already saved the PDF to the user's Downloads — surface only Done.
+    const isWeb = Platform.OS === 'web';
     return (
       <View style={styles.container} testID={testID}>
         <Text style={styles.successText} testID={`${testID}-success`}>
           PDF saved ({Math.round(result.sizeBytes / 1024)} KB)
         </Text>
         <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={handleOpen}
-            testID={`${testID}-open`}
-          >
-            <LinearGradient
-              colors={[gradient.start, gradient.end]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={styles.actionText}>Open</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={handleShare}
-            testID={`${testID}-share`}
-          >
-            <LinearGradient
-              colors={[gradient.start, gradient.end]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={styles.actionText}>Share</Text>
-          </TouchableOpacity>
+          {!isWeb && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleOpen}
+              testID={`${testID}-open`}
+            >
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.actionText}>Open</Text>
+            </TouchableOpacity>
+          )}
+          {!isWeb && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleShare}
+              testID={`${testID}-share`}
+            >
+              <LinearGradient
+                colors={[gradient.start, gradient.end]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.actionText}>Share</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.actionBtnSecondary}
             onPress={handleRetry}

@@ -61,6 +61,13 @@ export interface MonthDailyCountDay {
   date: string;
   absentCount: number;
   isHoliday: boolean;
+  /**
+   * BUG-038: per-day count of active students who had joined the academy by
+   * this date. The dashboard chart computes presentCount = expectedCount -
+   * absentCount per day; using a single top-level totalStudents would
+   * overcount Present for days before a student joined.
+   */
+  expectedCount: number;
 }
 
 export interface MonthDailyCountsDto {

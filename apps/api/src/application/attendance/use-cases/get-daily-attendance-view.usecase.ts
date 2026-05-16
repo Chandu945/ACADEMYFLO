@@ -92,7 +92,15 @@ export class GetDailyAttendanceViewUseCase {
 
       // Filter by batch: get student IDs in batch, then fetch ACTIVE students
       const batchAssignments = await this.studentBatchRepo.findByBatchId(input.batchId);
-      const studentIds = batchAssignments.map((a) => a.studentId);
+      // BUG-032: the read-side must mirror the write-side enrollment-date
+      // cutoff (mark-student-attendance + bulk-set-absences) so a coach
+      // never sees a row they can't mark. Without this, students assigned
+      // to the batch AFTER the target date would still appear in the
+      // roster but every toggle attempt would fail with "not enrolled on
+      // this date".
+      const studentIds = batchAssignments
+        .filter((a) => formatLocalDate(a.assignedAt) <= input.date)
+        .map((a) => a.studentId);
 
       if (studentIds.length === 0) {
         return ok({

@@ -8,6 +8,8 @@ import { Input } from '../../components/ui/Input';
 import { useUnsavedChangesWarning } from '../../hooks/useUnsavedChangesWarning';
 import { changePasswordUseCase } from '../../../application/parent/use-cases/change-password.usecase';
 import { parentApi } from '../../../infra/parent/parent-api';
+import { profileApi } from '../../../infra/profile/profile-api';
+import { useAuth } from '../../context/AuthContext';
 import LinearGradient from 'react-native-linear-gradient';
 import { spacing, fontSizes, fontWeights, radius, shadows, gradient } from '../../theme';
 import type { Colors } from '../../theme';
@@ -17,6 +19,7 @@ export function ChangePasswordScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const navigation = useNavigation();
+  const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,10 +48,26 @@ export function ChangePasswordScreen() {
 
     setSaving(true);
     try {
-      const result = await changePasswordUseCase(
-        { currentPassword, newPassword },
-        { parentApi },
-      );
+      // BUG-040: route the password change to the role-appropriate endpoint.
+      // Parent uses /api/v1/parent/change-password (legacy, kept for
+      // existing parent flow); everyone else (OWNER, STAFF) uses the generic
+      // /api/v1/profile/password which the profile controller resolves via
+      // the authenticated user's id. The use-case keeps a single API
+      // surface so the screen doesn't need to know about the role beyond
+      // selecting the port.
+      const result =
+        user?.role === 'PARENT'
+          ? await changePasswordUseCase(
+              { currentPassword, newPassword },
+              { parentApi },
+            )
+          : await changePasswordUseCase(
+              { currentPassword, newPassword },
+              // Adapter: profileApi.changeMyPassword has the same shape as
+              // parentApi.changePassword (`(req) => Result<void, AppError>`),
+              // so we plug it into the existing use-case via the same port.
+              { parentApi: { changePassword: profileApi.changeMyPassword } },
+            );
 
       if (result.ok) {
         submittedRef.current = true;

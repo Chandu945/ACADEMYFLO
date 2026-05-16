@@ -12,8 +12,17 @@ import {
   getTodayLocalDate,
 } from '@domain/attendance/value-objects/local-date.vo';
 import { StaffAttendanceErrors } from '../../common/errors';
+import { formatLocalDate } from '@shared/date-utils';
 import type { MonthlyStaffAttendanceSummaryItem } from '../dtos/staff-attendance.dto';
 import type { UserRole } from '@academyflo/contracts';
+
+/** Inclusive day count between two YYYY-MM-DD keys. Returns 0 if a > b. */
+function daysBetweenLocalKeys(a: string, b: string): number {
+  if (a > b) return 0;
+  const aDate = new Date(a + 'T00:00:00Z');
+  const bDate = new Date(b + 'T00:00:00Z');
+  return Math.floor((bDate.getTime() - aDate.getTime()) / 86_400_000) + 1;
+}
 
 export interface GetMonthlyStaffAttendanceSummaryInput {
   actorUserId: string;
@@ -81,8 +90,14 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
     // shrink past absences.
     const today = getTodayLocalDate();
     const elapsedDays = daysElapsedInMonth(input.month);
-    const holidayCount = holidays.filter((h) => h.date <= today).length;
-    const holidayDateSet = new Set(holidays.filter((h) => h.date <= today).map((h) => h.date));
+    const monthStart = `${input.month}-01`;
+    // Effective end of the window we're scoring against, expressed as a
+    // YYYY-MM-DD key. We cap at the elapsed day so future days don't show
+    // up as absences. Past months: elapsedDays = full month, so end = month
+    // end. Current month: end = today.
+    const elapsedEnd = `${input.month}-${String(elapsedDays).padStart(2, '0')}`;
+    const elapsedHolidayDates = holidays.filter((h) => h.date <= today).map((h) => h.date);
+    const elapsedHolidaySet = new Set(elapsedHolidayDates);
 
     // Build present dates per staff (to compute overlap with holidays)
     const presentDatesMap = new Map<string, string[]>();
@@ -93,16 +108,47 @@ export class GetMonthlyStaffAttendanceSummaryUseCase {
     }
 
     const data: MonthlyStaffAttendanceSummaryItem[] = staffUsers.map((s) => {
+      // BUG-037: clamp the scoring window to the staff member's startDate
+      // when they joined mid-month. Without this clamp, a staff who joined
+      // on the 15th gets scored from the 1st and looks "absent" for the
+      // first half of the month. Mirrors the per-batch enrollment clamp
+      // for students (BUG-032 / get-monthly-attendance-summary).
+      const staffStartKey = s.startDate ? formatLocalDate(s.startDate) : monthStart;
+      const effectiveStart = staffStartKey > monthStart ? staffStartKey : monthStart;
       const presentDatesForStaff = presentDatesMap.get(s.id.toString()) ?? [];
-      const presentCount = presentDatesForStaff.length;
-      const overlapCount = presentDatesForStaff.filter((d) => holidayDateSet.has(d)).length;
-      const absentCount = Math.max(0, elapsedDays - presentCount - holidayCount + overlapCount);
+
+      if (effectiveStart > elapsedEnd) {
+        // Staff hadn't joined yet within the elapsed window. Score as
+        // zero across the board so the row stays in the list but doesn't
+        // distort their absence percentage.
+        return {
+          staffUserId: s.id.toString(),
+          fullName: s.fullName,
+          presentCount: 0,
+          absentCount: 0,
+          holidayCount: 0,
+        };
+      }
+
+      const windowCalendarDays = daysBetweenLocalKeys(effectiveStart, elapsedEnd);
+      const windowHolidayCount = elapsedHolidayDates.filter(
+        (d) => d >= effectiveStart && d <= elapsedEnd,
+      ).length;
+      const presentInWindow = presentDatesForStaff.filter(
+        (d) => d >= effectiveStart && d <= elapsedEnd,
+      );
+      const presentCount = presentInWindow.length;
+      const overlapCount = presentInWindow.filter((d) => elapsedHolidaySet.has(d)).length;
+      const absentCount = Math.max(
+        0,
+        windowCalendarDays - presentCount - windowHolidayCount + overlapCount,
+      );
       return {
         staffUserId: s.id.toString(),
         fullName: s.fullName,
         presentCount,
         absentCount,
-        holidayCount,
+        holidayCount: windowHolidayCount,
       };
     });
 

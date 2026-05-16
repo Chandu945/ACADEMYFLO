@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -41,10 +41,10 @@ export function PendingDeletionBanner() {
     if (result.ok) setPending(result.value);
   }, [isOwner]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
+  // BUG-030: useFocusEffect already covers the initial-mount case (it fires
+  // once on first focus, which is the same moment a useEffect on [] would
+  // have fired) plus every subsequent refocus. The separate useEffect was
+  // duplicating the fetch on every render of this banner.
   useFocusEffect(
     useCallback(() => {
       void refresh();

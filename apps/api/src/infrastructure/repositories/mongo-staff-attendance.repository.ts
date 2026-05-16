@@ -16,6 +16,12 @@ export class MongoStaffAttendanceRepository implements StaffAttendanceRepository
   ) {}
 
   async save(record: StaffAttendance): Promise<void> {
+    // BUG-035: split _id into $setOnInsert so an upsert that matches an
+    // existing row (e.g. concurrent PRESENT marks from two owners on
+    // different devices) doesn't try to overwrite the immutable _id. The
+    // sibling fix for student attendance is BUG-027. Without this, the
+    // race surfaces as a 500 to one of the callers — the use case's
+    // 11000-only catch doesn't cover the "_id immutable" error path.
     await this.model.findOneAndUpdate(
       {
         academyId: record.academyId,
@@ -23,12 +29,16 @@ export class MongoStaffAttendanceRepository implements StaffAttendanceRepository
         date: record.date,
       },
       {
-        _id: record.id.toString(),
-        academyId: record.academyId,
-        staffUserId: record.staffUserId,
-        date: record.date,
-        markedByUserId: record.markedByUserId,
-        version: record.audit.version,
+        $setOnInsert: {
+          _id: record.id.toString(),
+        },
+        $set: {
+          academyId: record.academyId,
+          staffUserId: record.staffUserId,
+          date: record.date,
+          markedByUserId: record.markedByUserId,
+          version: record.audit.version,
+        },
       },
       { upsert: true, session: getTransactionSession() },
     );

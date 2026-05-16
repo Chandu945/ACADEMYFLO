@@ -7,6 +7,7 @@ import type {
 } from '@application/reports/ports/pdf-renderer.port';
 import type { MonthlyRevenueSummaryDto } from '@application/reports/dtos/monthly-revenue.dto';
 import type { StudentWiseDueItemDto } from '@application/reports/dtos/student-wise-dues.dto';
+import { registerFonts, FONT_NAME, FONT_NAME_BOLD } from '../pdf/pdf-fonts';
 
 function formatMonth(month: string): string {
   const [y, m] = month.split('-').map(Number);
@@ -29,6 +30,7 @@ function formatLocalDate(d: string): string {
 export class PdfkitRenderer implements PdfRenderer {
   async renderMonthlyRevenue(month: string, data: MonthlyRevenueSummaryDto): Promise<Buffer> {
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    registerFonts(doc);
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
 
@@ -46,7 +48,7 @@ export class PdfkitRenderer implements PdfRenderer {
     let y = doc.y;
     doc
       .fontSize(9)
-      .font('Helvetica-Bold')
+      .font(FONT_NAME_BOLD)
       .text('Receipt #', startX, y, { width: 90 })
       .text('Student ID', startX + 90, y, { width: 100 })
       .text('Month', startX + 190, y, { width: 70 })
@@ -61,7 +63,7 @@ export class PdfkitRenderer implements PdfRenderer {
     y += 6;
 
     // Rows
-    doc.font('Helvetica').fontSize(8);
+    doc.font(FONT_NAME).fontSize(8);
     for (const tx of data.transactions) {
       if (y > 760) {
         doc.addPage();
@@ -86,6 +88,7 @@ export class PdfkitRenderer implements PdfRenderer {
 
   async renderPendingDues(month: string, items: StudentWiseDueItemDto[]): Promise<Buffer> {
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    registerFonts(doc);
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
 
@@ -104,7 +107,7 @@ export class PdfkitRenderer implements PdfRenderer {
     let y = doc.y;
     doc
       .fontSize(9)
-      .font('Helvetica-Bold')
+      .font(FONT_NAME_BOLD)
       .text('Student Name', startX, y, { width: 150 })
       .text('Month', startX + 150, y, { width: 70 })
       .text('Amount', startX + 220, y, { width: 80, align: 'right' })
@@ -119,7 +122,7 @@ export class PdfkitRenderer implements PdfRenderer {
     y += 6;
 
     // Rows
-    doc.font('Helvetica').fontSize(8);
+    doc.font(FONT_NAME).fontSize(8);
     for (const item of items) {
       if (y > 760) {
         doc.addPage();
@@ -146,6 +149,7 @@ export class PdfkitRenderer implements PdfRenderer {
     input: StudentMonthlyAttendancePdfInput,
   ): Promise<Buffer> {
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    registerFonts(doc);
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
 
@@ -155,9 +159,9 @@ export class PdfkitRenderer implements PdfRenderer {
         : null;
 
     // Header
-    doc.fontSize(20).font('Helvetica-Bold').text('Attendance Report', { align: 'center' });
+    doc.fontSize(20).font(FONT_NAME_BOLD).text('Attendance Report', { align: 'center' });
     doc.moveDown(0.3);
-    doc.fontSize(14).font('Helvetica').text(input.studentName, { align: 'center' });
+    doc.fontSize(14).font(FONT_NAME).text(input.studentName, { align: 'center' });
     doc.fontSize(11).fillColor('#666').text(formatMonth(input.month), { align: 'center' });
     doc.fillColor('black');
     doc.moveDown(1);
@@ -173,11 +177,11 @@ export class PdfkitRenderer implements PdfRenderer {
 
     doc
       .fontSize(28)
-      .font('Helvetica-Bold')
+      .font(FONT_NAME_BOLD)
       .text(pct == null ? '—' : `${pct}%`, startX + 20, boxY + 15, { width: 100 });
     doc
       .fontSize(10)
-      .font('Helvetica')
+      .font(FONT_NAME)
       .fillColor('#666')
       .text('Attendance', startX + 20, boxY + 50);
     doc.fillColor('black');
@@ -194,11 +198,11 @@ export class PdfkitRenderer implements PdfRenderer {
     for (const stat of statCols) {
       doc
         .fontSize(18)
-        .font('Helvetica-Bold')
+        .font(FONT_NAME_BOLD)
         .text(String(stat.value), stat.x, statY, { width: 60, align: 'center' });
       doc
         .fontSize(8)
-        .font('Helvetica')
+        .font(FONT_NAME)
         .fillColor('#666')
         .text(stat.label.toUpperCase(), stat.x, statY + 28, { width: 60, align: 'center' });
       doc.fillColor('black');
@@ -208,12 +212,12 @@ export class PdfkitRenderer implements PdfRenderer {
 
     // Per-batch breakdown
     if (input.perBatch.length > 0) {
-      doc.fontSize(13).font('Helvetica-Bold').text('By Batch', startX);
+      doc.fontSize(13).font(FONT_NAME_BOLD).text('By Batch', startX);
       doc.moveDown(0.5);
       let by = doc.y;
       doc
         .fontSize(9)
-        .font('Helvetica-Bold')
+        .font(FONT_NAME_BOLD)
         .text('Batch', startX, by, { width: 220 })
         .text('Sessions', startX + 220, by, { width: 90, align: 'right' })
         .text('Attended', startX + 310, by, { width: 90, align: 'right' })
@@ -223,7 +227,7 @@ export class PdfkitRenderer implements PdfRenderer {
       doc.strokeColor('black');
       by += 6;
 
-      doc.font('Helvetica').fontSize(9);
+      doc.font(FONT_NAME).fontSize(9);
       for (const b of input.perBatch) {
         if (by > 760) {
           doc.addPage();
@@ -244,9 +248,9 @@ export class PdfkitRenderer implements PdfRenderer {
     // Absent dates
     if (input.absentDates.length > 0) {
       if (doc.y > 700) doc.addPage();
-      doc.fontSize(13).font('Helvetica-Bold').text('Absent Days', startX);
+      doc.fontSize(13).font(FONT_NAME_BOLD).text('Absent Days', startX);
       doc.moveDown(0.4);
-      doc.fontSize(9).font('Helvetica');
+      doc.fontSize(9).font(FONT_NAME);
       for (const d of input.absentDates) {
         if (doc.y > 760) doc.addPage();
         doc.text(`• ${formatLocalDate(d)}`, startX + 8);
@@ -257,9 +261,9 @@ export class PdfkitRenderer implements PdfRenderer {
     // Holiday dates
     if (input.holidayDates.length > 0) {
       if (doc.y > 700) doc.addPage();
-      doc.fontSize(13).font('Helvetica-Bold').text('Holidays', startX);
+      doc.fontSize(13).font(FONT_NAME_BOLD).text('Holidays', startX);
       doc.moveDown(0.4);
-      doc.fontSize(9).font('Helvetica');
+      doc.fontSize(9).font(FONT_NAME);
       for (const d of input.holidayDates) {
         if (doc.y > 760) doc.addPage();
         doc.text(`• ${formatLocalDate(d)}`, startX + 8);
@@ -276,15 +280,16 @@ export class PdfkitRenderer implements PdfRenderer {
     input: MonthlyAttendanceSummaryPdfInput,
   ): Promise<Buffer> {
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    registerFonts(doc);
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
 
     // Header
-    doc.fontSize(20).font('Helvetica-Bold').text('Monthly Attendance Summary', {
+    doc.fontSize(20).font(FONT_NAME_BOLD).text('Monthly Attendance Summary', {
       align: 'center',
     });
     doc.moveDown(0.3);
-    doc.fontSize(13).font('Helvetica').text(input.academyName, { align: 'center' });
+    doc.fontSize(13).font(FONT_NAME).text(input.academyName, { align: 'center' });
     doc.fontSize(11).fillColor('#666').text(formatMonth(input.month), { align: 'center' });
     doc.fillColor('black');
     doc.moveDown(1);
@@ -306,7 +311,7 @@ export class PdfkitRenderer implements PdfRenderer {
         : null;
     const below75 = withData.filter((r) => (r.percentage ?? 100) < 75).length;
 
-    doc.fontSize(11).font('Helvetica');
+    doc.fontSize(11).font(FONT_NAME);
     doc.text(`Total students: ${sorted.length}`);
     doc.text(`Average attendance: ${avgPct == null ? '—' : `${avgPct}%`}`);
     doc.text(`Below 75%: ${below75}`);
@@ -317,7 +322,7 @@ export class PdfkitRenderer implements PdfRenderer {
     let y = doc.y;
     doc
       .fontSize(10)
-      .font('Helvetica-Bold')
+      .font(FONT_NAME_BOLD)
       .text('Student', startX, y, { width: 230 })
       .text('Days', startX + 230, y, { width: 80, align: 'right' })
       .text('Absent', startX + 310, y, { width: 70, align: 'right' })
@@ -327,7 +332,7 @@ export class PdfkitRenderer implements PdfRenderer {
     doc.strokeColor('black');
     y += 6;
 
-    doc.font('Helvetica').fontSize(9);
+    doc.font(FONT_NAME).fontSize(9);
     for (const r of sorted) {
       if (y > 760) {
         doc.addPage();

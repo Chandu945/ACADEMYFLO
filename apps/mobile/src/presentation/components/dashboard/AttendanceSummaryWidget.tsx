@@ -88,7 +88,13 @@ export function AttendanceSummaryWidget({ onPress }: AttendanceSummaryWidgetProp
         if (dayNum > maxDay) {
           return { day: dayNum, present: 0, absent: 0, isHoliday: false };
         }
-        const presentCount = d.isHoliday ? 0 : totalStudents - d.absentCount;
+        // BUG-038: prefer per-day expectedCount from the API. The flat
+        // totalStudents fallback is kept only for older API deployments that
+        // pre-date the field (zod schema defaults expectedCount=0 in that
+        // case, which would zero out Present — falling back to
+        // totalStudents preserves the legacy behavior in that scenario).
+        const expected = d.expectedCount > 0 ? d.expectedCount : totalStudents;
+        const presentCount = d.isHoliday ? 0 : expected - d.absentCount;
         return {
           day: dayNum,
           present: presentCount,

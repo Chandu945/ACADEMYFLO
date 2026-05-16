@@ -14,6 +14,7 @@ import {
 import { StaffAttendanceErrors } from '../../common/errors';
 import type { StaffAttendanceViewStatus, UserRole } from '@academyflo/contracts';
 import type { AuditRecorderPort } from '../../audit/ports/audit-recorder.port';
+import { formatLocalDate } from '@shared/date-utils';
 import { randomUUID } from 'crypto';
 
 export interface MarkStaffAttendanceInput {
@@ -78,8 +79,28 @@ export class MarkStaffAttendanceUseCase {
       return err(StaffAttendanceErrors.staffNotActive());
     }
 
+    // BUG-037: block writes for dates before the staff member's startDate.
+    // Mirrors the per-batch enrollment guard for students (BUG-032). When
+    // startDate is null (legacy seeded staff or pre-feature accounts), skip
+    // the check — treat as "joined long ago" so we don't break existing
+    // workflows. The matching read-side filter lives in
+    // get-daily-staff-attendance-view + get-monthly-staff-attendance-summary.
+    if (staffUser.startDate) {
+      const startedOn = formatLocalDate(staffUser.startDate);
+      if (input.date < startedOn) {
+        return err(StaffAttendanceErrors.dateBeforeStartDate(startedOn));
+      }
+    }
+
     // Staff attendance is required even on holidays — no holiday check
     // (unlike student attendance which blocks on holidays)
+
+    // BUG-036: track whether this call actually mutated the DB so we only
+    // record an audit entry when something changed. The pre-fix code wrote
+    // an audit row on every call including no-ops (mark PRESENT when
+    // already PRESENT, mark ABSENT when already ABSENT) which polluted the
+    // owner-visible audit log with thousands of empty events.
+    let didChange = false;
 
     if (input.status === 'PRESENT') {
       // Check if a present record already exists to avoid overwriting audit data
@@ -98,6 +119,7 @@ export class MarkStaffAttendanceUseCase {
         });
         try {
           await this.staffAttendanceRepo.save(record);
+          didChange = true;
         } catch (e) {
           // M1 fix: concurrent PRESENT marks (two owners on different
           // devices tapping the same staff member within milliseconds) both
@@ -110,22 +132,33 @@ export class MarkStaffAttendanceUseCase {
         }
       }
     } else {
-      // ABSENT: delete present record if exists (idempotent)
-      await this.staffAttendanceRepo.deleteByAcademyStaffDate(
+      // ABSENT: delete present record if exists (idempotent). deleteOne
+      // returns deletedCount; if > 0, we actually changed state.
+      const existing = await this.staffAttendanceRepo.findPresentByAcademyDateAndStaffIds(
         actor.academyId,
-        input.staffUserId,
         input.date,
+        [input.staffUserId],
       );
+      if (existing.length > 0) {
+        await this.staffAttendanceRepo.deleteByAcademyStaffDate(
+          actor.academyId,
+          input.staffUserId,
+          input.date,
+        );
+        didChange = true;
+      }
     }
 
-    await this.auditRecorder.record({
-      academyId: actor.academyId,
-      actorUserId: input.actorUserId,
-      action: 'STAFF_ATTENDANCE_CHANGED',
-      entityType: 'STAFF_ATTENDANCE',
-      entityId: input.staffUserId,
-      context: { staffUserId: input.staffUserId, date: input.date, status: input.status },
-    });
+    if (didChange) {
+      await this.auditRecorder.record({
+        academyId: actor.academyId,
+        actorUserId: input.actorUserId,
+        action: 'STAFF_ATTENDANCE_CHANGED',
+        entityType: 'STAFF_ATTENDANCE',
+        entityId: input.staffUserId,
+        context: { staffUserId: input.staffUserId, date: input.date, status: input.status },
+      });
+    }
 
     return ok({
       staffUserId: input.staffUserId,

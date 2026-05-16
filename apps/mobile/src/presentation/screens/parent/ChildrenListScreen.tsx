@@ -55,6 +55,22 @@ export function ChildrenListScreen() {
       if (!mountedRef.current) return;
       if (result.ok) {
         setChildren(result.value);
+        // Single-child households are the common case — collapse the
+        // one-item list into a direct view of the child. `replace` instead
+        // of `navigate` so the back gesture from ChildDetail exits the
+        // stack rather than returning to an empty list. The list view
+        // still renders when 2+ children are linked, since the backend
+        // permits N children per parent.
+        if (result.value.length === 1) {
+          const only = result.value[0]!;
+          navigation.dispatch(
+            StackActions.replace('ChildDetail', {
+              studentId: only.studentId,
+              fullName: only.fullName,
+            }),
+          );
+          return;
+        }
       } else {
         setError(result.error.message);
       }
@@ -69,7 +85,7 @@ export function ChildrenListScreen() {
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [navigation]);
 
   useEffect(() => {
     mountedRef.current = true;

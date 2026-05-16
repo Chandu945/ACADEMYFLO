@@ -58,7 +58,16 @@ export class GetBirthdaysUseCase {
     if (input.scope === 'today') {
       results = await this.studentRepo.findBirthdaysByAcademy(academyId, month, day);
     } else {
-      results = await this.studentRepo.findBirthdaysByAcademy(academyId, month);
+      // POLISH-05: scope === 'month' is rendered under an "Upcoming this month"
+      // section on the owner dashboard. Coaches don't want to see birthdays
+      // that already happened this month — they're not actionable. Filter the
+      // result to today and forward within the current month so the section
+      // matches its label.
+      const all = await this.studentRepo.findBirthdaysByAcademy(academyId, month);
+      // Use UTC accessors — DOBs are stored as midnight-UTC dates and the
+      // ISO render path elsewhere also uses UTC. Local-tz `getDate()` would
+      // shift the day for stores running in a non-UTC timezone.
+      results = all.filter((s) => s.dateOfBirth.getUTCDate() >= day);
     }
 
     const students: BirthdayDto[] = results.map((s) => ({

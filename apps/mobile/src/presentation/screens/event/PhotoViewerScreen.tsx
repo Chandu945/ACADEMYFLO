@@ -16,6 +16,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import RNShare from 'react-native-share';
 import RNFS from 'react-native-fs';
+import { shareFile } from '../../utils/crossPlatformShare';
 import { AppIcon } from '../../components/ui/AppIcon';
 import type { MoreStackParamList } from '../../navigation/MoreStack';
 import type { GalleryPhoto } from '../../../domain/event/event-gallery.types';
@@ -78,6 +79,23 @@ export function PhotoViewerScreen() {
 
     const url = resolveUrl(currentPhoto.url);
     const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
+    const filename = `gallery_${currentPhoto.id}.${ext}`;
+    const mimeType = `image/${ext === 'png' ? 'png' : 'jpeg'}`;
+
+    // Web: shareFile fetches the image bytes and triggers a browser
+    // download — RNFS doesn't exist on web. Native: keep the original
+    // RNFS → RNShare flow because (a) we need the temp file path to
+    // populate the OS share sheet, and (b) the auth header has to travel
+    // with the request so private/protected gallery URLs work.
+    if (Platform.OS === 'web') {
+      try {
+        await shareFile({ url, filename, mimeType, title: 'Share Photo' });
+      } finally {
+        setSharing(false);
+      }
+      return;
+    }
+
     const tempPath = `${RNFS.CachesDirectoryPath}/gallery_share_${currentPhoto.id}.${ext}`;
 
     try {
@@ -97,7 +115,7 @@ export function PhotoViewerScreen() {
 
       await RNShare.open({
         url: fileUri,
-        type: `image/${ext === 'png' ? 'png' : 'jpeg'}`,
+        type: mimeType,
         title: 'Share Photo',
       });
     } catch (e: unknown) {
