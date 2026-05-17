@@ -63,7 +63,11 @@ export function EventDetailScreen() {
   const [event, setEvent] = useState<EventDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  // Which action is currently in flight. Used so only that button spins —
+  // the rest stay disabled-but-labelled so the user can tell which action
+  // they actually triggered.
+  type Action = 'complete' | 'cancel' | 'reinstate' | 'delete';
+  const [activeAction, setActiveAction] = useState<Action | null>(null);
   const mountedRef = useRef(true);
 
   const fetchDetail = useCallback(async () => {
@@ -96,34 +100,42 @@ export function EventDetailScreen() {
     }, [fetchDetail]),
   );
 
-  const handleStatusChange = useCallback((newStatus: EventStatus, label: string) => {
-    crossAlert(
-      label,
-      `Are you sure you want to ${label.toLowerCase()}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              const result = await eventApi.changeEventStatus(eventId, newStatus);
-              if (result.ok) {
-                fetchDetail();
-              } else {
-                crossAlert('Error', result.error.message);
+  const handleStatusChange = useCallback(
+    (newStatus: EventStatus, label: string, action: Action) => {
+      crossAlert(
+        label,
+        `Are you sure you want to ${label.toLowerCase()}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Confirm',
+            onPress: async () => {
+              setActiveAction(action);
+              try {
+                const result = await eventApi.changeEventStatus(eventId, newStatus);
+                if (!mountedRef.current) return;
+                if (result.ok) {
+                  // Response now carries the full event detail (see API
+                  // change-event-status.usecase) — no need for a follow-up
+                  // GET. Falls back to fetchDetail only on unexpected
+                  // misses to stay belt-and-braces safe.
+                  setEvent(result.value);
+                } else {
+                  crossAlert('Error', result.error.message);
+                }
+              } catch (err) {
+                if (__DEV__) console.error('[EventDetailScreen] handleStatusChange failed:', err);
+                crossAlert('Error', 'Failed to update status. Please try again.');
+              } finally {
+                if (mountedRef.current) setActiveAction(null);
               }
-            } catch (err) {
-              if (__DEV__) console.error('[EventDetailScreen] handleStatusChange failed:', err);
-              crossAlert('Error', 'Failed to update status. Please try again.');
-            } finally {
-              setActionLoading(false);
-            }
+            },
           },
-        },
-      ],
-    );
-  }, [eventId, fetchDetail]);
+        ],
+      );
+    },
+    [eventId],
+  );
 
   const handleDelete = useCallback(() => {
     crossAlert(
@@ -135,19 +147,19 @@ export function EventDetailScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            setActionLoading(true);
+            setActiveAction('delete');
             try {
               const result = await eventApi.deleteEvent(eventId);
               if (result.ok) {
                 navigation.goBack();
               } else {
-                crossAlert('Error', result.error.message);
+                if (mountedRef.current) crossAlert('Error', result.error.message);
               }
             } catch (err) {
               if (__DEV__) console.error('[EventDetailScreen] handleDelete failed:', err);
-              crossAlert('Error', 'Failed to delete event. Please try again.');
+              if (mountedRef.current) crossAlert('Error', 'Failed to delete event. Please try again.');
             } finally {
-              setActionLoading(false);
+              if (mountedRef.current) setActiveAction(null);
             }
           },
         },
@@ -159,6 +171,8 @@ export function EventDetailScreen() {
     if (!event) return;
     navigation.navigate('EditEvent', { eventId: event.id, event });
   }, [event, navigation]);
+
+  const isActionInFlight = activeAction !== null;
 
   if (loading) {
     return (
@@ -292,7 +306,7 @@ export function EventDetailScreen() {
       {/* Action buttons */}
       <View style={styles.actions}>
         {canEdit && (
-          <Button title="Edit" variant="primary" onPress={handleEdit} disabled={actionLoading} testID="edit-button" />
+          <Button title="Edit" variant="primary" onPress={handleEdit} disabled={isActionInFlight} testID="edit-button" />
         )}
 
         {isOwner && showActions && (
@@ -301,18 +315,18 @@ export function EventDetailScreen() {
             <Button
               title="Mark as Completed"
               variant="secondary"
-              onPress={() => handleStatusChange('COMPLETED', 'Mark as Completed')}
-              loading={actionLoading}
-              disabled={actionLoading}
+              onPress={() => handleStatusChange('COMPLETED', 'Mark as Completed', 'complete')}
+              loading={activeAction === 'complete'}
+              disabled={isActionInFlight}
               testID="complete-button"
             />
             <View style={styles.actionGap} />
             <Button
               title="Cancel Event"
               variant="secondary"
-              onPress={() => handleStatusChange('CANCELLED', 'Cancel Event')}
-              loading={actionLoading}
-              disabled={actionLoading}
+              onPress={() => handleStatusChange('CANCELLED', 'Cancel Event', 'cancel')}
+              loading={activeAction === 'cancel'}
+              disabled={isActionInFlight}
               testID="cancel-event-button"
             />
           </>
@@ -324,9 +338,9 @@ export function EventDetailScreen() {
             <Button
               title="Reinstate Event"
               variant="secondary"
-              onPress={() => handleStatusChange('UPCOMING', 'Reinstate Event')}
-              loading={actionLoading}
-              disabled={actionLoading}
+              onPress={() => handleStatusChange('UPCOMING', 'Reinstate Event', 'reinstate')}
+              loading={activeAction === 'reinstate'}
+              disabled={isActionInFlight}
               testID="reinstate-button"
             />
           </>
@@ -339,8 +353,8 @@ export function EventDetailScreen() {
               title="Delete Event"
               variant="danger"
               onPress={handleDelete}
-              loading={actionLoading}
-              disabled={actionLoading}
+              loading={activeAction === 'delete'}
+              disabled={isActionInFlight}
               testID="delete-button"
             />
           </>

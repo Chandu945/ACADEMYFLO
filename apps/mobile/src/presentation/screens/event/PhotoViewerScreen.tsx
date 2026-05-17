@@ -29,12 +29,51 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, fontSizes, fontWeights } from '../../theme';
 import type { Colors } from '../../theme';
 import { env } from '../../../infra/env';
-import { getAccessToken } from '../../../infra/http/api-client';
+import { getAccessToken, tryRefresh } from '../../../infra/http/api-client';
+import { isTokenExpiredOrExpiring } from '../../../infra/auth/token-expiry';
 
 type ViewerRoute = RouteProp<MoreStackParamList, 'PhotoViewer'>;
 
 function resolveUrl(url: string): string {
   return url.startsWith('http') ? url : `${env.API_BASE_URL}${url}`;
+}
+
+// Shared authed-download helper for both Share and Save. Mirrors the
+// api-client recovery pattern: proactively refresh expired tokens, retry
+// once on 401. Without this, an idle user's expired token would surface
+// as a silent "Download failed" with no path forward except re-login.
+// Cleans up the partial 401 body before the retry so the destination
+// file isn't left as a 50-byte JSON error blob.
+async function downloadAuthedFile(
+  url: string,
+  destPath: string,
+): Promise<{ statusCode: number }> {
+  async function getFreshToken(): Promise<string | null> {
+    const current = getAccessToken();
+    if (current && !isTokenExpiredOrExpiring(current)) return current;
+    return await tryRefresh();
+  }
+
+  async function attempt(token: string | null) {
+    return RNFS.downloadFile({
+      fromUrl: url,
+      toFile: destPath,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).promise;
+  }
+
+  let token = await getFreshToken();
+  let result = await attempt(token);
+
+  if (result.statusCode === 401) {
+    token = await tryRefresh();
+    if (token) {
+      await RNFS.unlink(destPath).catch(() => {});
+      result = await attempt(token);
+    }
+  }
+
+  return result;
 }
 
 export function PhotoViewerScreen() {
@@ -99,12 +138,7 @@ export function PhotoViewerScreen() {
     const tempPath = `${RNFS.CachesDirectoryPath}/gallery_share_${currentPhoto.id}.${ext}`;
 
     try {
-      const token = getAccessToken();
-      const downloadResult = await RNFS.downloadFile({
-        fromUrl: url,
-        toFile: tempPath,
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).promise;
+      const downloadResult = await downloadAuthedFile(url, tempPath);
 
       if (downloadResult.statusCode !== 200) {
         throw new Error('Download failed');
@@ -139,19 +173,18 @@ export function PhotoViewerScreen() {
     const destPath = `${RNFS.DocumentDirectoryPath}/Academyflo_${currentPhoto.id}.${ext}`;
 
     try {
-      const token = getAccessToken();
-      const downloadResult = await RNFS.downloadFile({
-        fromUrl: url,
-        toFile: destPath,
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).promise;
+      const downloadResult = await downloadAuthedFile(url, destPath);
 
       if (downloadResult.statusCode === 200) {
         showToast('Photo saved');
       } else {
+        // Don't leave a half-written or 401-body file at destPath — the
+        // user will think the save succeeded otherwise.
+        await RNFS.unlink(destPath).catch(() => {});
         crossAlert('Download Failed', 'Could not download this photo.');
       }
     } catch {
+      await RNFS.unlink(destPath).catch(() => {});
       crossAlert('Download Failed', 'Could not download this photo.');
     }
   }, [currentPhoto, showToast]);

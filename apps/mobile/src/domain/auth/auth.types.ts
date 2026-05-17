@@ -62,5 +62,6 @@ export type AcademySetupResponse = {
 };
 
 export type PasswordResetRequestInput = { email: string };
+export type PasswordResetVerifyInput = { email: string; otp: string };
 export type PasswordResetConfirmInput = { email: string; otp: string; newPassword: string };
 export type PasswordResetResponse = { message: string };

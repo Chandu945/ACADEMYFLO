@@ -11,8 +11,9 @@ jest.mock('@react-navigation/native', () => ({
 jest.mock('../../infra/auth/auth-api', () => ({
   authApi: {
     requestPasswordReset: jest.fn(),
+    verifyPasswordReset: jest.fn(),
     confirmPasswordReset: jest.fn(),
-      googleLogin: jest.fn(),
+    googleLogin: jest.fn(),
   },
 }));
 
@@ -20,6 +21,7 @@ import { authApi } from '../../infra/auth/auth-api';
 import { ForgotPasswordScreen } from '../../presentation/screens/auth/ForgotPasswordScreen';
 
 const mockRequestPasswordReset = authApi.requestPasswordReset as jest.Mock;
+const mockVerifyPasswordReset = authApi.verifyPasswordReset as jest.Mock;
 const mockConfirmPasswordReset = authApi.confirmPasswordReset as jest.Mock;
 
 beforeEach(() => {
@@ -117,6 +119,10 @@ describe('ForgotPasswordScreen', () => {
       ok: true,
       value: { message: 'sent' },
     });
+    mockVerifyPasswordReset.mockResolvedValue({
+      ok: true,
+      value: { message: 'Verification successful.' },
+    });
     mockConfirmPasswordReset.mockResolvedValue({
       ok: true,
       value: { message: 'Password reset successful.' },
@@ -136,11 +142,17 @@ describe('ForgotPasswordScreen', () => {
     });
 
     fireEvent.changeText(screen.getByTestId('forgot-otp'), '123456');
-    fireEvent.press(screen.getByTestId('forgot-verify'));
+    await waitFor(async () => {
+      fireEvent.press(screen.getByTestId('forgot-verify'));
+    });
 
-    // New password step
+    // New password step — only reachable after server-side OTP verification
     await waitFor(() => {
       expect(screen.getByTestId('forgot-new-password')).toBeTruthy();
+    });
+    expect(mockVerifyPasswordReset).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      otp: '123456',
     });
 
     fireEvent.changeText(screen.getByTestId('forgot-new-password'), 'NewPassword1!');
@@ -153,5 +165,39 @@ describe('ForgotPasswordScreen', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('Login');
     });
+  });
+
+  it('stays on OTP step when server rejects the OTP', async () => {
+    mockRequestPasswordReset.mockResolvedValue({
+      ok: true,
+      value: { message: 'sent' },
+    });
+    mockVerifyPasswordReset.mockResolvedValue({
+      ok: false,
+      error: { code: 'UNAUTHORIZED', message: 'Invalid or expired verification code' },
+    });
+
+    render(<ForgotPasswordScreen />);
+
+    fireEvent.changeText(screen.getByTestId('forgot-email'), 'test@example.com');
+    await waitFor(async () => {
+      fireEvent.press(screen.getByTestId('forgot-send'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('forgot-otp')).toBeTruthy();
+    });
+
+    fireEvent.changeText(screen.getByTestId('forgot-otp'), '000000');
+    await waitFor(async () => {
+      fireEvent.press(screen.getByTestId('forgot-verify'));
+    });
+
+    // Should NOT have advanced to the password step
+    await waitFor(() => {
+      expect(screen.queryByTestId('forgot-new-password')).toBeNull();
+    });
+    expect(screen.getByTestId('forgot-otp')).toBeTruthy();
+    expect(mockConfirmPasswordReset).not.toHaveBeenCalled();
   });
 });

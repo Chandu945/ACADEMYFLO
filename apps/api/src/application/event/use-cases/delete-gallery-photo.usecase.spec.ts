@@ -118,6 +118,12 @@ describe('DeleteGalleryPhotoUseCase', () => {
     });
 
     expect(result.ok).toBe(true);
+    // Regression: mobile validates this response against
+    // galleryDeleteResponseSchema = { deleted: boolean }. Returning
+    // { success: true } here (the prior shape) surfaced "Unexpected
+    // server response" on every delete and triggered a follow-up 404
+    // on retry because the row was already gone.
+    if (result.ok) expect(result.value).toEqual({ deleted: true });
     // H3 regression: record delete must happen BEFORE blob delete.
     const recordOrder = deps.galleryPhotoRepo.delete.mock.invocationCallOrder[0];
     const blobOrder = deps.fileStorage.delete.mock.invocationCallOrder[0];

@@ -9,6 +9,32 @@ import {
   deriveEventStatus,
 } from '@domain/event/entities/event.entity';
 import type { EventStatus } from '@domain/event/entities/event.entity';
+
+// Mirrors the response shape returned by update-event/get-event-detail so
+// the mobile eventDetailSchema parses every event response uniformly. Prior
+// behavior returned only id/title/status/updatedAt and the mobile parser
+// surfaced "Unexpected server response" because the other ~11 fields were
+// missing.
+function toEventResponse(event: CalendarEvent, statusOverride?: EventStatus): Record<string, unknown> {
+  return {
+    id: event.id.toString(),
+    title: event.title,
+    description: event.description,
+    eventType: event.eventType,
+    startDate: event.startDate.toISOString().slice(0, 10),
+    endDate: event.endDate?.toISOString().slice(0, 10) ?? null,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    isAllDay: event.isAllDay,
+    location: event.location,
+    targetAudience: event.targetAudience,
+    batchIds: event.batchIds,
+    status: statusOverride ?? event.status,
+    createdBy: event.createdBy,
+    createdAt: event.audit.createdAt.toISOString(),
+    updatedAt: event.audit.updatedAt.toISOString(),
+  };
+}
 import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
 import type { PushNotificationService } from '../../notifications/push-notification.service';
 import { buildEventCancelledPush } from '../../notifications/templates/event-cancelled-push-template';
@@ -59,12 +85,7 @@ export class ChangeEventStatusUseCase {
     // which UI rendered as a hard failure even though nothing was being
     // changed. Matches the change-student-status pattern.
     if (event.status === input.status) {
-      return ok({
-        id: event.id.toString(),
-        title: event.title,
-        status: event.status,
-        updatedAt: event.audit.updatedAt.toISOString(),
-      });
+      return ok(toEventResponse(event));
     }
 
     if (!isValidStatusTransition(event.status, input.status)) {
@@ -143,11 +164,6 @@ export class ChangeEventStatusUseCase {
       }
     }
 
-    return ok({
-      id: updated.id.toString(),
-      title: updated.title,
-      status: updated.status,
-      updatedAt: updated.audit.updatedAt.toISOString(),
-    });
+    return ok(toEventResponse(updated));
   }
 }

@@ -5,14 +5,16 @@ import { usePasswordReset } from '../../presentation/hooks/usePasswordReset';
 jest.mock('../../infra/auth/auth-api', () => ({
   authApi: {
     requestPasswordReset: jest.fn(),
+    verifyPasswordReset: jest.fn(),
     confirmPasswordReset: jest.fn(),
-      googleLogin: jest.fn(),
+    googleLogin: jest.fn(),
   },
 }));
 
 import { authApi } from '../../infra/auth/auth-api';
 
 const mockRequestPasswordReset = authApi.requestPasswordReset as jest.Mock;
+const mockVerifyPasswordReset = authApi.verifyPasswordReset as jest.Mock;
 const mockConfirmPasswordReset = authApi.confirmPasswordReset as jest.Mock;
 
 beforeEach(() => {
@@ -98,6 +100,89 @@ describe('usePasswordReset', () => {
 
     expect(success).toBe(false);
     expect(result.current.error).toBe('Invalid or expired verification code');
+  });
+
+  it('confirmReset routes back to OTP step on UNAUTHORIZED (verify-freshness expired)', async () => {
+    mockRequestPasswordReset.mockResolvedValue({ ok: true, value: { message: 'sent' } });
+    mockConfirmPasswordReset.mockResolvedValue({
+      ok: false,
+      error: { code: 'UNAUTHORIZED', message: 'Invalid or expired verification code' },
+    });
+
+    const { result } = renderHook(() => usePasswordReset());
+
+    await act(async () => {
+      await result.current.requestOtp('test@example.com');
+    });
+    // pretend the user reached the password step
+    act(() => {
+      result.current.setStep('newPassword');
+    });
+    expect(result.current.step).toBe('newPassword');
+
+    await act(async () => {
+      await result.current.confirmReset('test@example.com', '000000', 'NewPass1!');
+    });
+
+    expect(result.current.step).toBe('otp');
+  });
+
+  it('verifyOtp advances to newPassword step on success', async () => {
+    mockVerifyPasswordReset.mockResolvedValue({
+      ok: true,
+      value: { message: 'Verification successful.' },
+    });
+
+    const { result } = renderHook(() => usePasswordReset());
+
+    let success: boolean | undefined;
+    await act(async () => {
+      success = await result.current.verifyOtp('test@example.com', '123456');
+    });
+
+    expect(success).toBe(true);
+    expect(result.current.step).toBe('newPassword');
+  });
+
+  it('verifyOtp stays on otp step and surfaces field error on wrong OTP', async () => {
+    mockVerifyPasswordReset.mockResolvedValue({
+      ok: false,
+      error: { code: 'UNAUTHORIZED', message: 'Invalid or expired verification code' },
+    });
+
+    const { result } = renderHook(() => usePasswordReset());
+
+    let success: boolean | undefined;
+    await act(async () => {
+      success = await result.current.verifyOtp('test@example.com', '000000');
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.step).toBe('email');
+    expect(result.current.fieldErrors['otp']).toBe('Invalid or expired verification code');
+    expect(result.current.error).toBe('Invalid or expired verification code');
+  });
+
+  it('verifyOtp surfaces lockout error on FORBIDDEN', async () => {
+    mockVerifyPasswordReset.mockResolvedValue({
+      ok: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Too many failed attempts. Please request a new code.',
+      },
+    });
+
+    const { result } = renderHook(() => usePasswordReset());
+
+    let success: boolean | undefined;
+    await act(async () => {
+      success = await result.current.verifyOtp('test@example.com', '000000');
+    });
+
+    expect(success).toBe(false);
+    expect(result.current.fieldErrors['otp']).toBe(
+      'Too many failed attempts. Please request a new code.',
+    );
   });
 
   it('should decrement cooldown timer', async () => {

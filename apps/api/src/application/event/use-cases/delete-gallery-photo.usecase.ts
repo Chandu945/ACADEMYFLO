@@ -31,7 +31,7 @@ export class DeleteGalleryPhotoUseCase {
     private readonly logger?: LoggerPort,
   ) {}
 
-  async execute(input: DeleteGalleryPhotoInput): Promise<Result<{ success: true }, AppError>> {
+  async execute(input: DeleteGalleryPhotoInput): Promise<Result<{ deleted: true }, AppError>> {
     if (input.actorRole !== 'OWNER' && input.actorRole !== 'STAFF') {
       return err(GalleryErrors.notAllowed());
     }
@@ -89,6 +89,6 @@ export class DeleteGalleryPhotoUseCase {
       },
     });
 
-    return ok({ success: true });
+    return ok({ deleted: true as const });
   }
 }

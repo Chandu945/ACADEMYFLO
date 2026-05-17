@@ -24,6 +24,7 @@ import { LoginUseCase } from '../src/application/identity/use-cases/login.usecas
 import { RefreshUseCase } from '../src/application/identity/use-cases/refresh.usecase';
 import { LogoutUseCase } from '../src/application/identity/use-cases/logout.usecase';
 import { RequestPasswordResetUseCase } from '../src/application/identity/use-cases/request-password-reset.usecase';
+import { VerifyPasswordResetUseCase } from '../src/application/identity/use-cases/verify-password-reset.usecase';
 import { ConfirmPasswordResetUseCase } from '../src/application/identity/use-cases/confirm-password-reset.usecase';
 import {
   InMemoryUserRepository,
@@ -156,6 +157,20 @@ describe('Password Reset (e2e)', () => {
           ],
         },
         {
+          provide: 'VERIFY_PASSWORD_RESET_USE_CASE',
+          useFactory: (
+            ur: UserRepository,
+            cr: PasswordResetChallengeRepository,
+            oh: OtpHasher,
+          ) =>
+            new VerifyPasswordResetUseCase(ur, cr, oh, {
+              isLocked: async () => false,
+              recordFailure: async () => undefined,
+              recordSuccess: async () => undefined,
+            }),
+          inject: [USER_REPOSITORY, PASSWORD_RESET_CHALLENGE_REPOSITORY, OTP_HASHER],
+        },
+        {
           provide: 'CONFIRM_PASSWORD_RESET_USE_CASE',
           useFactory: (
             ur: UserRepository,
@@ -241,6 +256,84 @@ describe('Password Reset (e2e)', () => {
         .post('/api/v1/auth/password-reset/request')
         .send({ email: 'not-an-email' })
         .expect(400);
+    });
+  });
+
+  describe('POST /api/v1/auth/password-reset/verify', () => {
+    it('should return 200 for a correct OTP', async () => {
+      await signupUser();
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/request')
+        .send({ email: 'rajesh@example.com' })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/verify')
+        .send({ email: 'rajesh@example.com', otp: capturedOtp })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.message).toBe('Verification successful.');
+    });
+
+    it('should return 401 for a wrong OTP (preventing advance to password step)', async () => {
+      await signupUser();
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/request')
+        .send({ email: 'rajesh@example.com' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/verify')
+        .send({ email: 'rajesh@example.com', otp: '000000' })
+        .expect(401);
+    });
+
+    it('should return 401 when no challenge exists (no enumeration)', async () => {
+      await signupUser();
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/verify')
+        .send({ email: 'rajesh@example.com', otp: '123456' })
+        .expect(401);
+    });
+
+    it('should reject malformed OTP (DTO validation)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/verify')
+        .send({ email: 'rajesh@example.com', otp: '123' })
+        .expect(400);
+    });
+
+    it('confirm after a successful verify completes the reset', async () => {
+      await signupUser();
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/request')
+        .send({ email: 'rajesh@example.com' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/verify')
+        .send({ email: 'rajesh@example.com', otp: capturedOtp })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/password-reset/confirm')
+        .send({
+          email: 'rajesh@example.com',
+          otp: capturedOtp,
+          newPassword: 'NewPassword1!',
+        })
+        .expect(200);
+
+      // New password works
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ identifier: 'rajesh@example.com', password: 'NewPassword1!' })
+        .expect(200);
     });
   });
 

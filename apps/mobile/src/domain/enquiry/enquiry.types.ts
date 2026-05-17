@@ -89,22 +89,6 @@ export type CloseEnquiryRequest = {
   convertedStudentId?: string;
 };
 
-export type ConvertToStudentRequest = {
-  joiningDate: string;
-  monthlyFee: number;
-  dateOfBirth: string;
-  gender: 'MALE' | 'FEMALE' | 'OTHER';
-  addressLine1: string;
-  city: string;
-  state: string;
-  pincode: string;
-};
-
-export type ConvertToStudentResponse = {
-  enquiry: EnquiryDetail;
-  studentId: string;
-};
-
 export type EnquiryListQuery = {
   status?: EnquiryStatus;
   search?: string;

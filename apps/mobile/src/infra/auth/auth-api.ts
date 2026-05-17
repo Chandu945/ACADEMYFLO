@@ -6,6 +6,7 @@ import type {
   AcademySetupRequest,
   AcademySetupResponse,
   PasswordResetRequestInput,
+  PasswordResetVerifyInput,
   PasswordResetConfirmInput,
   PasswordResetResponse,
 } from '../../domain/auth/auth.types';
@@ -96,6 +97,10 @@ export const authApi: AuthApiPort = {
 
   requestPasswordReset(req: PasswordResetRequestInput) {
     return post<PasswordResetResponse>('/api/v1/auth/password-reset/request', req);
+  },
+
+  verifyPasswordReset(req: PasswordResetVerifyInput) {
+    return post<PasswordResetResponse>('/api/v1/auth/password-reset/verify', req);
   },
 
   confirmPasswordReset(req: PasswordResetConfirmInput) {

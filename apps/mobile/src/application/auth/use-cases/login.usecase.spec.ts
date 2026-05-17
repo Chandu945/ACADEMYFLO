@@ -11,6 +11,7 @@ function makeDeps(overrides?: Partial<LoginDeps>): LoginDeps {
       logout: jest.fn(),
       setupAcademy: jest.fn(),
       requestPasswordReset: jest.fn(),
+      verifyPasswordReset: jest.fn(),
       confirmPasswordReset: jest.fn(),
       googleLogin: jest.fn(),
     },

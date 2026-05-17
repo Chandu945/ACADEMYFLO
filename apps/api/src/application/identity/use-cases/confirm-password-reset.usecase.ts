@@ -25,6 +25,11 @@ export interface ConfirmPasswordResetOutput {
   message: string;
 }
 
+// How long after a successful /verify the user can call /confirm without
+// burning a second attempt. Matches the OTP expiry so verify and OTP age
+// out together — keeps the user's mental model simple.
+const VERIFICATION_FRESHNESS_MS = 10 * 60 * 1000;
+
 export class ConfirmPasswordResetUseCase {
   constructor(
     private readonly userRepo: UserRepository,
@@ -77,23 +82,39 @@ export class ConfirmPasswordResetUseCase {
       return err(PasswordResetErrors.invalidOrExpiredOtp());
     }
 
-    // Atomically increment attempts FIRST to prevent concurrent requests from
-    // bypassing the attempt limit. Each concurrent request will get its own
-    // incremented count from the database, closing the TOCTOU race window.
-    await this.challengeRepo.incrementAttempts(challenge.id.toString());
+    // Happy path: the user just verified on the previous step. Skip the
+    // attempts increment so verify + confirm don't double-count a single
+    // OTP guess. Still hash-compare the OTP — defense in depth in case
+    // someone replays a verifiedAt with a different OTP in the payload.
+    if (challenge.isVerificationFresh(VERIFICATION_FRESHNESS_MS)) {
+      const otpStillValid = await this.otpHasher.compare(input.otp, challenge.otpHash);
+      if (!otpStillValid) {
+        await this.otpAttemptTracker.recordFailure(email);
+        return err(PasswordResetErrors.invalidOrExpiredOtp());
+      }
+    } else {
+      // Cold path: no recent verification. Run the full attempt-counted
+      // check so direct callers (no prior /verify) still hit the brute-
+      // force defense.
+      // Atomically increment attempts FIRST to prevent concurrent requests
+      // from bypassing the attempt limit. Each concurrent request will get
+      // its own incremented count from the database, closing the TOCTOU
+      // race window.
+      await this.challengeRepo.incrementAttempts(challenge.id.toString());
 
-    // Re-fetch the challenge to get the authoritative post-increment attempt count
-    const refreshedChallenge = await this.challengeRepo.findLatestActiveByUserId(userId);
-    if (!refreshedChallenge || refreshedChallenge.hasExceededAttempts()) {
-      await this.otpAttemptTracker.recordFailure(email);
-      return err(PasswordResetErrors.tooManyAttempts());
-    }
+      // Re-fetch the challenge to get the authoritative post-increment count
+      const refreshedChallenge = await this.challengeRepo.findLatestActiveByUserId(userId);
+      if (!refreshedChallenge || refreshedChallenge.hasExceededAttempts()) {
+        await this.otpAttemptTracker.recordFailure(email);
+        return err(PasswordResetErrors.tooManyAttempts());
+      }
 
-    const otpValid = await this.otpHasher.compare(input.otp, refreshedChallenge.otpHash);
+      const otpValid = await this.otpHasher.compare(input.otp, refreshedChallenge.otpHash);
 
-    if (!otpValid) {
-      await this.otpAttemptTracker.recordFailure(email);
-      return err(PasswordResetErrors.invalidOrExpiredOtp());
+      if (!otpValid) {
+        await this.otpAttemptTracker.recordFailure(email);
+        return err(PasswordResetErrors.invalidOrExpiredOtp());
+      }
     }
 
     const newHash = await this.passwordHasher.hash(input.newPassword);

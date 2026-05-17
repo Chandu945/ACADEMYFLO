@@ -7,6 +7,7 @@ import type {
   RefreshResponse,
   AuthUser,
   PasswordResetRequestInput,
+  PasswordResetVerifyInput,
   PasswordResetConfirmInput,
   PasswordResetResponse,
 } from '../../domain/auth/auth.types';
@@ -24,6 +25,9 @@ export interface AuthApiPort {
   ): Promise<Result<AcademySetupResponse, AppError>>;
   requestPasswordReset(
     req: PasswordResetRequestInput,
+  ): Promise<Result<PasswordResetResponse, AppError>>;
+  verifyPasswordReset(
+    req: PasswordResetVerifyInput,
   ): Promise<Result<PasswordResetResponse, AppError>>;
   confirmPasswordReset(
     req: PasswordResetConfirmInput,

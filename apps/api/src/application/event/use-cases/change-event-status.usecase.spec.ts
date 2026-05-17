@@ -202,6 +202,82 @@ describe('ChangeEventStatusUseCase', () => {
     expect(deps.audit.record).toHaveBeenCalled();
   });
 
+  // Regression: mobile validates this response against eventDetailSchema.
+  // The previous payload was {id,title,status,updatedAt} only, which made
+  // the Zod parse fail and surfaced "Unexpected server response" to the
+  // user on every Mark Completed / Cancel Event / Reinstate tap.
+  it('returns the full event detail payload (covers mobile schema parse)', async () => {
+    const deps = buildDeps();
+    deps.userRepo.findById.mockResolvedValue(createOwner());
+    deps.eventRepo.findById.mockResolvedValue(createEvent('UPCOMING'));
+
+    const result = await makeUc(deps).execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      eventId: 'event-1',
+      status: 'COMPLETED',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const payload = result.value as Record<string, unknown>;
+    // Every field the mobile eventDetailSchema requires must be present.
+    // Optional event metadata (description, eventType, times, location,
+    // targetAudience) defaults to null in the test fixture — assert key
+    // presence so a missing key would still fail.
+    const required = [
+      'id', 'title', 'description', 'eventType',
+      'startDate', 'endDate', 'startTime', 'endTime',
+      'isAllDay', 'location', 'targetAudience', 'batchIds',
+      'status', 'createdBy', 'createdAt', 'updatedAt',
+    ];
+    for (const key of required) {
+      expect(payload).toHaveProperty(key);
+    }
+    expect(payload).toEqual(
+      expect.objectContaining({
+        id: 'event-1',
+        title: 'Annual Day',
+        startDate: expect.any(String),
+        isAllDay: true,
+        batchIds: expect.any(Array),
+        status: 'COMPLETED',
+        createdBy: 'owner-1',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
+      }),
+    );
+  });
+
+  it('same-status no-op also returns the full payload', async () => {
+    const deps = buildDeps();
+    deps.userRepo.findById.mockResolvedValue(createOwner());
+    deps.eventRepo.findById.mockResolvedValue(createEvent('UPCOMING'));
+
+    const result = await makeUc(deps).execute({
+      actorUserId: 'owner-1',
+      actorRole: 'OWNER',
+      eventId: 'event-1',
+      status: 'UPCOMING',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const payload = result.value as Record<string, unknown>;
+    expect(payload).toEqual(
+      expect.objectContaining({
+        id: 'event-1',
+        status: 'UPCOMING',
+        startDate: expect.any(String),
+        isAllDay: true,
+        batchIds: expect.any(Array),
+        createdBy: 'owner-1',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
+      }),
+    );
+  });
+
   it('rejects non-OWNER roles', async () => {
     const deps = buildDeps();
     const result = await makeUc(deps).execute({

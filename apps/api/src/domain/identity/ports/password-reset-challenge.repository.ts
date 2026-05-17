@@ -7,5 +7,6 @@ export interface PasswordResetChallengeRepository {
   findLatestActiveByUserId(userId: string): Promise<PasswordResetChallenge | null>;
   invalidateActiveByUserId(userId: string): Promise<void>;
   markUsed(challengeId: string): Promise<void>;
+  markVerified(challengeId: string): Promise<void>;
   incrementAttempts(challengeId: string): Promise<void>;
 }

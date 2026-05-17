@@ -25,6 +25,7 @@ export class MongoPasswordResetChallengeRepository implements PasswordResetChall
         attempts: challenge.attempts,
         maxAttempts: challenge.maxAttempts,
         usedAt: challenge.usedAt,
+        verifiedAt: challenge.verifiedAt,
         createdAt: challenge.createdAt,
       },
       { upsert: true, session: getTransactionSession() },
@@ -57,6 +58,14 @@ export class MongoPasswordResetChallengeRepository implements PasswordResetChall
     await this.model.updateOne({ _id: challengeId }, { $set: { usedAt: new Date() } }, { session: getTransactionSession() });
   }
 
+  async markVerified(challengeId: string): Promise<void> {
+    await this.model.updateOne(
+      { _id: challengeId },
+      { $set: { verifiedAt: new Date() } },
+      { session: getTransactionSession() },
+    );
+  }
+
   async incrementAttempts(challengeId: string): Promise<void> {
     await this.model.updateOne({ _id: challengeId }, { $inc: { attempts: 1 } }, { session: getTransactionSession() });
   }
@@ -70,6 +79,7 @@ export class MongoPasswordResetChallengeRepository implements PasswordResetChall
       attempts: number;
       maxAttempts: number;
       usedAt: Date | null;
+      verifiedAt: Date | null;
       createdAt: Date;
     };
 
@@ -80,6 +90,7 @@ export class MongoPasswordResetChallengeRepository implements PasswordResetChall
       attempts: d.attempts,
       maxAttempts: d.maxAttempts,
       usedAt: d.usedAt,
+      verifiedAt: d.verifiedAt ?? null,
       createdAt: d.createdAt,
     });
   }

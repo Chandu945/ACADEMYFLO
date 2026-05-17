@@ -6,14 +6,11 @@ import type {
   UpdateEnquiryRequest,
   AddFollowUpRequest,
   CloseEnquiryRequest,
-  ConvertToStudentRequest,
-  ConvertToStudentResponse,
 } from '../../domain/enquiry/enquiry.types';
 import {
   enquiryListResponseSchema,
   enquiryDetailSchema,
   enquirySummarySchema,
-  convertToStudentResponseSchema,
   type EnquiryListApiResponse,
 } from '../../domain/enquiry/enquiry.schemas';
 import type { AppError } from '../../domain/common/errors';
@@ -123,18 +120,6 @@ export async function closeEnquiry(
   );
 }
 
-export async function convertToStudent(
-  id: string,
-  req: ConvertToStudentRequest,
-): Promise<Result<ConvertToStudentResponse, AppError>> {
-  const result = await apiPost<unknown>(`/api/v1/enquiries/${encodeURIComponent(id)}/convert`, req);
-  return validateResponse(
-    convertToStudentResponseSchema as unknown as ZodSchema<ConvertToStudentResponse>,
-    result,
-    'convertToStudent',
-  );
-}
-
 export const enquiryApi = {
   listEnquiries,
   getEnquiryDetail,
@@ -143,5 +128,4 @@ export const enquiryApi = {
   updateEnquiry,
   addFollowUp,
   closeEnquiry,
-  convertToStudent,
 };

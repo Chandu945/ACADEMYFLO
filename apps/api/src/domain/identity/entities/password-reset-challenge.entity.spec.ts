@@ -33,6 +33,7 @@ describe('PasswordResetChallenge', () => {
       attempts: 0,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(Date.now() - 60000),
     });
     expect(challenge.isExpired()).toBe(true);
@@ -51,6 +52,7 @@ describe('PasswordResetChallenge', () => {
       attempts: 0,
       maxAttempts: 5,
       usedAt: new Date(),
+      verifiedAt: null,
       createdAt: new Date(),
     });
     expect(challenge.isUsed()).toBe(true);
@@ -69,6 +71,7 @@ describe('PasswordResetChallenge', () => {
       attempts: 5,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(),
     });
     expect(challenge.hasExceededAttempts()).toBe(true);
@@ -92,6 +95,7 @@ describe('PasswordResetChallenge', () => {
       attempts: 0,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(),
     });
     expect(challenge.canVerify()).toBe(false);
@@ -105,6 +109,7 @@ describe('PasswordResetChallenge', () => {
       attempts: 0,
       maxAttempts: 5,
       usedAt: new Date(),
+      verifiedAt: null,
       createdAt: new Date(),
     });
     expect(challenge.canVerify()).toBe(false);
@@ -118,9 +123,62 @@ describe('PasswordResetChallenge', () => {
       attempts: 5,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(),
     });
     expect(challenge.canVerify()).toBe(false);
+  });
+
+  it('isVerified() returns true when verifiedAt is set', () => {
+    const challenge = PasswordResetChallenge.reconstitute('c-1', {
+      userId: 'user-1',
+      otpHash: 'hash',
+      expiresAt: new Date(Date.now() + 60000),
+      attempts: 0,
+      maxAttempts: 5,
+      usedAt: null,
+      verifiedAt: new Date(),
+      createdAt: new Date(),
+    });
+    expect(challenge.isVerified()).toBe(true);
+  });
+
+  it('isVerified() returns false when verifiedAt is null', () => {
+    const challenge = createChallenge();
+    expect(challenge.isVerified()).toBe(false);
+  });
+
+  it('isVerificationFresh() returns false when not verified', () => {
+    const challenge = createChallenge();
+    expect(challenge.isVerificationFresh(10 * 60 * 1000)).toBe(false);
+  });
+
+  it('isVerificationFresh() returns true when verified within ttl', () => {
+    const challenge = PasswordResetChallenge.reconstitute('c-1', {
+      userId: 'user-1',
+      otpHash: 'hash',
+      expiresAt: new Date(Date.now() + 60000),
+      attempts: 0,
+      maxAttempts: 5,
+      usedAt: null,
+      verifiedAt: new Date(Date.now() - 2 * 60 * 1000), // 2 min ago
+      createdAt: new Date(),
+    });
+    expect(challenge.isVerificationFresh(10 * 60 * 1000)).toBe(true);
+  });
+
+  it('isVerificationFresh() returns false when verification older than ttl', () => {
+    const challenge = PasswordResetChallenge.reconstitute('c-1', {
+      userId: 'user-1',
+      otpHash: 'hash',
+      expiresAt: new Date(Date.now() + 60000),
+      attempts: 0,
+      maxAttempts: 5,
+      usedAt: null,
+      verifiedAt: new Date(Date.now() - 11 * 60 * 1000), // 11 min ago
+      createdAt: new Date(),
+    });
+    expect(challenge.isVerificationFresh(10 * 60 * 1000)).toBe(false);
   });
 
   it('reconstitute preserves all props', () => {
@@ -132,6 +190,7 @@ describe('PasswordResetChallenge', () => {
       attempts: 3,
       maxAttempts: 10,
       usedAt: now,
+      verifiedAt: now,
       createdAt: now,
     });
     expect(challenge.id.toString()).toBe('c-99');
@@ -141,6 +200,7 @@ describe('PasswordResetChallenge', () => {
     expect(challenge.attempts).toBe(3);
     expect(challenge.maxAttempts).toBe(10);
     expect(challenge.usedAt).toBe(now);
+    expect(challenge.verifiedAt).toBe(now);
     expect(challenge.createdAt).toBe(now);
   });
 });

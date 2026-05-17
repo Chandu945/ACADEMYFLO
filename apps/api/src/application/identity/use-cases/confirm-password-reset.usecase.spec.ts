@@ -28,6 +28,7 @@ function createActiveChallenge(): PasswordResetChallenge {
     attempts: 0,
     maxAttempts: 5,
     usedAt: null,
+    verifiedAt: null,
     createdAt: new Date(),
   });
 }
@@ -64,6 +65,7 @@ function buildDeps() {
     findLatestActiveByUserId: jest.fn(),
     invalidateActiveByUserId: jest.fn(),
     markUsed: jest.fn(),
+    markVerified: jest.fn(),
     incrementAttempts: jest.fn(),
   };
 
@@ -229,6 +231,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       attempts: 1,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: challenge.createdAt,
     });
     deps.userRepo.findByEmail.mockResolvedValue(createMockUser());
@@ -271,6 +274,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       attempts: 0,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(Date.now() - 600000),
     });
     deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(expiredChallenge);
@@ -307,6 +311,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       attempts: 4,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(),
     });
     // After atomic increment, attempts go from 4 to 5 (now >= maxAttempts)
@@ -317,6 +322,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       attempts: 5,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(),
     });
     deps.challengeRepo.findLatestActiveByUserId
@@ -356,6 +362,7 @@ describe('ConfirmPasswordResetUseCase', () => {
       attempts: 0,
       maxAttempts: 5,
       usedAt: new Date(),
+      verifiedAt: null,
       createdAt: new Date(),
     });
     deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(usedChallenge);
@@ -379,6 +386,97 @@ describe('ConfirmPasswordResetUseCase', () => {
     if (!result.ok) {
       expect(result.error.code).toBe('UNAUTHORIZED');
     }
+  });
+
+  it('skips the attempts increment when the challenge was recently verified', async () => {
+    const deps = buildDeps();
+    const verifiedChallenge = PasswordResetChallenge.reconstitute('c-1', {
+      userId: 'user-1',
+      otpHash: 'hashed-otp',
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      attempts: 1, // already burned by the prior /verify call
+      maxAttempts: 5,
+      usedAt: null,
+      verifiedAt: new Date(Date.now() - 60_000), // verified 1 min ago
+      createdAt: new Date(),
+    });
+    deps.userRepo.findByEmail.mockResolvedValue(createMockUser());
+    deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(verifiedChallenge);
+    deps.otpHasher.compare.mockResolvedValue(true);
+
+    const uc = new ConfirmPasswordResetUseCase(
+      deps.userRepo,
+      deps.sessionRepo,
+      deps.challengeRepo,
+      deps.otpHasher,
+      deps.passwordHasher,
+      deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
+    );
+    const result = await uc.execute({
+      email: 'test@example.com',
+      otp: '123456',
+      newPassword: 'NewPass123!',
+    });
+
+    expect(result.ok).toBe(true);
+    // The hot-path optimization: no second attempts increment when verified
+    expect(deps.challengeRepo.incrementAttempts).not.toHaveBeenCalled();
+    // Defense in depth: still hash-compared the OTP
+    expect(deps.otpHasher.compare).toHaveBeenCalledWith('123456', 'hashed-otp');
+    // Password change still happened
+    expect(deps.userRepo.save).toHaveBeenCalled();
+    expect(deps.challengeRepo.markUsed).toHaveBeenCalledWith('c-1');
+  });
+
+  it('rejects on a stale verifiedAt (older than the freshness TTL)', async () => {
+    const deps = buildDeps();
+    const staleChallenge = PasswordResetChallenge.reconstitute('c-1', {
+      userId: 'user-1',
+      otpHash: 'hashed-otp',
+      expiresAt: new Date(Date.now() + 60_000),
+      attempts: 1,
+      maxAttempts: 5,
+      usedAt: null,
+      verifiedAt: new Date(Date.now() - 11 * 60 * 1000), // verified 11 min ago
+      createdAt: new Date(),
+    });
+    deps.userRepo.findByEmail.mockResolvedValue(createMockUser());
+    deps.challengeRepo.findLatestActiveByUserId
+      .mockResolvedValueOnce(staleChallenge)
+      .mockResolvedValueOnce(
+        PasswordResetChallenge.reconstitute('c-1', {
+          userId: 'user-1',
+          otpHash: 'hashed-otp',
+          expiresAt: staleChallenge.expiresAt,
+          attempts: 2,
+          maxAttempts: 5,
+          usedAt: null,
+          verifiedAt: staleChallenge.verifiedAt,
+          createdAt: staleChallenge.createdAt,
+        }),
+      );
+    deps.otpHasher.compare.mockResolvedValue(true);
+
+    const uc = new ConfirmPasswordResetUseCase(
+      deps.userRepo,
+      deps.sessionRepo,
+      deps.challengeRepo,
+      deps.otpHasher,
+      deps.passwordHasher,
+      deps.deviceTokenRepo,
+      deps.otpAttemptTracker,
+    );
+    const result = await uc.execute({
+      email: 'test@example.com',
+      otp: '123456',
+      newPassword: 'NewPass123!',
+    });
+
+    // Stale verification falls back to the full attempt-counted path,
+    // so the increment fires. With a correct OTP the reset still succeeds.
+    expect(result.ok).toBe(true);
+    expect(deps.challengeRepo.incrementAttempts).toHaveBeenCalledWith('c-1');
   });
 
   it('H1: invalidates the user:auth cache so old access tokens stop working immediately', async () => {

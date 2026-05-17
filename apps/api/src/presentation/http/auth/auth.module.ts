@@ -52,6 +52,7 @@ import { RefreshUseCase } from '@application/identity/use-cases/refresh.usecase'
 import { LogoutUseCase } from '@application/identity/use-cases/logout.usecase';
 import { LogoutAllUseCase } from '@application/identity/use-cases/logout-all.usecase';
 import { RequestPasswordResetUseCase } from '@application/identity/use-cases/request-password-reset.usecase';
+import { VerifyPasswordResetUseCase } from '@application/identity/use-cases/verify-password-reset.usecase';
 import { ConfirmPasswordResetUseCase } from '@application/identity/use-cases/confirm-password-reset.usecase';
 import { GoogleLoginUseCase } from '@application/identity/use-cases/google-login.usecase';
 import { GOOGLE_TOKEN_VERIFIER } from '@application/identity/ports/google-token-verifier.port';
@@ -219,6 +220,27 @@ import { AppConfigService } from '@shared/config/config.service';
         EMAIL_SENDER_PORT,
         AppConfigService,
         AUDIT_RECORDER_PORT,
+        OTP_ATTEMPT_TRACKER,
+      ],
+    },
+    {
+      provide: 'VERIFY_PASSWORD_RESET_USE_CASE',
+      useFactory: (
+        userRepo: UserRepository,
+        challengeRepo: PasswordResetChallengeRepository,
+        otpHasher: OtpHasher,
+        otpTracker: OtpAttemptTrackerPort,
+      ) =>
+        new VerifyPasswordResetUseCase(
+          userRepo,
+          challengeRepo,
+          otpHasher,
+          otpTracker,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        PASSWORD_RESET_CHALLENGE_REPOSITORY,
+        OTP_HASHER,
         OTP_ATTEMPT_TRACKER,
       ],
     },

@@ -4,13 +4,12 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-
   TextInput,
   Modal,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
-  StyleSheet} from 'react-native';
+  StyleSheet,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { crossAlert } from '../../utils/crossPlatformAlert';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
@@ -27,7 +26,7 @@ import type { AppError } from '../../../domain/common/errors';
 
 // Map common server error codes to actionable messages so the user sees
 // "Check your connection" instead of a raw transport error string.
-function friendlyEnquiryError(error: AppError, action: 'follow-up' | 'close' | 'convert'): { title: string; message: string } {
+function friendlyEnquiryError(error: AppError, action: 'follow-up' | 'close'): { title: string; message: string } {
   switch (error.code) {
     case 'FORBIDDEN':
       return { title: 'Not allowed', message: `You do not have permission to ${action} this enquiry.` };
@@ -468,8 +467,10 @@ function CloseEnquiryModal({
     }
   }, [visible]);
 
+  // CONVERTED is reserved for the convert-to-student flow and rejected by
+  // the close endpoint, so it's intentionally not offered here. Closing an
+  // enquiry is for non-conversion outcomes only.
   const reasons: { value: ClosureReason; label: string }[] = [
-    { value: 'CONVERTED', label: 'Converted to Student' },
     { value: 'NOT_INTERESTED', label: 'Not Interested' },
     { value: 'OTHER', label: 'Other' },
   ];
@@ -548,146 +549,6 @@ function CloseEnquiryModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       {content}
-    </Modal>
-  );
-}
-
-function _ConvertToStudentModal({
-  visible, enquiryId, onClose, onConverted,
-}: { visible: boolean; enquiryId: string; onClose: () => void; onConverted: () => void }) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [joiningDate, setJoiningDate] = useState('');
-  const [monthlyFee, setMonthlyFee] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
-  const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER' | ''>('');
-  const [addressLine1, setAddressLine1] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const genders: { value: 'MALE' | 'FEMALE' | 'OTHER'; label: string }[] = [
-    { value: 'MALE', label: 'Male' },
-    { value: 'FEMALE', label: 'Female' },
-    { value: 'OTHER', label: 'Other' },
-  ];
-
-  const handleConvert = async () => {
-    if (!joiningDate || !monthlyFee || !dateOfBirth || !gender || !addressLine1 || !city || !state || !pincode) {
-      crossAlert('Validation', 'All fields are required');
-      return;
-    }
-    const fee = parseFloat(monthlyFee);
-    if (isNaN(fee) || fee <= 0) {
-      crossAlert('Validation', 'Monthly fee must be a positive number');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const result = await enquiryApi.convertToStudent(enquiryId, {
-        joiningDate,
-        monthlyFee: fee,
-        dateOfBirth,
-        gender,
-        addressLine1,
-        city,
-        state,
-        pincode,
-      });
-
-      if (result.ok) {
-        crossAlert('Success', 'Enquiry converted to student successfully');
-        setJoiningDate(''); setMonthlyFee(''); setDateOfBirth(''); setGender('');
-        setAddressLine1(''); setCity(''); setState(''); setPincode('');
-        onConverted();
-      } else {
-        const m = friendlyEnquiryError(result.error, 'convert');
-        crossAlert(m.title, m.message);
-      }
-    } catch (err) {
-      if (__DEV__) console.error('[EnquiryDetailScreen] handleConvert failed:', err);
-      crossAlert('Error', 'Failed to convert enquiry. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-        <ScrollView contentContainerStyle={styles.convertModalScroll}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Convert to Student</Text>
-
-            <Text style={styles.label}>Joining Date *</Text>
-            <DatePickerInput value={joiningDate} onChange={setJoiningDate} placeholder="Select joining date" testID="convert-joining-date" />
-
-            <Text style={styles.label}>Monthly Fee *</Text>
-            <TextInput style={styles.input} value={monthlyFee} onChangeText={setMonthlyFee} placeholder="1500" keyboardType="numeric" testID="convert-monthly-fee" />
-
-            <Text style={styles.label}>Date of Birth *</Text>
-            <DatePickerInput value={dateOfBirth} onChange={setDateOfBirth} placeholder="Select date of birth" maximumDate={new Date()} testID="convert-dob" />
-
-            <Text style={styles.label}>Gender *</Text>
-            <View style={styles.reasonRow}>
-              {genders.map((g) => (
-                <TouchableOpacity
-                  key={g.value}
-                  style={[styles.reasonChip, gender === g.value && styles.reasonChipActive]}
-                  onPress={() => setGender(g.value)}
-                  testID={`convert-gender-${g.value}`}
-                >
-                  {gender === g.value ? (
-                    <LinearGradient
-                      colors={[gradient.start, gradient.end]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  ) : null}
-                  <Text style={[styles.reasonChipText, gender === g.value && styles.reasonChipTextActive]}>
-                    {g.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Address Line 1 *</Text>
-            <TextInput style={styles.input} value={addressLine1} onChangeText={setAddressLine1} placeholder="Street address" testID="convert-address" />
-
-            <Text style={styles.label}>City *</Text>
-            <TextInput style={styles.input} value={city} onChangeText={setCity} placeholder="City" testID="convert-city" />
-
-            <Text style={styles.label}>State *</Text>
-            <TextInput style={styles.input} value={state} onChangeText={setState} placeholder="State" testID="convert-state" />
-
-            <Text style={styles.label}>Pincode *</Text>
-            <TextInput style={styles.input} value={pincode} onChangeText={setPincode} placeholder="560001" keyboardType="numeric" testID="convert-pincode" />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.cancelButton} onPress={onClose} testID="convert-cancel">
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-                onPress={handleConvert}
-                disabled={saving}
-                testID="convert-confirm"
-              >
-                <LinearGradient
-                  colors={[gradient.start, gradient.end]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <Text style={styles.saveBtnText}>{saving ? 'Converting...' : 'Convert'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -784,19 +645,6 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   closeButtonText: { fontSize: fontSizes.sm, fontWeight: fontWeights.semibold, color: colors.danger },
-  convertButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.success,
-    borderRadius: radius.xl,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
-  convertButtonText: { fontSize: fontSizes.sm, fontWeight: fontWeights.semibold, color: colors.success },
 
   // Modal styles
   modalOverlay: {
@@ -823,5 +671,4 @@ const makeStyles = (colors: Colors) => StyleSheet.create({
   reasonChipActive: { overflow: 'hidden', borderColor: colors.primary },
   reasonChipText: { fontSize: fontSizes.sm, color: colors.textSecondary },
   reasonChipTextActive: { color: colors.white },
-  convertModalScroll: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl },
 });

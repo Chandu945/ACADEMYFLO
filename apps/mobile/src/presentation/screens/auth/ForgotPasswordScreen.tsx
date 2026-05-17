@@ -175,10 +175,10 @@ export function ForgotPasswordScreen() {
     cooldownRemaining,
     successMessage,
     requestOtp,
+    verifyOtp,
     confirmReset,
     resendOtp,
     goBack,
-    setStep,
     clearError,
     clearFieldError: clearServerFieldError,
     reset,
@@ -311,14 +311,22 @@ export function ForgotPasswordScreen() {
     }
   }, [validateEmail, requestOtp, email]);
 
-  const handleVerifyOtp = useCallback(() => {
+  const handleVerifyOtp = useCallback(async () => {
+    if (submittingRef.current) return;
     Keyboard.dismiss();
     if (!validateOtp()) return;
-    setFieldErrors({});
-    setNewPassword('');
-    setConfirmPassword('');
-    setStep('newPassword');
-  }, [validateOtp, setStep]);
+    submittingRef.current = true;
+    try {
+      const success = await verifyOtp(email.trim().toLowerCase(), otp.trim());
+      if (success) {
+        setFieldErrors({});
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [validateOtp, verifyOtp, email, otp]);
 
   const handleConfirmReset = useCallback(async () => {
     if (submittingRef.current) return;

@@ -30,6 +30,9 @@ export class PasswordResetChallengeModel {
   @Prop({ type: Date, default: null })
   usedAt!: Date | null;
 
+  @Prop({ type: Date, default: null })
+  verifiedAt!: Date | null;
+
   @Prop({ required: true, type: Date })
   createdAt!: Date;
 }

@@ -15,12 +15,14 @@ import { RefreshUseCase } from '@application/identity/use-cases/refresh.usecase'
 import { LogoutUseCase } from '@application/identity/use-cases/logout.usecase';
 import { LogoutAllUseCase } from '@application/identity/use-cases/logout-all.usecase';
 import { RequestPasswordResetUseCase } from '@application/identity/use-cases/request-password-reset.usecase';
+import { VerifyPasswordResetUseCase } from '@application/identity/use-cases/verify-password-reset.usecase';
 import { ConfirmPasswordResetUseCase } from '@application/identity/use-cases/confirm-password-reset.usecase';
 import { OwnerSignupDto } from './dto/owner-signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { VerifyPasswordResetDto } from './dto/verify-password-reset.dto';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { GoogleLoginUseCase } from '@application/identity/use-cases/google-login.usecase';
@@ -46,6 +48,8 @@ export class AuthController {
     @Inject('LOGOUT_ALL_USE_CASE') private readonly logoutAll: LogoutAllUseCase,
     @Inject('REQUEST_PASSWORD_RESET_USE_CASE')
     private readonly requestPasswordReset: RequestPasswordResetUseCase,
+    @Inject('VERIFY_PASSWORD_RESET_USE_CASE')
+    private readonly verifyPasswordReset: VerifyPasswordResetUseCase,
     @Inject('CONFIRM_PASSWORD_RESET_USE_CASE')
     private readonly confirmPasswordReset: ConfirmPasswordResetUseCase,
     @Inject('GOOGLE_LOGIN_USE_CASE') private readonly googleLoginUseCase: GoogleLoginUseCase,
@@ -160,6 +164,22 @@ export class AuthController {
     @Req() req: Request,
   ) {
     const result = await this.requestPasswordReset.execute({ email: dto.email });
+    return mapResultToResponse(result, req);
+  }
+
+  @Post('password-reset/verify')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { limit: 5, ttl: 10_000 }, medium: { limit: 15, ttl: 60_000 }, long: { limit: 50, ttl: 900_000 } })
+  @ApiOperation({ summary: 'Verify password reset OTP (no password change)' })
+  async verifyPasswordResetHandler(
+    @Body() dto: VerifyPasswordResetDto,
+    @Req() req: Request,
+  ) {
+    const result = await this.verifyPasswordReset.execute({
+      email: dto.email,
+      otp: dto.otp,
+    });
     return mapResultToResponse(result, req);
   }
 

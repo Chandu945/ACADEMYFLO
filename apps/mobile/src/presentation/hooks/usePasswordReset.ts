@@ -58,6 +58,44 @@ export function usePasswordReset() {
     }
   }, []);
 
+  // Validate the OTP with the server before advancing to the password step.
+  // Returns true on success so the caller can decide whether to advance.
+  const verifyOtp = useCallback(
+    async (email: string, otp: string): Promise<boolean> => {
+      setError(null);
+      setFieldErrors({});
+      setLoading(true);
+      try {
+        const result = await authApi.verifyPasswordReset({ email, otp });
+
+        if (!result.ok) {
+          // Surface OTP-specific errors next to the OTP input so the user
+          // sees the inline error instead of just the top banner.
+          if (result.error.fieldErrors) {
+            setFieldErrors(result.error.fieldErrors);
+          } else if (
+            result.error.code === 'UNAUTHORIZED' ||
+            result.error.code === 'FORBIDDEN'
+          ) {
+            setFieldErrors({ otp: result.error.message });
+          }
+          setError(result.error.message);
+          return false;
+        }
+
+        setStep('newPassword');
+        return true;
+      } catch {
+        if (__DEV__) console.error('[usePasswordReset] verifyOtp failed');
+        setError('Something went wrong. Please try again.');
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
   const confirmReset = useCallback(
     async (email: string, otp: string, newPassword: string): Promise<boolean> => {
       setError(null);
@@ -72,9 +110,17 @@ export function usePasswordReset() {
           }
           setError(result.error.message);
 
-          // If the error is OTP-related, route back to OTP step.
-          // Use field error key (stable) rather than message string matching (brittle).
-          if (result.error.fieldErrors?.['otp'] || result.error.code === 'FORBIDDEN') {
+          // If the error is OTP-related, route back to the OTP step. We
+          // check three signals because the API uses different codes for
+          // different OTP failure modes: UNAUTHORIZED for invalid/expired
+          // OTP (the common case, e.g. when verify-freshness expired
+          // between step 2 and step 3), FORBIDDEN for the per-email
+          // lockout, and fieldErrors.otp for DTO-level validation rejects.
+          if (
+            result.error.fieldErrors?.['otp'] ||
+            result.error.code === 'UNAUTHORIZED' ||
+            result.error.code === 'FORBIDDEN'
+          ) {
             setStep('otp');
           }
 
@@ -127,6 +173,7 @@ export function usePasswordReset() {
     cooldownRemaining,
     successMessage,
     requestOtp,
+    verifyOtp,
     confirmReset,
     resendOtp,
     goBack,

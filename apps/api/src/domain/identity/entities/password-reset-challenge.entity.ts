@@ -7,6 +7,7 @@ export interface PasswordResetChallengeProps {
   attempts: number;
   maxAttempts: number;
   usedAt: Date | null;
+  verifiedAt: Date | null;
   createdAt: Date;
 }
 
@@ -29,6 +30,7 @@ export class PasswordResetChallenge extends Entity<PasswordResetChallengeProps> 
       attempts: 0,
       maxAttempts: params.maxAttempts,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(),
     });
   }
@@ -53,6 +55,18 @@ export class PasswordResetChallenge extends Entity<PasswordResetChallengeProps> 
     return !this.isExpired() && !this.isUsed() && !this.hasExceededAttempts();
   }
 
+  isVerified(): boolean {
+    return this.props.verifiedAt !== null;
+  }
+
+  // Verification stays valid for `ttlMs` after it was granted. Confirm uses
+  // this to skip a second attempts-increment on the happy path while still
+  // forcing a fresh verify if the user idled on the password screen.
+  isVerificationFresh(ttlMs: number): boolean {
+    if (this.props.verifiedAt === null) return false;
+    return Date.now() - this.props.verifiedAt.getTime() <= ttlMs;
+  }
+
   get userId(): string {
     return this.props.userId;
   }
@@ -75,6 +89,10 @@ export class PasswordResetChallenge extends Entity<PasswordResetChallengeProps> 
 
   get usedAt(): Date | null {
     return this.props.usedAt;
+  }
+
+  get verifiedAt(): Date | null {
+    return this.props.verifiedAt;
   }
 
   get createdAt(): Date {

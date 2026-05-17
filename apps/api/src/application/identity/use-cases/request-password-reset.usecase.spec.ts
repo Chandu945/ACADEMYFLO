@@ -40,6 +40,7 @@ function buildDeps() {
     findLatestActiveByUserId: jest.fn(),
     invalidateActiveByUserId: jest.fn(),
     markUsed: jest.fn(),
+    markVerified: jest.fn(),
     incrementAttempts: jest.fn(),
   };
 
@@ -117,6 +118,7 @@ describe('RequestPasswordResetUseCase', () => {
       attempts: 0,
       maxAttempts: 5,
       usedAt: null,
+      verifiedAt: null,
       createdAt: new Date(), // just created → within cooldown
     });
     deps.challengeRepo.findLatestActiveByUserId.mockResolvedValue(recentChallenge);

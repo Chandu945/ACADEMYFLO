@@ -317,6 +317,7 @@ export class InMemoryPasswordResetChallengeRepository implements PasswordResetCh
           attempts: challenge.attempts,
           maxAttempts: challenge.maxAttempts,
           usedAt: now,
+          verifiedAt: challenge.verifiedAt,
           createdAt: challenge.createdAt,
         });
         this.challenges.set(id, updated);
@@ -336,6 +337,26 @@ export class InMemoryPasswordResetChallengeRepository implements PasswordResetCh
         attempts: challenge.attempts,
         maxAttempts: challenge.maxAttempts,
         usedAt: new Date(),
+        verifiedAt: challenge.verifiedAt,
+        createdAt: challenge.createdAt,
+      });
+      this.challenges.set(challengeId, updated);
+    }
+  }
+
+  async markVerified(challengeId: string): Promise<void> {
+    const challenge = this.challenges.get(challengeId);
+    if (challenge) {
+      const { PasswordResetChallenge: Cls } =
+        await import('../../src/domain/identity/entities/password-reset-challenge.entity');
+      const updated = Cls.reconstitute(challengeId, {
+        userId: challenge.userId,
+        otpHash: challenge.otpHash,
+        expiresAt: challenge.expiresAt,
+        attempts: challenge.attempts,
+        maxAttempts: challenge.maxAttempts,
+        usedAt: challenge.usedAt,
+        verifiedAt: new Date(),
         createdAt: challenge.createdAt,
       });
       this.challenges.set(challengeId, updated);
@@ -354,6 +375,7 @@ export class InMemoryPasswordResetChallengeRepository implements PasswordResetCh
         attempts: challenge.attempts + 1,
         maxAttempts: challenge.maxAttempts,
         usedAt: challenge.usedAt,
+        verifiedAt: challenge.verifiedAt,
         createdAt: challenge.createdAt,
       });
       this.challenges.set(challengeId, updated);
