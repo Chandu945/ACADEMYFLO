@@ -110,6 +110,44 @@ describe('LoginUseCase', () => {
     });
 
     expect(result.ok).toBe(true);
+    expect(userRepo.findByPhone).toHaveBeenCalledWith('+919876543210');
+  });
+
+  // Regression: mobile + user-web both strip the `+` before sending the
+  // identifier. Without API-side normalization, the lookup against the
+  // stored phoneE164 (`+919876543210`) failed and login always returned
+  // "Invalid credentials" regardless of password.
+  it.each([
+    ['10-digit Indian number', '9876543210'],
+    ['12-digit with 91 prefix, no plus', '919876543210'],
+    ['+91 with spaces', '+91 98765 43210'],
+    ['+91 with dashes', '+91-98765-43210'],
+    ['raw digits with parens', '(98765) 43210'],
+  ])('phone-login: normalises %s to E.164 before findByPhone', async (_label, raw) => {
+    const { userRepo, sessionRepo, hasher, tokenService } = buildDeps();
+    userRepo.findByPhone.mockResolvedValue(createMockUser());
+    hasher.compare.mockResolvedValue(true);
+
+    const uc = new LoginUseCase(userRepo, sessionRepo, hasher, tokenService);
+    const result = await uc.execute({ identifier: raw, password: 'Password1!' });
+
+    expect(result.ok).toBe(true);
+    expect(userRepo.findByPhone).toHaveBeenCalledWith('+919876543210');
+  });
+
+  it('phone-login: unparseable phone returns invalid credentials without DB hit', async () => {
+    const { userRepo, sessionRepo, hasher, tokenService } = buildDeps();
+
+    const uc = new LoginUseCase(userRepo, sessionRepo, hasher, tokenService);
+    const result = await uc.execute({ identifier: 'not-a-phone-or-email', password: 'x' });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('UNAUTHORIZED');
+    expect(userRepo.findByPhone).not.toHaveBeenCalled();
+    expect(userRepo.findByEmail).not.toHaveBeenCalled();
+    // Still hits the dummy-bcrypt timing equalizer so the response time
+    // matches the "wrong password" path (timing-attack mitigation).
+    expect(hasher.compare).toHaveBeenCalled();
   });
 
   it('should fail with wrong password', async () => {

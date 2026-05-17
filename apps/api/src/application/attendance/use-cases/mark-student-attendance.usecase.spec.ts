@@ -120,6 +120,7 @@ function buildDeps() {
     countPresentByAcademyAndDate: jest.fn(),
     countDistinctStudentsPresentByAcademyAndDate: jest.fn(),
     countDistinctStudentsAbsentByAcademyAndDate: jest.fn().mockResolvedValue(0),
+    countDistinctStudentsAbsentInAllScheduledBatchesByAcademyAndDate: jest.fn().mockResolvedValue(0),
     findAbsentByAcademyAndMonth: jest.fn().mockResolvedValue([]),
     deleteAllByAcademyAndStudent: jest.fn(),
   };

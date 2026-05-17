@@ -77,11 +77,24 @@ export function LoginScreen() {
     if (error) setError(null);
   }, [clearFieldError, error]);
 
-  /** Normalise phone identifiers by stripping formatting characters. */
+  /**
+   * Normalise a phone identifier into E.164 (`+91XXXXXXXXXX`) so the server
+   * can match it against the stored phoneE164 field. Previously this
+   * stripped the `+` along with other formatting, sending raw digits like
+   * `919876543210` — the API's findOne({ phoneE164 }) lookup is an exact
+   * match, so every phone-login returned "Invalid credentials" regardless
+   * of password. Keeping the `+` and prepending +91 for 10-digit inputs
+   * (the only common Indian format) fixes login-by-phone.
+   */
   const normaliseIdentifier = useCallback((raw: string): string => {
     const trimmed = raw.trim();
     if (trimmed.includes('@')) return trimmed;
-    return trimmed.replace(/[\s\-+()]/g, '');
+    const cleaned = trimmed.replace(/[\s\-()]/g, '');
+    if (/^\+[1-9]\d{6,14}$/.test(cleaned)) return cleaned;
+    const digits = cleaned.replace(/^\+/, '');
+    if (/^\d{10}$/.test(digits)) return `+91${digits}`;
+    if (/^91\d{10}$/.test(digits)) return `+${digits}`;
+    return cleaned; // unrecognized — let the server return invalid-credentials
   }, []);
 
   const validate = useCallback((): boolean => {

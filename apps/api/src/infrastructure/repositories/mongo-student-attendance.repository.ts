@@ -7,6 +7,7 @@ import { StudentAttendanceModel } from '../database/schemas/student-attendance.s
 import type { StudentAttendanceDocument } from '../database/schemas/student-attendance.schema';
 import { getTransactionSession } from '../database/transaction-context';
 import { escapeRegex } from '@shared/utils/escape-regex';
+import { weekdayLabelFromDate } from '@shared/date-utils';
 
 @Injectable()
 export class MongoStudentAttendanceRepository implements StudentAttendanceRepository {
@@ -186,6 +187,91 @@ export class MongoStudentAttendanceRepository implements StudentAttendanceReposi
       status: 'ABSENT',
     });
     return distinctIds.length;
+  }
+
+  async countDistinctStudentsAbsentInAllScheduledBatchesByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number> {
+    // Strict day-level "absent today" count for the dashboard tile: only
+    // counts a student if EVERY batch they're scheduled in on `date` has
+    // an explicit ABSENT row. Matches the per-student monthly view's
+    // definition of an absent day (presentBatches.size === 0). This means
+    // a student absent in their morning batch but present (or unmarked,
+    // default-present) in their evening batch is NOT counted as absent on
+    // the dashboard — the monthly view would call this a "partial" day.
+    //
+    // Pipeline shape: start from today's ABSENT records, group by student
+    // → set of absent batches, $lookup the student + enrollments + batches
+    // to derive scheduled batches today, then keep only rows where every
+    // scheduled batch appears in the absent set ($setDifference == ∅).
+    const weekday = weekdayLabelFromDate(date);
+    const endOfDay = new Date(`${date}T23:59:59.999Z`);
+    const result = await this.model.aggregate<{ count: number }>([
+      { $match: { academyId, date, status: 'ABSENT' } },
+      { $group: { _id: '$studentId', absentBatches: { $addToSet: '$batchId' } } },
+      {
+        $lookup: {
+          from: 'students',
+          let: { studentId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$_id', '$$studentId'] },
+                    { $eq: ['$academyId', academyId] },
+                    { $eq: ['$status', 'ACTIVE'] },
+                    { $eq: ['$deletedAt', null] },
+                    { $lte: ['$joiningDate', endOfDay] },
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'student_batches',
+                localField: '_id',
+                foreignField: 'studentId',
+                as: 'enrollments',
+              },
+            },
+            { $unwind: '$enrollments' },
+            // BUG-032 parity: ignore enrollments dated after `date` so the
+            // scheduled-batch set matches what the marking screen would
+            // accept as a writable cell on this day.
+            { $match: { $expr: { $lte: ['$enrollments.assignedAt', endOfDay] } } },
+            {
+              $lookup: {
+                from: 'batches',
+                localField: 'enrollments.batchId',
+                foreignField: '_id',
+                as: 'batch',
+              },
+            },
+            { $unwind: '$batch' },
+            { $match: { 'batch.days': weekday } },
+            { $group: { _id: '$_id', scheduledBatches: { $addToSet: '$batch._id' } } },
+          ],
+          as: 'student',
+        },
+      },
+      // Drops students who aren't active, joined-by-today, or scheduled
+      // today at all — they shouldn't contribute to the dashboard count.
+      { $unwind: '$student' },
+      {
+        $match: {
+          $expr: {
+            $eq: [
+              { $size: { $setDifference: ['$student.scheduledBatches', '$absentBatches'] } },
+              0,
+            ],
+          },
+        },
+      },
+      { $count: 'count' },
+    ]);
+    return result[0]?.count ?? 0;
   }
 
   async deleteAllByAcademyAndStudent(

@@ -90,8 +90,17 @@ export class GetOwnerDashboardKpisUseCase {
       // Drives the % present tile so it starts at 100% (= scheduled / scheduled)
       // before anyone is marked absent, and drops only on explicit ABSENT marks.
       this.studentRepo.countScheduledStudentsByAcademyAndDate(academyId, today),
-      // Distinct students with at least one explicit ABSENT record today.
-      this.attendanceRepo.countDistinctStudentsAbsentByAcademyAndDate(academyId, today),
+      // Strict day-level absent count: only students who are absent in
+      // EVERY scheduled batch today. A student absent in their morning
+      // batch but present (or unmarked → default-present) in their
+      // evening batch is treated as a "partial" present day — matching
+      // get-student-monthly-attendance's day-level semantics. Without
+      // this, the dashboard would report the partial student as absent
+      // while the student's own monthly view counted them as present.
+      this.attendanceRepo.countDistinctStudentsAbsentInAllScheduledBatchesByAcademyAndDate(
+        academyId,
+        today,
+      ),
       this.expenseRepo.sumByAcademyAndDateRange(academyId, input.from, input.to),
       // Cash bucketing: late fee collected during the picked range, regardless
       // of which due-month it was for. Mirrors `totalCollected` (transaction

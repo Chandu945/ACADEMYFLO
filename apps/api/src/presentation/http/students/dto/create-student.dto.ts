@@ -105,13 +105,16 @@ export class CreateStudentDto {
   @Min(1)
   monthlyFee!: number;
 
-  @ApiPropertyOptional({ example: '+919876543211' })
-  @IsOptional()
+  // Required on Create as of the product rule "every new student must have a
+  // contact number". UpdateStudentDto keeps it @IsOptional() so a partial
+  // update of unrelated fields doesn't require re-sending mobileNumber —
+  // the UI enforces required on edit so legacy null records get filled.
+  @ApiProperty({ example: '+919876543211' })
   @IsString()
   @Matches(/^\+[1-9]\d{6,14}$/, {
     message: 'mobileNumber must be in E.164 format (e.g. +919876543211)',
   })
-  mobileNumber?: string;
+  mobileNumber!: string;
 
   @ApiPropertyOptional({ example: 'arun@example.com' })
   @IsOptional()

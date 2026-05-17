@@ -471,6 +471,7 @@ function CloseEnquiryModal({
   // the close endpoint, so it's intentionally not offered here. Closing an
   // enquiry is for non-conversion outcomes only.
   const reasons: { value: ClosureReason; label: string }[] = [
+    { value: 'INTERESTED', label: 'Interested' },
     { value: 'NOT_INTERESTED', label: 'Not Interested' },
     { value: 'OTHER', label: 'Other' },
   ];

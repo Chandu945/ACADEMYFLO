@@ -62,11 +62,28 @@ export interface StudentAttendanceRepository {
 
   /**
    * Default-present model: count distinct students with at least one explicit
-   * ABSENT record on a date. Mirrors the PRESENT version above. Drives the
-   * dashboard "x of n scheduled present" tile so the metric defaults to 100%
-   * (no ABSENT rows = nobody marked absent) and falls as absences accrue.
+   * ABSENT record on a date. Mirrors the PRESENT version above.
+   *
+   * NOTE: superseded for the dashboard tile by
+   * {@link countDistinctStudentsAbsentInAllScheduledBatchesByAcademyAndDate},
+   * which matches the per-student monthly view's day-level definition. Kept
+   * for callers that genuinely want "any absent record today" (raw queries,
+   * audit reports).
    */
   countDistinctStudentsAbsentByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number>;
+
+  /**
+   * Strict day-level "absent today": counts a student only if EVERY batch
+   * they're scheduled in on `date` has an explicit ABSENT row. A student
+   * absent in one batch but present (or unmarked → default-present) in
+   * another does NOT count. Mirrors get-student-monthly-attendance's
+   * presentBatches.size === 0 branch so the dashboard tile and the
+   * per-student monthly view agree on what "absent for the day" means.
+   */
+  countDistinctStudentsAbsentInAllScheduledBatchesByAcademyAndDate(
     academyId: string,
     date: string,
   ): Promise<number>;

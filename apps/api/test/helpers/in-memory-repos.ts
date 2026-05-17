@@ -855,6 +855,32 @@ export class InMemoryStudentAttendanceRepository implements StudentAttendanceRep
     return ids.size;
   }
 
+  /**
+   * In-memory approximation: this fake repo is keyed by (academy, student,
+   * date) without batchId, so it can't model the two-batches-same-day case.
+   * For tests that need it, override this method on a per-test mock. The
+   * approximation: count distinct students who have an ABSENT row AND no
+   * PRESENT row today. Good enough for dashboard tests that don't enroll
+   * students in multiple batches.
+   */
+  async countDistinctStudentsAbsentInAllScheduledBatchesByAcademyAndDate(
+    academyId: string,
+    date: string,
+  ): Promise<number> {
+    const absentIds = new Set<string>();
+    const presentIds = new Set<string>();
+    for (const r of this.records.values()) {
+      if (r.academyId !== academyId || r.date !== date) continue;
+      if (r.status === 'ABSENT') absentIds.add(r.studentId);
+      if (r.status === 'PRESENT') presentIds.add(r.studentId);
+    }
+    let count = 0;
+    for (const id of absentIds) {
+      if (!presentIds.has(id)) count++;
+    }
+    return count;
+  }
+
   async findAbsentByAcademyAndMonth(
     academyId: string,
     monthPrefix: string,

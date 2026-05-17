@@ -154,7 +154,9 @@ export default function EditStudentPage() {
     if (form.whatsappNumber.trim() && !E164_RE.test(normalizePhone(form.whatsappNumber))) {
       errors['whatsappNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
     }
-    if (form.mobileNumber.trim() && !E164_RE.test(normalizePhone(form.mobileNumber))) {
+    if (!form.mobileNumber.trim()) {
+      errors['mobileNumber'] = 'Mobile number is required';
+    } else if (!E164_RE.test(normalizePhone(form.mobileNumber))) {
       errors['mobileNumber'] = 'Must be in E.164 format (e.g. +919876543210)';
     }
     if (!isStaff && (!form.monthlyFee || Number(form.monthlyFee) <= 0)) {
@@ -277,13 +279,13 @@ export default function EditStudentPage() {
                 />
               </div>
               <Input
-                label="Mobile Number"
+                label="Mobile Number *"
                 type="tel"
                 value={form.mobileNumber}
                 onChange={(e) => set('mobileNumber', e.target.value)}
                 error={fieldErrors['mobileNumber']}
                 placeholder="+919876543210"
-                hint="E.164 format with +91 prefix"
+                hint="Required. E.164 format with +91 prefix"
               />
               <Input
                 label="WhatsApp Number"

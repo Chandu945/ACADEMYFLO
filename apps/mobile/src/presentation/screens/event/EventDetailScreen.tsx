@@ -63,21 +63,38 @@ export function EventDetailScreen() {
   const [event, setEvent] = useState<EventDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tracked separately from `error` because NOT_FOUND is not a retryable
+  // failure — the event is gone and there's nothing to try again. Renders
+  // a friendly EmptyState + auto-pops back to the list.
+  const [notFound, setNotFound] = useState(false);
   // Which action is currently in flight. Used so only that button spins —
   // the rest stay disabled-but-labelled so the user can tell which action
   // they actually triggered.
   type Action = 'complete' | 'cancel' | 'reinstate' | 'delete';
   const [activeAction, setActiveAction] = useState<Action | null>(null);
   const mountedRef = useRef(true);
+  // After a successful local delete, any focus-effect refire that races
+  // with the goBack() unmount would call fetchDetail → server returns 404
+  // → user sees a scary "Event with id 'xxx' not found" banner. This
+  // ref shortcircuits that race.
+  const wasDeletedRef = useRef(false);
 
   const fetchDetail = useCallback(async () => {
+    if (wasDeletedRef.current) return;
     setLoading(true);
     setError(null);
+    setNotFound(false);
     try {
       const result = await eventApi.getEventDetail(eventId);
       if (!mountedRef.current) return;
       if (result.ok) {
         setEvent(result.value);
+      } else if (result.error.code === 'NOT_FOUND') {
+        // Event was deleted (by us, by another admin, or stale deep link).
+        // Don't expose the raw "Event with id '...' not found" — show a
+        // friendly empty state instead. The auto-pop effect below sends
+        // the user back to the list a moment later.
+        setNotFound(true);
       } else {
         setError(result.error.message);
       }
@@ -99,6 +116,20 @@ export function EventDetailScreen() {
       fetchDetail();
     }, [fetchDetail]),
   );
+
+  // Auto-pop back to the list when the event no longer exists. 1.5s is
+  // long enough for the user to read the message but short enough to
+  // feel responsive. canGoBack() guards against deep-linked entries
+  // where popping would do nothing.
+  useEffect(() => {
+    if (!notFound) return;
+    const t = setTimeout(() => {
+      if (!mountedRef.current) return;
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.navigate('EventList');
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [notFound, navigation]);
 
   const handleStatusChange = useCallback(
     (newStatus: EventStatus, label: string, action: Action) => {
@@ -151,7 +182,18 @@ export function EventDetailScreen() {
             try {
               const result = await eventApi.deleteEvent(eventId);
               if (result.ok) {
-                navigation.goBack();
+                // Flag BEFORE goBack so any racing focus-effect fetch
+                // bails out. Without this the screen briefly re-renders
+                // with a "not found" error during unmount.
+                wasDeletedRef.current = true;
+                if (navigation.canGoBack()) navigation.goBack();
+                else navigation.navigate('EventList');
+              } else if (result.error.code === 'NOT_FOUND') {
+                // Someone else deleted it first — treat as success from
+                // the user's POV. Same goBack behavior.
+                wasDeletedRef.current = true;
+                if (navigation.canGoBack()) navigation.goBack();
+                else navigation.navigate('EventList');
               } else {
                 if (mountedRef.current) crossAlert('Error', result.error.message);
               }
@@ -178,6 +220,23 @@ export function EventDetailScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (notFound) {
+    // Distinct branch from the generic `error` path: NOT_FOUND is not
+    // retryable, so we render a friendly EmptyState (no raw entity ID,
+    // no useless "Try again" button) and the auto-pop effect above
+    // navigates back to the list shortly. We deliberately don't show
+    // a manual back button — the screen self-resolves.
+    return (
+      <View style={styles.container}>
+        <EmptyState
+          message="Event no longer available"
+          subtitle="It may have been deleted or cancelled. Returning to the event list…"
+          icon="calendar-remove-outline"
+        />
       </View>
     );
   }

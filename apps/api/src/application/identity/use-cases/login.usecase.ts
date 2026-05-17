@@ -16,6 +16,35 @@ import { randomUUID } from 'crypto';
 /** Pre-hashed bcrypt dummy — used to equalize timing when user is not found */
 const DUMMY_HASH = '$2b$12$KIX/LMmvTPRYOfx2n2PGauzE7xl8TZsI/2lDh.gPnJRFFWk4RYiGW';
 
+/**
+ * Normalize a free-form phone identifier into the strict E.164 format the
+ * User.phoneE164 field is stored in. Returns null when the input can't be
+ * interpreted as a phone — caller treats that as "no user found" (with
+ * timing-equalized response, see findByPhone path).
+ *
+ * Bug context: mobile + user-web both strip the `+` before sending the
+ * login identifier (their normaliseIdentifier helpers do `replace(/[\s\-+()]/g, '')`),
+ * so `+919876543210`, `91 98765 43210`, `9876543210` all arrived here as
+ * digit strings like `919876543210` or `9876543210` and failed the exact
+ * findOne({ phoneE164 }) lookup against the stored `+919876543210`. Every
+ * login-by-phone returned "Invalid credentials" regardless of password.
+ * Normalizing here is defense in depth — the clients are also being fixed
+ * but any future client (third-party, internal tool) that sends raw digits
+ * now works.
+ *
+ * Indian-number assumption matches the rest of the project (signup DTO
+ * regex, student form, enquiry entity all bake +91 in).
+ */
+function normalizePhoneIdentifier(raw: string): string | null {
+  // Strip formatting but KEEP a leading + if present.
+  const cleaned = raw.replace(/[\s\-()]/g, '');
+  if (/^\+[1-9]\d{6,14}$/.test(cleaned)) return cleaned; // already E.164
+  const digits = cleaned.replace(/^\+/, '');
+  if (/^\d{10}$/.test(digits)) return `+91${digits}`; // 10-digit Indian number
+  if (/^91\d{10}$/.test(digits)) return `+${digits}`; // already has 91 country code
+  return null;
+}
+
 export interface LoginInput {
   identifier: string;
   password: string;
@@ -69,7 +98,11 @@ export class LoginUseCase {
     if (identifier.includes('@')) {
       user = await this.userRepo.findByEmail(identifierLower);
     } else {
-      user = await this.userRepo.findByPhone(identifier);
+      const phoneE164 = normalizePhoneIdentifier(identifier);
+      // Unparseable phone falls through to user=null below, which hits the
+      // dummy-bcrypt timing equalizer and returns the generic invalid-
+      // credentials error — same surface as a wrong email.
+      user = phoneE164 ? await this.userRepo.findByPhone(phoneE164) : null;
     }
 
     if (!user) {

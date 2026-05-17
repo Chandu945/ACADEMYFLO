@@ -59,10 +59,16 @@ export function validateStudentForm(
     errors['gender'] = 'Gender is required';
   }
 
-  // BUG-021: validate the student's own mobile too. Previously this field
-  // was wired but never checked, so users could submit junk like "86575"
-  // through the optional field.
-  if (fields['mobileNumber']?.trim() && !E164_RE.test(fields['mobileNumber'])) {
+  // Student's own mobile is required on both Create and Edit. The screen
+  // submits `''` (after normalizeToE164) when the input is blank, so the
+  // empty-check below catches it. Format check runs after to give a
+  // distinct error message when something IS typed but isn't a valid
+  // 10-digit Indian number. Legacy students (created before this rule)
+  // will hit the empty branch on their next edit and the owner has to
+  // fill it in before saving — intended data-hygiene nudge.
+  if (!fields['mobileNumber']?.trim()) {
+    errors['mobileNumber'] = 'Mobile number is required';
+  } else if (!E164_RE.test(fields['mobileNumber'])) {
     errors['mobileNumber'] = 'Please enter a valid 10-digit mobile number';
   }
 

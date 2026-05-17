@@ -273,6 +273,123 @@ describe('GetOwnerDashboardKpisUseCase', () => {
     }
   });
 
+  it('two batches, absent in one + present in another → NOT counted as absent on dashboard', async () => {
+    // Matches the day-level definition in get-student-monthly-attendance:
+    // a student counts as absent for the day only if every scheduled
+    // batch has an explicit ABSENT row. Present (or unmarked) in any
+    // other batch → "partial" present day, not absent. Before this
+    // fix the dashboard would have counted such a student as absent
+    // while their own monthly view called the same day "present".
+    const student = Student.create({
+      id: 'student-multi-batch',
+      academyId,
+      fullName: 'Two-batch Student',
+      dateOfBirth: new Date('2010-01-01'),
+      gender: 'MALE',
+      address: { line1: 'Addr', city: 'City', state: 'State', pincode: '123456' },
+      guardian: { name: 'Guard', mobile: '+919900000002', email: 'g@test.com' },
+      joiningDate: new Date('2024-01-01'),
+      monthlyFee: 500,
+    });
+    await studentRepo.save(student);
+
+    // Seed today's records: ABSENT in morning batch, PRESENT in evening batch.
+    // The in-memory repo's last-write-wins behavior is fine here — what we
+    // care about is the count method, which inspects all records added.
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const morning = (await import('@domain/attendance/entities/student-attendance.entity'))
+      .StudentAttendance.create({
+        id: 'att-morning',
+        academyId,
+        studentId: 'student-multi-batch',
+        batchId: 'batch-morning',
+        date: today,
+        markedByUserId: ownerId,
+        status: 'ABSENT',
+      });
+    const evening = (await import('@domain/attendance/entities/student-attendance.entity'))
+      .StudentAttendance.create({
+        id: 'att-evening',
+        academyId,
+        studentId: 'student-multi-batch',
+        batchId: 'batch-evening',
+        date: today,
+        markedByUserId: ownerId,
+        status: 'PRESENT',
+      });
+    // The in-memory key drops batchId — write the PRESENT record last so
+    // the repo state reflects "has at least one PRESENT row today". That's
+    // exactly the signal the in-memory implementation of the new method
+    // uses to refuse to count the student as absent.
+    await attRepo.save(morning);
+    await attRepo.save(evening);
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const result = await useCase.execute({
+      actorUserId: ownerId,
+      actorRole: 'OWNER',
+      from: new Date(y, m, 1, 0, 0, 0, 0),
+      to: new Date(y, m + 1, 0, 23, 59, 59, 999),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // The student has an ABSENT row, but also a PRESENT row in another
+      // batch on the same day → not "absent in all scheduled batches" →
+      // not counted on the dashboard tile.
+      expect(result.value.todayAbsentCount).toBe(0);
+    }
+  });
+
+  it('two batches, absent in both → IS counted as absent on dashboard', async () => {
+    const student = Student.create({
+      id: 'student-fully-absent',
+      academyId,
+      fullName: 'Fully Absent Student',
+      dateOfBirth: new Date('2010-01-01'),
+      gender: 'MALE',
+      address: { line1: 'Addr', city: 'City', state: 'State', pincode: '123456' },
+      guardian: { name: 'Guard', mobile: '+919900000002', email: 'g@test.com' },
+      joiningDate: new Date('2024-01-01'),
+      monthlyFee: 500,
+    });
+    await studentRepo.save(student);
+
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    // Single ABSENT record covers the in-memory model (which can't distinguish
+    // multiple batches per day anyway); the Mongo aggregation does the real
+    // per-batch check. Either way: no PRESENT row exists for this student
+    // today → counts as absent.
+    const absent = (await import('@domain/attendance/entities/student-attendance.entity'))
+      .StudentAttendance.create({
+        id: 'att-absent',
+        academyId,
+        studentId: 'student-fully-absent',
+        batchId: 'batch-morning',
+        date: today,
+        markedByUserId: ownerId,
+        status: 'ABSENT',
+      });
+    await attRepo.save(absent);
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const result = await useCase.execute({
+      actorUserId: ownerId,
+      actorRole: 'OWNER',
+      from: new Date(y, m, 1, 0, 0, 0, 0),
+      to: new Date(y, m + 1, 0, 23, 59, 59, 999),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.todayAbsentCount).toBe(1);
+    }
+  });
+
   it('should reject non-owner access', async () => {
     const staffId = 'staff-2';
     const staff = User.create({

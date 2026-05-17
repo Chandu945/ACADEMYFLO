@@ -704,7 +704,7 @@ function StudentFormBody({ mode, student }: StudentFormBodyProps) {
       <Text style={styles.sectionTitle} accessibilityRole="header">Contact Information</Text>
       <Input
         ref={mobileRef}
-        label="Mobile Number (Optional)"
+        label="Mobile Number *"
         value={mobileNumber}
         onChangeText={handleMobileChange}
         error={fieldErrors['mobileNumber']}

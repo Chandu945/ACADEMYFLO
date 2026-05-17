@@ -10,16 +10,30 @@ import { Input } from '@/components/ui/Input';
 import styles from './page.module.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
-const PHONE_RE = /^\d{10,15}$/;
+// Accepts both E.164 (`+91XXXXXXXXXX`) and bare digit strings, since the
+// validator runs AFTER normalizeIdentifier which now produces E.164.
+const PHONE_RE = /^(\+[1-9]\d{6,14}|\d{10,15})$/;
 
 /** Rate-limit cooldown in seconds (matches mobile) */
 const RATE_LIMIT_COOLDOWN_S = 30;
 
-/** Normalize a phone-like identifier: strip spaces, dashes, +, parens */
+/**
+ * Normalize a phone-like identifier into E.164 (`+91XXXXXXXXXX`). The server
+ * stores phones as strict E.164 and matches via exact-equality findOne, so
+ * stripping the `+` (the prior behavior) made every phone-login resolve to
+ * "Invalid credentials" regardless of password. Keeps the `+` and prepends
+ * +91 for 10-digit Indian numbers, matching the mobile LoginScreen and the
+ * API login use-case.
+ */
 function normalizeIdentifier(raw: string): string {
   const trimmed = raw.trim();
   if (trimmed.includes('@')) return trimmed; // email — keep as-is
-  return trimmed.replace(/[\s\-+()]/g, '');
+  const cleaned = trimmed.replace(/[\s\-()]/g, '');
+  if (/^\+[1-9]\d{6,14}$/.test(cleaned)) return cleaned;
+  const digits = cleaned.replace(/^\+/, '');
+  if (/^\d{10}$/.test(digits)) return `+91${digits}`;
+  if (/^91\d{10}$/.test(digits)) return `+${digits}`;
+  return cleaned; // unrecognized — let the server return invalid-credentials
 }
 
 function validateField(
