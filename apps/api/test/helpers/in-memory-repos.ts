@@ -668,7 +668,13 @@ export class InMemoryStudentRepository implements StudentRepository {
   }
 
   async findByIds(ids: string[]): Promise<Student[]> {
-    return ids.map((id) => this.students.get(id)).filter((s): s is Student => s !== undefined);
+    // Mirror the Mongo impl which filters `{ _id: $in, deletedAt: null }` —
+    // any use-case that relies on findByIds being the alive-only subset
+    // (e.g. list-unpaid-dues hiding ghost rows for soft-deleted students)
+    // needs this in-memory fake to behave the same way.
+    return ids
+      .map((id) => this.students.get(id))
+      .filter((s): s is Student => s !== undefined && !s.isDeleted());
   }
 
   async countInactiveByAcademy(academyId: string): Promise<number> {
@@ -1228,6 +1234,24 @@ export class InMemoryPaymentRequestRepository implements PaymentRequestRepositor
     return Array.from(this.requests.values()).filter(
       (r) => r.academyId === academyId && r.staffUserId === staffUserId && r.status === 'PENDING',
     ).length;
+  }
+
+  async cancelPendingByStaffAndAcademy(
+    staffUserId: string,
+    academyId: string,
+  ): Promise<number> {
+    let count = 0;
+    for (const [id, req] of this.requests) {
+      if (
+        req.academyId === academyId &&
+        req.staffUserId === staffUserId &&
+        req.status === 'PENDING'
+      ) {
+        this.requests.set(id, req.cancel());
+        count++;
+      }
+    }
+    return count;
   }
 
   async countPendingByAuthorAndAcademySince(

@@ -5,6 +5,7 @@ const subscriptionApi = {
   getMySubscription: jest.fn(),
   initiatePayment: jest.fn(),
   getPaymentStatus: jest.fn(),
+  cancelPayment: jest.fn().mockResolvedValue({ ok: true, value: { orderId: 'x', status: 'FAILED' } }),
 };
 const openCashfreeCheckout = jest.fn().mockResolvedValue(undefined);
 const deps = {

@@ -153,6 +153,20 @@ export class MongoPaymentRequestRepository implements PaymentRequestRepository {
     return res.deletedCount ?? 0;
   }
 
+  async cancelPendingByStaffAndAcademy(staffUserId: string, academyId: string): Promise<number> {
+    // Staff-deactivate cascade. Soft-cancel (status → CANCELLED) rather than
+    // hard-delete so the student's PR history still shows the request and
+    // its disposition. The staff record itself stays INACTIVE; the PR rows
+    // referencing it remain queryable for audit. Bumps updatedAt so any
+    // listing UI ordering by recency reflects the change.
+    const res = await this.model.updateMany(
+      { staffUserId, academyId, status: 'PENDING' },
+      { $set: { status: 'CANCELLED', updatedAt: new Date() } },
+      { session: getTransactionSession() },
+    );
+    return res.modifiedCount ?? 0;
+  }
+
   private toDomain(doc: unknown): PaymentRequest {
     const d = doc as {
       _id: string;

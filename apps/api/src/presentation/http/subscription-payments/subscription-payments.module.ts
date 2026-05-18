@@ -43,6 +43,7 @@ import { InitiateSubscriptionPaymentUseCase } from '@application/subscription-pa
 import { HandleCashfreeWebhookUseCase } from '@application/subscription-payments/use-cases/handle-cashfree-webhook.usecase';
 import type { WebhookSignatureVerifier } from '@application/subscription-payments/use-cases/handle-cashfree-webhook.usecase';
 import { GetSubscriptionPaymentStatusUseCase } from '@application/subscription-payments/use-cases/get-subscription-payment-status.usecase';
+import { CancelSubscriptionPaymentUseCase } from '@application/subscription-payments/use-cases/cancel-subscription-payment.usecase';
 import { CashfreeAdapter } from '@infrastructure/payments/cashfree/cashfree.adapter';
 import { CashfreeHttpClient } from '@infrastructure/payments/cashfree/cashfree-http.client';
 import { CashfreeSignatureVerifier } from '@infrastructure/payments/cashfree/cashfree.signature';
@@ -192,6 +193,27 @@ const WEBHOOK_SIGNATURE_VERIFIER = Symbol('WEBHOOK_SIGNATURE_VERIFIER');
         USER_REPOSITORY,
         ACADEMY_REPOSITORY,
         EMAIL_SENDER_PORT,
+      ],
+    },
+    {
+      provide: 'CANCEL_SUBSCRIPTION_PAYMENT_USE_CASE',
+      useFactory: (
+        userRepo: UserRepository,
+        paymentRepo: SubscriptionPaymentRepository,
+        logger: LoggerPort,
+        auditRecorder: AuditRecorderPort,
+      ) =>
+        new CancelSubscriptionPaymentUseCase(
+          userRepo,
+          paymentRepo,
+          logger,
+          auditRecorder,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        SUBSCRIPTION_PAYMENT_REPOSITORY,
+        LOGGER_PORT,
+        AUDIT_RECORDER_PORT,
       ],
     },
     {

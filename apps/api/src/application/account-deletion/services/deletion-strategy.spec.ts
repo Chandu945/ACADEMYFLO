@@ -135,6 +135,148 @@ describe('SelfOnlyDeletionStrategy', () => {
   });
 });
 
+describe('SelfOnlyDeletionStrategy cascade', () => {
+  // Cascade dependencies — set up fresh per test to avoid jest call-order
+  // bleed between role variants.
+  function makeCascadeDeps() {
+    return {
+      paymentRequests: {
+        cancelPendingByStaffAndAcademy: jest.fn().mockResolvedValue(2),
+      },
+      parentLinks: {
+        deleteAllByParentUserId: jest.fn().mockResolvedValue(3),
+      },
+      deviceTokens: {
+        removeByUserIds: jest.fn().mockResolvedValue(5),
+      },
+      sessions: {
+        revokeAllByUserIds: jest.fn().mockResolvedValue(undefined),
+      },
+      userAuthCache: {
+        invalidate: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+  }
+
+  function makeRequest(userId: string, role: 'STAFF' | 'PARENT') {
+    return AccountDeletionRequest.create({
+      id: randomUUID(),
+      userId,
+      role,
+      academyId: 'academy-1',
+      reason: null,
+      coolingOffDays: 30,
+      cancelToken: 'tok',
+      requestedFromIp: null,
+    });
+  }
+
+  function makeUserRepoMock(role: 'STAFF' | 'PARENT') {
+    return {
+      findById: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        role,
+        academyId: 'academy-1',
+        isActive: () => true,
+      }),
+      anonymizeAndSoftDelete: jest.fn().mockResolvedValue(undefined),
+      // Surface stubs that aren't touched by the strategy.
+      findByEmail: jest.fn(),
+      findByPhone: jest.fn(),
+      save: jest.fn(),
+      bumpTokenVersion: jest.fn(),
+      listByAcademyId: jest.fn(),
+    } as unknown as jest.Mocked<UserRepository>;
+  }
+
+  it('PARENT cascade: cancels pending PRs, deletes parent-student links, removes tokens, revokes sessions, invalidates cache', async () => {
+    const users = makeUserRepoMock('PARENT');
+    const deps = makeCascadeDeps();
+    const strategy = new SelfOnlyDeletionStrategy(
+      users,
+      deps.paymentRequests as never,
+      deps.parentLinks as never,
+      deps.deviceTokens as never,
+      deps.sessions as never,
+      deps.userAuthCache as never,
+    );
+
+    const result = await strategy.execute(makeRequest('user-1', 'PARENT'));
+
+    expect(result.ok).toBe(true);
+    expect(users.anonymizeAndSoftDelete).toHaveBeenCalledTimes(1);
+    expect(deps.paymentRequests.cancelPendingByStaffAndAcademy).toHaveBeenCalledWith(
+      'user-1',
+      'academy-1',
+    );
+    expect(deps.parentLinks.deleteAllByParentUserId).toHaveBeenCalledWith('user-1');
+    expect(deps.deviceTokens.removeByUserIds).toHaveBeenCalledWith(['user-1']);
+    expect(deps.sessions.revokeAllByUserIds).toHaveBeenCalledWith(['user-1']);
+    expect(deps.userAuthCache.invalidate).toHaveBeenCalledWith('user-1');
+  });
+
+  it('STAFF cascade: skips deleteAllByParentUserId (role-specific) but runs the rest', async () => {
+    const users = makeUserRepoMock('STAFF');
+    const deps = makeCascadeDeps();
+    const strategy = new SelfOnlyDeletionStrategy(
+      users,
+      deps.paymentRequests as never,
+      deps.parentLinks as never,
+      deps.deviceTokens as never,
+      deps.sessions as never,
+      deps.userAuthCache as never,
+    );
+
+    await strategy.execute(makeRequest('user-1', 'STAFF'));
+
+    expect(deps.paymentRequests.cancelPendingByStaffAndAcademy).toHaveBeenCalled();
+    // Parent-student links are a parent-only concept — staff don't have any.
+    expect(deps.parentLinks.deleteAllByParentUserId).not.toHaveBeenCalled();
+    expect(deps.deviceTokens.removeByUserIds).toHaveBeenCalled();
+    expect(deps.sessions.revokeAllByUserIds).toHaveBeenCalled();
+    expect(deps.userAuthCache.invalidate).toHaveBeenCalled();
+  });
+
+  it('legacy compatibility: works without any cascade deps (Optional)', async () => {
+    // Pre-cascade fixture path — proves the strategy doesn't throw if the
+    // module hasn't been updated to provide the new injectables yet.
+    const users = makeUserRepoMock('PARENT');
+    const strategy = new SelfOnlyDeletionStrategy(users);
+    const result = await strategy.execute(makeRequest('user-1', 'PARENT'));
+    expect(result.ok).toBe(true);
+    expect(users.anonymizeAndSoftDelete).toHaveBeenCalled();
+  });
+
+  it('cascade failures are logged but do not block the deletion', async () => {
+    const users = makeUserRepoMock('PARENT');
+    const deps = makeCascadeDeps();
+    deps.paymentRequests.cancelPendingByStaffAndAcademy.mockRejectedValueOnce(
+      new Error('DB unreachable'),
+    );
+    deps.parentLinks.deleteAllByParentUserId.mockRejectedValueOnce(
+      new Error('different failure'),
+    );
+
+    const strategy = new SelfOnlyDeletionStrategy(
+      users,
+      deps.paymentRequests as never,
+      deps.parentLinks as never,
+      deps.deviceTokens as never,
+      deps.sessions as never,
+      deps.userAuthCache as never,
+    );
+
+    const result = await strategy.execute(makeRequest('user-1', 'PARENT'));
+
+    // User PII still scrubbed; remaining cascades still attempted.
+    expect(result.ok).toBe(true);
+    expect(users.anonymizeAndSoftDelete).toHaveBeenCalled();
+    expect(deps.deviceTokens.removeByUserIds).toHaveBeenCalled();
+    expect(deps.sessions.revokeAllByUserIds).toHaveBeenCalled();
+    expect(deps.userAuthCache.invalidate).toHaveBeenCalled();
+  });
+});
+
 describe('DefaultDeletionStrategyRegistry', () => {
   const owner = { execute: jest.fn() } as unknown as OwnerDeletionStrategy;
   const selfOnly = { execute: jest.fn() } as unknown as SelfOnlyDeletionStrategy;

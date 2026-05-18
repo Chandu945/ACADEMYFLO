@@ -57,6 +57,7 @@ describe('CancelPaymentRequestUseCase', () => {
       listPendingByStudentAndAcademy: jest.fn(),
       deleteAllByAcademyAndStudent: jest.fn(),
       deletePendingByAcademyAndStudent: jest.fn(),
+    cancelPendingByStaffAndAcademy: jest.fn().mockResolvedValue(0),
     } as jest.Mocked<PaymentRequestRepository>;
   });
 

@@ -64,6 +64,23 @@ export const subscriptionApi: SubscriptionApiPort = {
       'getPaymentStatus',
     );
   },
+
+  async cancelPayment(
+    orderId: string,
+  ): Promise<Result<{ orderId: string; status: string }, AppError>> {
+    // Cancel response is intentionally narrow — caller only needs to know
+    // the request was accepted. Skip schema validation; treat any 200 as
+    // success so a future server-side payload change doesn't accidentally
+    // re-strand the user on the cancelled-payment modal.
+    const result = await apiPost<{ orderId: string; status: string }>(
+      `/api/v1/subscription-payments/${encodeURIComponent(orderId)}/cancel`,
+    );
+    if (!result.ok) return result;
+    return ok({
+      orderId: result.value?.orderId ?? orderId,
+      status: result.value?.status ?? 'FAILED',
+    });
+  },
 };
 
 // Re-export z to prevent unused-import complaints if we add more usage later.

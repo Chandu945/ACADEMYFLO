@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type { UserRole } from '@academyflo/contracts';
 import type { Result } from '@shared/kernel';
@@ -6,6 +6,16 @@ import { AppError, err, ok } from '@shared/kernel';
 import type { AccountDeletionRequest } from '@domain/account-deletion/entities/account-deletion-request.entity';
 import type { UserRepository } from '@domain/identity/ports/user.repository';
 import { USER_REPOSITORY } from '@domain/identity/ports/user.repository';
+import type { SessionRepository } from '@domain/identity/ports/session.repository';
+import { SESSION_REPOSITORY } from '@domain/identity/ports/session.repository';
+import type { DeviceTokenRepository } from '@domain/notification/ports/device-token.repository';
+import { DEVICE_TOKEN_REPOSITORY } from '@domain/notification/ports/device-token.repository';
+import type { ParentStudentLinkRepository } from '@domain/parent/ports/parent-student-link.repository';
+import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
+import type { PaymentRequestRepository } from '@domain/fee/ports/payment-request.repository';
+import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
+import type { UserAuthCachePort } from '@application/identity/ports/user-auth-cache.port';
+import { USER_AUTH_CACHE_PORT } from '@application/identity/ports/user-auth-cache.port';
 import { AcademyTeardownService } from '@infrastructure/services/academy-teardown.service';
 
 /**
@@ -91,19 +101,50 @@ export class OwnerDeletionStrategy implements DeletionStrategy {
 
 /**
  * Self-only deletion for STAFF and PARENT roles. Anonymizes the requesting
- * user's PII and bumps tokenVersion (invalidates all sessions). The academy
- * itself and other users remain untouched. Audit logs and payment receipts
- * referencing the user are retained for legal compliance — only the user's
- * own profile fields are scrubbed.
+ * user's PII, then runs the side-effect cascade so the academy doesn't
+ * carry orphan references to the deleted user:
+ *   - cancel pending payment requests they authored (so the owner's queue
+ *     stops surfacing in-flight requests from someone who can't be reached);
+ *   - delete parent-student links (so push fan-out / linked-parent UIs stop
+ *     pointing at "Deleted User");
+ *   - remove device tokens (so pushes stop being delivered to the device of
+ *     someone who can no longer log in);
+ *   - revoke sessions + invalidate the auth cache (so an in-flight access
+ *     token is rejected immediately rather than after the 5-min cache TTL).
+ *
+ * Academy itself and other users remain untouched. Audit logs and payment
+ * receipts referencing the user are retained for legal compliance — only
+ * the user's own profile fields are scrubbed.
  *
  * Required for Play Store User Data policy: every signup-able role must have
  * an in-app self-deletion path.
+ *
+ * The cascade dependencies are @Optional so legacy fixtures (and the existing
+ * deletion-strategy spec that predates the cascade) still compile without
+ * the new wiring. Production DI always supplies them.
  */
 @Injectable()
 export class SelfOnlyDeletionStrategy implements DeletionStrategy {
   private readonly logger = new Logger(SelfOnlyDeletionStrategy.name);
 
-  constructor(@Inject(USER_REPOSITORY) private readonly users: UserRepository) {}
+  constructor(
+    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
+    @Optional()
+    @Inject(PAYMENT_REQUEST_REPOSITORY)
+    private readonly paymentRequests?: PaymentRequestRepository,
+    @Optional()
+    @Inject(PARENT_STUDENT_LINK_REPOSITORY)
+    private readonly parentLinks?: ParentStudentLinkRepository,
+    @Optional()
+    @Inject(DEVICE_TOKEN_REPOSITORY)
+    private readonly deviceTokens?: DeviceTokenRepository,
+    @Optional()
+    @Inject(SESSION_REPOSITORY)
+    private readonly sessions?: SessionRepository,
+    @Optional()
+    @Inject(USER_AUTH_CACHE_PORT)
+    private readonly userAuthCache?: UserAuthCachePort,
+  ) {}
 
   async execute(request: AccountDeletionRequest): Promise<Result<void>> {
     const user = await this.users.findById(request.userId);
@@ -114,6 +155,8 @@ export class SelfOnlyDeletionStrategy implements DeletionStrategy {
       );
     }
     const uid = user.id.toString();
+    const academyId = user.academyId ?? request.academyId ?? null;
+
     await this.users.anonymizeAndSoftDelete({
       userId: uid,
       anonymizedEmail: `deleted-${uid}@anonymized.local`,
@@ -121,8 +164,66 @@ export class SelfOnlyDeletionStrategy implements DeletionStrategy {
       anonymizedFullName: 'Deleted User',
       deletedBy: request.userId,
     });
+
+    // Cascade. Each step is best-effort and isolated — a failure in one
+    // shouldn't prevent the others from running. The user's PII is already
+    // scrubbed above; cascade failures only leave orphan operational rows,
+    // not exposed PII.
+    let cancelledPRs = 0;
+    let deletedLinks = 0;
+    let removedTokens = 0;
+
+    if (academyId && this.paymentRequests) {
+      try {
+        // Field is named `staffUserId` on the PR record but stores the
+        // author for both parent- and staff-authored requests, so the
+        // existing `cancelPendingByStaffAndAcademy` covers both roles.
+        cancelledPRs = await this.paymentRequests.cancelPendingByStaffAndAcademy(uid, academyId);
+      } catch (e) {
+        this.logger.warn(`Failed to cancel pending PRs during self-delete: ${e}`);
+      }
+    }
+
+    if (this.parentLinks && user.role === 'PARENT') {
+      try {
+        deletedLinks = await this.parentLinks.deleteAllByParentUserId(uid);
+      } catch (e) {
+        this.logger.warn(`Failed to delete parent-student links during self-delete: ${e}`);
+      }
+    }
+
+    if (this.deviceTokens) {
+      try {
+        removedTokens = await this.deviceTokens.removeByUserIds([uid]);
+      } catch (e) {
+        this.logger.warn(`Failed to remove device tokens during self-delete: ${e}`);
+      }
+    }
+
+    if (this.sessions) {
+      try {
+        await this.sessions.revokeAllByUserIds([uid]);
+      } catch (e) {
+        this.logger.warn(`Failed to revoke sessions during self-delete: ${e}`);
+      }
+    }
+
+    if (this.userAuthCache) {
+      try {
+        await this.userAuthCache.invalidate(uid);
+      } catch (e) {
+        this.logger.warn(`Failed to invalidate auth cache during self-delete: ${e}`);
+      }
+    }
+
+    // reason=AUTHOR_DELETED is captured in the log so forensic queries can
+    // distinguish "user explicitly cancelled this PR" from "user's account
+    // was deleted and the system cascade-cancelled it". The PR row itself
+    // just shows status=CANCELLED — no schema change here.
     this.logger.log(
-      `Self deletion complete for role=${user.role} user=${request.userId}`,
+      `Self deletion complete for role=${user.role} user=${request.userId} ` +
+        `cascade=reason=AUTHOR_DELETED cancelledPRs=${cancelledPRs} ` +
+        `deletedLinks=${deletedLinks} removedTokens=${removedTokens}`,
     );
     return ok(undefined);
   }

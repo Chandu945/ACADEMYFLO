@@ -166,7 +166,12 @@ export function PaymentStatusBanner({ status, error, onDismiss }: Props) {
         ? 'Hold on — we\u2019re setting things up.'
         : status === 'checkout'
           ? 'Finish the payment in the Cashfree window. Keep the app open.'
-          : 'We\u2019re waiting for your bank to confirm. This usually takes a few seconds — don\u2019t close the app.';
+          // Polling subtitle: the prior copy ("waiting for your bank to
+          // confirm") implied the user had paid and gave no hint about the
+          // Cancel escape hatch — which is the actual exit when the user
+          // backed out of the payment provider (PhonePe etc.) and there’s
+          // nothing to confirm. Make the escape obvious.
+          : 'Verifying your payment. If you didn’t complete it, tap Cancel below to start over.';
 
     body = (
       <>

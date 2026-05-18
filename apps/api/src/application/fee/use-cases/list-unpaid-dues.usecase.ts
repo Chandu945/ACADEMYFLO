@@ -6,6 +6,7 @@ import type { AcademyRepository } from '@domain/academy/ports/academy.repository
 import type { FeeDueRepository } from '@domain/fee/ports/fee-due.repository';
 import type { StudentRepository } from '@domain/student/ports/student.repository';
 import type { StudentBatchRepository } from '@domain/batch/ports/student-batch.repository';
+import type { Student } from '@domain/student/entities/student.entity';
 import { canViewFees } from '@domain/fee/rules/fee.rules';
 import { isValidMonthKey } from '@domain/attendance/value-objects/local-date.vo';
 import { FeeErrors } from '../../common/errors';
@@ -15,6 +16,11 @@ import type { UserRole } from '@academyflo/contracts';
 import type { ClockPort } from '../../common/clock.port';
 import { formatLocalDate } from '../../../shared/date-utils';
 import { buildLateFeeConfigFromAcademy } from '../common/late-fee';
+
+/** Project a Student entity down to the only field we need on this screen. */
+function toStudentName(s: Student): string {
+  return s.fullName;
+}
 
 export interface ListUnpaidDuesInput {
   actorUserId: string;
@@ -66,12 +72,28 @@ export class ListUnpaidDuesUseCase {
     const today = formatLocalDate(this.clock.now());
     const config = buildLateFeeConfigFromAcademy(academy);
 
-    // Filter by batch if requested
+    // Hide dues for soft-deleted students. They're preserved in the DB
+    // (financial audit) but rendering them on the active dues list creates
+    // unactionable "ghost rows" — no name, no avatar, can't be marked paid
+    // because the student record is gone. studentRepo.findByIds already
+    // filters deletedAt:null at the DB layer, so the returned set is the
+    // alive-students subset; everything else is treated as deleted.
     let filteredDues = dues;
+    let aliveStudentsById = new Map<string, ReturnType<typeof toStudentName>>();
+    if (this.studentRepo && dues.length > 0) {
+      const uniqueIds = [...new Set(dues.map((d) => d.studentId))];
+      const aliveStudents = await this.studentRepo.findByIds(uniqueIds);
+      aliveStudentsById = new Map(
+        aliveStudents.map((s) => [s.id.toString(), toStudentName(s)]),
+      );
+      filteredDues = dues.filter((d) => aliveStudentsById.has(d.studentId));
+    }
+
+    // Filter by batch if requested
     if (input.batchId && this.studentBatchRepo) {
       const batchAssignments = await this.studentBatchRepo.findByBatchId(input.batchId);
       const batchStudentIds = new Set(batchAssignments.map((a) => a.studentId));
-      filteredDues = dues.filter((d) => batchStudentIds.has(d.studentId));
+      filteredDues = filteredDues.filter((d) => batchStudentIds.has(d.studentId));
     }
 
     // Filter by name search if requested. Reuses the existing student.list
@@ -90,21 +112,17 @@ export class ListUnpaidDuesUseCase {
       filteredDues = filteredDues.filter((d) => matchedIds.has(d.studentId));
     }
 
-    // Build student name map (only for the page slice to avoid unnecessary lookups)
+    // Build student name map. We already fetched alive students above —
+    // reuse that result so the page-slice loop doesn't re-query.
     const total = filteredDues.length;
     const { page, pageSize } = input;
     const start = (page - 1) * pageSize;
     const paged = filteredDues.slice(start, start + pageSize);
 
     const nameMap: Record<string, string> = {};
-    if (this.studentRepo && paged.length > 0) {
-      const uniqueIds = [...new Set(paged.map((d) => d.studentId))];
-      const students = await this.studentRepo.findByIds(uniqueIds);
-      for (const s of students) {
-        if (!s.isDeleted()) {
-          nameMap[s.id.toString()] = s.fullName;
-        }
-      }
+    for (const d of paged) {
+      const name = aliveStudentsById.get(d.studentId);
+      if (name) nameMap[d.studentId] = name;
     }
 
     return ok({

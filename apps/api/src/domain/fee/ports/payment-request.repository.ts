@@ -51,4 +51,13 @@ export interface PaymentRequestRepository {
    *  queue, while APPROVED/REJECTED/CANCELLED PRs (immutable history, often
    *  referenced by TransactionLogs) are preserved (M4 fix). Returns count removed. */
   deletePendingByAcademyAndStudent(academyId: string, studentId: string): Promise<number>;
+
+  /** Mark all PENDING payment requests filed by a staff member as CANCELLED.
+   *  Used by the staff-deactivate cascade so the owner's approval queue doesn't
+   *  keep showing in-flight requests from a staff who's no longer around to
+   *  clarify them. Asymmetric with the student cascade which hard-deletes —
+   *  here we soft-cancel because the staff record itself still exists (just
+   *  INACTIVE) and the student-side PR history should still show that the PR
+   *  existed and why it was cancelled. Returns count cancelled. */
+  cancelPendingByStaffAndAcademy(staffUserId: string, academyId: string): Promise<number>;
 }

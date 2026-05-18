@@ -23,6 +23,16 @@ export type UsePaymentFlowReturn = {
    *  an app kill mid-checkout). Idempotent: safe to call repeatedly; a no-op
    *  if a flow is already in progress. */
   resumePayment: (orderId: string) => void;
+  /**
+   * User-initiated cancel during polling. Fires the server cancel
+   * (fire-and-forget) so `pendingPaymentOrderId` clears and SubscriptionScreen
+   * stops auto-resuming the dead order on next visit, then resets local state
+   * immediately for snappy UX. The race where a webhook lands SUCCESS at the
+   * same instant is handled server-side (CAS preserves SUCCESS).
+   */
+  cancelByUser: () => void;
+  /** Local-only reset — clears state without touching the server. Use for
+   *  dismissing terminal (success/failed) banners or after errors. */
   reset: () => void;
 };
 
@@ -195,6 +205,28 @@ export function usePaymentFlow(
     setPaymentResult(null);
   }, [stopPolling]);
 
+  const cancelByUser = useCallback(() => {
+    // Capture the orderId BEFORE we reset local state, so the server-cancel
+    // request still has the right value even if React batches the state
+    // clears below.
+    const idToCancel = orderId;
+    stopPolling();
+    setStatus('idle');
+    setError(null);
+    setOrderId(null);
+    setPaymentResult(null);
+    if (idToCancel) {
+      // Fire-and-forget: don't await — the user is already off the screen.
+      // Server cancel is idempotent so a failed network call here only
+      // means the auto-resume might fire one more time on next visit (and
+      // then succeed at clearing it). A truly cancelled order is still
+      // safely picked up by Cashfree's ~15-min TTL as the long-tail safety.
+      deps.subscriptionApi.cancelPayment(idToCancel).catch(() => {
+        // Silent — never block the user's intent to leave the modal.
+      });
+    }
+  }, [orderId, stopPolling, deps.subscriptionApi]);
+
   const resumePayment = useCallback(
     (oid: string) => {
       // Only resume when genuinely idle — never clobber an in-flight flow.
@@ -216,6 +248,7 @@ export function usePaymentFlow(
     paymentResult,
     startPayment,
     resumePayment,
+    cancelByUser,
     reset,
   };
 }

@@ -54,14 +54,30 @@ export class ListOverdueStudentsUseCase {
     const academyId = user.academyId;
     const today = formatLocalDate(new Date());
 
-    const [overdueDues, academy] = await Promise.all([
+    const [overdueDuesAll, academy] = await Promise.all([
       this.feeDueRepo.listOverdueByAcademy(academyId, today),
       this.academyRepo.findById(academyId),
     ]);
 
     const config = buildLateFeeConfigFromAcademy(academy);
 
-    // Group by studentId
+    // Hide overdue rows for soft-deleted students — they're preserved in
+    // the DB for audit, but on the active Overdue Students screen they'd
+    // appear as unattributable ghost rows ("Unknown" + amount, no actions
+    // available). studentRepo.findByIds already filters deletedAt:null at
+    // the DB layer, so the returned set IS the alive subset; everything
+    // missing from it is treated as deleted and dropped.
+    const allStudentIds = [...new Set(overdueDuesAll.map((d) => d.studentId))];
+    const nameMap: Record<string, string> = {};
+    if (allStudentIds.length > 0) {
+      const aliveStudents = await this.studentRepo.findByIds(allStudentIds);
+      for (const s of aliveStudents) {
+        nameMap[s.id.toString()] = s.fullName;
+      }
+    }
+    const overdueDues = overdueDuesAll.filter((d) => nameMap[d.studentId] !== undefined);
+
+    // Group by studentId (deleted students already filtered out above)
     const grouped = new Map<string, typeof overdueDues>();
     for (const due of overdueDues) {
       const existing = grouped.get(due.studentId);
@@ -69,16 +85,6 @@ export class ListOverdueStudentsUseCase {
         existing.push(due);
       } else {
         grouped.set(due.studentId, [due]);
-      }
-    }
-
-    // Look up student names
-    const studentIds = [...grouped.keys()];
-    const nameMap: Record<string, string> = {};
-    if (studentIds.length > 0) {
-      const students = await this.studentRepo.findByIds(studentIds);
-      for (const s of students) {
-        nameMap[s.id.toString()] = s.fullName;
       }
     }
 

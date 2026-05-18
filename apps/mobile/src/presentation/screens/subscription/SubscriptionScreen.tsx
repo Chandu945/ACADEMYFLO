@@ -368,7 +368,13 @@ export function SubscriptionScreen() {
         <PaymentStatusBanner
           status={paymentFlow.status}
           error={paymentFlow.error}
-          onDismiss={paymentFlow.reset}
+          // Polling dismiss = the user is cancelling a live payment, so tell
+          // the server. Terminal (success/failed) dismiss is local-only.
+          // Without this the server keeps the order PENDING for ~15 min and
+          // this screen auto-resumes the polling modal on every revisit.
+          onDismiss={
+            paymentFlow.status === 'polling' ? paymentFlow.cancelByUser : paymentFlow.reset
+          }
         />
 
         {showPayButton && (

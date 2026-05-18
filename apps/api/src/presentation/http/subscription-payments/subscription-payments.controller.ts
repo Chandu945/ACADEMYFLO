@@ -24,6 +24,7 @@ import { mapResultToResponse } from '../common/result-mapper';
 import type { InitiateSubscriptionPaymentUseCase } from '@application/subscription-payments/use-cases/initiate-subscription-payment.usecase';
 import type { HandleCashfreeWebhookUseCase } from '@application/subscription-payments/use-cases/handle-cashfree-webhook.usecase';
 import type { GetSubscriptionPaymentStatusUseCase } from '@application/subscription-payments/use-cases/get-subscription-payment-status.usecase';
+import type { CancelSubscriptionPaymentUseCase } from '@application/subscription-payments/use-cases/cancel-subscription-payment.usecase';
 import type { Request } from 'express';
 
 /**
@@ -42,6 +43,8 @@ export class SubscriptionPaymentsController {
     private readonly handleWebhook: HandleCashfreeWebhookUseCase,
     @Inject('GET_SUBSCRIPTION_PAYMENT_STATUS_USE_CASE')
     private readonly getPaymentStatus: GetSubscriptionPaymentStatusUseCase,
+    @Inject('CANCEL_SUBSCRIPTION_PAYMENT_USE_CASE')
+    private readonly cancelPayment: CancelSubscriptionPaymentUseCase,
   ) {}
 
   @Post('initiate')
@@ -67,6 +70,25 @@ export class SubscriptionPaymentsController {
     @Req() req: Request,
   ) {
     const result = await this.getPaymentStatus.execute(user.userId, orderId);
+    return mapResultToResponse(result, req);
+  }
+
+  @Post(':orderId/cancel')
+  @UseGuards(JwtAuthGuard, RbacGuard)
+  @Roles('OWNER')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { limit: 10, ttl: 10_000 }, medium: { limit: 30, ttl: 60_000 }, long: { limit: 100, ttl: 900_000 } })
+  @ApiOperation({ summary: 'Cancel a PENDING subscription payment (OWNER only)' })
+  async cancel(
+    @CurrentUser() user: CurrentUserType,
+    @Param('orderId') orderId: string,
+    @Req() req: Request,
+  ) {
+    const result = await this.cancelPayment.execute({
+      actorUserId: user.userId,
+      orderId,
+    });
     return mapResultToResponse(result, req);
   }
 

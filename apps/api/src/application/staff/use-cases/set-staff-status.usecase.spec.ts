@@ -76,6 +76,7 @@ function buildDeps() {
     listPendingByStudentAndAcademy: jest.fn().mockResolvedValue([]),
     deleteAllByAcademyAndStudent: jest.fn(),
     deletePendingByAcademyAndStudent: jest.fn(),
+    cancelPendingByStaffAndAcademy: jest.fn().mockResolvedValue(0),
   };
   return { userRepo, sessionRepo, auditRecorder, prRepo };
 }
@@ -208,13 +209,16 @@ describe('SetStaffStatusUseCase', () => {
     expect(userRepo.save).not.toHaveBeenCalled();
     expect(sessionRepo.revokeAllByUserIds).not.toHaveBeenCalled();
     expect(auditRecorder.record).not.toHaveBeenCalled();
-    expect(prRepo.countPendingByStaffAndAcademy).not.toHaveBeenCalled();
+    expect(prRepo.cancelPendingByStaffAndAcademy).not.toHaveBeenCalled();
   });
 
-  // M6 regression: count-pending is a direct DB count, not a list+filter.
-  it('M6: uses countPendingByStaffAndAcademy instead of listByStaffAndAcademy', async () => {
+  // Cascade regression (staff analog of student-delete PR cleanup):
+  // deactivation must mark pending PRs CANCELLED, not just count them.
+  // Pre-fix the queue kept showing in-flight requests from staff who
+  // were no longer around to clarify them.
+  it('cascades: pending PRs are CANCELLED (not just counted) on deactivate', async () => {
     const { userRepo, sessionRepo, auditRecorder, prRepo } = buildDeps();
-    prRepo.countPendingByStaffAndAcademy.mockResolvedValue(3);
+    prRepo.cancelPendingByStaffAndAcademy.mockResolvedValue(3);
     userRepo.findById.mockImplementation(async (id) => {
       if (id === 'owner-1') return createOwner();
       if (id === 'staff-1') return createStaff('ACTIVE');
@@ -229,10 +233,36 @@ describe('SetStaffStatusUseCase', () => {
       status: 'INACTIVE',
     });
 
-    expect(prRepo.countPendingByStaffAndAcademy).toHaveBeenCalledWith('staff-1', 'academy-1');
+    expect(prRepo.cancelPendingByStaffAndAcademy).toHaveBeenCalledWith('staff-1', 'academy-1');
     expect(prRepo.listByStaffAndAcademy).not.toHaveBeenCalled();
-    // Audit context records the count.
+    // Audit context records how many were cascaded.
     const auditCall = auditRecorder.record.mock.calls[0]![0];
-    expect(auditCall.context?.['pendingPaymentRequests']).toBe('3');
+    expect(auditCall.context?.['cancelledPendingPaymentRequests']).toBe('3');
+    // And the old "just counted, did nothing" field is gone.
+    expect(auditCall.context?.['pendingPaymentRequests']).toBeUndefined();
+  });
+
+  it('cascades: re-activate does NOT trigger the PR cancel (asymmetric)', async () => {
+    const { userRepo, sessionRepo, auditRecorder, prRepo } = buildDeps();
+    userRepo.findById.mockImplementation(async (id) => {
+      if (id === 'owner-1') return createOwner();
+      if (id === 'staff-1') return createStaff('INACTIVE');
+      return null;
+    });
+
+    const uc = new SetStaffStatusUseCase(userRepo, sessionRepo, auditRecorder, prRepo);
+    await uc.execute({
+      ownerUserId: 'owner-1',
+      ownerRole: 'OWNER',
+      staffId: 'staff-1',
+      status: 'ACTIVE',
+    });
+
+    // Reactivating doesn't try to un-cancel anything; the cascade is
+    // one-way (deactivation → cancel). Restoring stale PRs would create
+    // confusing UX since they pre-date the reactivation event.
+    expect(prRepo.cancelPendingByStaffAndAcademy).not.toHaveBeenCalled();
+    const auditCall = auditRecorder.record.mock.calls[0]![0];
+    expect(auditCall.context?.['cancelledPendingPaymentRequests']).toBeUndefined();
   });
 });

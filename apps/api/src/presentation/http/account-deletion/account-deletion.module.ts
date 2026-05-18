@@ -46,12 +46,20 @@ import {
 } from '@application/account-deletion/services/deletion-strategy';
 import { EMAIL_SENDER_PORT } from '@application/notifications/ports/email-sender.port';
 import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-email-sender';
+import { PAYMENT_REQUEST_REPOSITORY } from '@domain/fee/ports/payment-request.repository';
+import { MongoPaymentRequestRepository } from '@infrastructure/repositories/mongo-payment-request.repository';
+import { PARENT_STUDENT_LINK_REPOSITORY } from '@domain/parent/ports/parent-student-link.repository';
+import { MongoParentStudentLinkRepository } from '@infrastructure/repositories/mongo-parent-student-link.repository';
+import { CacheModule } from '@infrastructure/cache/redis.module';
 
 @Module({
   imports: [
     AuthModule,
     AuditLogsModule,
     ScheduleModule,
+    // SelfOnlyDeletionStrategy now invalidates the auth cache as part of
+    // its cascade. CacheModule provides USER_AUTH_CACHE_PORT.
+    CacheModule,
     MongooseModule.forFeature([
       { name: AccountDeletionRequestModel.name, schema: AccountDeletionRequestSchema },
       { name: AcademyModel.name, schema: AcademySchema },
@@ -85,6 +93,12 @@ import { NodemailerEmailSender } from '@infrastructure/notifications/nodemailer-
       useClass: MongoAccountDeletionRequestRepository,
     },
     { provide: EMAIL_SENDER_PORT, useClass: NodemailerEmailSender },
+    // Cascade dependencies for SelfOnlyDeletionStrategy. USER_REPOSITORY,
+    // SESSION_REPOSITORY, and DEVICE_TOKEN_REPOSITORY come from AuthModule
+    // imports above. The two repos below + USER_AUTH_CACHE_PORT (via
+    // CacheModule) close out the set.
+    { provide: PAYMENT_REQUEST_REPOSITORY, useClass: MongoPaymentRequestRepository },
+    { provide: PARENT_STUDENT_LINK_REPOSITORY, useClass: MongoParentStudentLinkRepository },
     AcademyTeardownService,
     OwnerDeletionStrategy,
     SelfOnlyDeletionStrategy,

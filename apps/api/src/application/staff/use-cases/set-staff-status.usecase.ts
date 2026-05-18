@@ -127,14 +127,19 @@ export class SetStaffStatusUseCase {
     // 5 min because the cache still reports them ACTIVE.
     await this.userAuthCache?.invalidate(input.staffId);
 
-    let pendingPrCount = 0;
+    let cancelledPrCount = 0;
     if (input.status === 'INACTIVE') {
       await this.sessionRepo.revokeAllByUserIds([input.staffId]);
       await this.deviceTokenRepo?.removeByUserIds([input.staffId]);
-      // M6 fix: count PENDING payment requests directly at the DB layer.
-      // Prior code loaded EVERY PR the staff had ever filed into memory
-      // just to filter+count — unbounded query, scales O(staff history).
-      pendingPrCount = await this.paymentRequestRepo.countPendingByStaffAndAcademy(
+      // Cascade: cancel any PENDING PRs this staff filed before deactivation.
+      // Without this, the owner's approval queue keeps surfacing rows from a
+      // staff member who's no longer around to clarify them — the staff analog
+      // of the student-delete PENDING-PR cascade (see
+      // soft-delete-student.usecase.ts:116). Soft-cancel (status → CANCELLED)
+      // rather than hard-delete so the student's PR history still shows the
+      // request existed. Count goes to the audit context so the deactivation
+      // event captures the cascade scope.
+      cancelledPrCount = await this.paymentRequestRepo.cancelPendingByStaffAndAcademy(
         input.staffId,
         owner.academyId,
       );
@@ -150,7 +155,9 @@ export class SetStaffStatusUseCase {
         staffName: staff.fullName,
         fromStatus: staff.status,
         toStatus: input.status,
-        ...(input.status === 'INACTIVE' ? { pendingPaymentRequests: String(pendingPrCount) } : {}),
+        ...(input.status === 'INACTIVE'
+          ? { cancelledPendingPaymentRequests: String(cancelledPrCount) }
+          : {}),
       },
     });
 
